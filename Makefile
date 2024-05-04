@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+#
+# SPDX-License-Identifier: 0BSD
+
+build:
+	gcc -Wall -Werror eam_compile.c main.c -o eambfc
