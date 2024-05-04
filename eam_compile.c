@@ -22,21 +22,27 @@ int writeEhdr(int fd) {
 
     ssize_t written;
     Elf64_Ehdr header;
+
     /* the first 4 bytes are "magic values" that are pre-defined and used to
      * identify the format. */
     header.e_ident[EI_MAG0] = ELFMAG0; header.e_ident[EI_MAG1] = ELFMAG1;
     header.e_ident[EI_MAG2] = ELFMAG2; header.e_ident[EI_MAG3] = ELFMAG3;
+
     /* x86_64 is a 64-bit architecture. it uses 2's complement, little endian
      * for byte ordering. */
     header.e_ident[EI_CLASS] = ELFCLASS64;
     header.e_ident[EI_DATA] = ELFDATA2LSB;
+
     /* e_ident[EI_VERSION] must be set to EV_CURRENT. */
     header.e_ident[EI_VERSION] = EV_CURRENT;
+
     /* EI_OSABI is the target Application Binary Interface. SYSV is the value
      * to use for a Linux executable which doesn't use GNU extensions. */
     header.e_ident[EI_OSABI] = ELFOSABI_SYSV;
+
     /* No distinct ABI versions are defined for ELFOSABI_SYSV. */
     header.e_ident[EI_ABIVERSION] = 0;
+
     /* The rest of the e_ident bytes are padding bytes.
      * EI_PAD is the index of the first padding byte.
      * EI_NIDENT is the size of the e_ident byte array.
@@ -46,8 +52,7 @@ int writeEhdr(int fd) {
     }
 
     /* this is a basic executable for the AMD x86_64 architecture. */
-    header.e_type = ET_EXEC;
-    header.e_machine = EM_X86_64;
+    header.e_type = ET_EXEC; header.e_machine = EM_X86_64;
     /* e_version, like e_ident[EI_VERSION], must be set to EV_CURRENT */
     header.e_version = EV_CURRENT;
 
@@ -63,6 +68,10 @@ int writeEhdr(int fd) {
      * respectively. Defined in macros earlier in this file. */
     header.e_phoff = PHOFF;
     header.e_shoff = SHOFF;
+
+    /* the size of the ELF header as a value within the ELF header, for some
+     * reason. I don't make the rules about the format. */
+    header.e_ehsize = EHDR_SIZE;
 
     /* e_phentsize and e_shentsize are the size of entries within the
      * program and section header tables respectively. If there are no entries
@@ -83,120 +92,59 @@ int writeEhdr(int fd) {
      * defined, and it should be set to 0. */
     header.e_flags = 0;
 
-    /* the size of the ELF header as a value within the ELF header, for some
-     * reason. I don't make the rules about the format. */
-    header.e_ehsize = EHDR_SIZE;
-
     written = write(fd, &header, EHDR_SIZE);
     return written == sizeof(header);
 }
 
-/* Write the Program Header Table */
+/* Write the Program Header Table to the file descriptor fd
+ * This is a list of areas within memory to set up when starting the program. */
 int writePhdrTable(int fd) {
     ssize_t written;
     Elf64_Phdr headerTable[PHNUM];
 
-    /* /1* header for the segment that contains the ELF header *1/ */
-    /* /1* just looked at the values from a known-working executable for this one *1/ */
-    /* headerTable[0].p_type = PT_PHDR; */
-    /* headerTable[0].p_flags = PF_R; */
-    /* headerTable[0].p_offset = EHDR_SIZE; */
-    /* headerTable[0].p_vaddr = EHDR_SIZE; */
-    /* headerTable[0].p_paddr = EHDR_SIZE; */
-    /* headerTable[0].p_filesz = PHTB_SIZE; */
-    /* headerTable[0].p_memsz = PHTB_SIZE; */
-    /* headerTable[0].p_align = 8; */
-
-    /* /1* header for the segment that contains the Phdr table *1/ */
-    /* overlaps with the previous one, and similarly copied from a known-working
-     * executable, but with some changes */
-    /* headerTable[1].p_type = PT_LOAD; */
-    /* headerTable[1].p_flags = PF_R; */
-    /* headerTable[1].p_offset = 0; */
-    /* headerTable[1].p_vaddr = 0; */
-    /* headerTable[1].p_paddr = 0; */
-    /* headerTable[1].p_filesz = EHDR_SIZE + PHTB_SIZE; */
-    /* headerTable[1].p_memsz = EHDR_SIZE + PHTB_SIZE; */
-    /* headerTable[1].p_align = 1; */
-
     /* header for the tape contents section */
     headerTable[0].p_type = PT_LOAD;
+    /* It is readable and writable */
     headerTable[0].p_flags = PF_R | PF_W;
+    /* Load initial bytes from this offset within the file */
     headerTable[0].p_offset = 0;
+    /* Start at this memory address */
     headerTable[0].p_vaddr = TAPE_ADDRESS;
+    /* Load from this physical address */
     headerTable[0].p_paddr = 0;
+    /* Size within the file on disk - 0, as the tape is empty. */
     headerTable[0].p_filesz = 0;
+    /* Size within memory - must be at least p_filesz.
+     * In this case, it's the size of the tape itself. */
     headerTable[0].p_memsz = TAPE_SIZE;
+    /* supposed to be a power of 2, went with 2^12 */
     headerTable[0].p_align = 0x1000;
 
     /* header for the segment that contains the actual binary */
     headerTable[1].p_type = PT_LOAD;
+    /* It is readable and executable */
     headerTable[1].p_flags = PF_R | PF_X;
+    /* Load initial bytes from this offset within the file */
     headerTable[1].p_offset = 0;
+    /* Start at this memory address */
     headerTable[1].p_vaddr = LOAD_VADDR;
+    /* Load from this physical address */
     headerTable[1].p_paddr = 0;
+    /* Size within the file on disk - the size of the whole file, as this
+     * segment contains the whole thing. */
     headerTable[1].p_filesz = FILE_SIZE;
+    /* size within memory - must be at least p_filesz.
+     * In this case, it's the size of the whole file, as the whole file is
+     * loaded into this segment */
     headerTable[1].p_memsz = FILE_SIZE;
-    headerTable[1].p_align = 1; /* supposed to be a power of 2, went with 2^0 */
+    /* supposed to be a power of 2, went with 2^0 */
+    headerTable[1].p_align = 1;
 
     written = write(fd, &headerTable, PHTB_SIZE);
     return written == PHTB_SIZE;
 }
 
-/* Write the Section Header Table */
-/* int writeShdrTable(int fd) { */
-/*     return 1; */
-/*     ssize_t written; */
-/*     Elf64_Shdr headerTable[SHNUM]; */
-/*     /1* Tape section *1/ */
-/*     headerTable[0].sh_name = 0; */
-/*     /1* the tape section occupies no space within the executable *1/ */
-/*     headerTable[0].sh_type = SHT_NOBITS; */
-/*     /1* the tape section should be allocated and writable during execution *1/ */
-/*     headerTable[0].sh_flags = SHF_WRITE | SHF_ALLOC; */
-/*     /1* the location within the memory image *1/ */
-/*     headerTable[0].sh_addr = TAPE_ADDRESS; */
-/*     /1* for a SHT_NOBITS-type section, the offset is supposed to be set to its */
-/*      * "conceptual placement within the file". I guess that would be within */
-/*      * the padding between the Phdr table and the start of the code *1/ */
-/*     headerTable[0].sh_offset = PHOFF + PHTB_SIZE; */
-/*     /1* The size within the file *1/ */
-/*     headerTable[0].sh_size = 0; */
-/*     /1* linking information - none needed here, so set it to 0 *1/ */
-/*     headerTable[0].sh_link = 0; */
-/*     /1* miscellaneous information - none needed here, so set it to 0 *1/ */
-/*     headerTable[0].sh_info = 0; */
-/*     /1* alignment constraint information *1/ */
-/*     headerTable[0].sh_addralign = 0; */
-/*     /1* if the section contains "a table of fixed-size entries", this is the size */
-/*      * of one of the entries. If it's zero, that means that it does not contain */
-/*      * such a table. *1/ */
-/*     headerTable[0].sh_entsize = 0; */
-/*     /1* Code section *1/ */
-/*     headerTable[1].sh_name = 1; */
-/*     /1* section contains information defined by the program. *1/ */
-/*     headerTable[1].sh_type = SHT_PROGBITS; */
-/*     /1* the code section should be allocated, and contains executable machine */
-/*      * instructions. *1/ */
-/*     headerTable[1].sh_flags = SHF_ALLOC | SHF_EXECINSTR; */
-/*     /1* The location within the memory image *1/ */
-/*     headerTable[1].sh_addr = START_VADDR; */
-/*     /1* The location within the file *1/ */
-/*     headerTable[1].sh_offset = START_PADDR; */
-/*     /1* The size within the file *1/ */
-/*     headerTable[1].sh_size = codesize; */
-/*     /1* linking information - none needed here, so set it to 0 *1/ */
-/*     headerTable[1].sh_link = 0; */
-/*     /1* miscellaneous information - none needed here, so set it to 0 *1/ */
-/*     headerTable[1].sh_info = 0; */
-/*     /1* alignment constraint information *1/ */
-/*     headerTable[1].sh_addralign = 0; */
-/*     /1* Set to 0 for same reason as above *1/ */
-/*     headerTable[1].sh_entsize = 0; */
-/*     written = write(fd, &headerTable, SHTB_SIZE); */
-/*     return written == SHTB_SIZE; */
-/* } */
-
+/* write code to set up a new brainfuck program to the file descriptor fd. */
 int bfInit(int fd) {
     /* set the brainfuck pointer register to the start of the tape  */
     ssize_t written;
@@ -210,7 +158,7 @@ int bfInit(int fd) {
 
 /* the INC and DEC instructions are encoded very similarly, and share opcodes.
  * the brainfuck instructions "<", ">", "+", and "-" can all be implemented
- * with a few variations. */
+ * with a few variations of them, using the eamasm_offset macro. */
 int bfOffset(int fd, uint8_t direction, uint8_t addressMode) {
     ssize_t written;
     uint8_t instructionBytes[] = {
@@ -228,13 +176,11 @@ int bfOffset(int fd, uint8_t direction, uint8_t addressMode) {
  *  - arg2 is the memory address of the the data source (write)/dest (read)
  *  - arg3 is the number of bytes to write/read
  *
- *  They are both implemented with the bfIO function.
- * */
+ * Due to their similarity, ',' and '.' are both implemented with bfIO. */
 int bfIO(int fd, int bfFD, int sc) {
     /* bfFD is the brainfuck File Descriptor, not to be confused with FD,
      * the file descriptor of the output file.
-     * sc is the system call number for the system call to use
-     * */
+     * sc is the system call number for the system call to use */
     ssize_t written;
     uint8_t instructionBytes[] = {
         /* load the number for the write system call into REG_SC_NUM */
@@ -258,26 +204,34 @@ int bfJmp(int fd) {
     return 0;
 }
 
-/* compile an individual instruction (c), to the file descriptor fd. */
+/* compile an individual instruction (c), to the file descriptor fd. 
+ * passes fd along with the appropriate arguments to a function to compile that
+ * particular instruction */
 int bfCompileInstruction(char c, int fd) {
     int ret;
     switch(c) {
         case '<':
+            /* decrement the tape pointer register */
             ret = bfOffset(fd, OFFDIR_NEGATIVE, OFFMODE_REGISTER);
             break;
         case '>':
+            /* increment the tape pointer register */
             ret = bfOffset(fd, OFFDIR_POSITIVE, OFFMODE_REGISTER);
             break;
         case '+':
+            /* increment the current tape value */
             ret = bfOffset(fd, OFFDIR_POSITIVE, OFFMODE_MEMORY);
             break;
         case '-':
+            /* decrement the current tape value */
             ret = bfOffset(fd, OFFDIR_NEGATIVE, OFFMODE_MEMORY);
             break;
         case '.':
+            /* write to stdout */
             ret = bfIO(fd, STDOUT_FILENO, SYS_write);
             break;
         case ',':
+            /* read from stdin */
             ret = bfIO(fd, STDIN_FILENO, SYS_read);
             break;
         case '[':
@@ -310,10 +264,10 @@ int bfCleanup(int fd) {
     return written == sizeof(instructionBytes);
 }
 
-/* macro to remove repeated guards */
+/* macro to remove repeated pattern */
 #define guarded(thing) if(!thing) return 0
 /* Takes 2 open file descriptors - inputFD and outputFD.
- * inputFD is a brainfuck source file, open for reading.https://www.muppetlabs.com/~breadbox/software/elfkickers.html
+ * inputFD is a brainfuck source file, open for reading.
  * outputFS is the destination file, open for writing.
  * It compiles the source code in inputFD, writing the output to outputFD.
  *
@@ -342,8 +296,6 @@ int bfCompile(int inputFD, int outputFD){
     lseek(outputFD, 0, SEEK_SET);
     guarded(writeEhdr(outputFD));
     guarded(writePhdrTable(outputFD));
-    /* /1* Shdr table is at the end *1/ */
-    /* lseek(outputFD, SHOFF, SEEK_SET); */
-    /* guarded(writeShdrTable(outputFD)); */
+
     return 1;
 }
