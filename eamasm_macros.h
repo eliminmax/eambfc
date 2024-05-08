@@ -5,6 +5,8 @@
 #ifndef EAMASM_MACROS
 #define EAMASM_MACROS
 #include <stdint.h>
+#include <sys/types.h>
+#include <elf.h>
 
 /* registers are accessed using the 3-bit values specified in octal below */
 #define REG_AX 00
@@ -55,12 +57,21 @@
  * tape pointer. */
 #define REG_BF_POINTER REG_RBX
 
+
 /* A couple of macros that are useful for various purposes */
 
 /* Add somewhere from 1 to 256 bytes to a memory address to ensure it's
  * 256-byte-aligned and separated from whatever came before it by at least 1
  * byte. */
 #define padTo256(address) (((address & ~ 0xff) + 0x100))
+
+/* use some bitwise nonsense to rewrite a double word (4-byte value) into 4
+ * separate byte values, in little-endian order. */
+#define dwordToBytes(d) \
+    ((d) & 0xff), /* smallest byte */ \
+    ((d) & (0xff << 8)) >> 8, /* 2nd-smallest byte */ \
+    ((d) & (0xff << 16)) >> 16, /* 2nd-largest byte */ \
+    ((d) & (0xff << 24)) >> 24 /* largest byte */
 
 /* the following are marcros to make the machine code more readable, almost like
  * subset of an assembly language, though I use different mnemonics that I
@@ -76,6 +87,28 @@
 
 /* The system call instruction, in all of its glory. */
 #define eamasm_syscall() 0x0f, 0x05
+
+
+/* set various CPU flags based on the byte pointed to by reg
+ * equivalent to TEST byte [reg], 0xff */
+#define eamasm_jump_test(reg) 0xf6, reg, 0xff
+
+/* jump by jump_offset bytes if the memory address pointed to by reg != 0 */
+#define eamasm_jump_not_zero(reg, jump_offset) \
+    eamasm_jump_test(reg),\
+    0x0f, 0x85, dwordToBytes(jump_offset) /* equivalent to JNZ jump_offset */
+
+/* jump by jump_offset bytes if the memory address pointed to by reg == 0 */
+#define eamasm_jump_zero(reg, jump_offset) \
+    eamasm_jump_test(reg),\
+    0x0f, 0x84, dwordToBytes(jump_offset) /* equivalent to JZ jump_offset */
+
+/* the size of the jump instructions, in bytes. */
+#define TEST_INSTRN_SIZE 3
+#define JUMP_INSTRN_SIZE 6
+
+/* test and jump are associated with each other. */
+#define JUMP_SIZE (TEST_INSTRN_SIZE + JUMP_INSTRN_SIZE)
 
 /* Increment or decrement a byte address in a register or a register's contents
  * the brainfuck instructions "<", ">", "+", and "-" can all be implemented
@@ -128,8 +161,8 @@
  *
  * * ffc3 dissassembles (with rasm2) to `inc ebx`.
  *
- * * rbx is REG_BF_POINTER's 64-bit form, but given that it shouldn't exceed the
- * * 32-bit unsigned integer limit, using its 32-bit form (ebx) is acceptable.
+ * * rbx is REG_BF_POINTER's 64-bit form, but given that it can't exceed the
+ * * 32-bit unsigned integer limit in eambfc, using its 32-bit form (ebx) is ok.
  * * Given that it saves a byte, might as well go with it.
  * */
 
@@ -150,19 +183,14 @@
  * explanation:
  * b8+rd, followed by an LSB-encoded 4 byte value, stores the 4 byte value in rd
  *
- * equivalent to MOV dst, d
- *
- * Uses bitwise nonsense to get the bytes in little-endian order
- * */
-#define eamasm_setregd(dst, d) 0xb8+dst, \
-    d & 0xff, /* smallest byte */ \
-    (d & (0xff << 8)) >> 8, /* 2nd-smallest byte */ \
-    (d & (0xff << 16)) >> 16, /* 2nd-largest byte */ \
-    (d & (0xff << 24)) >> 24 /* largest byte */
+ * equivalent to MOV dst, d */
+#define eamasm_setregd(dst, d) 0xb8+dst, dwordToBytes(d)
+
+/* assorted macros for the size/address of different elements in the ELF file */
 
 /* the tape size in Urban Müller's original implementation, and the de facto
  * minimum tape size for a "proper" implementation, is 30,000. I increased that
- * to the nearest power of 2 (namely 32768), because I can. */
+ * to the nearest power of 2 (namely 32768), because I can, and it's cleaner. */
 #define TAPE_SIZE 32768
 
 /* virtual memory address of the tape - cannot overlap with the instructions
@@ -186,8 +214,7 @@
  * chosen to avoid overlapping with the tape. */
 #define LOAD_VADDR 0x20000
 
-/* physical address of the starting instruction
- * extra parenthases to deal with GCC warning */
+/* physical address of the starting instruction */
 #define START_PADDR padTo256((EHDR_SIZE + PHTB_SIZE))
 
 /* virtual address of the starting instruction */
@@ -199,12 +226,37 @@
 #define PHOFF (PHNUM ? EHDR_SIZE : 0)
 
 /* section header table is at the end of the file. 
- * codesize must be defined as the number of bytes of machine code.
- * extra parenthases to deal with GCC warning */
+ * codesize must be defined as the number of bytes of machine code. */
 #define SHOFF (SHNUM ? START_PADDR + (padTo256(codesize)) : 0)
 
 /* codesize must be defined as described in the SHOFF comment.
- * extra parenthases to deal with GCC warning */
+ * FILE_SIZE should not be used until after codesize's value is known.
+ * It is the size (in bytes) of the file. */
+#if SHNUM == 0
+#define FILE_SIZE (START_PADDR + codesize)
+#else
 #define FILE_SIZE (START_PADDR + (padTo256(codesize)) + SHTB_SIZE)
+#endif
+
+/* the memory address of the current instruction. */
+#define CURRENT_ADDRESS (START_PADDR + codesize)
+
+/* lastly, a few miscelaneous macros to implement repeated elements that
+ * shouldn't be within their own functions. */
+/* return a falsy value on failure of a line of code */
+#define guarded(thing) if(!(thing)) return 0
+
+/* common elemments to all functions to compile specific instructions 
+ * each function must do the following:
+ * 1: define a uint8_t array called instructionBytes containing the machine code
+ * 2: write instructionBytes to a file descriptor fd,
+ * 3: add the number of bytes written to codesize
+ * 4: return a truthy value if the write succeeded, or a falsy value otherwise
+ * This macro takes care of steps 2 through 4, meaning that the functions
+ * only need to define instructionBytes then call this macro. */
+#define writeInstructionBytes() \
+    ssize_t written = write(fd, &instructionBytes, sizeof(instructionBytes)); \
+    codesize += written; \
+    return written == sizeof(instructionBytes) /* exlude trailing semicolon */
 
 #endif

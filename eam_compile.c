@@ -11,7 +11,10 @@
 #include <elf.h>
 #include "eamasm_macros.h"
 
-ssize_t codesize;
+off_t codesize;
+char currentInstruction;
+
+#define MAX_NESTING_LEVEL 64
 
 /* Write the ELF header to the file descriptor fd. */
 int writeEhdr(int fd) {
@@ -20,7 +23,6 @@ int writeEhdr(int fd) {
      * elsewhere. The struct for it is defined in elf.h, as are most
      * of the values used in here.*/
 
-    ssize_t written;
     Elf64_Ehdr header;
 
     /* the first 4 bytes are "magic values" that are pre-defined and used to
@@ -92,14 +94,13 @@ int writeEhdr(int fd) {
      * defined, and it should be set to 0. */
     header.e_flags = 0;
 
-    written = write(fd, &header, EHDR_SIZE);
+    ssize_t written = write(fd, &header, EHDR_SIZE);
     return written == sizeof(header);
 }
 
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
 int writePhdrTable(int fd) {
-    ssize_t written;
     Elf64_Phdr headerTable[PHNUM];
 
     /* header for the tape contents section */
@@ -140,33 +141,27 @@ int writePhdrTable(int fd) {
     /* supposed to be a power of 2, went with 2^0 */
     headerTable[1].p_align = 1;
 
-    written = write(fd, &headerTable, PHTB_SIZE);
+    ssize_t written = write(fd, &headerTable, PHTB_SIZE);
     return written == PHTB_SIZE;
 }
 
 /* write code to set up a new brainfuck program to the file descriptor fd. */
 int bfInit(int fd) {
     /* set the brainfuck pointer register to the start of the tape  */
-    ssize_t written;
     uint8_t instructionBytes[] = {
         eamasm_setregd(REG_BF_POINTER, TAPE_ADDRESS)
     };
-    written = write(fd, &instructionBytes, sizeof(instructionBytes));
-    codesize += written;
-    return written == sizeof(instructionBytes);
+    writeInstructionBytes();
 }
 
 /* the INC and DEC instructions are encoded very similarly, and share opcodes.
  * the brainfuck instructions "<", ">", "+", and "-" can all be implemented
  * with a few variations of them, using the eamasm_offset macro. */
 int bfOffset(int fd, uint8_t direction, uint8_t addressMode) {
-    ssize_t written;
     uint8_t instructionBytes[] = {
         eamasm_offset(direction, addressMode, REG_BF_POINTER)
     };
-    written = write(fd, &instructionBytes, sizeof(instructionBytes));
-    codesize += written;
-    return written == sizeof(instructionBytes);
+    writeInstructionBytes();
 }
 
 /* The brainfuck instructions "." and "," are similar from an implementation
@@ -181,7 +176,6 @@ int bfIO(int fd, int bfFD, int sc) {
     /* bfFD is the brainfuck File Descriptor, not to be confused with FD,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
-    ssize_t written;
     uint8_t instructionBytes[] = {
         /* load the number for the write system call into REG_SC_NUM */
         eamasm_setregd(REG_SC_NUM, sc),
@@ -194,14 +188,74 @@ int bfIO(int fd, int bfFD, int sc) {
         /* perform a system call */
         eamasm_syscall()
     };
-    written = write(fd, &instructionBytes, sizeof(instructionBytes));
-    codesize += written;
-    return written == sizeof(instructionBytes);
+    writeInstructionBytes();
 }
 
-int bfJmp(int fd) {
-    fputs("\"[\" and \"]\" are not yet implemented.\n", stderr);
-    return 0;
+struct stack {
+    int8_t index;
+    off_t addresses[MAX_NESTING_LEVEL];
+} JumpStack;
+
+
+/* prepare to compile the brainfuck `[` instruction to file descriptor fd.
+ * doesn't actually write to the file yet, as 
+ * */
+int bfJumpOpen (int fd) {
+    off_t expectedLocation;
+    /* calculate the expected locationto seek to */
+    expectedLocation = (CURRENT_ADDRESS + JUMP_SIZE);
+    /* push the current address onto the stack */
+    JumpStack.addresses[JumpStack.index++] = CURRENT_ADDRESS;
+    if (JumpStack.index > MAX_NESTING_LEVEL) {
+        fputs("Too many nested loops!\n", stderr);
+        return 0;
+    }
+    /* skip enough bytes to write the instruction, once we know where the
+     * jump should be to. */
+    /* still need to increase codesize for accuracy of the CURRENT_ADDRESS */
+    codesize += JUMP_SIZE;
+    return lseek(fd, JUMP_SIZE, SEEK_CUR) == expectedLocation;
+}
+
+/* compile matching `[` and `]` instructions
+ * called when `]` is the instruction to be compiled */
+int bfJumpClose(int fd) {
+    off_t openAddress, closeAddress;
+    int32_t distance;
+
+    /* ensure that the current index is in bounds */
+    if (--JumpStack.index < 0) {
+        fputs("Found `]` without matching `[`!\n", stderr);
+        return 0;
+    }
+    /* pop the matching `[` instruction's location */
+    openAddress = JumpStack.addresses[JumpStack.index];
+    closeAddress = CURRENT_ADDRESS;
+    
+    distance = (int32_t) (closeAddress - openAddress);
+    
+    uint8_t openJumpBytes[] = {
+        /* if the current loop is done, jump past the closing check */
+        eamasm_jump_zero(REG_BF_POINTER, (distance))
+    };
+    /* jump to the skipped `[` instruction, write it, and jump back */
+    if (lseek(fd, openAddress, SEEK_SET) != openAddress) {
+        fputs("Failed to return to `[` instruction!\n", stderr);
+        return 0;
+    }
+    if (write(fd, openJumpBytes, JUMP_SIZE) != JUMP_SIZE) {
+        fputs("Failed to compile `[` instruction!\n", stderr);
+        return 0;
+    }
+    if (lseek(fd, closeAddress, SEEK_SET) != closeAddress) {
+        fputs("Failed to return to `]` instruction!\n", stderr);
+        return 0;
+    }
+    uint8_t instructionBytes[] = {
+        /* jump to right after the `[` instruction, to skip a redundant check */
+        eamasm_jump_not_zero(REG_BF_POINTER, -distance)
+    };
+    writeInstructionBytes();
 }
 
 /* compile an individual instruction (c), to the file descriptor fd. 
@@ -209,6 +263,7 @@ int bfJmp(int fd) {
  * particular instruction */
 int bfCompileInstruction(char c, int fd) {
     int ret;
+    currentInstruction = c;
     switch(c) {
         case '<':
             /* decrement the tape pointer register */
@@ -235,10 +290,10 @@ int bfCompileInstruction(char c, int fd) {
             ret = bfIO(fd, STDIN_FILENO, SYS_read);
             break;
         case '[':
-            ret = bfJmp(fd);
+            ret = bfJumpOpen(fd);
             break;
         case ']':
-            ret = bfJmp(fd);
+            ret = bfJumpClose(fd);
             break;
         default:
             /* any other characters are comments, silently continue. */
@@ -250,7 +305,6 @@ int bfCompileInstruction(char c, int fd) {
 
 /* write code to perform the exit(0) syscall */
 int bfCleanup(int fd) {
-    ssize_t written;
     uint8_t instructionBytes[] = {
         /* set system call register to exit system call number */
         eamasm_setregd(REG_SC_NUM, SYS_exit),
@@ -259,13 +313,9 @@ int bfCleanup(int fd) {
         /* perform a system call */
         eamasm_syscall()
     };
-    written = write(fd, &instructionBytes, sizeof(instructionBytes));
-    codesize += written;
-    return written == sizeof(instructionBytes);
+    writeInstructionBytes();
 }
 
-/* macro to remove repeated pattern */
-#define guarded(thing) if(!thing) return 0
 /* Takes 2 open file descriptors - inputFD and outputFD.
  * inputFD is a brainfuck source file, open for reading.
  * outputFS is the destination file, open for writing.
@@ -280,7 +330,11 @@ int bfCleanup(int fd) {
  * If all of the other functions succeeded, it returns 1. */
 int bfCompile(int inputFD, int outputFD){
     char instruction;
+    /* reset the codesize variable used in several macros from eam_compiler_macros */
     codesize = 0;
+    /* reset the jump stack for the new file */
+    JumpStack.index=0;
+
     /* skip the headers until we know the code size */
     lseek(outputFD, START_PADDR, SEEK_SET);
 
@@ -296,6 +350,8 @@ int bfCompile(int inputFD, int outputFD){
     lseek(outputFD, 0, SEEK_SET);
     guarded(writeEhdr(outputFD));
     guarded(writePhdrTable(outputFD));
-
+    if(JumpStack.index > 0) {
+        fputs("Reached the end of the file with an unmatched `[`!", stderr);
+    }
     return 1;
 }
