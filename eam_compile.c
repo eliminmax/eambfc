@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <elf.h>
-#include "eamasm_macros.h"
+#include "eam_compiler_macros.h"
 
 off_t codesize;
 char currentInstruction;
