@@ -6,4 +6,7 @@
 #ifndef EAM_COMPILE
 #define EAM_COMPILE
 int bfCompile(int inputFD, int outputFD);
+
+extern char currentInstruction;
+
 #endif /* EAM_COMPILE */

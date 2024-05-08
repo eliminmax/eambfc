@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     close(srcFD);
     close(dstFD);
     if (!result) {
-        fputs("Failed to compile.\n", stderr);
+        fprintf(stderr, "Failed to compile character %c.\n", currentInstruction);
         return 1;
     }
     return 0;
