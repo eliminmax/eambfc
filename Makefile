@@ -4,3 +4,6 @@
 
 build:
 	gcc -Wall -Werror eam_compile.c main.c -o eambfc
+
+debug_build:
+	gcc -Wall -Werror -g3 -Og eam_compile.c main.c -o eambfc
