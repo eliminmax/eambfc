@@ -31,7 +31,6 @@ The following external headers are used:
 | `stdint.h`      | (C99)           |
 | `stdio.h`       | (C99)           |
 | `string.h`      | (C99)           |
-| `sys/syscall.h` | (GNU C LIBRARY) |
 | `sys/types.h`   | (POSIX)         |
 | `unistd.h`      | (POSIX)         |
 
