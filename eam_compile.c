@@ -5,7 +5,6 @@
 
 #include <stdio.h>
 #include <unistd.h>
-#include <sys/syscall.h>
 #include <stdint.h>
 #include <fcntl.h>
 #include <elf.h>
@@ -291,11 +290,11 @@ int bfCompileInstruction(char c, int fd) {
             break;
         case '.':
             /* write to stdout */
-            ret = bfIO(fd, STDOUT_FILENO, SYS_write);
+            ret = bfIO(fd, STDOUT_FILENO, SYSCALL_WRITE);
             break;
         case ',':
             /* read from stdin */
-            ret = bfIO(fd, STDIN_FILENO, SYS_read);
+            ret = bfIO(fd, STDIN_FILENO, SYSCALL_READ);
             break;
         case '[':
             ret = bfJumpOpen(fd);
@@ -320,7 +319,7 @@ int bfCompileInstruction(char c, int fd) {
 int bfCleanup(int fd) {
     uint8_t instructionBytes[] = {
         /* set system call register to exit system call number */
-        eamasm_setregd(REG_SC_NUM, SYS_exit),
+        eamasm_setregd(REG_SC_NUM, SYSCALL_EXIT),
         /* set system call register to the desired exit code (0) */
         eamasm_setregd(REG_ARG1, 0),
         /* perform a system call */

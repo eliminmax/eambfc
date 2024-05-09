@@ -241,6 +241,12 @@
 /* the memory address of the current instruction. */
 #define CURRENT_ADDRESS (START_PADDR + codesize)
 
+/* Linux system call numbers */
+
+#define SYSCALL_READ 0
+#define SYSCALL_WRITE 1
+#define SYSCALL_EXIT 60
+
 /* lastly, a few miscelaneous macros to implement repeated elements that
  * shouldn't be within their own functions. */
 /* return a falsy value on failure of a line of code */
