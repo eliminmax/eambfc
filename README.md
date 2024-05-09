@@ -32,6 +32,7 @@ The following external headers are used:
 | `stdio.h`       | (C99)           |
 | `string.h`      | (C99)           |
 | `sys/types.h`   | (POSIX)         |
+| `sys/stat.h`    | (POSIX)         |
 | `unistd.h`      | (POSIX)         |
 
 ## To-do
