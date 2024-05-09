@@ -31,7 +31,18 @@ int main(int argc, char* argv[]) {
     close(srcFD);
     close(dstFD);
     if (!result) {
-        fprintf(stderr, "Failed to compile character %c.\n", currentInstruction);
+        fprintf(
+                stderr,
+                "Failed to compile character %c at line %d, column %d.\n",
+                currentInstruction,
+                currentInstructionLine,
+                currentInstructionColumn
+               );
+        fprintf(
+                stderr,
+                "Error message: \"%s\"\n",
+                errorMessage
+               );
         return 1;
     }
     return 0;

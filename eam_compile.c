@@ -9,10 +9,17 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <elf.h>
+#include <string.h>
 #include "eam_compiler_macros.h"
 
 off_t codesize;
+
+/* the currentInstruction{,Line,Column} values are exposed as error */
 char currentInstruction;
+unsigned int currentInstructionLine, currentInstructionColumn;
+/* slightly longer than it needs to be - longest error string size is 51,
+ * including null byte at the end. Better to have extra room than not enough. */
+char errorMessage[64];
 
 #define MAX_NESTING_LEVEL 64
 
@@ -207,7 +214,7 @@ int bfJumpOpen (int fd) {
     /* push the current address onto the stack */
     JumpStack.addresses[JumpStack.index++] = CURRENT_ADDRESS;
     if (JumpStack.index > MAX_NESTING_LEVEL) {
-        fputs("Too many nested loops!\n", stderr);
+        strcpy(errorMessage, "Too many nested loops!");
         return 0;
     }
     /* skip enough bytes to write the instruction, once we know where the
@@ -225,7 +232,7 @@ int bfJumpClose(int fd) {
 
     /* ensure that the current index is in bounds */
     if (--JumpStack.index < 0) {
-        fputs("Found `]` without matching `[`!\n", stderr);
+        strcpy(errorMessage, "Found `]` without matching `[`!");
         return 0;
     }
     /* pop the matching `[` instruction's location */
@@ -240,15 +247,15 @@ int bfJumpClose(int fd) {
     };
     /* jump to the skipped `[` instruction, write it, and jump back */
     if (lseek(fd, openAddress, SEEK_SET) != openAddress) {
-        fputs("Failed to return to `[` instruction!\n", stderr);
+        strcpy(errorMessage, "Failed to return to `[` instruction!");
         return 0;
     }
     if (write(fd, openJumpBytes, JUMP_SIZE) != JUMP_SIZE) {
-        fputs("Failed to compile `[` instruction!\n", stderr);
+        strcpy(errorMessage, "Failed to compile `[` instruction!");
         return 0;
     }
     if (lseek(fd, closeAddress, SEEK_SET) != closeAddress) {
-        fputs("Failed to return to `]` instruction!\n", stderr);
+        strcpy(errorMessage, "Failed to return to `]` instruction!");
         return 0;
     }
     uint8_t instructionBytes[] = {
@@ -264,6 +271,7 @@ int bfJumpClose(int fd) {
 int bfCompileInstruction(char c, int fd) {
     int ret;
     currentInstruction = c;
+    currentInstructionColumn++;
     switch(c) {
         case '<':
             /* decrement the tape pointer register */
@@ -295,6 +303,11 @@ int bfCompileInstruction(char c, int fd) {
         case ']':
             ret = bfJumpClose(fd);
             break;
+        case '\n':
+            /* add 1 to the line number and reset the column. */
+            currentInstructionLine++;
+            currentInstructionColumn = 0;
+            /* Don't break here, as the code from the default should also run.*/
         default:
             /* any other characters are comments, silently continue. */
             ret = 1;
@@ -330,10 +343,13 @@ int bfCleanup(int fd) {
  * If all of the other functions succeeded, it returns 1. */
 int bfCompile(int inputFD, int outputFD){
     char instruction;
-    /* reset the codesize variable used in several macros from eam_compiler_macros */
+    /* reset codesize variable used in several macros in eam_compiler_macros */
     codesize = 0;
     /* reset the jump stack for the new file */
-    JumpStack.index=0;
+    JumpStack.index = 0;
+    /* reset the current line and column */
+    currentInstructionLine = 1;
+    currentInstructionColumn = 0;
 
     /* skip the headers until we know the code size */
     lseek(outputFD, START_PADDR, SEEK_SET);
@@ -351,7 +367,8 @@ int bfCompile(int inputFD, int outputFD){
     guarded(writeEhdr(outputFD));
     guarded(writePhdrTable(outputFD));
     if(JumpStack.index > 0) {
-        fputs("Reached the end of the file with an unmatched `[`!", stderr);
+        strcpy(errorMessage, "Reached the end of the file with an unmatched `[`!");
+        return 0;
     }
     return 1;
 }
