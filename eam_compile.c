@@ -204,7 +204,7 @@ struct stack {
 
 
 /* prepare to compile the brainfuck `[` instruction to file descriptor fd.
- * doesn't actually write to the file yet, as 
+ * doesn't actually write to the file yet, as
  * */
 int bfJumpOpen (int fd) {
     off_t expectedLocation;
@@ -237,9 +237,9 @@ int bfJumpClose(int fd) {
     /* pop the matching `[` instruction's location */
     openAddress = JumpStack.addresses[JumpStack.index];
     closeAddress = CURRENT_ADDRESS;
-    
+
     distance = (int32_t) (closeAddress - openAddress);
-    
+
     uint8_t openJumpBytes[] = {
         /* if the current loop is done, jump past the closing check */
         eamasm_jump_zero(REG_BF_POINTER, (distance))
@@ -264,7 +264,7 @@ int bfJumpClose(int fd) {
     writeInstructionBytes();
 }
 
-/* compile an individual instruction (c), to the file descriptor fd. 
+/* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
 int bfCompileInstruction(char c, int fd) {

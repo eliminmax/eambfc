@@ -1,6 +1,6 @@
 /* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
  *
- * SPDX-License-Identifier: GPL-3.0-only 
+ * SPDX-License-Identifier: GPL-3.0-only
  * */
 #ifndef EAMASM_MACROS
 #define EAMASM_MACROS
@@ -49,7 +49,7 @@
  * None of the system calls needed use more than 3 arguments, and as mentioned
  * above, the R8-R15 registers are addressed incompatibly, so only worry the
  * first 3 argument registers. */
-#define REG_SC_NUM REG_RAX 
+#define REG_SC_NUM REG_RAX
 #define REG_ARG1 REG_RDI
 #define REG_ARG2 REG_RSI
 #define REG_ARG3 REG_RDX
@@ -154,7 +154,7 @@
  * * (0b1111_1110 | 0b0000_0001) evaluates to 0b1111_1111 (i.e. 0xff)
  *
  * * (3<<6) means 3, bit shifted left 6 times. 3 in binary is 0b11, and shifting
- * * that left 6 times results in 0b1100_0000, or 0xc0. 
+ * * that left 6 times results in 0b1100_0000, or 0xc0.
  * * (0|03|(3<<6)), is (0|03|0xc0), or (0b0000_0000|0b0000_0011|0b1100_0000).
  * * (0b0000_0000|0b0000_0011|0b1100_0000) evaluates to 0b1100_0011 (i.e. 0xc3)
  * * thus, the eamasm_offset example evaluates to 0xff, 0xc3.
@@ -220,12 +220,12 @@
 /* virtual address of the starting instruction */
 #define START_VADDR (START_PADDR + LOAD_VADDR)
 
-/* The offset within the file for the program and section header tables 
+/* The offset within the file for the program and section header tables
  * respectively. If there are no entries, they should be set to 0. */
 /* program header table is right after the ELF header. */
 #define PHOFF (PHNUM ? EHDR_SIZE : 0)
 
-/* section header table is at the end of the file. 
+/* section header table is at the end of the file.
  * codesize must be defined as the number of bytes of machine code. */
 #define SHOFF (SHNUM ? START_PADDR + (padTo256(codesize)) : 0)
 
@@ -252,7 +252,7 @@
 /* return a falsy value on failure of a line of code */
 #define guarded(thing) if(!(thing)) return 0
 
-/* common elemments to all functions to compile specific instructions 
+/* common elemments to all functions to compile specific instructions
  * each function must do the following:
  * 1: define a uint8_t array called instructionBytes containing the machine code
  * 2: write instructionBytes to a file descriptor fd,
