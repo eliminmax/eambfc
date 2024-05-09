@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+#
+# SPDX-License-Identifier: 0BSD
+
+# easiest to exclude anything not on an explicit allow list
+*
+# allow .gitignore file itself
+!.gitignore
+# allow .bf files
+*.bf
+# allow REUSE license files for .bf files
+*.bf.license
