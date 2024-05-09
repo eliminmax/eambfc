@@ -259,4 +259,4 @@
     codesize += written; \
     return written == sizeof(instructionBytes) /* exlude trailing semicolon */
 
-#endif
+#endif /* EAMASM_MACROS */
