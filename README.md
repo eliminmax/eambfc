@@ -46,6 +46,6 @@ The following external headers are used:
 * [ ] add the ability to compile multiple source files in one run
 * [ ] (possibly) add an option to generate headers to enable debugging with GDB
   * this one might be a bad idea.
-* [ ] address portability issues 
+* [ ] address portability issues - this one will be particularly difficult.
   * compiled programs may not be portable, but it should be possible to compile and/or run `eambfc` itself on any POSIX+C99 system, ideally.
   * using Ehdr and Phdr structs and their sizes should be avoided, as struct alignment is not portable.
