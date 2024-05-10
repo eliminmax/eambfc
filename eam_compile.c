@@ -80,8 +80,8 @@ int writeEhdr(int fd) {
     /* e_phentsize and e_shentsize are the size of entries within the
      * program and section header tables respectively. If there are no entries
      * within a given table, the size should be set to 0. */
-    header.e_phentsize = (PHNUM ? sizeof(Elf64_Phdr) : 0);
-    header.e_shentsize = (SHNUM ? sizeof(Elf64_Shdr) : 0);
+    header.e_phentsize = (PHNUM ? PHDR_SIZE : 0);
+    header.e_shentsize = (SHNUM ? SHDR_SIZE : 0);
 
     /* Section header string table index - the index of the entry in the
      * section header table pointing to the names of each section.
@@ -96,8 +96,8 @@ int writeEhdr(int fd) {
      * defined, and it should be set to 0. */
     header.e_flags = 0;
 
-    ssize_t written = write(fd, &header, EHDR_SIZE);
-    return written == sizeof(header);
+    ssize_t written = write(fd, &header, sizeof(header));
+    return written == EHDR_SIZE;
 }
 
 /* Write the Program Header Table to the file descriptor fd
@@ -143,7 +143,7 @@ int writePhdrTable(int fd) {
     /* supposed to be a power of 2, went with 2^0 */
     headerTable[1].p_align = 1;
 
-    ssize_t written = write(fd, &headerTable, PHTB_SIZE);
+    ssize_t written = write(fd, &headerTable, sizeof(headerTable));
     return written == PHTB_SIZE;
 }
 

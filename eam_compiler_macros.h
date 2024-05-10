@@ -206,9 +206,11 @@
 #define SHNUM 0
 
 /* sizes of the Ehdr, Phdr table, and Shdr table */
-#define EHDR_SIZE sizeof(Elf64_Ehdr)
-#define PHTB_SIZE PHNUM * sizeof(Elf64_Phdr)
-#define SHTB_SIZE SHNUM * sizeof(Elf64_Shdr)
+#define EHDR_SIZE 64
+#define PHDR_SIZE 56
+#define SHDR_SIZE 512
+#define PHTB_SIZE PHNUM * PHDR_SIZE
+#define SHTB_SIZE SHNUM * SHDR_SIZE
 
 /* virtual address of the section containing the machine code
  * chosen to avoid overlapping with the tape. */
