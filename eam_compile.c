@@ -240,7 +240,7 @@ int bfJumpClose(int fd) {
 
     uint8_t openJumpBytes[] = {
         /* if the current loop is done, jump past the closing check */
-        eamasm_jump_zero(REG_BF_POINTER, (distance))
+        eamasm_jump_zero(REG_BF_POINTER, distance)
     };
     /* jump to the skipped `[` instruction, write it, and jump back */
     if (lseek(fd, openAddress, SEEK_SET) != openAddress) {
