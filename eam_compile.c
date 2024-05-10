@@ -18,8 +18,6 @@ char currentInstruction;
 unsigned int currentInstructionLine, currentInstructionColumn;
 char *errorMessage;
 
-#define MAX_NESTING_LEVEL 64
-
 /* Write the ELF header to the file descriptor fd. */
 int writeEhdr(int fd) {
 
@@ -194,6 +192,8 @@ int bfIO(int fd, int bfFD, int sc) {
     };
     writeInstructionBytes();
 }
+
+#define MAX_NESTING_LEVEL 64
 
 struct stack {
     int8_t index;
