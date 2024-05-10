@@ -11,3 +11,6 @@ debug_build:
 # expected to fail
 strict:
 	gcc -D_POSIX_C_SOURCE=2 -pedantic -std=c99 -Wall -Werror eam_compile.c main.c -o eambfc -fsso-struct='little-endian'
+
+clean:
+	rm -f eambfc
