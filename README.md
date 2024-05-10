@@ -48,3 +48,4 @@ The following external headers are used:
   * this one might be a bad idea.
 * [ ] address portability issues 
   * compiled programs may not be portable, but it should be possible to compile and/or run `eambfc` itself on any POSIX+C99 system, ideally.
+  * using Ehdr and Phdr structs and their sizes should be avoided, as struct alignment is not portable.
