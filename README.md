@@ -40,7 +40,7 @@ The following external headers are used:
 * [ ] automatic testing of brainfuck source files in test/ directory
 * [ ] replace the Makefile with a better, more portable one
 * [ ] better command-line interface for the compiler
-* [ ] account for umask when creating a file
+* [x] account for umask when creating a file
 * [ ] delete output file if compilation fails
   * should probably have a command-line argument to disable this for debugging purposes.
 * [ ] add the ability to compile multiple source files in one run
