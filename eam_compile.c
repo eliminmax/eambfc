@@ -16,9 +16,7 @@ off_t codesize;
 /* the currentInstruction{,Line,Column} values are exposed as error */
 char currentInstruction;
 unsigned int currentInstructionLine, currentInstructionColumn;
-/* slightly longer than it needs to be - longest error string size is 51,
- * including null byte at the end. Better to have extra room than not enough. */
-char errorMessage[64];
+char *errorMessage;
 
 #define MAX_NESTING_LEVEL 64
 
@@ -213,7 +211,7 @@ int bfJumpOpen (int fd) {
     /* push the current address onto the stack */
     JumpStack.addresses[JumpStack.index++] = CURRENT_ADDRESS;
     if (JumpStack.index > MAX_NESTING_LEVEL) {
-        strcpy(errorMessage, "Too many nested loops!");
+        errorMessage = "Too many nested loops!";
         return 0;
     }
     /* skip enough bytes to write the instruction, once we know where the
@@ -231,7 +229,7 @@ int bfJumpClose(int fd) {
 
     /* ensure that the current index is in bounds */
     if (--JumpStack.index < 0) {
-        strcpy(errorMessage, "Found `]` without matching `[`!");
+        errorMessage = "Found `]` without matching `[`!";
         return 0;
     }
     /* pop the matching `[` instruction's location */
@@ -246,15 +244,15 @@ int bfJumpClose(int fd) {
     };
     /* jump to the skipped `[` instruction, write it, and jump back */
     if (lseek(fd, openAddress, SEEK_SET) != openAddress) {
-        strcpy(errorMessage, "Failed to return to `[` instruction!");
+        errorMessage = "Failed to return to `[` instruction!";
         return 0;
     }
     if (write(fd, openJumpBytes, JUMP_SIZE) != JUMP_SIZE) {
-        strcpy(errorMessage, "Failed to compile `[` instruction!");
+        errorMessage = "Failed to compile `[` instruction!";
         return 0;
     }
     if (lseek(fd, closeAddress, SEEK_SET) != closeAddress) {
-        strcpy(errorMessage, "Failed to return to `]` instruction!");
+        errorMessage = "Failed to return to `]` instruction!";
         return 0;
     }
     uint8_t instructionBytes[] = {
@@ -366,7 +364,7 @@ int bfCompile(int inputFD, int outputFD){
     guarded(writeEhdr(outputFD));
     guarded(writePhdrTable(outputFD));
     if(JumpStack.index > 0) {
-        strcpy(errorMessage, "Reached the end of the file with an unmatched `[`!");
+        errorMessage = "Reached the end of the file with an unmatched `[`!";
         return 0;
     }
     return 1;

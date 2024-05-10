@@ -21,6 +21,6 @@ int bfCompile(int inputFD, int outputFD);
 /* values for use in printing an error message if compilation fails.*/
 extern char currentInstruction;
 extern unsigned int currentInstructionLine, currentInstructionColumn;
-extern char errorMessage[64];
+extern char *errorMessage;
 
 #endif /* EAM_COMPILE */
