@@ -7,3 +7,6 @@ build:
 
 debug_build:
 	gcc -Wall -Werror -g3 -Og eam_compile.c main.c -o eambfc
+
+clean:
+	rm -f eambfc
