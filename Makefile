@@ -8,7 +8,6 @@ build:
 debug_build:
 	gcc -Wall -Werror -g3 -Og eam_compile.c main.c -o eambfc
 
-# expected to fail
 strict:
 	gcc -D_POSIX_C_SOURCE=2 -pedantic -std=c99 -Wall -Werror eam_compile.c main.c -o eambfc -fsso-struct='little-endian'
 
