@@ -37,12 +37,20 @@ The following external headers are used:
 
 ## To-do
 
+### Core functionality
+
+* [x] successfully compile "sub-bf" - brainfuck without the `[` and `]` instructions - to x86_64 machine code, using Linux system calls for `.` and `,`.
+* [x] successfully add the needed ELF structure to be able to run compiled code
+* [x] successfully compile `[` and `]` to x86_64 machine code
+
+### Extra goals
+
 * [ ] automatic testing of brainfuck source files in test/ directory
 * [ ] replace the Makefile with a better, more portable one
 * [ ] better command-line interface for the compiler
 * [x] account for umask when creating a file
-* [ ] delete output file if compilation fails
-  * should probably have a command-line argument to disable this for debugging purposes.
+* [x] delete output file if compilation fails
+* [ ] add a a command-line argument to disable deletion of failed files (for debugging purposes).
 * [ ] add the ability to compile multiple source files in one run
 * [ ] (possibly) add an option to generate headers to enable debugging with GDB
   * this one might be a bad idea.
