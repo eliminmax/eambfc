@@ -67,6 +67,7 @@ int main(int argc, char* argv[]) {
                 "Error message: \"%s\"\n",
                 errorMessage
                );
+        remove(argv[2]);
         return 1;
     }
     return 0;
