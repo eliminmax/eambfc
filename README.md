@@ -47,6 +47,7 @@ The following external headers are used:
 
 * [ ] automatic testing of brainfuck source files in test/ directory
 * [ ] replace the Makefile with a better, more portable one
+* [ ] make some hard-coded values (like tape size) configurable when building `eambfc`
 * [ ] better command-line interface for the compiler
 * [x] account for umask when creating a file
 * [x] delete output file if compilation fails
