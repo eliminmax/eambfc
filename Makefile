@@ -13,4 +13,4 @@ strict:
 	s390x-linux-gnu-gcc -D_POSIX_C_SOURCE=2 -pedantic -std=c99 -Wall -Werror serialize.c eam_compile.c main.c -o eambfc-s390x
 
 clean:
-	rm -f eambfc
+	rm -f eambfc eambfc-s390x
