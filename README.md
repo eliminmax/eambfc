@@ -57,4 +57,7 @@ The following external headers are used:
   * this one might be a bad idea.
 * [ ] address portability issues - this one will be particularly difficult.
   * compiled programs may not be portable, but it should be possible to compile and/or run `eambfc` itself on any POSIX+C99 system, ideally.
-  * using Ehdr and Phdr structs and their sizes should be avoided, as struct alignment is not portable.
+  * specific portability issues:
+    * [ ] writing Ehdr and Phdr structs and using their sizes should be avoided, as struct alignment/padding is not portable.
+    * [ ] ensure multi-byte values are written in an endian-agnostic manner.
+    * [ ] `elf.h` is not present on all POSIX systems, and should be either provided or replaced.
