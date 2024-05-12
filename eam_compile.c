@@ -10,10 +10,11 @@
 #include <elf.h>
 #include <string.h>
 #include "eam_compiler_macros.h"
+#include "serialize.h"
 
 off_t codesize;
 
-/* the currentInstruction{,Line,Column} values are exposed as error */
+/* the currentInstruction{,Line,Column} values are exposed for error messages */
 char currentInstruction;
 unsigned int currentInstructionLine, currentInstructionColumn;
 char *errorMessage;
@@ -26,6 +27,7 @@ int writeEhdr(int fd) {
      * of the values used in here.*/
 
     Elf64_Ehdr header;
+    char headerBytes[EHDR_SIZE];
 
     /* the first 4 bytes are "magic values" that are pre-defined and used to
      * identify the format. */
@@ -95,15 +97,16 @@ int writeEhdr(int fd) {
     /* e_flags has a processor-specific meaning. For x86_64, no values are
      * defined, and it should be set to 0. */
     header.e_flags = 0;
-
-    ssize_t written = write(fd, &header, sizeof(header));
-    return written == EHDR_SIZE;
+    
+    serializeEhdr64(&header, headerBytes);
+    return write(fd, &headerBytes, EHDR_SIZE) == EHDR_SIZE;
 }
 
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
 int writePhdrTable(int fd) {
     Elf64_Phdr headerTable[PHNUM];
+    char headerTableBytes[PHTB_SIZE];
 
     /* header for the tape contents section */
     headerTable[0].p_type = PT_LOAD;
@@ -143,8 +146,10 @@ int writePhdrTable(int fd) {
     /* supposed to be a power of 2, went with 2^0 */
     headerTable[1].p_align = 1;
 
-    ssize_t written = write(fd, &headerTable, sizeof(headerTable));
-    return written == PHTB_SIZE;
+    for (int i = 0; i < PHNUM; i++) {
+        serializePhdr64(&headerTable[i], &(headerTableBytes[i * PHDR_SIZE]));
+    }
+    return write(fd, &headerTableBytes, PHTB_SIZE) == PHTB_SIZE;
 }
 
 /* write code to set up a new brainfuck program to the file descriptor fd. */
