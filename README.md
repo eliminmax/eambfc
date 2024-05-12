@@ -47,6 +47,9 @@ The following external headers are used:
 
 * [ ] automatic testing of brainfuck source files in test/ directory
 * [ ] make some hard-coded values (like tape size) configurable when building `eambfc`
+* [ ] remove unused macros and definitions from header files
+  * `elf.h` is not originally part of this project, and has not been trimmed down at all
+  * `eam_compiler_macros.h` defines macros for several x86 registers that are not used at all
 * [ ] better command-line interface for the compiler
 * [x] account for umask when creating a file
 * [x] delete output file if compilation fails
