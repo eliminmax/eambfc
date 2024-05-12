@@ -6,7 +6,7 @@
 #define EAMASM_MACROS
 #include <stdint.h>
 #include <sys/types.h>
-#include <elf.h>
+#include "elf.h"
 
 /* registers are accessed using the 3-bit values specified in octal below */
 #define REG_AX 00

@@ -2,9 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only */
 
-#include <elf.h>    /* GLIBC */
 #include <stdint.h> /* C99 */
 #include <arpa/inet.h> /* POSIX.1-2001 */
+#include "elf.h"
 
 /* internal macros for serializing 16, 32, and 64-bit values with little-endian
  * byte ordering to position `index` within a char array `dest`, incrementing

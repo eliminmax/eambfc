@@ -7,10 +7,10 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <fcntl.h>
-#include <elf.h>
 #include <string.h>
 #include "eam_compiler_macros.h"
 #include "serialize.h"
+#include "elf.h"
 
 off_t codesize;
 

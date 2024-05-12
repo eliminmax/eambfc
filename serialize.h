@@ -5,7 +5,7 @@
 
 #ifndef EAMBFC_SERIALIZE
 #define EAMBFC_SERIALIZE
-#include <elf.h>
+#include "elf.h"
 
 /* given a pointers to a struct of a given type and a char array, these write
  * the fields of the struct, in little-endian order, to the byte array, with no
