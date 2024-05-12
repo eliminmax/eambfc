@@ -46,7 +46,6 @@ The following external headers are used:
 ### Extra goals
 
 * [ ] automatic testing of brainfuck source files in test/ directory
-* [ ] replace the Makefile with a better, more portable one
 * [ ] make some hard-coded values (like tape size) configurable when building `eambfc`
 * [ ] better command-line interface for the compiler
 * [x] account for umask when creating a file
@@ -58,6 +57,7 @@ The following external headers are used:
 * [ ] address portability issues - this one will be particularly difficult.
   * compiled programs may not be portable, but it should be possible to compile and/or run `eambfc` itself on any POSIX+C99 system, ideally.
   * specific portability issues:
-    * [ ] writing Ehdr and Phdr structs and using their sizes should be avoided, as struct alignment/padding is not portable.
-    * [ ] ensure multi-byte values are written in an endian-agnostic manner.
-    * [ ] `elf.h` is not present on all POSIX systems, and should be either provided or replaced.
+    * [x] writing Ehdr and Phdr structs and using their sizes should be avoided, as struct alignment/padding is not portable.
+    * [x] ensure multi-byte values are written in an endian-agnostic manner.
+    * [x] `elf.h` is not present on all POSIX systems, and should be either provided or replaced.
+    * [ ] replace the Makefile with a better, more portable one
