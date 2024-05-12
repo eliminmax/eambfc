@@ -5,3 +5,6 @@
 
 # ignore the compiled binary
 eambfc
+
+# ignore the alternative compiled binary from `make strict`
+eambfc-s390x
