@@ -24,7 +24,7 @@ int writeEhdr(int fd) {
 
     /* The format of the ELF header is well-defined and well-documented
      * elsewhere. The struct for it is defined in elf.h, as are most
-     * of the values used in here.*/
+     * of the values used in here. */
 
     Elf64_Ehdr header;
     char headerBytes[EHDR_SIZE];
@@ -175,7 +175,7 @@ int bfOffset(int fd, uint8_t direction, uint8_t addressMode) {
  * perspective. Both require making system calls for I/O, and the system calls
  * have 3 nearly identical arguments:
  *  - arg1 is the file descriptor
- *  - arg2 is the memory address of the the data source (write)/dest (read)
+ *  - arg2 is the memory address of the data source (write)/dest (read)
  *  - arg3 is the number of bytes to write/read
  *
  * Due to their similarity, ',' and '.' are both implemented with bfIO. */
@@ -310,7 +310,7 @@ int bfCompileInstruction(char c, int fd) {
             /* add 1 to the line number and reset the column. */
             currentInstructionLine++;
             currentInstructionColumn = 0;
-            /* Don't break here, as the code from the default should also run.*/
+            /* Don't break here, as the default should also run. */
         default:
             /* any other characters are comments, silently continue. */
             ret = 1;

@@ -19,7 +19,7 @@
 #define REG_DI 07
 
 /* for legacy reasons, x86_64 uses different names for the same registers
- * depending on whether they're being accessed as 16, 32, or 64-bit registers.
+ * depending on whether they're being accessed a 16, 32, or 64-bit registers.
  * the 16-bit names are defined above, so define the 32 and 64-bit ones next. */
 /* 32-bit aliases */
 #define REG_EAX REG_AX
@@ -73,7 +73,7 @@
     (d & 0x00ff0000) >> 16, /* 2nd-largest byte */ \
     (d & 0xff000000) >> 24 /* largest byte */
 
-/* the following are marcros to make the machine code more readable, almost like
+/* the following are macros to make the machine code more readable, almost like
  * subset of an assembly language, though I use different mnemonics that I
  * believe better reflect the way the instructions are used within eambfc. */
 
@@ -159,7 +159,7 @@
  * * (0b0000_0000|0b0000_0011|0b1100_0000) evaluates to 0b1100_0011 (i.e. 0xc3)
  * * thus, the eamasm_offset example evaluates to 0xff, 0xc3.
  *
- * * ffc3 dissassembles (with rasm2) to `inc ebx`.
+ * * ffc3 disassembles (with rasm2) to `inc ebx`.
  *
  * * rbx is REG_BF_POINTER's 64-bit form, but given that it can't exceed the
  * * 32-bit unsigned integer limit in eambfc, using its 32-bit form (ebx) is ok.
@@ -249,12 +249,12 @@
 #define SYSCALL_WRITE 1
 #define SYSCALL_EXIT 60
 
-/* lastly, a few miscelaneous macros to implement repeated elements that
+/* lastly, a few miscellaneous macros to implement repeated elements that
  * shouldn't be within their own functions. */
 /* return a falsy value on failure of a line of code */
 #define guarded(thing) if(!(thing)) return 0
 
-/* common elemments to all functions to compile specific instructions
+/* common elements to all functions to compile specific instructions
  * each function must do the following:
  * 1: define a uint8_t array called instructionBytes containing the machine code
  * 2: write instructionBytes to a file descriptor fd,
@@ -265,6 +265,6 @@
 #define writeInstructionBytes() \
     ssize_t written = write(fd, &instructionBytes, sizeof(instructionBytes)); \
     codesize += written; \
-    return written == sizeof(instructionBytes) /* exlude trailing semicolon */
+    return written == sizeof(instructionBytes) /* exclude trailing semicolon */
 
 #endif /* EAMASM_MACROS */
