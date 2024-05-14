@@ -68,10 +68,10 @@
 /* use some bitwise nonsense to rewrite a double word (4-byte value) into 4
  * separate byte values, in little-endian order. */
 #define dwordToBytes(d) \
-    ((d) & 0xff), /* smallest byte */ \
-    ((d) & (0xff << 8)) >> 8, /* 2nd-smallest byte */ \
-    ((d) & (0xff << 16)) >> 16, /* 2nd-largest byte */ \
-    ((d) & (0xff << 24)) >> 24 /* largest byte */
+    (d & 0x000000ff), /* smallest byte */ \
+    (d & 0x0000ff00) >> 8, /* 2nd-smallest byte */ \
+    (d & 0x00ff0000) >> 16, /* 2nd-largest byte */ \
+    (d & 0xff000000) >> 24 /* largest byte */
 
 /* the following are marcros to make the machine code more readable, almost like
  * subset of an assembly language, though I use different mnemonics that I
