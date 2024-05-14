@@ -35,35 +35,26 @@
 #include <stdint.h>
 
 /* Type for a 16-bit quantity.  */
-typedef uint16_t Elf32_Half;
 typedef uint16_t Elf64_Half;
 
 /* Types for signed and unsigned 32-bit quantities.  */
-typedef uint32_t Elf32_Word;
-typedef	int32_t  Elf32_Sword;
 typedef uint32_t Elf64_Word;
 typedef	int32_t  Elf64_Sword;
 
 /* Types for signed and unsigned 64-bit quantities.  */
-typedef uint64_t Elf32_Xword;
-typedef	int64_t  Elf32_Sxword;
 typedef uint64_t Elf64_Xword;
 typedef	int64_t  Elf64_Sxword;
 
 /* Type of addresses.  */
-typedef uint32_t Elf32_Addr;
 typedef uint64_t Elf64_Addr;
 
 /* Type of file offsets.  */
-typedef uint32_t Elf32_Off;
 typedef uint64_t Elf64_Off;
 
 /* Type for section indices, which are 16-bit quantities.  */
-typedef uint16_t Elf32_Section;
 typedef uint16_t Elf64_Section;
 
 /* Type for version symbol information.  */
-typedef Elf32_Half Elf32_Versym;
 typedef Elf64_Half Elf64_Versym;
 
 
@@ -71,23 +62,6 @@ typedef Elf64_Half Elf64_Versym;
 
 #define EI_NIDENT (16)
 
-typedef struct
-{
-  unsigned char	e_ident[EI_NIDENT];	/* Magic number and other info */
-  Elf32_Half	e_type;			/* Object file type */
-  Elf32_Half	e_machine;		/* Architecture */
-  Elf32_Word	e_version;		/* Object file version */
-  Elf32_Addr	e_entry;		/* Entry point virtual address */
-  Elf32_Off	e_phoff;		/* Program header table file offset */
-  Elf32_Off	e_shoff;		/* Section header table file offset */
-  Elf32_Word	e_flags;		/* Processor-specific flags */
-  Elf32_Half	e_ehsize;		/* ELF header size in bytes */
-  Elf32_Half	e_phentsize;		/* Program header table entry size */
-  Elf32_Half	e_phnum;		/* Program header table entry count */
-  Elf32_Half	e_shentsize;		/* Section header table entry size */
-  Elf32_Half	e_shnum;		/* Section header table entry count */
-  Elf32_Half	e_shstrndx;		/* Section header string table index */
-} Elf32_Ehdr;
 
 typedef struct
 {
@@ -187,19 +161,6 @@ typedef struct
 
 /* Section header.  */
 
-typedef struct
-{
-  Elf32_Word	sh_name;		/* Section name (string tbl index) */
-  Elf32_Word	sh_type;		/* Section type */
-  Elf32_Word	sh_flags;		/* Section flags */
-  Elf32_Addr	sh_addr;		/* Section virtual addr at execution */
-  Elf32_Off	sh_offset;		/* Section file offset */
-  Elf32_Word	sh_size;		/* Section size in bytes */
-  Elf32_Word	sh_link;		/* Link to another section */
-  Elf32_Word	sh_info;		/* Additional section information */
-  Elf32_Word	sh_addralign;		/* Section alignment */
-  Elf32_Word	sh_entsize;		/* Entry size if section holds table */
-} Elf32_Shdr;
 
 typedef struct
 {
@@ -296,12 +257,6 @@ typedef struct
 
 /* Section compression header.  Used when SHF_COMPRESSED is set.  */
 
-typedef struct
-{
-  Elf32_Word	ch_type;	/* Compression format.  */
-  Elf32_Word	ch_size;	/* Uncompressed data size.  */
-  Elf32_Word	ch_addralign;	/* Uncompressed data alignment.  */
-} Elf32_Chdr;
 
 typedef struct
 {
@@ -323,15 +278,6 @@ typedef struct
 
 /* Symbol table entry.  */
 
-typedef struct
-{
-  Elf32_Word	st_name;		/* Symbol name (string tbl index) */
-  Elf32_Addr	st_value;		/* Symbol value */
-  Elf32_Word	st_size;		/* Symbol size */
-  unsigned char	st_info;		/* Symbol type and binding */
-  unsigned char	st_other;		/* Symbol visibility */
-  Elf32_Section	st_shndx;		/* Section index */
-} Elf32_Sym;
 
 typedef struct
 {
@@ -346,11 +292,6 @@ typedef struct
 /* The syminfo section if available contains additional information about
    every dynamic symbol.  */
 
-typedef struct
-{
-  Elf32_Half si_boundto;		/* Direct bindings, symbol bound to */
-  Elf32_Half si_flags;			/* Per symbol flags */
-} Elf32_Syminfo;
 
 typedef struct
 {
@@ -377,14 +318,9 @@ typedef struct
 
 /* How to extract and insert information held in the st_info field.  */
 
-#define ELF32_ST_BIND(val)		(((unsigned char) (val)) >> 4)
-#define ELF32_ST_TYPE(val)		((val) & 0xf)
-#define ELF32_ST_INFO(bind, type)	(((bind) << 4) + ((type) & 0xf))
-
-/* Both Elf32_Sym and Elf64_Sym use the same one-byte st_info field.  */
-#define ELF64_ST_BIND(val)		ELF32_ST_BIND (val)
-#define ELF64_ST_TYPE(val)		ELF32_ST_TYPE (val)
-#define ELF64_ST_INFO(bind, type)	ELF32_ST_INFO ((bind), (type))
+#define ELF64_ST_BIND(val)		(((unsigned char) (val)) >> 4)
+#define ELF64_ST_TYPE(val)		((val) & 0xf)
+#define ELF64_ST_INFO(bind, type)	(((bind) << 4) + ((type) & 0xf))
 
 /* Legal values for ST_BIND subfield of st_info (symbol binding).  */
 
@@ -424,10 +360,7 @@ typedef struct
 
 /* How to extract and insert information held in the st_other field.  */
 
-#define ELF32_ST_VISIBILITY(o)	((o) & 0x03)
-
-/* For ELF64 the definitions are the same.  */
-#define ELF64_ST_VISIBILITY(o)	ELF32_ST_VISIBILITY (o)
+#define ELF64_ST_VISIBILITY(o)	((o) & 0x03)
 
 /* Symbol visibility specification encoded in the st_other field.  */
 #define STV_DEFAULT	0		/* Default symbol visibility rules */
@@ -437,12 +370,6 @@ typedef struct
 
 
 /* Relocation table entry without addend (in section of type SHT_REL).  */
-
-typedef struct
-{
-  Elf32_Addr	r_offset;		/* Address */
-  Elf32_Word	r_info;			/* Relocation type and symbol index */
-} Elf32_Rel;
 
 /* I have seen two different definitions of the Elf64_Rel and
    Elf64_Rela structures, so we'll leave them out until Novell (or
@@ -459,13 +386,6 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Addr	r_offset;		/* Address */
-  Elf32_Word	r_info;			/* Relocation type and symbol index */
-  Elf32_Sword	r_addend;		/* Addend */
-} Elf32_Rela;
-
-typedef struct
-{
   Elf64_Addr	r_offset;		/* Address */
   Elf64_Xword	r_info;			/* Relocation type and symbol index */
   Elf64_Sxword	r_addend;		/* Addend */
@@ -473,32 +393,15 @@ typedef struct
 
 /* RELR relocation table entry */
 
-typedef Elf32_Word	Elf32_Relr;
 typedef Elf64_Xword	Elf64_Relr;
 
 /* How to extract and insert information held in the r_info field.  */
-
-#define ELF32_R_SYM(val)		((val) >> 8)
-#define ELF32_R_TYPE(val)		((val) & 0xff)
-#define ELF32_R_INFO(sym, type)		(((sym) << 8) + ((type) & 0xff))
 
 #define ELF64_R_SYM(i)			((i) >> 32)
 #define ELF64_R_TYPE(i)			((i) & 0xffffffff)
 #define ELF64_R_INFO(sym,type)		((((Elf64_Xword) (sym)) << 32) + (type))
 
 /* Program segment header.  */
-
-typedef struct
-{
-  Elf32_Word	p_type;			/* Segment type */
-  Elf32_Off	p_offset;		/* Segment file offset */
-  Elf32_Addr	p_vaddr;		/* Segment virtual address */
-  Elf32_Addr	p_paddr;		/* Segment physical address */
-  Elf32_Word	p_filesz;		/* Segment size in file */
-  Elf32_Word	p_memsz;		/* Segment size in memory */
-  Elf32_Word	p_flags;		/* Segment flags */
-  Elf32_Word	p_align;		/* Segment alignment */
-} Elf32_Phdr;
 
 typedef struct
 {
@@ -646,16 +549,6 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Sword	d_tag;			/* Dynamic entry type */
-  union
-    {
-      Elf32_Word d_val;			/* Integer value */
-      Elf32_Addr d_ptr;			/* Address value */
-    } d_un;
-} Elf32_Dyn;
-
-typedef struct
-{
   Elf64_Sxword	d_tag;			/* Dynamic entry type */
   union
     {
@@ -770,13 +663,6 @@ typedef struct
 #define DT_VERSIONTAGIDX(tag)	(DT_VERNEEDNUM - (tag))	/* Reverse order! */
 #define DT_VERSIONTAGNUM 16
 
-/* Sun added these machine-independent extensions in the "processor-specific"
-   range.  Be compatible.  */
-#define DT_AUXILIARY    0x7ffffffd      /* Shared object to load before self */
-#define DT_FILTER       0x7fffffff      /* Shared object to get values from */
-#define DT_EXTRATAGIDX(tag)	((Elf32_Word)-((Elf32_Sword) (tag) <<1>>1)-1)
-#define DT_EXTRANUM	3
-
 /* Values of `d_un.d_val' in the DT_FLAGS entry.  */
 #define DF_ORIGIN	0x00000001	/* Object may use DF_ORIGIN */
 #define DF_SYMBOLIC	0x00000002	/* Symbol resolutions starts here */
@@ -831,18 +717,6 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Half	vd_version;		/* Version revision */
-  Elf32_Half	vd_flags;		/* Version information */
-  Elf32_Half	vd_ndx;			/* Version Index */
-  Elf32_Half	vd_cnt;			/* Number of associated aux entries */
-  Elf32_Word	vd_hash;		/* Version name hash value */
-  Elf32_Word	vd_aux;			/* Offset in bytes to verdaux array */
-  Elf32_Word	vd_next;		/* Offset in bytes to next verdef
-					   entry */
-} Elf32_Verdef;
-
-typedef struct
-{
   Elf64_Half	vd_version;		/* Version revision */
   Elf64_Half	vd_flags;		/* Version information */
   Elf64_Half	vd_ndx;			/* Version Index */
@@ -873,13 +747,6 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Word	vda_name;		/* Version or dependency names */
-  Elf32_Word	vda_next;		/* Offset in bytes to next verdaux
-					   entry */
-} Elf32_Verdaux;
-
-typedef struct
-{
   Elf64_Word	vda_name;		/* Version or dependency names */
   Elf64_Word	vda_next;		/* Offset in bytes to next verdaux
 					   entry */
@@ -887,17 +754,6 @@ typedef struct
 
 
 /* Version dependency section.  */
-
-typedef struct
-{
-  Elf32_Half	vn_version;		/* Version of structure */
-  Elf32_Half	vn_cnt;			/* Number of associated aux entries */
-  Elf32_Word	vn_file;		/* Offset of filename for this
-					   dependency */
-  Elf32_Word	vn_aux;			/* Offset in bytes to vernaux array */
-  Elf32_Word	vn_next;		/* Offset in bytes to next verneed
-					   entry */
-} Elf32_Verneed;
 
 typedef struct
 {
@@ -917,16 +773,6 @@ typedef struct
 #define VER_NEED_NUM	 2		/* Given version number */
 
 /* Auxiliary needed version information.  */
-
-typedef struct
-{
-  Elf32_Word	vna_hash;		/* Hash value of dependency name */
-  Elf32_Half	vna_flags;		/* Dependency specific information */
-  Elf32_Half	vna_other;		/* Unused */
-  Elf32_Word	vna_name;		/* Dependency name string offset */
-  Elf32_Word	vna_next;		/* Offset in bytes to next vernaux
-					   entry */
-} Elf32_Vernaux;
 
 typedef struct
 {
@@ -951,18 +797,6 @@ typedef struct
    can't hurt.  We rename it to avoid conflicts.  The sizes of these
    types are an arrangement between the exec server and the program
    interpreter, so we don't fully specify them here.  */
-
-typedef struct
-{
-  uint32_t a_type;		/* Entry type */
-  union
-    {
-      uint32_t a_val;		/* Integer value */
-      /* We use to have pointer elements added here.  We cannot do that,
-	 though, since it does not work when using 32-bit definitions
-	 on 64-bit platforms and vice versa.  */
-    } a_un;
-} Elf32_auxv_t;
 
 typedef struct
 {
@@ -1075,13 +909,6 @@ typedef struct
  * SPDX-License-Identifier: LGPL-2.1-or-later */
 /* Note section contents.  Each entry in the note section begins with
    a header of a fixed form.  */
-
-typedef struct
-{
-  Elf32_Word n_namesz;			/* Length of the note's name.  */
-  Elf32_Word n_descsz;			/* Length of the note's descriptor.  */
-  Elf32_Word n_type;			/* Type of the note.  */
-} Elf32_Nhdr;
 
 typedef struct
 {
@@ -1220,14 +1047,6 @@ typedef struct
 #define GNU_PROPERTY_X86_FEATURE_1_SHSTK	(1U << 1)
 
 /* Move records.  */
-typedef struct
-{
-  Elf32_Xword m_value;		/* Symbol value.  */
-  Elf32_Word m_info;		/* Size and index.  */
-  Elf32_Word m_poffset;		/* Symbol offset.  */
-  Elf32_Half m_repeat;		/* Repeat count.  */
-  Elf32_Half m_stride;		/* Stride info.  */
-} Elf32_Move;
 
 typedef struct
 {
@@ -1239,19 +1058,9 @@ typedef struct
 } Elf64_Move;
 
 /* Macro to construct move records.  */
-#define ELF32_M_SYM(info)	((info) >> 8)
-#define ELF32_M_SIZE(info)	((unsigned char) (info))
-#define ELF32_M_INFO(sym, size)	(((sym) << 8) + (unsigned char) (size))
-
-#define ELF64_M_SYM(info)	ELF32_M_SYM (info)
-#define ELF64_M_SIZE(info)	ELF32_M_SIZE (info)
-#define ELF64_M_INFO(sym, size)	ELF32_M_INFO (sym, size)
-
-
-/* Motorola 68k specific definitions.  */
-
-/* Values for Elf32_Ehdr.e_flags.  */
-#define EF_CPU32	0x00810000
+#define ELF64_M_SYM(info)	((info) >> 8)
+#define ELF64_M_SIZE(info)	((unsigned char) (info))
+#define ELF64_M_INFO(sym, size)	(((sym) << 8) + (unsigned char) (size))
 
 /* Intel 80386 specific definitions.  */
 
