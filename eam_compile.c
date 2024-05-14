@@ -213,12 +213,13 @@ int bfJumpOpen (int fd) {
     off_t expectedLocation;
     /* calculate the expected locationto seek to */
     expectedLocation = (CURRENT_ADDRESS + JUMP_SIZE);
-    /* push the current address onto the stack */
-    JumpStack.addresses[JumpStack.index++] = CURRENT_ADDRESS;
-    if (JumpStack.index > MAX_NESTING_LEVEL) {
+    /* ensure that there are no more than the maximun nesting level */
+    if (JumpStack.index >= MAX_NESTING_LEVEL) {
         errorMessage = "Too many nested loops!";
         return 0;
     }
+    /* push the current address onto the stack */
+    JumpStack.addresses[JumpStack.index++] = CURRENT_ADDRESS;
     /* skip enough bytes to write the instruction, once we know where the
      * jump should be to. */
     /* still need to increase codesize for accuracy of the CURRENT_ADDRESS */
