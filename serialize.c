@@ -2,8 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only */
 
-#include <stdint.h> /* C99 */
-#include <arpa/inet.h> /* POSIX.1-2001 */
+/* POSIX */
+#include <arpa/inet.h>
+/* C99 */
+#include <stdint.h>
+/* internal */
 #include "elf.h"
 
 /* internal macros for serializing 16, 32, and 64-bit values with little-endian

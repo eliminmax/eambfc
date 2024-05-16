@@ -5,6 +5,7 @@
 
 #ifndef EAMBFC_SERIALIZE
 #define EAMBFC_SERIALIZE
+/* internal */
 #include "elf.h"
 
 /* given a pointers to a struct of a given type and a char array, these write

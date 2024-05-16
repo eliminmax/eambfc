@@ -5,11 +5,14 @@
  * A basic non-optimizing Brainfuck to x86_64 Linux ELF compiler.
  * */
 
+/* C99 */
 #include <stdio.h>
-#include <unistd.h>
+/* POSIX */
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
+/* internal */
 #include "eam_compile.h"
 
 int main(int argc, char* argv[]) {

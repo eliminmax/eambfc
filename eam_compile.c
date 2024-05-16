@@ -3,14 +3,17 @@
  * SPDX-License-Identifier: GPL-3.0-only
  * */
 
-#include <stdio.h>
-#include <unistd.h>
+/* C99 */
 #include <stdint.h>
-#include <fcntl.h>
+#include <stdio.h>
 #include <string.h>
+/* POSIX */
+#include <fcntl.h>
+#include <unistd.h>
+/* internal */
 #include "eam_compiler_macros.h"
-#include "serialize.h"
 #include "elf.h"
+#include "serialize.h"
 
 off_t codesize;
 

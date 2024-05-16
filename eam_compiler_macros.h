@@ -4,8 +4,11 @@
  * */
 #ifndef EAMASM_MACROS
 #define EAMASM_MACROS
+/* C99 */
 #include <stdint.h>
+/* POSIX */
 #include <sys/types.h>
+/* internal */
 #include "elf.h"
 
 /* registers are accessed using the 3-bit values specified in octal below */
