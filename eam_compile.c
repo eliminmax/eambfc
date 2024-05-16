@@ -193,7 +193,7 @@ int bfIO(int fd, int bfFD, int sc) {
         eamasm_setregd(REG_ARG1, bfFD),
         /* copy the address in REG_BF_POINTER to REG_ARG2 */
         eamasm_regcopy(REG_ARG2, REG_BF_POINTER),
-        /* load the number of bytes to write (1, specifically) into REG_ARG3 */
+        /* load number of bytes to read/write (1, specifically) into REG_ARG3 */
         eamasm_setregd(REG_ARG3, 1),
         /* perform a system call */
         eamasm_syscall()
