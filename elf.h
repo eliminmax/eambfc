@@ -3,11 +3,15 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later 
  *
  *
- * This file is /usr/include/elf.h from Debian 12 "Bookworm"'s libc6-dev:amd64
- * package
+ * This file is adapted from /usr/include/elf.h from Debian 12 "Bookworm"'s
+ * libc6-dev:amd64 package. 
+ *
  * The line `#include <bits/auxv.h>` is replaced with the contents of 
  * /usr/include/x86_64-linux-gnu/bits/auxv.h from the same package.
  * REUSE headers have been added.
+ *
+ * Most 32-bit-specific macros and `typedefs` have been removed, as have most 
+ * that are not related to the x86 architecture family.
  * */
 /* This file defines standard ELF types, structures, and macros.
    Copyright (C) 1995-2022 Free Software Foundation, Inc.
@@ -478,67 +482,7 @@ typedef struct
 #define NT_FILE		0x46494c45	/* Contains information about mapped
 					   files */
 #define NT_PRXFPREG	0x46e62b7f	/* Contains copy of user_fxsr_struct */
-#define NT_PPC_VMX	0x100		/* PowerPC Altivec/VMX registers */
-#define NT_PPC_SPE	0x101		/* PowerPC SPE/EVR registers */
-#define NT_PPC_VSX	0x102		/* PowerPC VSX registers */
-#define NT_PPC_TAR	0x103		/* Target Address Register */
-#define NT_PPC_PPR	0x104		/* Program Priority Register */
-#define NT_PPC_DSCR	0x105		/* Data Stream Control Register */
-#define NT_PPC_EBB	0x106		/* Event Based Branch Registers */
-#define NT_PPC_PMU	0x107		/* Performance Monitor Registers */
-#define NT_PPC_TM_CGPR	0x108		/* TM checkpointed GPR Registers */
-#define NT_PPC_TM_CFPR	0x109		/* TM checkpointed FPR Registers */
-#define NT_PPC_TM_CVMX	0x10a		/* TM checkpointed VMX Registers */
-#define NT_PPC_TM_CVSX	0x10b		/* TM checkpointed VSX Registers */
-#define NT_PPC_TM_SPR	0x10c		/* TM Special Purpose Registers */
-#define NT_PPC_TM_CTAR	0x10d		/* TM checkpointed Target Address
-					   Register */
-#define NT_PPC_TM_CPPR	0x10e		/* TM checkpointed Program Priority
-					   Register */
-#define NT_PPC_TM_CDSCR	0x10f		/* TM checkpointed Data Stream Control
-					   Register */
-#define NT_PPC_PKEY	0x110		/* Memory Protection Keys
-					   registers.  */
 #define NT_386_TLS	0x200		/* i386 TLS slots (struct user_desc) */
-#define NT_386_IOPERM	0x201		/* x86 io permission bitmap (1=deny) */
-#define NT_X86_XSTATE	0x202		/* x86 extended state using xsave */
-#define NT_S390_HIGH_GPRS	0x300	/* s390 upper register halves */
-#define NT_S390_TIMER	0x301		/* s390 timer register */
-#define NT_S390_TODCMP	0x302		/* s390 TOD clock comparator register */
-#define NT_S390_TODPREG	0x303		/* s390 TOD programmable register */
-#define NT_S390_CTRS	0x304		/* s390 control registers */
-#define NT_S390_PREFIX	0x305		/* s390 prefix register */
-#define NT_S390_LAST_BREAK	0x306	/* s390 breaking event address */
-#define NT_S390_SYSTEM_CALL	0x307	/* s390 system call restart data */
-#define NT_S390_TDB	0x308		/* s390 transaction diagnostic block */
-#define NT_S390_VXRS_LOW	0x309	/* s390 vector registers 0-15
-					   upper half.  */
-#define NT_S390_VXRS_HIGH	0x30a	/* s390 vector registers 16-31.  */
-#define NT_S390_GS_CB	0x30b		/* s390 guarded storage registers.  */
-#define NT_S390_GS_BC	0x30c		/* s390 guarded storage
-					   broadcast control block.  */
-#define NT_S390_RI_CB	0x30d		/* s390 runtime instrumentation.  */
-#define NT_ARM_VFP	0x400		/* ARM VFP/NEON registers */
-#define NT_ARM_TLS	0x401		/* ARM TLS register */
-#define NT_ARM_HW_BREAK	0x402		/* ARM hardware breakpoint registers */
-#define NT_ARM_HW_WATCH	0x403		/* ARM hardware watchpoint registers */
-#define NT_ARM_SYSTEM_CALL	0x404	/* ARM system call number */
-#define NT_ARM_SVE	0x405		/* ARM Scalable Vector Extension
-					   registers */
-#define NT_ARM_PAC_MASK	0x406		/* ARM pointer authentication
-					   code masks.  */
-#define NT_ARM_PACA_KEYS	0x407	/* ARM pointer authentication
-					   address keys.  */
-#define NT_ARM_PACG_KEYS	0x408	/* ARM pointer authentication
-					   generic key.  */
-#define NT_ARM_TAGGED_ADDR_CTRL	0x409	/* AArch64 tagged address
-					   control.  */
-#define NT_ARM_PAC_ENABLED_KEYS	0x40a	/* AArch64 pointer authentication
-					   enabled keys.  */
-#define NT_VMCOREDD	0x700		/* Vmcore Device Dump Note.  */
-#define NT_MIPS_DSP	0x800		/* MIPS DSP ASE registers.  */
-#define NT_MIPS_FP_MODE	0x801		/* MIPS floating-point mode.  */
-#define NT_MIPS_MSA	0x802		/* MIPS SIMD registers.  */
 
 /* Legal values for the note segment descriptor types for object files.  */
 
