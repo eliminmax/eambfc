@@ -22,18 +22,7 @@ Currently, it's working in the sense that it compiles the code properly on `amd6
 
 Use of `gcc` as the C compiler is currently hard-coded into the Makefile. I plan on changing that.
 
-The following external headers are used:
-
-| Header          | Source/standard |
-|-----------------|-----------------|
-| `elf.h`         | (GNU C Library) |
-| `fcntl.h`       | (POSIX)         |
-| `stdint.h`      | (C99)           |
-| `stdio.h`       | (C99)           |
-| `string.h`      | (C99)           |
-| `sys/types.h`   | (POSIX)         |
-| `sys/stat.h`    | (POSIX)         |
-| `unistd.h`      | (POSIX)         |
+To build, simply run `make`. No `make install` target is defined. If you want to add it into your `PATH`, you'll need to do that manually.
 
 ## To-do
 
@@ -45,10 +34,10 @@ The following external headers are used:
 
 ### Extra goals
 
-* [ ] automatic testing of brainfuck source files in test/ directory
+* [ ] automatic testing of brainfuck source files in `test/` directory
 * [ ] make some hard-coded values (like tape size) configurable when building `eambfc`
 * [ ] remove unused macros and definitions from header files
-  * `elf.h` is not originally part of this project, and has not been trimmed down at all
+  * `elf.h` is not originally part of this project, and has not been trimmed down as much as it could be
   * `eam_compiler_macros.h` defines macros for several x86 registers that are not used at all
 * [ ] better command-line interface for the compiler
 * [x] account for umask when creating a file
