@@ -101,28 +101,17 @@ typedef struct
 #define EI_MAG3         3               /* File identification byte 3 index */
 #define ELFMAG3         'F'             /* Magic number byte 3 */
 
-/* Conglomeration of the identification bytes, for easy testing as a word.  */
-#define ELFMAG          "\177ELF"
-#define SELFMAG         4
-
 #define EI_CLASS        4               /* File class byte index */
-#define ELFCLASSNONE    0               /* Invalid class */
-#define ELFCLASS32      1               /* 32-bit objects */
 #define ELFCLASS64      2               /* 64-bit objects */
-#define ELFCLASSNUM     3
 
 #define EI_DATA         5               /* Data encoding byte index */
-#define ELFDATANONE     0               /* Invalid data encoding */
 #define ELFDATA2LSB     1               /* 2's complement, little endian */
-#define ELFDATA2MSB     2               /* 2's complement, big endian */
-#define ELFDATANUM      3
 
 #define EI_VERSION      6               /* File version byte index */
                                         /* Value must be EV_CURRENT */
 
 #define EI_OSABI        7               /* OS ABI identification */
-#define ELFOSABI_NONE           0       /* UNIX System V ABI */
-#define ELFOSABI_SYSV           0       /* Alias.  */
+#define ELFOSABI_SYSV           0       /* UNIX System V ABI */
 
 #define EI_ABIVERSION   8               /* ABI version */
 
@@ -130,16 +119,7 @@ typedef struct
 
 /* Legal values for e_type (object file type).  */
 
-#define ET_NONE         0               /* No file type */
-#define ET_REL          1               /* Relocatable file */
 #define ET_EXEC         2               /* Executable file */
-#define ET_DYN          3               /* Shared object file */
-#define ET_CORE         4               /* Core file */
-#define ET_NUM          5               /* Number of defined types */
-#define ET_LOOS         0xfe00          /* OS-specific range start */
-#define ET_HIOS         0xfeff          /* OS-specific range end */
-#define ET_LOPROC       0xff00          /* Processor-specific range start */
-#define ET_HIPROC       0xffff          /* Processor-specific range end */
 
 /* Legal values for e_machine (architecture).  */
 
