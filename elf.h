@@ -123,20 +123,6 @@ typedef struct
 #define EI_OSABI        7               /* OS ABI identification */
 #define ELFOSABI_NONE           0       /* UNIX System V ABI */
 #define ELFOSABI_SYSV           0       /* Alias.  */
-#define ELFOSABI_HPUX           1       /* HP-UX */
-#define ELFOSABI_NETBSD         2       /* NetBSD.  */
-#define ELFOSABI_GNU            3       /* Object uses GNU ELF extensions.  */
-#define ELFOSABI_LINUX          ELFOSABI_GNU /* Compatibility alias.  */
-#define ELFOSABI_SOLARIS        6       /* Sun Solaris.  */
-#define ELFOSABI_AIX            7       /* IBM AIX.  */
-#define ELFOSABI_IRIX           8       /* SGI Irix.  */
-#define ELFOSABI_FREEBSD        9       /* FreeBSD.  */
-#define ELFOSABI_TRU64          10      /* Compaq TRU64 UNIX.  */
-#define ELFOSABI_MODESTO        11      /* Novell Modesto.  */
-#define ELFOSABI_OPENBSD        12      /* OpenBSD.  */
-#define ELFOSABI_ARM_AEABI      64      /* ARM EABI */
-#define ELFOSABI_ARM            97      /* ARM */
-#define ELFOSABI_STANDALONE     255     /* Standalone (embedded) application */
 
 #define EI_ABIVERSION   8               /* ABI version */
 
