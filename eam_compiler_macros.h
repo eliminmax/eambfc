@@ -71,12 +71,11 @@
 /* The system call instruction, in all of its glory. */
 #define eamasm_syscall() 0x0f, 0x05
 
-
 /* set various CPU flags based on the byte pointed to by reg
  * equivalent to TEST byte [reg], 0xff */
 #define eamasm_jump_test(reg) 0xf6, reg, 0xff
 
-/* jump by jump_offset bytes if the memory address pointed to by reg != 0 */
+/* jump by jump_offset bytes if the memory address pointed to by reg isn't 0 */
 #define eamasm_jump_not_zero(reg, jump_offset) \
     eamasm_jump_test(reg),\
     0x0f, 0x85, dwordToBytes(jump_offset) /* equivalent to JNZ jump_offset */
@@ -111,8 +110,7 @@
  *
  * dir is one of OFFDIR_POSITIVE or OFFDIR_NEGATIVE
  * adr is one of OFFMODE_MEMORY or OFFMODE_REGISTER
- * reg is the definition register
- * */
+ * reg is the definition register */
 #define eamasm_offset(dir, adr, reg) (0xfe|(adr&1)), (dir|reg|(adr<<6))
 /* macros for use as arguments to eamasm_offset */
 #define OFFMODE_MEMORY 0
@@ -167,7 +165,7 @@
  * b8+rd, followed by an LSB-encoded 4 byte value, stores the 4 byte value in rd
  *
  * equivalent to MOV dst, d */
-#define eamasm_setregd(dst, d) 0xb8+dst, dwordToBytes(d)
+#define eamasm_setregd(dst, d) (0xb8 + (dst)), dwordToBytes(d)
 
 /* assorted macros for the size/address of different elements in the ELF file */
 
@@ -210,18 +208,13 @@
 /* program header table is right after the ELF header. */
 #define PHOFF (PHNUM ? EHDR_SIZE : 0)
 
-/* section header table is at the end of the file.
- * codesize must be defined as the number of bytes of machine code. */
-#define SHOFF (SHNUM ? START_PADDR + (padTo256(codesize)) : 0)
+/* section header table offset is 0, as there is no section header table. */
+#define SHOFF 0
 
-/* codesize must be defined as described in the SHOFF comment.
- * FILE_SIZE should not be used until after codesize's value is known.
+/* codesize must be defined as the size in bytes of the machine code.
+ * FILE_SIZE should not be used until after its final value is known.
  * It is the size (in bytes) of the file. */
-#if SHNUM == 0
 #define FILE_SIZE (START_PADDR + codesize)
-#else
-#define FILE_SIZE (START_PADDR + (padTo256(codesize)) + SHTB_SIZE)
-#endif
 
 /* the memory address of the current instruction. */
 #define CURRENT_ADDRESS (START_PADDR + codesize)

@@ -74,7 +74,7 @@ int writeEhdr(int fd) {
     header.e_shnum = SHNUM;
 
     /* The offset within the file for the program and section header tables
-     * respectively. Defined in macros earlier in this file. */
+     * respectively. Defined in macros earlier in eam_compiler_macros.h. */
     header.e_phoff = PHOFF;
     header.e_shoff = SHOFF;
 
@@ -85,8 +85,8 @@ int writeEhdr(int fd) {
     /* e_phentsize and e_shentsize are the size of entries within the
      * program and section header tables respectively. If there are no entries
      * within a given table, the size should be set to 0. */
-    header.e_phentsize = (PHNUM ? PHDR_SIZE : 0);
-    header.e_shentsize = (SHNUM ? SHDR_SIZE : 0);
+    header.e_phentsize = PHDR_SIZE;
+    header.e_shentsize = 0;
 
     /* Section header string table index - the index of the entry in the
      * section header table pointing to the names of each section.
