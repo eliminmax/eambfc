@@ -34,14 +34,14 @@ To build, simply run `make`. No `make install` target is defined. If you want to
 
 ### Extra goals
 
-* [ ] automatic testing of brainfuck source files in `test/` directory
-* [ ] make some hard-coded values (like tape size) configurable when building `eambfc`
+#### Completed
+
 * [x] remove unused macros and definitions from header files
-* [ ] better command-line interface for the compiler
 * [x] account for umask when creating a file
 * [x] delete output file if compilation fails
-* [ ] add a a command-line argument to disable deletion of failed files (for debugging purposes).
-* [ ] add the ability to compile multiple source files in one run
+
+#### In Progress
+
 * [ ] address portability issues - this one will be particularly difficult.
   * compiled programs may not be portable, but it should be possible to compile and/or run `eambfc` itself on any POSIX+C99 system, ideally.
   * specific portability issues:
@@ -49,3 +49,11 @@ To build, simply run `make`. No `make install` target is defined. If you want to
     * [x] ensure multi-byte values are written in an endian-agnostic manner.
     * [x] `elf.h` is not present on all POSIX systems, and should be either provided or replaced.
     * [ ] replace the Makefile with a better, more portable one
+
+#### Planned
+
+* [ ] automatic testing of brainfuck source files in `test/` directory
+* [ ] make some hard-coded values (like tape size) configurable when building `eambfc`
+* [ ] better command-line interface for the compiler
+* [ ] add a a command-line argument to disable deletion of failed files (for debugging purposes).
+* [ ] add the ability to compile multiple source files in one run
