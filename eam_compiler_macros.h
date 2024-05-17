@@ -11,54 +11,34 @@
 /* internal */
 #include "elf.h"
 
-/* registers are accessed using the 3-bit values specified in octal below */
-#define REG_AX 00
-#define REG_CX 01
-#define REG_DX 02
-#define REG_BX 03
-#define REG_SP 04
-#define REG_BP 05
-#define REG_SI 06
-#define REG_DI 07
-
-/* for legacy reasons, x86_64 uses different names for the same registers
- * depending on whether they're being accessed a 16, 32, or 64-bit registers.
- * the 16-bit names are defined above, so define the 32 and 64-bit ones next. */
-/* 32-bit aliases */
-#define REG_EAX REG_AX
-#define REG_ECX REG_CX
-#define REG_EDX REG_DX
-#define REG_EBX REG_BX
-#define REG_ESP REG_SP
-#define REG_EBP REG_BP
-#define REG_ESI REG_SI
-#define REG_EDI REG_DI
-/* 64-bit aliases */
-#define REG_RAX REG_AX
-#define REG_RCX REG_CX
-#define REG_RDX REG_DX
-#define REG_RBX REG_BX
-#define REG_RSP REG_SP
-#define REG_RBP REG_BP
-#define REG_RSI REG_SI
-#define REG_RDI REG_DI
-/* There are additional registers added in AMD64/x86_64, but they are addressed
- * differently, in a manner that is incompatible with the macros I defined,
- * they are not given distinct, rather R followed by a number from  8 to 15 */
-
-/* register aliases based on register uses */
 /* the Linux kernel reads system call numbers from RAX on x86_64 systems,
  * and reads arguments from RDI, RSI, RDX, R10, R8, and R9.
- * None of the system calls needed use more than 3 arguments, and as mentioned
- * above, the R8-R15 registers are addressed incompatibly, so only worry the
- * first 3 argument registers. */
-#define REG_SC_NUM REG_RAX
-#define REG_ARG1 REG_RDI
-#define REG_ARG2 REG_RSI
-#define REG_ARG3 REG_RDX
-/* the RBX register is preserved through system calls, so it's useful as the
- * tape pointer. */
-#define REG_BF_POINTER REG_RBX
+ * None of the system calls needed use more than 3 arguments, and the R8-R15
+ * registers are addressed incompatibly, so only worry the first 3 argument
+ * registers.
+ *
+ * the RBX register is preserved through system calls, so it's useful as the
+ * tape pointer.
+ *
+ * Thus, for eambfc, the registers to care about are RAX, RDI, RSI, RDX, and RBX
+ *
+ * Oversimpifying a bit, in x86 assembly, when specifying a register that is not
+ * one of R8-R15, a 3-bit value is used to identify it.
+ *
+ * * RAX is 000b
+ * * RDI is 111b
+ * * RSI is 110b
+ * * RDX is 010b
+ * * RBX is 011b
+ *
+ * Because one octal symbol represents 3 bits, octal is used for the macro
+ * definitions.
+ * */
+#define REG_SC_NUM      00 /* RAX */
+#define REG_ARG1        07 /* RDI */
+#define REG_ARG2        06 /* RSI */
+#define REG_ARG3        02 /* RDX */
+#define REG_BF_POINTER  03 /* RBX */
 
 
 /* A couple of macros that are useful for various purposes */
@@ -151,7 +131,7 @@
  * I'll walk through the macro with the following args (used for brainfuck ">"):
  *      eamasm_offset(OFFDIR_POSITIVE, OFFMODE_REGISTER, REG_BF_POINTER)
  *
- * * OFFDIR_POSITIVE->0, OFFDIR_REGISTER->3, REG_BF_POINTER->REG_RBX->REG_BX->03
+ * * OFFDIR_POSITIVE->0, OFFDIR_REGISTER->3, REG_BF_POINTER->03
  * * (0xfe|(3&1)), in binary, is (0b1111_1110|(0b0000_0011 & 0b0000_0001))
  * * (0b0000_0011 & 0b0000_0001) evaluates to 0000_0001
  * * (0b1111_1110 | 0b0000_0001) evaluates to 0b1111_1111 (i.e. 0xff)
