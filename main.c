@@ -7,6 +7,7 @@
 
 /* C99 */
 #include <stdio.h>
+#include <stdlib.h>
 /* POSIX */
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -46,12 +47,12 @@ int main(int argc, char* argv[]) {
     srcFD = open(argv[1], O_RDONLY);
     if (srcFD < 0) {
         fputs("Failed to open source file for reading.\n", stderr);
-        return 2;
+        return EXIT_FAILURE;
     }
     dstFD = open(argv[2], O_WRONLY+O_CREAT+O_TRUNC, permissions);
     if (dstFD < 0) {
         fputs("Failed to open destination file for writing.\n", stderr);
-        return 2;
+        return EXIT_FAILURE;
     }
 
     result = bfCompile(srcFD, dstFD);
@@ -71,7 +72,7 @@ int main(int argc, char* argv[]) {
                 errorMessage
                );
         remove(argv[2]);
-        return 1;
+        return EXIT_FAILURE;
     }
-    return 0;
+    return EXIT_SUCCESS;
 }
