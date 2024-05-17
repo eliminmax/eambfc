@@ -44,8 +44,6 @@ To build, simply run `make`. No `make install` target is defined. If you want to
 * [x] delete output file if compilation fails
 * [ ] add a a command-line argument to disable deletion of failed files (for debugging purposes).
 * [ ] add the ability to compile multiple source files in one run
-* [ ] (possibly) add an option to generate headers to enable debugging with GDB
-  * this one might be a bad idea.
 * [ ] address portability issues - this one will be particularly difficult.
   * compiled programs may not be portable, but it should be possible to compile and/or run `eambfc` itself on any POSIX+C99 system, ideally.
   * specific portability issues:
