@@ -41,7 +41,6 @@ To build, simply run `make`. No `make install` target is defined. If you want to
 * [x] delete output file if compilation fails
 * [x] better command-line interface for the compiler
 * [x] add the ability to compile multiple source files in one run
-* [x] add a command-line argument to disable deletion of failed files (for debugging purposes).
 * [x] add a command-line argument to continue on if a source file fails to compile
 
 #### In Progress
@@ -53,6 +52,8 @@ To build, simply run `make`. No `make install` target is defined. If you want to
     * [x] ensure multi-byte values are written in an endian-agnostic manner.
     * [x] `elf.h` is not present on all POSIX systems, and should be either provided or replaced.
     * [ ] replace the Makefile with a better, more portable one
+* [x] add a command-line argument to disable deletion of failed files (for debugging purposes).
+  * [ ] write headers if an instruction fails to compile and that option is set
 
 #### Planned
 
