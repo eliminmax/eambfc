@@ -52,6 +52,9 @@ void _showhelp(FILE *outfile, char *progname) {
             "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
             " -h        - display this help text\n"
             " -q        - don't print compilation errors.\n"
+            " -k        - keep files that failed to compile for debugging\n"
+            " -m        - 'Move ahead' to the next file instead of quitting if\n"
+            "             a file fails to compile\n"
             " -e ext    - use 'ext' as the extension for source files instead\n"
             "             of '.bf' (This program will remove this at the end \n"
             "             of the input file to create the output file name)\n\n"
@@ -98,17 +101,23 @@ int main(int argc, char* argv[]) {
     int opt;
     /* default to empty string. */
     char *ext = "";
-    /* default to false, set to true if -q was passed. */
-    bool quiet = false;
+    /* default to false, set to true if relevant argument was passed. */
+    bool quiet = false, keep = false, moveahead = false;
     mode_t permissions = _getperms();
 
-    while ((opt = getopt(argc, argv, "hqe:")) != -1) {
+    while ((opt = getopt(argc, argv, "hqkme:")) != -1) {
         switch(opt) {
             case 'h':
                 _showhelp(stdout, argv[0]);
                 return EXIT_SUCCESS;
             case 'q':
                 quiet = true;
+                break;
+            case 'k':
+                keep = true;
+                break;
+            case 'm':
+                moveahead = true;
                 break;
             case 'e':
                 /* Print an error if ext was already set. */
@@ -145,13 +154,12 @@ int main(int argc, char* argv[]) {
         if (dstFD < 0) {
             errorout("Failed to open destination file for writing.\n");
         }
-
         result = bfCompile(srcFD, dstFD);
         close(srcFD);
         close(dstFD);
         if ((!result) && (!quiet)) {
-            remove(argv[optind]);
-            errorout(
+            fprintf(
+                stderr,
                 "%s%s: Failed to compile character %c at line %d, column %d.\n"
                 "Error message: \"%s\"\n",
                 argv[optind], ext, /* sneaky way to hide the editing of argv */
@@ -160,6 +168,12 @@ int main(int argc, char* argv[]) {
                 currentInstructionColumn,
                 errorMessage
             );
+            if (!keep) {
+                remove(argv[optind]);
+            }
+            if (!moveahead) {
+                return EXIT_FAILURE;
+            }
         }
     }
     return EXIT_SUCCESS;

@@ -41,6 +41,8 @@ To build, simply run `make`. No `make install` target is defined. If you want to
 * [x] delete output file if compilation fails
 * [x] better command-line interface for the compiler
 * [x] add the ability to compile multiple source files in one run
+* [x] add a command-line argument to disable deletion of failed files (for debugging purposes).
+* [x] add a command-line argument to continue on if a source file fails to compile
 
 #### In Progress
 
@@ -56,5 +58,3 @@ To build, simply run `make`. No `make install` target is defined. If you want to
 
 * [ ] automatic testing of brainfuck source files in `test/` directory
 * [ ] make some hard-coded values (like tape size) configurable when building `eambfc`
-* [ ] add a command-line argument to disable deletion of failed files (for debugging purposes).
-* [ ] add a command-line argument to continue on if a source file fails to compile
