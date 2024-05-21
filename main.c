@@ -8,6 +8,7 @@
 /* C99 */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 /* POSIX */
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -46,6 +47,8 @@ mode_t _getperms() {
 int main(int argc, char* argv[]) {
     int srcFD, dstFD;
     int result;
+    /* default to false, set to true if -q was passed. */
+    bool quiet = false;
     mode_t permissions = _getperms();
     if (argc < 3) {
         fputs("Not enough arguments provided.\n", stderr);
@@ -66,19 +69,16 @@ int main(int argc, char* argv[]) {
     result = bfCompile(srcFD, dstFD);
     close(srcFD);
     close(dstFD);
-    if (!result) {
+    if ((!result) && (!quiet)) {
         fprintf(
-                stderr,
-                "Failed to compile character %c at line %d, column %d.\n",
-                currentInstruction,
-                currentInstructionLine,
-                currentInstructionColumn
-               );
-        fprintf(
-                stderr,
-                "Error message: \"%s\"\n",
-                errorMessage
-               );
+            stderr,
+            "Failed to compile character %c at line %d, column %d.\n"
+            "Error message: \"%s\"\n",
+            currentInstruction,
+            currentInstructionLine,
+            currentInstructionColumn,
+            errorMessage
+        );
         remove(argv[2]);
         return EXIT_FAILURE;
     }
