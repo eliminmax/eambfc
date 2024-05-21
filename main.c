@@ -6,9 +6,10 @@
  * */
 
 /* C99 */
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
+#include <string.h>
 /* POSIX */
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -60,44 +61,107 @@ void _showhelp(FILE *outfile, char *progname) {
             progname);
 }
 
+/* check if str ends with ext. If so, remove ext from the end and return a
+ * truthy value. If not, return 0. */
+int _rmext(char *str, const char *ext) {
+    size_t strsz = strlen(str);
+    size_t extsz = strlen(ext);
+    /* strsz must be at least 1 character longer than extsz to continue. */
+    if (strsz <= extsz) {
+        return 0;
+    }
+    /* because of the above check, distance is known to be a positive value. */
+    size_t distance = strsz - extsz;
+    /* return 0 if str does not end in extsz*/
+    if (strncmp(str + distance, ext, extsz) != 0) {
+        return 0;
+    }
+    /* set the beginning of the match to the null byte, to end str early */
+    str[distance] = 0;
+    return 1;
+}
+
+
+/* macro for use in main function only.
+ *
+ * unless -q was passed, print an error message to stderr using a printf-like
+ * interface.
+ *
+ * exit out of main right afterwards, whether or not -q was passed.
+ * */
+#define errorout(...) if (!quiet) {fprintf(stderr, __VA_ARGS__);}\
+    return EXIT_FAILURE
 
 int main(int argc, char* argv[]) {
     int srcFD, dstFD;
     int result;
+    int opt;
+    /* default to empty string. */
+    char *ext = "";
     /* default to false, set to true if -q was passed. */
     bool quiet = false;
     mode_t permissions = _getperms();
-    if (argc < 3) {
-        fputs("Not enough arguments provided.\n", stderr);
-        return 2;
+
+    while ((opt = getopt(argc, argv, "hqe:")) != -1) {
+        switch(opt) {
+            case 'h':
+                _showhelp(stdout, argv[0]);
+                return EXIT_SUCCESS;
+            case 'q':
+                quiet = true;
+                break;
+            case 'e':
+                /* Print an error if ext was already set. */
+                if (strlen(ext) > 0) {
+                    errorout("provided -e multiple times!\n");
+                }
+                ext = optarg;
+                break;
+            case ':': /* -e without an argument */
+                errorout("%c requires an additional argument.\n", optopt);
+            case '?': /* unknown argument */
+                errorout("Unknown argument: %c.\n", optopt);
+        }
     }
 
-    srcFD = open(argv[1], O_RDONLY);
-    if (srcFD < 0) {
-        fputs("Failed to open source file for reading.\n", stderr);
+    if (optind == argc) {
+        fputs("No source files provided.\n", stderr);
         return EXIT_FAILURE;
     }
-    dstFD = open(argv[2], O_WRONLY+O_CREAT+O_TRUNC, permissions);
-    if (dstFD < 0) {
-        fputs("Failed to open destination file for writing.\n", stderr);
-        return EXIT_FAILURE;
+    if (strlen(ext) == 0) {
+        ext = ".bf";
     }
 
-    result = bfCompile(srcFD, dstFD);
-    close(srcFD);
-    close(dstFD);
-    if ((!result) && (!quiet)) {
-        fprintf(
-            stderr,
-            "Failed to compile character %c at line %d, column %d.\n"
-            "Error message: \"%s\"\n",
-            currentInstruction,
-            currentInstructionLine,
-            currentInstructionColumn,
-            errorMessage
-        );
-        remove(argv[2]);
-        return EXIT_FAILURE;
+    for (/* optind already exists */; optind < argc; optind++) {
+
+        srcFD = open(argv[optind], O_RDONLY);
+        if (srcFD < 0) {
+            errorout("Failed to open source file for reading.\n");
+        }
+        if (! _rmext(argv[optind], ext)) {
+            errorout("%s does not end with %s.\n", argv[optind], ext);
+        }
+        dstFD = open(argv[optind], O_WRONLY+O_CREAT+O_TRUNC, permissions);
+        if (dstFD < 0) {
+            errorout("Failed to open destination file for writing.\n");
+        }
+
+        result = bfCompile(srcFD, dstFD);
+        close(srcFD);
+        close(dstFD);
+        if ((!result) && (!quiet)) {
+            remove(argv[optind]);
+            errorout(
+                "%s%s: Failed to compile character %c at line %d, column %d.\n"
+                "Error message: \"%s\"\n",
+                argv[optind], ext, /* sneaky way to hide the editing of argv */
+                currentInstruction,
+                currentInstructionLine,
+                currentInstructionColumn,
+                errorMessage
+            );
+        }
     }
     return EXIT_SUCCESS;
 }
+#undef errorout

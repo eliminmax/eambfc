@@ -39,6 +39,8 @@ To build, simply run `make`. No `make install` target is defined. If you want to
 * [x] remove unused macros and definitions from header files
 * [x] account for umask when creating a file
 * [x] delete output file if compilation fails
+* [x] better command-line interface for the compiler
+* [x] add the ability to compile multiple source files in one run
 
 #### In Progress
 
@@ -54,6 +56,4 @@ To build, simply run `make`. No `make install` target is defined. If you want to
 
 * [ ] automatic testing of brainfuck source files in `test/` directory
 * [ ] make some hard-coded values (like tape size) configurable when building `eambfc`
-* [ ] better command-line interface for the compiler
 * [ ] add a a command-line argument to disable deletion of failed files (for debugging purposes).
-* [ ] add the ability to compile multiple source files in one run
