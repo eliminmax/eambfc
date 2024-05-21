@@ -16,12 +16,8 @@
 /* internal */
 #include "eam_compile.h"
 
-int main(int argc, char* argv[]) {
-    int srcFD, dstFD, result;
-    if (argc < 3) {
-        fputs("Not enough arguments provided.\n", stderr);
-        return 2;
-    }
+/* Return the permission mask to use for the output file */
+mode_t _getperms() {
     /* The umask function sets the file mode creation mask to its argument and
      * returns the previous mask.
      *
@@ -44,6 +40,18 @@ int main(int argc, char* argv[]) {
     if (permissions & S_IROTH) {
         permissions += S_IXOTH;
     }
+    return permissions;
+}
+
+int main(int argc, char* argv[]) {
+    int srcFD, dstFD;
+    int result;
+    mode_t permissions = _getperms();
+    if (argc < 3) {
+        fputs("Not enough arguments provided.\n", stderr);
+        return 2;
+    }
+
     srcFD = open(argv[1], O_RDONLY);
     if (srcFD < 0) {
         fputs("Failed to open source file for reading.\n", stderr);
