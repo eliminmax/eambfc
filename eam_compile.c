@@ -323,7 +323,7 @@ int bfCompileInstruction(char c, int fd) {
 }
 
 /* write code to perform the exit(0) syscall */
-int bfCleanup(int fd) {
+int bfExit(int fd) {
     uint8_t instructionBytes[] = {
         /* set system call register to exit system call number */
         eamasm_setregd(REG_SC_NUM, SYSCALL_EXIT),
@@ -365,7 +365,7 @@ int bfCompile(int inputFD, int outputFD){
     while (read(inputFD, &instruction, 1)) {
         guarded(bfCompileInstruction(instruction, outputFD));
     }
-    guarded(bfCleanup(outputFD));
+    guarded(bfExit(outputFD));
 
     /* now, code size is known, so we can write the headers */
     /* Ehdr and Phdr table are at the start */
