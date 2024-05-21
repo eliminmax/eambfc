@@ -44,6 +44,23 @@ mode_t _getperms() {
     return permissions;
 }
 
+
+/* print the help message to outfile. progname should be argv[0]. */
+void _showhelp(FILE *outfile, char *progname) {
+    fprintf(outfile,
+            "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
+            " -h        - display this help text\n"
+            " -q        - don't print compilation errors.\n"
+            " -e ext    - use 'ext' as the extension for source files instead\n"
+            "             of '.bf' (This program will remove this at the end \n"
+            "             of the input file to create the output file name)\n\n"
+            "Remaining options are treated as source file names. If they don't"
+            "\nend with '.bf' (or the extension specified with '-e'), the \n"
+            "program will abort.\n\n",
+            progname);
+}
+
+
 int main(int argc, char* argv[]) {
     int srcFD, dstFD;
     int result;
