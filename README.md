@@ -12,7 +12,7 @@ Outputs an x86_64 ELF executable that uses Linux system calls. Portability to ot
 
 I am not an experienced C programmer, and this is an attempt to gain practice by writing something somewhat simple yet not trivial.
 
-Currently, it's working in the sense that it compiles the code properly on `amd64` systems, but there a a host of things to do before the project can be considered complete - see [the To-do section](#to-do).
+Currently, it's working in the sense that it compiles the code properly on `amd64` systems, but there a host of things to do before the project can be considered complete - see [the To-do section](#to-do).
 
 ## Usage
 
@@ -56,4 +56,4 @@ To build, simply run `make`. No `make install` target is defined. If you want to
 
 * [ ] automatic testing of brainfuck source files in `test/` directory
 * [ ] make some hard-coded values (like tape size) configurable when building `eambfc`
-* [ ] add a a command-line argument to disable deletion of failed files (for debugging purposes).
+* [ ] add a command-line argument to disable deletion of failed files (for debugging purposes).
