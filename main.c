@@ -19,7 +19,7 @@
 #include "eam_compile.h"
 
 /* Return the permission mask to use for the output file */
-mode_t _getperms() {
+mode_t _getperms(void) {
     /* The umask function sets the file mode creation mask to its argument and
      * returns the previous mask.
      *
