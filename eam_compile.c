@@ -4,6 +4,7 @@
  * */
 
 /* C99 */
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -335,6 +336,17 @@ int bfExit(int fd) {
     writeInstructionBytes();
 }
 
+
+int bfCleanup(int fd) {
+    int ret = bfExit(fd);
+    /* Ehdr and Phdr table are at the start */
+    lseek(fd, 0, SEEK_SET);
+    /* a |= b means a = (a | b) */
+    ret |= writeEhdr(fd);
+    ret |= writePhdrTable(fd);
+    return ret;
+}
+
 /* Takes 2 open file descriptors - inputFD and outputFD.
  * inputFD is a brainfuck source file, open for reading.
  * outputFS is the destination file, open for writing.
@@ -347,7 +359,7 @@ int bfExit(int fd) {
  * them return a falsy value, it aborts, returning 0.
  *
  * If all of the other functions succeeded, it returns 1. */
-int bfCompile(int inputFD, int outputFD){
+int bfCompile(int inputFD, int outputFD, bool keep){
     char instruction;
     /* reset codesize variable used in several macros in eam_compiler_macros */
     codesize = 0;
@@ -363,15 +375,16 @@ int bfCompile(int inputFD, int outputFD){
     guarded(bfInit(outputFD));
 
     while (read(inputFD, &instruction, 1)) {
-        guarded(bfCompileInstruction(instruction, outputFD));
+        if (!bfCompileInstruction(instruction, outputFD)) {
+            if (keep) {
+                bfCleanup(outputFD);
+            }
+            return 0;
+        }
     }
-    guarded(bfExit(outputFD));
+    guarded(bfCleanup(outputFD));
 
     /* now, code size is known, so we can write the headers */
-    /* Ehdr and Phdr table are at the start */
-    lseek(outputFD, 0, SEEK_SET);
-    guarded(writeEhdr(outputFD));
-    guarded(writePhdrTable(outputFD));
     if(JumpStack.index > 0) {
         errorMessage = "Reached the end of the file with an unmatched `[`!";
         return 0;

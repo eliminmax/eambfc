@@ -154,7 +154,7 @@ int main(int argc, char* argv[]) {
         if (dstFD < 0) {
             errorout("Failed to open destination file for writing.\n");
         }
-        result = bfCompile(srcFD, dstFD);
+        result = bfCompile(srcFD, dstFD, keep);
         close(srcFD);
         close(dstFD);
         if ((!result) && (!quiet)) {
