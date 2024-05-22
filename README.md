@@ -58,4 +58,5 @@ To build, simply run `make`. No `make install` target is defined. If you want to
 #### Planned
 
 * [ ] automatic testing of brainfuck source files in `test/` directory
+  * Should be done after the Makefile has been made more portable.
 * [ ] make some hard-coded values (like tape size) configurable when building `eambfc`
