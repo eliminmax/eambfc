@@ -123,8 +123,8 @@ typedef struct {
 
 /* values used for p_flags (segment flags).  */
 
-#define PF_X    (1 << 0)    /* Segment is executable */
-#define PF_W    (1 << 1)    /* Segment is writable */
-#define PF_R    (1 << 2)    /* Segment is readable */
+#define PF_X    1    /* Segment is executable */
+#define PF_W    2    /* Segment is writable */
+#define PF_R    4    /* Segment is readable */
 
 #endif  /* elf.h */
