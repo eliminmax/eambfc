@@ -61,6 +61,8 @@ c99 -D _POSIX_C_SOURCE=200809L eam_compile.c serialize.c main.c -o eambfc
 * [x] better command-line interface for the compiler
 * [x] add the ability to compile multiple source files in one run
 * [x] add a command-line argument to continue on if a source file fails to build
+* [x] add a command-line argument to disable deletion of failed files
+  * [x] write headers if an instruction fails to compile and that option is set
 
 #### In Progress
 
@@ -72,11 +74,14 @@ c99 -D _POSIX_C_SOURCE=200809L eam_compile.c serialize.c main.c -o eambfc
     * [x] ensure multi-byte values are written in an endian-agnostic manner.
     * [x] Bundle `elf.h` - its not always available on POSIX+C99 systems
     * [ ] replace the Makefile with a better, more portable one
-* [x] add a command-line argument to disable deletion of failed files
-  * [ ] write headers if an instruction fails to compile and that option is set
+* [ ] support printing multiple error messages
 
 #### Planned
 
 * [ ] automatic testing of brainfuck source files in `test/` directory
   * Should be done after the Makefile has been made more portable.
 * [ ] make some hard-coded values (like tape size) configurable when building
+
+#### Under Consideration
+
+* [ ] Consider possible small optimizations, like compiling `[-]` as set 0
