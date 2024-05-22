@@ -11,8 +11,10 @@ A non-optimizing compiler for brainfuck, written in C.
 Outputs an x86_64 ELF executable that uses Linux system calls for I/O.
 
 Portability to other *target* platforms is outside of the scope of this project,
-but it should be possible to compile and run `eambfc` itself on any POSIX system
-with a C99 compiler. Please open an issue if that is not the case.
+but it should be possible to compile and run `eambfc` itself on any POSIX\*
+system with a C99 compiler. Please open an issue if that is not the case.
+
+\* *Specifically POSIX.1-2008 with C-Language Development Utilities*
 
 I am not an experienced C programmer, and this is an attempt to gain practice by
 writing something somewhat simple yet not trivial.
@@ -23,7 +25,9 @@ considered complete - see [the To-do section](#to-do).
 
 ## Usage
 
-`./eambfc input.bf`
+```sh
+./eambfc input.bf
+```
 
 ## Building
 
@@ -36,7 +40,7 @@ If you want to add it into your `PATH`, you'll need to do that manually.
 To compile on systems without `gcc`, you could run the following:
 
 ```sh
-c99 eam_compile.c serialize.c main.c -o eambfc
+c99 -D _POSIX_C_SOURCE=200809L eam_compile.c serialize.c main.c -o eambfc
 ```
 
 ## To-do
