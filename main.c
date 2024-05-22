@@ -27,7 +27,7 @@ mode_t _getperms(void) {
      * the default permission for directories is (0777 & ~mask).
      * the default permission for normal files is (0666 & ~mask).
      *
-     * There is no standard way to query the mask.
+     * There is no standard way to query the mask without changing it.
      * Because of this, the proper way to query the mask is to do the following.
      * Seriously. */
     mode_t mask = umask(0022); umask(mask);
@@ -49,19 +49,21 @@ mode_t _getperms(void) {
 /* print the help message to outfile. progname should be argv[0]. */
 void _showhelp(FILE *outfile, char *progname) {
     fprintf(outfile,
-            "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
-            " -h        - display this help text\n"
-            " -q        - don't print compilation errors.\n"
-            " -k        - keep files that failed to compile for debugging\n"
-            " -m        - 'Move ahead' to the next file instead of quitting if\n"
-            "             a file fails to compile\n"
-            " -e ext    - use 'ext' as the extension for source files instead\n"
-            "             of '.bf' (This program will remove this at the end \n"
-            "             of the input file to create the output file name)\n\n"
-            "Remaining options are treated as source file names. If they don't"
-            "\nend with '.bf' (or the extension specified with '-e'), the \n"
-            "program will abort.\n\n",
-            progname);
+        "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
+        " -h        - display this help text\n"
+        " -q        - don't print compilation errors.\n"
+        " -k        - keep files that failed to compile for debugging\n"
+        " -m        - Move ahead to the next file instead of quitting if a\n"
+        "             file fails to compile\n"
+        " -e ext    - (only provide once) use 'ext' as the extension for\n"
+        "             source files instead of '.bf'.\n"
+        "             (This program will remove this at the end of the input\n"
+        "             file to create the output file name)\n\n"
+        "Remaining options are treated as source file names. If they don't\n"
+        "end with '.bf' (or the extension specified with '-e'), the program\n"
+        "will abort.\n\n",
+        progname
+    );
 }
 
 /* check if str ends with ext. If so, remove ext from the end and return a
@@ -85,20 +87,25 @@ int _rmext(char *str, const char *ext) {
 }
 
 
-/* macro for use in main function only.
+/* macros for use in main function only.
+ * showerror:
+ *  * unless -q was passed, print an error message to stderr using fprintf
  *
- * unless -q was passed, print an error message to stderr using a printf-like
- * interface.
- *
- * exit out of main right afterwards, whether or not -q was passed.
- * */
-#define errorout(...) if (!quiet) {fprintf(stderr, __VA_ARGS__);}\
-    return EXIT_FAILURE
+ * filefail:
+ *  * call if compiling a file failed. Depending on moveahead, either
+ *    exit immediately or set the return code to EXIT_FAILURE for later.
+ * 
+ * showhint:
+ *  * unless -q was passed, write the help text to stderr. */
+#define showerror(...) if (!quiet) fprintf(stderr, __VA_ARGS__)
+#define filefail() if (moveahead) ret = EXIT_FAILURE; else return EXIT_FAILURE
+#define showhint() if (!quiet) _showhelp(stderr, argv[0])
 
 int main(int argc, char* argv[]) {
     int srcFD, dstFD;
     int result;
     int opt;
+    int ret = EXIT_SUCCESS;
     /* default to empty string. */
     char *ext = "";
     /* default to false, set to true if relevant argument was passed. */
@@ -107,59 +114,75 @@ int main(int argc, char* argv[]) {
 
     while ((opt = getopt(argc, argv, "hqkme:")) != -1) {
         switch(opt) {
-            case 'h':
-                _showhelp(stdout, argv[0]);
-                return EXIT_SUCCESS;
-            case 'q':
-                quiet = true;
-                break;
-            case 'k':
-                keep = true;
-                break;
-            case 'm':
-                moveahead = true;
-                break;
-            case 'e':
-                /* Print an error if ext was already set. */
-                if (strlen(ext) > 0) {
-                    errorout("provided -e multiple times!\n");
-                }
-                ext = optarg;
-                break;
-            case ':': /* -e without an argument */
-                errorout("%c requires an additional argument.\n", optopt);
-            case '?': /* unknown argument */
-                errorout("Unknown argument: %c.\n", optopt);
+          case 'h':
+            _showhelp(stdout, argv[0]);
+            return EXIT_SUCCESS;
+          case 'q':
+            quiet = true;
+            break;
+          case 'k':
+            keep = true;
+            break;
+          case 'm':
+            moveahead = true;
+            break;
+          case 'e':
+            /* Print an error if ext was already set. */
+            if (strlen(ext) > 0) {
+                showerror("provided -e multiple times!\n");
+                showhint();
+                return EXIT_FAILURE;
+            }
+            ext = optarg;
+            break;
+          case ':': /* -e without an argument */
+            showerror("%c requires an additional argument.\n", optopt);
+            showhint();
+            return EXIT_FAILURE;
+          case '?': /* unknown argument */
+            showerror("Unknown argument: %c.\n", optopt);
+            showhint();
+            return EXIT_FAILURE;
         }
     }
-
     if (optind == argc) {
-        fputs("No source files provided.\n", stderr);
+        showerror("No source files provided.\n");
+        showhint();
         return EXIT_FAILURE;
     }
+
+    /* if no extension was provided, use .bf */
     if (strlen(ext) == 0) {
         ext = ".bf";
     }
 
-    for (/* optind already exists */; optind < argc; optind++) {
-
+    for (/* reusing optind here */; optind < argc; optind++) {
         srcFD = open(argv[optind], O_RDONLY);
         if (srcFD < 0) {
-            errorout("Failed to open source file for reading.\n");
+            showerror("Failed to open %s for reading.\n", argv[optind]);
+            filefail();
         }
         if (! _rmext(argv[optind], ext)) {
-            errorout("%s does not end with %s.\n", argv[optind], ext);
+            showerror("%s does not end with %s.\n", argv[optind], ext);
+            filefail();
         }
         dstFD = open(argv[optind], O_WRONLY+O_CREAT+O_TRUNC, permissions);
         if (dstFD < 0) {
-            errorout("Failed to open destination file for writing.\n");
+            showerror(
+                "Failed to open destination file %s for writing.\n",
+                argv[optind]
+            );
+            if (moveahead) {
+                close(srcFD);
+            } else {
+                return EXIT_FAILURE;
+            }
         }
         result = bfCompile(srcFD, dstFD, keep);
         close(srcFD);
         close(dstFD);
-        if ((!result) && (!quiet)) {
-            fprintf(
-                stderr,
+        if (!result) {
+            showerror(
                 "%s%s: Failed to compile character %c at line %d, column %d.\n"
                 "Error message: \"%s\"\n",
                 argv[optind], ext, /* sneaky way to hide the editing of argv */
@@ -168,14 +191,10 @@ int main(int argc, char* argv[]) {
                 currentInstructionColumn,
                 errorMessage
             );
-            if (!keep) {
-                remove(argv[optind]);
-            }
-            if (!moveahead) {
-                return EXIT_FAILURE;
-            }
+            if (!keep) remove(argv[optind]);
+            filefail();
         }
     }
-    return EXIT_SUCCESS;
+
+    return ret;
 }
-#undef errorout

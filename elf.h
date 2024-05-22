@@ -101,7 +101,7 @@ typedef struct {
 #define EM_X86_64     62   /* AMD x86-64 architecture */
 /* value used for e_version (version).  */
 #define EV_CURRENT    1    /* Current version */
-/* value usef for e_shstrndx (SHDR table index of entry for name string table) */
+/* value used for e_shstrndx (SHDR table index of name string table section) */
 #define SHN_UNDEF     0   /* there is no name string table */
   
 /* Program segment header.  */
