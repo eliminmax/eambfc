@@ -8,11 +8,16 @@ SPDX-License-Identifier: 0BSD
 
 A non-optimizing compiler for brainfuck, written in C.
 
-Outputs an x86_64 ELF executable that uses Linux system calls. Portability to other target platforms is outside of the scope of this project at this time.
+Outputs an x86_64 ELF executable that uses Linux system calls.
+Portability to other target platforms is outside of the scope of this project at
+this time.
 
-I am not an experienced C programmer, and this is an attempt to gain practice by writing something somewhat simple yet not trivial.
+I am not an experienced C programmer, and this is an attempt to gain practice by
+writing something somewhat simple yet not trivial.
 
-Currently, it's working in the sense that it compiles the code properly on `amd64` systems, but there a host of things to do before the project can be considered complete - see [the To-do section](#to-do).
+Currently, it's working in the sense that it compiles the code properly on
+`amd64` systems, but there a host of things to do before the project can be
+considered complete - see [the To-do section](#to-do).
 
 ## Usage
 
@@ -20,9 +25,11 @@ Currently, it's working in the sense that it compiles the code properly on `amd6
 
 ## Building
 
-Use of `gcc` as the C compiler is currently hard-coded into the Makefile. I plan on changing that.
+Use of `gcc` as the C compiler is currently hard-coded into the Makefile.
+I plan on changing that.
 
-To build, simply run `make`. No `make install` target is defined. If you want to add it into your `PATH`, you'll need to do that manually.
+To build, simply run `make`. No `make install` target is defined.
+If you want to add it into your `PATH`, you'll need to do that manually.
 
 ## To-do
 
