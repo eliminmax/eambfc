@@ -53,7 +53,7 @@ void _showhelp(FILE *outfile, char *progname) {
             " -h        - display this help text\n"
             " -q        - don't print compilation errors.\n"
             " -k        - keep files that failed to compile for debugging\n"
-            " -m        - 'Move ahead' to the next file instead of quitting if\n"
+            " -m        - Move ahead to the next file instead of quitting if\n"
             "             a file fails to compile\n"
             " -e ext    - use 'ext' as the extension for source files instead\n"
             "             of '.bf' (This program will remove this at the end \n"
