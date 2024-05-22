@@ -1,20 +1,28 @@
 # SPDX-FileCopyrightText: 2024 Eli Array Minkoff
 #
 # SPDX-License-Identifier: 0BSD
+.POSIX:
 
-build:
-	gcc -Wall -Werror serialize.c eam_compile.c main.c -o eambfc
+PREFIX ?= /usr/local
 
-debug_build:
-	gcc -Wall -Werror -g3 -Og serialize.c eam_compile.c main.c -o eambfc
+CFLAGS += -D _POSIX_C_SOURCE=200809L
 
-strict:
-	gcc -D_POSIX_C_SOURCE=2 -static -pedantic -std=c99 -Wall -Werror serialize.c eam_compile.c main.c -o eambfc
-	clang-16 -D_POSIX_C_SOURCE=2 -static -pedantic -std=c99 -Wall -Werror serialize.c eam_compile.c main.c -o eambfc-clang
-	s390x-linux-gnu-gcc -D_POSIX_C_SOURCE=2 -pedantic -std=c99 -Wall -Werror serialize.c eam_compile.c main.c -o eambfc-s390x
+# POSIX standard tool to compile C99 code, could be any C99-compatible compiler
+# which supports the POSIX-specified options
+CC ?= c99
 
-ubdetect:
-	gcc -D_POSIX_C_SOURCE=2 -pedantic -std=c99 -Wall -Werror -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -fsanitize=float-divide-by-zero -fsanitize=float-cast-overflow -fno-sanitize=null -fno-sanitize=alignment serialize.c eam_compile.c main.c -o eambfc
+PREFIX ?= /usr/local
+
+eambfc: serialize.o eam_compile.o main.o
+	$(CC) $(LDFLAGS) -o eambfc serialize.o eam_compile.o main.o $(LDLIBS)
+
+install: eambfc
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	cp -f eambfc $(DESTDIR)$(PREFIX)/bin
+
+serialize.o: serialize.c
+eam_compile.o: eam_compile.c
+main.o: main.c
 
 clean:
-	rm -f eambfc*
+	rm -f serialize.o eam_compile.o main.o eambfc

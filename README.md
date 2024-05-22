@@ -25,22 +25,36 @@ considered complete - see [the To-do section](#to-do).
 
 ## Usage
 
-```sh
-./eambfc input.bf
+```
+Usage: eambfc [options] <program.bf> [<program2.bf> ...]
+
+ -h        - display this help text
+ -q        - don't print compilation errors.
+ -k        - keep files that failed to compile for debugging
+ -m        - Move ahead to the next file instead of quitting if a
+             file fails to compile
+ -e ext    - (only provide once) use 'ext' as the extension for
+             source files instead of '.bf'.
+             (This program will remove this at the end of the input
+             file to create the output file name)
+
+Remaining options are treated as source file names. If they don't
+end with '.bf' (or the extension specified with '-e'), the program
+will abort.
+
 ```
 
-## Building
-
-Use of `gcc` as the C compiler is currently hard-coded into the Makefile.
-I plan on changing that.
-
-To build, simply run `make`. No `make install` target is defined.
-If you want to add it into your `PATH`, you'll need to do that manually.
-
-To compile on systems without `gcc`, you could run the following:
+## Building and Installing
 
 ```sh
-c99 -D _POSIX_C_SOURCE=200809L eam_compile.c serialize.c main.c -o eambfc
+# Build eambfc
+make
+# install eambfc to /usr/local with sudo
+sudo make install
+# clean previous build and build with an alternative compiler
+make clean; make CC=tcc
+# install to an alternative path
+make PREFIX="$HOME/.local" install
 ```
 
 ## To-do
@@ -63,17 +77,14 @@ c99 -D _POSIX_C_SOURCE=200809L eam_compile.c serialize.c main.c -o eambfc
 * [x] add a command-line argument to continue on if a source file fails to build
 * [x] add a command-line argument to disable deletion of failed files
   * [x] write headers if an instruction fails to compile and that option is set
+* [x] address portability issues
+  * [x] writing Ehdr and Phdr structs and using their sizes should be avoided
+  * [x] ensure multi-byte values are written in an endian-agnostic manner.
+  * [x] Bundle `elf.h` - its not always available on POSIX+C99 systems
+  * [x] replace the Makefile with a better, more portable one
 
 #### In Progress
 
-* [ ] address portability issues - this one will be particularly difficult.
-  * compiled programs may not be portable, but
-  * specific portability issues:
-    * [x] writing Ehdr and Phdr structs and using their sizes should be avoided
-      * struct alignment/padding is not portable.
-    * [x] ensure multi-byte values are written in an endian-agnostic manner.
-    * [x] Bundle `elf.h` - its not always available on POSIX+C99 systems
-    * [ ] replace the Makefile with a better, more portable one
 * [ ] support printing multiple error messages
 
 #### Planned
