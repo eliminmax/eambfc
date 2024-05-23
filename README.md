@@ -95,4 +95,5 @@ make PREFIX="$HOME/.local" install
 
 #### Under Consideration
 
-* [ ] Consider possible small optimizations, like compiling `[-]` as set 0
+* [ ] possible small optimizations, like compiling `[-]` as 'set 0'
+* [ ] extend the jump stack as needed instead of erroring out at > 64 nested
