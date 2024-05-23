@@ -8,6 +8,7 @@
 /* C99 */
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 /* POSIX */
@@ -182,15 +183,17 @@ int main(int argc, char* argv[]) {
         close(srcFD);
         close(dstFD);
         if (!result) {
-            showerror(
-                "%s%s: Failed to compile character %c at line %d, column %d.\n"
-                "Error message: \"%s\"\n",
-                argv[optind], ext, /* sneaky way to hide the editing of argv */
-                currentInstruction,
-                currentInstructionLine,
-                currentInstructionColumn,
-                errorMessage
-            );
+            for(uint8_t i = 0; i < MAX_ERROR && ErrorList[i].active; i++) {
+                showerror(
+                    "%s%s: Failed to compile character %c at line %d, column %d.\n"
+                    "Error message: \"%s\"\n",
+                    argv[optind], ext, /* sneaky way to hide the editing of argv */
+                    ErrorList[i].currentInstruction,
+                    ErrorList[i].currentInstructionLine,
+                    ErrorList[i].currentInstructionColumn,
+                    ErrorList[i].errorMessage
+                );
+            }
             if (!keep) remove(argv[optind]);
             filefail();
         }

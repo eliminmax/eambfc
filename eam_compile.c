@@ -18,10 +18,45 @@
 
 off_t codesize;
 
-/* the currentInstruction{,Line,Column} values are exposed for error messages */
 char currentInstruction;
 unsigned int currentInstructionLine, currentInstructionColumn;
-char *errorMessage;
+
+typedef struct {
+    unsigned int currentInstructionLine;
+    unsigned int currentInstructionColumn;
+    char *errorMessage;
+    char currentInstruction;
+    bool active;
+} BFCompilerError;
+
+#define MAX_ERROR 32
+
+uint8_t errorIndex;
+BFCompilerError ErrorList[MAX_ERROR];
+
+void resetErrors(void) {
+    /* reset error list */
+    for(int i = 0; i < MAX_ERROR; i++) {
+        ErrorList[i].currentInstructionLine = 1;
+        ErrorList[i].currentInstructionColumn = 0;
+        ErrorList[i].errorMessage = "";
+        ErrorList[i].currentInstruction = '\0';
+        ErrorList[i].active = false;
+    }
+    errorIndex = 0;
+}
+
+void appendError(char *errormsg) {
+    uint8_t i = errorIndex++;
+    /* Ensure i is in bounds; discard errors after MAX_ERROR */
+    if (i < MAX_ERROR) {
+        ErrorList[i].errorMessage = errormsg;
+        ErrorList[i].currentInstruction = currentInstruction;
+        ErrorList[i].currentInstructionLine = currentInstructionLine;
+        ErrorList[i].currentInstructionColumn = currentInstructionColumn;
+        ErrorList[i].active = true;
+    }
+}
 
 /* Write the ELF header to the file descriptor fd. */
 int writeEhdr(int fd) {
@@ -219,7 +254,7 @@ int bfJumpOpen (int fd) {
     expectedLocation = (CURRENT_ADDRESS + JUMP_SIZE);
     /* ensure that there are no more than the maximun nesting level */
     if (JumpStack.index >= MAX_NESTING_LEVEL) {
-        errorMessage = "Too many nested loops!";
+        appendError("Too many nested loops!");
         return 0;
     }
     /* push the current address onto the stack */
@@ -239,7 +274,7 @@ int bfJumpClose(int fd) {
 
     /* ensure that the current index is in bounds */
     if (--JumpStack.index < 0) {
-        errorMessage = "Found `]` without matching `[`!";
+        appendError("Found `]` without matching `[`!");
         return 0;
     }
     /* pop the matching `[` instruction's location */
@@ -254,15 +289,15 @@ int bfJumpClose(int fd) {
     };
     /* jump to the skipped `[` instruction, write it, and jump back */
     if (lseek(fd, openAddress, SEEK_SET) != openAddress) {
-        errorMessage = "Failed to return to `[` instruction!";
+        appendError("Failed to return to `[` instruction!");
         return 0;
     }
     if (write(fd, openJumpBytes, JUMP_SIZE) != JUMP_SIZE) {
-        errorMessage = "Failed to compile `[` instruction!";
+        appendError("Failed to compile `[` instruction!");
         return 0;
     }
     if (lseek(fd, closeAddress, SEEK_SET) != closeAddress) {
-        errorMessage = "Failed to return to `]` instruction!";
+        appendError("Failed to return to `]` instruction!");
         return 0;
     }
     uint8_t instructionBytes[] = {
@@ -359,12 +394,16 @@ int bfCleanup(int fd) {
  * them return a falsy value, it aborts, returning 0.
  *
  * If all of the other functions succeeded, it returns 1. */
+#define guarded(thing) if(!(thing)) ret = 0
 int bfCompile(int inputFD, int outputFD, bool keep){
     char instruction;
+    int ret = 1;
     /* reset codesize variable used in several macros in eam_compiler_macros */
     codesize = 0;
     /* reset the jump stack for the new file */
     JumpStack.index = 0;
+    /* reset the error stack for the new file */
+    resetErrors();
     /* reset the current line and column */
     currentInstructionLine = 1;
     currentInstructionColumn = 0;
@@ -375,19 +414,15 @@ int bfCompile(int inputFD, int outputFD, bool keep){
     guarded(bfInit(outputFD));
 
     while (read(inputFD, &instruction, 1)) {
-        if (!bfCompileInstruction(instruction, outputFD)) {
-            if (keep) {
-                bfCleanup(outputFD);
-            }
-            return 0;
-        }
+        guarded(bfCompileInstruction(instruction, outputFD));
     }
+
     guarded(bfCleanup(outputFD));
 
     /* now, code size is known, so we can write the headers */
     if(JumpStack.index > 0) {
-        errorMessage = "Reached the end of the file with an unmatched `[`!";
+        appendError("Reached the end of the file with an unmatched `[`!");
         return 0;
     }
-    return 1;
+    return ret;
 }

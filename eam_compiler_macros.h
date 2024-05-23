@@ -225,10 +225,7 @@
 #define SYSCALL_WRITE 1
 #define SYSCALL_EXIT 60
 
-/* lastly, a few miscellaneous macros to implement repeated elements that
- * shouldn't be within their own functions. */
-/* return a falsy value on failure of a line of code */
-#define guarded(thing) if(!(thing)) return 0
+/* Miscellaneous */
 
 /* common elements to all functions to compile specific instructions
  * each function must do the following:

@@ -23,8 +23,17 @@
 int bfCompile(int inputFD, int outputFD, bool keep);
 
 /* values for use in printing an error message if compilation fails.*/
-extern char currentInstruction;
-extern unsigned int currentInstructionLine, currentInstructionColumn;
-extern char *errorMessage;
+
+typedef struct {
+    unsigned int currentInstructionLine;
+    unsigned int currentInstructionColumn;
+    char *errorMessage;
+    char currentInstruction;
+    bool active;
+} BFCompilerError;
+
+#define MAX_ERROR 32
+
+extern BFCompilerError ErrorList[MAX_ERROR];
 
 #endif /* EAM_COMPILE */
