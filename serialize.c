@@ -2,8 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only */
 
-/* POSIX */
-#include <arpa/inet.h>
 /* C99 */
 #include <stdint.h>
 /* internal */
