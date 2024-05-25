@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+#
+# SPDX-License-Identifier: 0BSD
+
+colortest
+hello
+loop
+null
+rw
+too-many-nested-loops
+truthmachine
+wrap
+wrap2
+
+# test assets
+*.build_err
+can-run
