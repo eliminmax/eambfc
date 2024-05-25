@@ -10,13 +10,6 @@ A non-optimizing compiler for brainfuck, written in C.
 
 Outputs an x86_64 ELF executable that uses Linux system calls for I/O.
 
-Portability to other *target* platforms is outside of the scope of this project,
-but it should be possible to compile and run `eambfc` itself on any POSIX\*
-system with a C99 compiler. Please open an issue if that is not the case.
-
-\* *Specifically POSIX.1-2008. Compilation requires the optional C-Language
-Development Utilities, or at least something similar enough.*
-
 I am not an experienced C programmer, and this is an attempt to gain practice by
 writing something somewhat simple yet not trivial.
 
@@ -45,11 +38,31 @@ will abort.
 
 ```
 
+## Supported platforms
+
+Portability to other *target* platforms is outside of the scope of this project,
+but it should be possible to compile and run `eambfc` itself on any POSIX\*
+system with a C99 compiler. Please open an issue if that is not the case.
+
+\* *Specifically POSIX.1-2008. Compilation requires the optional C-Language
+Development Utilities, or at least something similar enough.*
+
+The test suite consists of a series of brainfuck programs, and a script to
+compare their actual behavior against their expected behavior. Because of this,
+it must be able to run the created binaries, which means that it does not work
+on systems that can't run x86-64 ELF files with Linux system calls. That said, I
+have successfully run the test suite in a FreeBSD VM with
+[Linuxulator](https://docs.freebsd.org/en/books/handbook/linuxemu/) enabled, and
+a Debian 12 "Bookworm" arm64 system with the `qemu-user-binfmt` package
+installed.
+
 ## Building and Installing
 
 ```sh
 # Build eambfc
 make
+# Run the test suite
+make test
 # install eambfc to /usr/local with sudo
 sudo make install
 # clean previous build and build with an alternative compiler
