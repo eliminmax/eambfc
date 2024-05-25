@@ -36,14 +36,15 @@ createminielf: createminielf.o serialize.o eam_compile.o
 	$(CC) $(LDFLAGS) -o $@ serialize.o eam_compile.o $@.o $(LDLIBS)
 minielf: createminielf
 	./createminielf
-can-run-linux-amd64:
-	./minielf
-test:
-	./tests/test.sh
+can-run-linux-amd64: minielf
+	./minielf && touch can-run-linux-amd64
+test: can-run-linux-amd64 eambfc
+	(cd tests; make build-all)
+	tests/test.sh
 
 
 # remove eambfc and the objects it's build from, then remove test artifacts
 clean:
 	rm -f serialize.o eam_compile.o main.o eambfc \
-		createminielf createminielf.o minielf
-	make -f tests/Makefile clean
+		createminielf createminielf.o minielf can-run-linux-amd64
+	(cd tests; make clean)

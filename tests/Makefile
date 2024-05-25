@@ -5,7 +5,7 @@
 
 .POSIX:
 .SUFFIXES: .bf
-.bf: eambfc-exists
+.bf:
 	../eambfc -k $*.bf 2>.$*.build_err && rm .$*.build_err
 
 # build test assets
@@ -24,14 +24,7 @@ too-many-nested-loops: too-many-nested-loops.bf
 # expect to encounter a compiler error for these, don't treat as a failure
 .IGNORE: too-many-nested-loops
 
-eambfc-exists:
-	@[ -e ../eambfc ]
-
-can-run:
-	[ -e ../minielf ]
-	../minielf && touch can-run
-
 clean:
-	rm -f .*.build_err can-run \
+	rm -f .*.build_err \
 		hello rw loop null wrap wrap2 colortest truthmachine \
 		too-many-nested-loops

@@ -10,3 +10,4 @@ eambfc
 # some test assets and tools that are generated locally
 createminielf
 minielf
+can-run-linux-amd64

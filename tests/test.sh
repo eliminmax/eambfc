@@ -9,11 +9,6 @@ set -eu
 
 cd "$(dirname "$0")"
 
-( cd .. && make -s eambfc minielf )
-
-# if this runs successfully, we can run ELF files properly.
-make -s build-all can-run
-
 # now we should be properly set up, and can run tests properly
 # don't exit on error anymore
 set +e
