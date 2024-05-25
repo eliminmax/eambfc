@@ -6,3 +6,7 @@
 # ignore the compiled binary
 eambfc
 *.o
+
+# some test assets and tools that are generated locally
+createminielf
+minielf
