@@ -30,7 +30,8 @@ main.o: main.c
 # not enough to check the architecture and kernel, because other systems might
 # be able to emulate the architecture and/or system call interface.
 # For an example of the former, see Linux on 64-bit ARM with qemu + binfmt_misc
-# Fir an example of the latter, see FreeBSD's Linux syscall emulation.
+# For an example of the latter, see FreeBSD's Linux syscall emulation.
+# `make test` works in both of those example cases
 createminielf.o: createminielf.c
 createminielf: createminielf.o serialize.o eam_compile.o
 	$(CC) $(LDFLAGS) -o $@ serialize.o eam_compile.o $@.o $(LDLIBS)
