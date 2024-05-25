@@ -73,8 +73,9 @@ done
 
 # pipe through `od` to ensure it can be handled cleanly as text
 # and is encoded the same way as it is in $bvs, including the leading space
+# on some `od` implementations, extra spaces might be added, so `sed` them away
 output_bvs="$(for bv in $bvs; do printf '%b' "\\0$bv" | ./rw; done |\
-        od -to1 -An | tr -d '\n')"
+        od -to1 -An | tr -d '\n' | sed 's/  */ /g')"
 
 total=$((total+1))
 if [ "$bvs" = "$output_bvs" ]; then
