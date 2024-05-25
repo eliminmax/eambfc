@@ -87,11 +87,12 @@ make PREFIX="$HOME/.local" install
 #### In Progress
 
 * [ ] support printing multiple error messages
+* [ ] automatic testing of brainfuck source files in `test/` directory
+  * Mostly complete, but doesn't check if the right compilation error occurs
+    * will hold off on completing that until mulit-error support is implemented
 
 #### Planned
 
-* [ ] automatic testing of brainfuck source files in `test/` directory
-  * Should be done after the Makefile has been made more portable.
 * [ ] make some hard-coded values (like tape size) configurable when building
 
 #### Under Consideration
