@@ -24,5 +24,26 @@ serialize.o: serialize.c
 eam_compile.o: eam_compile.c
 main.o: main.c
 
+# for testing
+#
+# can we run x86-64 Linux binaries properly?
+# not enough to check the architecture and kernel, because other systems might
+# be able to emulate the architecture and/or system call interface.
+# For an example of the former, see Linux on 64-bit ARM with qemu + binfmt_misc
+# Fir an example of the latter, see FreeBSD's Linux syscall emulation.
+createminielf.o: createminielf.c
+createminielf: createminielf.o serialize.o eam_compile.o
+	$(CC) $(LDFLAGS) -o $@ serialize.o eam_compile.o $@.o $(LDLIBS)
+minielf: createminielf
+	./createminielf
+can-run-linux-amd64:
+	./minielf
+test:
+	./tests/test.sh
+
+
+# remove eambfc and the objects it's build from, then remove test artifacts
 clean:
-	rm -f serialize.o eam_compile.o main.o eambfc
+	rm -f serialize.o eam_compile.o main.o eambfc \
+		createminielf createminielf.o minielf
+	make -f tests/Makefile clean
