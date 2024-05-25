@@ -14,7 +14,8 @@ Portability to other *target* platforms is outside of the scope of this project,
 but it should be possible to compile and run `eambfc` itself on any POSIX\*
 system with a C99 compiler. Please open an issue if that is not the case.
 
-\* *Specifically POSIX.1-2008. Compilation requires the optional C-Language Development Utilities, or at least something similar enough.*
+\* *Specifically POSIX.1-2008. Compilation requires the optional C-Language
+Development Utilities, or at least something similar enough.*
 
 I am not an experienced C programmer, and this is an attempt to gain practice by
 writing something somewhat simple yet not trivial.
