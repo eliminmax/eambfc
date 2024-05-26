@@ -6,7 +6,7 @@
 .POSIX:
 .SUFFIXES: .bf
 .bf:
-	../eambfc -k $*.bf 2>.$*.build_err && rm .$*.build_err
+	../eambfc -kj $*.bf 2>.$*.build_err && rm .$*.build_err
 
 # build test assets
 build-all: hello loop null rw wrap wrap2 colortest truthmachine \
