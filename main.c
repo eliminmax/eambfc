@@ -175,8 +175,8 @@ int main(int argc, char* argv[]) {
             showerror("{\"errorId\":\"NO_SOURCE_FILES\"}\n");
         } else {
             showerror("No source files provided.\n");
+            showhint();
         }
-        showhint();
         return EXIT_FAILURE;
     }
 
