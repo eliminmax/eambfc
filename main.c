@@ -190,7 +190,7 @@ int main(int argc, char* argv[]) {
         if (srcFD < 0) {
             if (json) {
                 showerror(
-                    "{\"errorId\":\"OPEN_R_FAILED\",\"file\"%s\"}\n",
+                    "{\"errorId\":\"OPEN_R_FAILED\",\"file\":\"%s\"}\n",
                     argv[optind]
                 );
             } else {
