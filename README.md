@@ -24,6 +24,8 @@ Usage: eambfc [options] <program.bf> [<program2.bf> ...]
 
  -h        - display this help text
  -q        - don't print compilation errors.
+ -j        - print compilation errors in JSON-like format.
+             (should be JSON compatible for *sensible* filenames.)
  -k        - keep files that failed to compile for debugging
  -m        - Move ahead to the next file instead of quitting if a
              file fails to compile
@@ -105,6 +107,7 @@ make PREFIX="$HOME/.local" install
   * Mostly complete, but doesn't check if the right compilation error occurs
     * will implement that after adding JSON error messages
 * [ ] add `-j` flag to write errors in JSON-compatible format
+  * currently JSON-compatible if there are no bad characters in file names
 
 #### Planned
 

@@ -5,6 +5,7 @@
 
 /* C99 */
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -24,6 +25,7 @@ unsigned int currentInstructionLine, currentInstructionColumn;
 typedef struct {
     unsigned int currentInstructionLine;
     unsigned int currentInstructionColumn;
+    char *errorId;
     char *errorMessage;
     char currentInstruction;
     bool active;
@@ -39,6 +41,7 @@ void resetErrors(void) {
     for(int i = 0; i < MAX_ERROR; i++) {
         ErrorList[i].currentInstructionLine = 1;
         ErrorList[i].currentInstructionColumn = 0;
+        ErrorList[i].errorId = "";
         ErrorList[i].errorMessage = "";
         ErrorList[i].currentInstruction = '\0';
         ErrorList[i].active = false;
@@ -46,11 +49,12 @@ void resetErrors(void) {
     errorIndex = 0;
 }
 
-void appendError(char *errormsg) {
+void appendError(char *errormsg, char *errorId) {
     uint8_t i = errorIndex++;
     /* Ensure i is in bounds; discard errors after MAX_ERROR */
     if (i < MAX_ERROR) {
         ErrorList[i].errorMessage = errormsg;
+        ErrorList[i].errorId = errorId;
         ErrorList[i].currentInstruction = currentInstruction;
         ErrorList[i].currentInstructionLine = currentInstructionLine;
         ErrorList[i].currentInstructionColumn = currentInstructionColumn;
@@ -254,7 +258,10 @@ int bfJumpOpen (int fd) {
     expectedLocation = (CURRENT_ADDRESS + JUMP_SIZE);
     /* ensure that there are no more than the maximun nesting level */
     if (JumpStack.index >= MAX_NESTING_LEVEL) {
-        appendError("Too many nested loops!");
+        appendError(
+            "Too many nested loops!",
+            "OVERFLOW"
+        );
         return 0;
     }
     /* push the current address onto the stack */
@@ -274,7 +281,10 @@ int bfJumpClose(int fd) {
 
     /* ensure that the current index is in bounds */
     if (--JumpStack.index < 0) {
-        appendError("Found `]` without matching `[`!");
+        appendError(
+            "Found `]` without matching `[`!",
+            "UNMATCHED_CLOSE"
+        );
         return 0;
     }
     /* pop the matching `[` instruction's location */
@@ -289,15 +299,24 @@ int bfJumpClose(int fd) {
     };
     /* jump to the skipped `[` instruction, write it, and jump back */
     if (lseek(fd, openAddress, SEEK_SET) != openAddress) {
-        appendError("Failed to return to `[` instruction!");
+        appendError(
+            "Failed to return to `[` instruction!",
+            "FAILED_SEEK"
+        );
         return 0;
     }
     if (write(fd, openJumpBytes, JUMP_SIZE) != JUMP_SIZE) {
-        appendError("Failed to compile `[` instruction!");
+        appendError(
+            "Failed to compile `[` instruction!",
+            "FAILED_WRITE"
+        );
         return 0;
     }
     if (lseek(fd, closeAddress, SEEK_SET) != closeAddress) {
-        appendError("Failed to return to `]` instruction!");
+        appendError(
+            "Failed to return to `]` instruction!",
+            "FAILED_WRITE"
+        );
         return 0;
     }
     uint8_t instructionBytes[] = {
@@ -421,7 +440,10 @@ int bfCompile(int inputFD, int outputFD, bool keep){
 
     /* now, code size is known, so we can write the headers */
     if(JumpStack.index > 0) {
-        appendError("Reached the end of the file with an unmatched `[`!");
+        appendError(
+            "Reached the end of the file with an unmatched `[`!",
+            "UNMATCHED_OPEN"
+        );
         return 0;
     }
     return ret;

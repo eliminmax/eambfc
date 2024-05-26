@@ -53,6 +53,8 @@ void _showhelp(FILE *outfile, char *progname) {
         "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
         " -h        - display this help text\n"
         " -q        - don't print compilation errors.\n"
+        " -j        - print compilation errors in JSON-like format.\n"
+        "             (should be JSON compatible for *sensible* filenames.)\n"
         " -k        - keep files that failed to compile for debugging\n"
         " -m        - Move ahead to the next file instead of quitting if a\n"
         "             file fails to compile\n"
@@ -110,16 +112,19 @@ int main(int argc, char* argv[]) {
     /* default to empty string. */
     char *ext = "";
     /* default to false, set to true if relevant argument was passed. */
-    bool quiet = false, keep = false, moveahead = false;
+    bool quiet = false, keep = false, moveahead = false, json = false;
     mode_t permissions = _getperms();
 
-    while ((opt = getopt(argc, argv, "hqkme:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hqjkme:")) != -1) {
         switch(opt) {
           case 'h':
             _showhelp(stdout, argv[0]);
             return EXIT_SUCCESS;
           case 'q':
             quiet = true;
+            break;
+          case 'j':
+            json = true;
             break;
           case 'k':
             keep = true;
@@ -130,24 +135,47 @@ int main(int argc, char* argv[]) {
           case 'e':
             /* Print an error if ext was already set. */
             if (strlen(ext) > 0) {
-                showerror("provided -e multiple times!\n");
-                showhint();
+                if (json) {
+                    showerror("{\"errorId\":\"MULTIPLE_EXTENSIONS\"}\n");
+                } else {
+                    showerror("provided -e multiple times!\n");
+                    showhint();
+                }
                 return EXIT_FAILURE;
             }
             ext = optarg;
             break;
           case ':': /* -e without an argument */
-            showerror("%c requires an additional argument.\n", optopt);
-            showhint();
+            if (json) {
+                showerror(
+                    "{\"errorId\":\"MISSING_OPERAND\","
+                    "\"argument\":\"%c\"}\n",
+                    optopt
+                );
+            } else {
+                showerror("%c requires an additional argument.\n", optopt);
+                showhint();
+            }
             return EXIT_FAILURE;
           case '?': /* unknown argument */
-            showerror("Unknown argument: %c.\n", optopt);
-            showhint();
+            if (json) {
+                showerror(
+                    "{\"errorId\":\"UNKNOWN_ARG\",\"argument\":\"%c\"}\n",
+                    optopt
+                );
+            } else {
+                showerror("Unknown argument: %c.\n", optopt);
+                showhint();
+            }
             return EXIT_FAILURE;
         }
     }
     if (optind == argc) {
-        showerror("No source files provided.\n");
+        if (json) {
+            showerror("{\"errorId\":\"NO_SOURCE_FILES\"}\n");
+        } else {
+            showerror("No source files provided.\n");
+        }
         showhint();
         return EXIT_FAILURE;
     }
@@ -160,19 +188,40 @@ int main(int argc, char* argv[]) {
     for (/* reusing optind here */; optind < argc; optind++) {
         srcFD = open(argv[optind], O_RDONLY);
         if (srcFD < 0) {
-            showerror("Failed to open %s for reading.\n", argv[optind]);
+            if (json) {
+                showerror(
+                    "{\"errorId\":\"OPEN_R_FAILED\",\"file\"%s\"}\n",
+                    argv[optind]
+                );
+            } else {
+                showerror("Failed to open %s for reading.\n", argv[optind]);
+            }
             filefail();
         }
         if (! _rmext(argv[optind], ext)) {
-            showerror("%s does not end with %s.\n", argv[optind], ext);
+            if (json) {
+                showerror(
+                    "{\"errorId\":\"BAD_EXTENSION\",\"file\":\"%s%s\"}\n",
+                    argv[optind], ext
+                );
+            } else {
+                showerror("%s does not end with %s.\n", argv[optind], ext);
+            }
             filefail();
         }
         dstFD = open(argv[optind], O_WRONLY+O_CREAT+O_TRUNC, permissions);
         if (dstFD < 0) {
-            showerror(
-                "Failed to open destination file %s for writing.\n",
-                argv[optind]
-            );
+            if (json) {
+                showerror(
+                    "{\"errorId\":\"OPEN_W_FAILED\",\"file\":\"%s%s\"}\n",
+                    argv[optind], ext
+                );
+            } else {
+                showerror(
+                    "Failed to open destination file %s for writing.\n",
+                    argv[optind]
+                );
+            }
             if (moveahead) {
                 close(srcFD);
             } else {
@@ -184,15 +233,28 @@ int main(int argc, char* argv[]) {
         close(dstFD);
         if (!result) {
             for(uint8_t i = 0; i < MAX_ERROR && ErrorList[i].active; i++) {
-                showerror(
-                    "%s%s: Failed to compile character %c at line %d, column %d.\n"
-                    "Error message: \"%s\"\n",
-                    argv[optind], ext, /* sneaky way to hide the editing of argv */
-                    ErrorList[i].currentInstruction,
-                    ErrorList[i].currentInstructionLine,
-                    ErrorList[i].currentInstructionColumn,
-                    ErrorList[i].errorMessage
-                );
+                if (json) {
+                    showerror(
+                        "{\"errorId\":\"%s\",\"file\":\"%s%s\",\"line\":%d,"
+                        "\"column\":%d}\n",
+                        ErrorList[i].errorId,
+                        argv[optind], ext,
+                        ErrorList[i].currentInstructionLine,
+                        ErrorList[i].currentInstructionColumn
+                    );
+                } else {
+                    showerror(
+                        "%s%s: Failed to compile '%c' at line %d, column %d.\n"
+                        "Error ID: %s\n"
+                        "Error message: \"%s\"\n",
+                        argv[optind], ext,
+                        ErrorList[i].currentInstruction,
+                        ErrorList[i].currentInstructionLine,
+                        ErrorList[i].currentInstructionColumn,
+                        ErrorList[i].errorId,
+                        ErrorList[i].errorMessage
+                    );
+                }
             }
             if (!keep) remove(argv[optind]);
             filefail();
