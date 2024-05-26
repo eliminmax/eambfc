@@ -97,16 +97,17 @@ make PREFIX="$HOME/.local" install
   * [x] Bundle `elf.h` - its not always available on POSIX+C99 systems
   * [x] replace the Makefile with a better, more portable one
 * [x] support printing multiple error messages
+* [x] include machine-readable error IDs in error messages
 
 #### In Progress
 
 * [ ] automatic testing of brainfuck source files in `test/` directory
   * Mostly complete, but doesn't check if the right compilation error occurs
-    * will implement that after adding machine-readable IDs
+    * will implement that after adding JSON error messages
+* [ ] add `-j` flag to write errors in JSON-compatible format
 
 #### Planned
 
-* [ ] include machine-readable error IDs in error messages
 * [ ] make some hard-coded values (like tape size) configurable when building
 
 #### Under Consideration
