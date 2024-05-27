@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: 0BSD
 
+alternative-extension
 colortest
 hello
 loop

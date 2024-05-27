@@ -44,6 +44,7 @@ test_error () {
     fi
 }
 
+test_simple alternative-extension '1639980005 14'
 test_simple colortest '1395950558 3437'
 test_simple hello '1639980005 14'
 test_simple loop '159651250 1'
