@@ -100,12 +100,10 @@ make PREFIX="$HOME/.local" install
   * [x] replace the Makefile with a better, more portable one
 * [x] support printing multiple error messages
 * [x] include machine-readable error IDs in error messages
+* [x] automatic testing of brainfuck source files in `test/` directory
 
 #### In Progress
 
-* [ ] automatic testing of brainfuck source files in `test/` directory
-  * Mostly complete, but doesn't check if the right compilation error occurs
-    * will implement that after adding JSON error messages
 * [ ] add `-j` flag to write errors in JSON-compatible format
   * currently JSON-compatible if there are no bad characters in file names
 
