@@ -110,6 +110,9 @@ make PREFIX="$HOME/.local" install
 #### Planned
 
 * [ ] make some hard-coded values (like tape size) configurable when building
+* [ ] add tests for additional errors
+* [ ] add script to build with different compilers and compiler flags
+  * this should hopefully catch any undefined behavior or portability issues
 
 #### Under Consideration
 
