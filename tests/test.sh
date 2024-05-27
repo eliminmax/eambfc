@@ -32,18 +32,29 @@ test_simple () {
 # a lot like test_simple, but this time, instead of testing the binary, check
 # that the error message matches the expectation
 test_error () {
+    f="$1"
     total=$((total+1))
     errfile=".$1.build_err"
+    shift
     if ! [ -e "$errfile" ]; then
         printf 'FAIL - missing expected build error file: %s\n' "$errfile"
         fails=$((fails+1))
     else
-        # TODO: Test for specific error instead of assuming success
-        printf 'SUCCESS - hit expected compilation error for %s\n' "$1"
-        successes=$((successes+1))
+        error_codes="$(sed 's/.*"errorId":"\([^"]*\).*/\1/' "$errfile" |\
+        sort -u | xargs)"
+        # I'd rather write this hackery instead of requiring a tool like jq or
+        # a JSON parsing library for the test suite
+        if [ "$error_codes" = "$*" ]; then
+            printf 'SUCCESS - hit expected compilation errors for %s\n' "$f"
+            successes=$((successes+1))
+        else
+            printf 'FAIL - mismatched errors for %s\n' "$f"
+            fails=$((fails+1))
+        fi
     fi
 }
 
+test_simple alternative-extension '1639980005 14'
 test_simple colortest '1395950558 3437'
 test_simple hello '1639980005 14'
 test_simple loop '159651250 1'
@@ -51,7 +62,8 @@ test_simple null '4294967295 0'
 test_simple wrap '781852651 4'
 test_simple wrap2 '1742477431 4'
 
-test_error too-many-nested-loops
+# ensure that the proper errors were encountered
+test_error too-many-nested-loops OVERFLOW UNMATCHED_CLOSE
 
 
 # lastly, some special cases

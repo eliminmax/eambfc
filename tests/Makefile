@@ -10,7 +10,7 @@
 
 # build test assets
 build-all: hello loop null rw wrap wrap2 colortest truthmachine \
-	too-many-nested-loops
+	too-many-nested-loops alternative-extension
 
 hello: hello.bf
 loop: loop.bf
@@ -20,6 +20,10 @@ wrap2: wrap2.bf
 colortest: colortest.bf
 truthmachine: truthmachine.bf
 too-many-nested-loops: too-many-nested-loops.bf
+# test support for alternative extensions
+alternative-extension:
+	../eambfc -kj -e .brnfck alternative-extension.brnfck
+
 
 # expect to encounter a compiler error for these, don't treat as a failure
 .IGNORE: too-many-nested-loops
@@ -27,4 +31,4 @@ too-many-nested-loops: too-many-nested-loops.bf
 clean:
 	rm -f .*.build_err \
 		hello rw loop null wrap wrap2 colortest truthmachine \
-		too-many-nested-loops
+		too-many-nested-loops alternative-extension
