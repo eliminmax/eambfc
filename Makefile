@@ -40,7 +40,7 @@ minielf: createminielf
 can-run-linux-amd64: minielf
 	./minielf && touch can-run-linux-amd64
 test: can-run-linux-amd64 eambfc
-	(cd tests; make build-all)
+	(cd tests; make clean build-all)
 	tests/test.sh
 
 
