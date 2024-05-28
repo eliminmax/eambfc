@@ -101,12 +101,12 @@ make PREFIX="$HOME/.local" install
 * [x] support printing multiple error messages
 * [x] include machine-readable error IDs in error messages
 * [x] automatic testing of brainfuck source files in `test/` directory
+* [x] add tests for additional errors
 
 #### In Progress
 
 * [ ] add `-j` flag to write errors in JSON-compatible format
   * currently JSON-compatible if there are no bad characters in file names
-* [ ] add tests for additional errors
 
 #### Planned
 
