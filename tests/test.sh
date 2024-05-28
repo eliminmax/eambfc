@@ -103,6 +103,9 @@ rm -f hello.b
 
 # compiler errors
 test_error too-many-nested-loops OVERFLOW UNMATCHED_CLOSE
+test_error unmatched-close UNMATCHED_CLOSE
+test_error unmatched-open UNMATCHED_OPEN
+test_error unseekable FAILED_SEEK
 
 # lastly, some special cases that need some more work
 
