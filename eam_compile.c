@@ -315,7 +315,7 @@ int bfJumpClose(int fd) {
     if (lseek(fd, closeAddress, SEEK_SET) != closeAddress) {
         appendError(
             "Failed to return to `]` instruction!",
-            "FAILED_WRITE"
+            "FAILED_SEEK"
         );
         return 0;
     }
@@ -428,7 +428,13 @@ int bfCompile(int inputFD, int outputFD, bool keep){
     currentInstructionColumn = 0;
 
     /* skip the headers until we know the code size */
-    lseek(outputFD, START_PADDR, SEEK_SET);
+    if (lseek(outputFD, START_PADDR, SEEK_SET) != START_PADDR) {
+        appendError(
+            "Could not seek to start of code. Output may be a FIFO.",
+            "FAILED_SEEK"
+        ); 
+        return 0;
+    }
 
     guarded(bfInit(outputFD));
 
