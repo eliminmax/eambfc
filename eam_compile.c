@@ -381,7 +381,8 @@ bool bfCompileInstruction(char c, int fd) {
             /* add 1 to the line number and reset the column. */
             currentInstructionLine++;
             currentInstructionColumn = 0;
-            /* Don't break here, as the default should also run. */
+            ret = 1;
+            break;
         default:
             /* any other characters are comments, silently continue. */
             ret = 1;
