@@ -64,7 +64,6 @@ void appendError(char *errormsg, char *errorId) {
 
 bool writeBytes(int fd, const void * bytes, ssize_t expected_size) {
     ssize_t written = write(fd, bytes, expected_size);
-    codesize += written;
     if (written != expected_size) {
         appendError("Failed to write instruction bytes", "FAILED_WRITE");
         return false;
@@ -211,6 +210,7 @@ bool bfInit(int fd) {
     uint8_t instructionBytes[] = {
         eamasm_setregd(REG_BF_POINTER, TAPE_ADDRESS)
     };
+    codesize += sizeof(instructionBytes);
     return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
@@ -221,6 +221,7 @@ bool bfOffset(int fd, uint8_t direction, uint8_t addressMode) {
     uint8_t instructionBytes[] = {
         eamasm_offset(direction, addressMode, REG_BF_POINTER)
     };
+    codesize += sizeof(instructionBytes);
     return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
@@ -248,6 +249,7 @@ bool bfIO(int fd, int bfFD, int sc) {
         /* perform a system call */
         eamasm_syscall()
     };
+    codesize += sizeof(instructionBytes);
     return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
@@ -333,6 +335,7 @@ bool bfJumpClose(int fd) {
         /* jump to right after the `[` instruction, to skip a redundant check */
         eamasm_jump_not_zero(REG_BF_POINTER, -distance)
     };
+    codesize += sizeof(instructionBytes);
     return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
@@ -397,6 +400,7 @@ bool bfExit(int fd) {
         /* perform a system call */
         eamasm_syscall()
     };
+    codesize += sizeof(instructionBytes);
     return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
