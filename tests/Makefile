@@ -3,15 +3,19 @@
 # SPDX-License-Identifier: 0BSD
 # vi: noet sw=4 ts=4 sts=4 cc=81
 
+EAMBFC ?= ../eambfc
 .POSIX:
 .SUFFIXES: .bf
 .bf:
-	../eambfc -kj $*.bf 2>.$*.build_err && rm .$*.build_err
+	$(EAMBFC) -kj $*.bf 2>.$*.build_err && rm .$*.build_err
 
 # build test assets
 build-all: hello loop null rw wrap wrap2 colortest truthmachine \
 	too-many-nested-loops unmatched-close unmatched-open \
 	unseekable alternative-extension
+
+test: clean build-all
+	./test.sh $(EAMBFC)
 
 hello: hello.bf
 loop: loop.bf
@@ -26,11 +30,11 @@ unmatched-open: unmatched-open.bf
 # test error from unseekable outputs
 unseekable:
 	mkfifo unseekable
-	(../eambfc -kj unseekable.bf & tail unseekable >/dev/null; wait) \
+	($(EAMBFC) -kj unseekable.bf & tail unseekable >/dev/null; wait) \
 		2>.unseekable.build_err
 # test support for alternative extensions
 alternative-extension:
-	../eambfc -kj -e .brnfck alternative-extension.brnfck
+	$(EAMBFC) -kj -e .brnfck alternative-extension.brnfck
 
 
 # expect to encounter a compiler error for these, don't treat as a failure

@@ -9,6 +9,9 @@ set -eu
 
 cd "$(dirname "$0")"
 
+# default to normal eambfc build
+EAMBFC="${1:-../eambfc}"
+
 # now we should be properly set up, and can run tests properly
 # don't exit on error anymore
 set +e
@@ -60,7 +63,7 @@ test_arg_error () {
     total=$((total+1))
     err_codes="$1"; shift
     cond="$1"; shift
-    if [ "$(../eambfc -j "$@" 2>&1 | sed "$errid_pat")" = "$err_codes" ]; then
+    if [ "$("$EAMBFC" -j "$@" 2>&1 | sed "$errid_pat")" = "$err_codes" ]; then
         printf 'SUCCESS - proper error id when %s.\n' "$cond"
         successes=$((successes+1))
     else

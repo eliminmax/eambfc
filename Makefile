@@ -40,8 +40,7 @@ minielf: createminielf
 can-run-linux-amd64: minielf
 	./minielf && touch can-run-linux-amd64
 test: can-run-linux-amd64 eambfc
-	(cd tests; make clean build-all)
-	tests/test.sh
+	(cd tests; make clean test)
 
 
 # remove eambfc and the objects it's build from, then remove test artifacts
