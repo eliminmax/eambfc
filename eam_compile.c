@@ -413,7 +413,6 @@ int bfCleanup(int fd) {
  * them return a falsy value, it aborts, returning 0.
  *
  * If all of the other functions succeeded, it returns 1. */
-#define guarded(thing) if(!(thing)) ret = 0
 int bfCompile(int inputFD, int outputFD, bool keep){
     char instruction;
     int ret = 1;
@@ -433,16 +432,26 @@ int bfCompile(int inputFD, int outputFD, bool keep){
             "Could not seek to start of code. Output may be a FIFO.",
             "FAILED_SEEK"
         );
+        /* FAILED_SEEK - abort immediately. */
         return 0;
     }
 
-    guarded(bfInit(outputFD));
-
-    while (read(inputFD, &instruction, 1)) {
-        guarded(bfCompileInstruction(instruction, outputFD));
+    if (!bfInit(outputFD)) {
+        appendError(
+            "Failed to write initial setup instructions.",
+            "FAILED_WRITE"
+        );
+        ret = 0;
     }
 
-    guarded(bfCleanup(outputFD));
+    while (read(inputFD, &instruction, 1)) {
+        /* the appropriate error message(s) are already appended */
+        if (!bfCompileInstruction(instruction, outputFD)) ret = 0;
+    }
+
+
+    /* the appropriate error message(s) are already appended */
+    if (!bfCleanup(outputFD)) ret = 0;;
 
     /* now, code size is known, so we can write the headers */
     if(JumpStack.index > 0) {
