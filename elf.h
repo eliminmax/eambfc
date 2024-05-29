@@ -2,7 +2,7 @@
  *
  * SPDX-FileCopyrightText: 2024 Eli Array Minkoff
  *
- * SPDX-License-Identifier: LGPL-2.1-or-later 
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  *
  * This file contains some macros and typedefs from glibc's `elf.h`
  *
@@ -103,7 +103,7 @@ typedef struct {
 #define EV_CURRENT    1    /* Current version */
 /* value used for e_shstrndx (SHDR table index of name string table section) */
 #define SHN_UNDEF     0   /* there is no name string table */
-  
+
 /* Program segment header.  */
 
 typedef struct {

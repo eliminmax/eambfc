@@ -18,6 +18,7 @@
 #include <unistd.h>
 /* internal */
 #include "eam_compile.h"
+#include "json_escape.h"
 
 /* Return the permission mask to use for the output file */
 mode_t _getperms(void) {
@@ -97,7 +98,7 @@ int _rmext(char *str, const char *ext) {
  * filefail:
  *  * call if compiling a file failed. Depending on moveahead, either
  *    exit immediately or set the return code to EXIT_FAILURE for later.
- * 
+ *
  * showhint:
  *  * unless -q was passed, write the help text to stderr. */
 #define showerror(...) if (!quiet) fprintf(stderr, __VA_ARGS__)

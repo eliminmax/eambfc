@@ -27,7 +27,7 @@ int bfCompile(int inputFD, int outputFD, bool keep);
 typedef struct {
     unsigned int currentInstructionLine;
     unsigned int currentInstructionColumn;
-    char *errorId; 
+    char *errorId;
     char *errorMessage;
     char currentInstruction;
     bool active;

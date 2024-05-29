@@ -140,7 +140,7 @@ int writeEhdr(int fd) {
     /* e_flags has a processor-specific meaning. For x86_64, no values are
      * defined, and it should be set to 0. */
     header.e_flags = 0;
-    
+
     serializeEhdr64(&header, headerBytes);
     return write(fd, &headerBytes, EHDR_SIZE) == EHDR_SIZE;
 }
@@ -432,7 +432,7 @@ int bfCompile(int inputFD, int outputFD, bool keep){
         appendError(
             "Could not seek to start of code. Output may be a FIFO.",
             "FAILED_SEEK"
-        ); 
+        );
         return 0;
     }
 
