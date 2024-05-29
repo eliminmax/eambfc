@@ -62,7 +62,7 @@ void appendError(char *errormsg, char *errorId) {
     }
 }
 
-inline bool writeBytes(int fd, uint8_t bytes[], ssize_t expected_size) {
+bool writeBytes(int fd, const void * bytes, ssize_t expected_size) {
     ssize_t written = write(fd, bytes, expected_size);
     codesize += written;
     if (written != expected_size) {
