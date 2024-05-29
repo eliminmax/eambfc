@@ -44,7 +44,7 @@ typedef uint64_t Elf64_Off;     /* Type of file offsets.  */
 
 /* The ELF file header.  This appears at the start of every ELF file.  */
 
-#define EI_NIDENT (16)
+#define EI_NIDENT 16
 
 typedef struct {
     unsigned char e_ident[EI_NIDENT]; /* Magic number and other info */
