@@ -62,7 +62,7 @@ void appendError(char *errormsg, char *errorId) {
     }
 }
 
-bool writeBytes(int fd, char bytes[], ssize_t expected_size) {
+inline bool writeBytes(int fd, uint8_t bytes[], ssize_t expected_size) {
     ssize_t written = write(fd, bytes, expected_size);
     codesize += written;
     if (written != expected_size) {
@@ -211,7 +211,7 @@ bool bfInit(int fd) {
     uint8_t instructionBytes[] = {
         eamasm_setregd(REG_BF_POINTER, TAPE_ADDRESS)
     };
-    return writeBytes(fd, (char*)instructionBytes, sizeof(instructionBytes));
+    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
 /* the INC and DEC instructions are encoded very similarly, and share opcodes.
@@ -221,7 +221,7 @@ bool bfOffset(int fd, uint8_t direction, uint8_t addressMode) {
     uint8_t instructionBytes[] = {
         eamasm_offset(direction, addressMode, REG_BF_POINTER)
     };
-    return writeBytes(fd, (char*)instructionBytes, sizeof(instructionBytes));
+    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
 /* The brainfuck instructions "." and "," are similar from an implementation
@@ -248,7 +248,7 @@ bool bfIO(int fd, int bfFD, int sc) {
         /* perform a system call */
         eamasm_syscall()
     };
-    return writeBytes(fd, (char*)instructionBytes, sizeof(instructionBytes));
+    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
 #define MAX_NESTING_LEVEL 64
@@ -333,7 +333,7 @@ bool bfJumpClose(int fd) {
         /* jump to right after the `[` instruction, to skip a redundant check */
         eamasm_jump_not_zero(REG_BF_POINTER, -distance)
     };
-    return writeBytes(fd, (char*)instructionBytes, sizeof(instructionBytes));
+    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
 /* compile an individual instruction (c), to the file descriptor fd.
@@ -397,7 +397,7 @@ bool bfExit(int fd) {
         /* perform a system call */
         eamasm_syscall()
     };
-    return writeBytes(fd, (char*)instructionBytes, sizeof(instructionBytes));
+    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
 
