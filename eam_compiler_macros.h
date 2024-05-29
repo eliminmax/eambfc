@@ -225,19 +225,4 @@
 #define SYSCALL_WRITE 1
 #define SYSCALL_EXIT 60
 
-/* Miscellaneous */
-
-/* common elements to all functions to compile specific instructions
- * each function must do the following:
- * 1: define a uint8_t array called instructionBytes containing the machine code
- * 2: write instructionBytes to a file descriptor fd,
- * 3: add the number of bytes written to codesize
- * 4: return a truthy value if the write succeeded, or a falsy value otherwise
- * This macro takes care of steps 2 through 4, meaning that the functions
- * only need to define instructionBytes then call this macro. */
-#define writeInstructionBytes() \
-    ssize_t written = write(fd, &instructionBytes, sizeof(instructionBytes)); \
-    codesize += written; \
-    return written == sizeof(instructionBytes) /* exclude trailing semicolon */
-
 #endif /* EAMASM_MACROS */

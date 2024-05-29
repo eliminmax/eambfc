@@ -62,8 +62,18 @@ void appendError(char *errormsg, char *errorId) {
     }
 }
 
+inline bool writeBytes(int fd, uint8_t bytes[], ssize_t expected_size) {
+    ssize_t written = write(fd, bytes, expected_size);
+    codesize += written;
+    if (written != expected_size) {
+        appendError("Failed to write instruction bytes", "FAILED_WRITE");
+        return false;
+    }
+    return true;
+}
+
 /* Write the ELF header to the file descriptor fd. */
-int writeEhdr(int fd) {
+bool writeEhdr(int fd) {
 
     /* The format of the ELF header is well-defined and well-documented
      * elsewhere. The struct for it is defined in elf.h, as are most
@@ -142,12 +152,12 @@ int writeEhdr(int fd) {
     header.e_flags = 0;
 
     serializeEhdr64(&header, headerBytes);
-    return write(fd, &headerBytes, EHDR_SIZE) == EHDR_SIZE;
+    return writeBytes(fd, headerBytes, EHDR_SIZE);
 }
 
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
-int writePhdrTable(int fd) {
+bool writePhdrTable(int fd) {
     Elf64_Phdr headerTable[PHNUM];
     char headerTableBytes[PHTB_SIZE];
 
@@ -192,26 +202,26 @@ int writePhdrTable(int fd) {
     for (int i = 0; i < PHNUM; i++) {
         serializePhdr64(&headerTable[i], &(headerTableBytes[i * PHDR_SIZE]));
     }
-    return write(fd, &headerTableBytes, PHTB_SIZE) == PHTB_SIZE;
+    return writeBytes(fd, headerTableBytes, PHTB_SIZE);
 }
 
 /* write code to set up a new brainfuck program to the file descriptor fd. */
-int bfInit(int fd) {
+bool bfInit(int fd) {
     /* set the brainfuck pointer register to the start of the tape  */
     uint8_t instructionBytes[] = {
         eamasm_setregd(REG_BF_POINTER, TAPE_ADDRESS)
     };
-    writeInstructionBytes();
+    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
 /* the INC and DEC instructions are encoded very similarly, and share opcodes.
  * the brainfuck instructions "<", ">", "+", and "-" can all be implemented
  * with a few variations of them, using the eamasm_offset macro. */
-int bfOffset(int fd, uint8_t direction, uint8_t addressMode) {
+bool bfOffset(int fd, uint8_t direction, uint8_t addressMode) {
     uint8_t instructionBytes[] = {
         eamasm_offset(direction, addressMode, REG_BF_POINTER)
     };
-    writeInstructionBytes();
+    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
 /* The brainfuck instructions "." and "," are similar from an implementation
@@ -222,7 +232,7 @@ int bfOffset(int fd, uint8_t direction, uint8_t addressMode) {
  *  - arg3 is the number of bytes to write/read
  *
  * Due to their similarity, ',' and '.' are both implemented with bfIO. */
-int bfIO(int fd, int bfFD, int sc) {
+bool bfIO(int fd, int bfFD, int sc) {
     /* bfFD is the brainfuck File Descriptor, not to be confused with FD,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
@@ -238,7 +248,7 @@ int bfIO(int fd, int bfFD, int sc) {
         /* perform a system call */
         eamasm_syscall()
     };
-    writeInstructionBytes();
+    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
 #define MAX_NESTING_LEVEL 64
@@ -252,7 +262,7 @@ struct stack {
 /* prepare to compile the brainfuck `[` instruction to file descriptor fd.
  * doesn't actually write to the file yet, as
  * */
-int bfJumpOpen (int fd) {
+bool bfJumpOpen (int fd) {
     off_t expectedLocation;
     /* calculate the expected locationto seek to */
     expectedLocation = (CURRENT_ADDRESS + JUMP_SIZE);
@@ -275,7 +285,7 @@ int bfJumpOpen (int fd) {
 
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
-int bfJumpClose(int fd) {
+bool bfJumpClose(int fd) {
     off_t openAddress, closeAddress;
     int32_t distance;
 
@@ -323,13 +333,13 @@ int bfJumpClose(int fd) {
         /* jump to right after the `[` instruction, to skip a redundant check */
         eamasm_jump_not_zero(REG_BF_POINTER, -distance)
     };
-    writeInstructionBytes();
+    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
-int bfCompileInstruction(char c, int fd) {
+bool bfCompileInstruction(char c, int fd) {
     int ret;
     currentInstruction = c;
     currentInstructionColumn++;
@@ -378,7 +388,7 @@ int bfCompileInstruction(char c, int fd) {
 }
 
 /* write code to perform the exit(0) syscall */
-int bfExit(int fd) {
+bool bfExit(int fd) {
     uint8_t instructionBytes[] = {
         /* set system call register to exit system call number */
         eamasm_setregd(REG_SC_NUM, SYSCALL_EXIT),
@@ -387,11 +397,11 @@ int bfExit(int fd) {
         /* perform a system call */
         eamasm_syscall()
     };
-    writeInstructionBytes();
+    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
 
-int bfCleanup(int fd) {
+bool bfCleanup(int fd) {
     int ret = bfExit(fd);
     /* Ehdr and Phdr table are at the start */
     lseek(fd, 0, SEEK_SET);
