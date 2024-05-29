@@ -29,6 +29,7 @@ test_simple () {
     fi
 }
 
+errid_pat='s/.*"errorId":"\([^"]*\).*/\1/'
 # a lot like test_simple, but this time, instead of testing the binary, check
 # that the error message matches the expectation
 test_error () {
@@ -40,7 +41,7 @@ test_error () {
         printf 'FAIL - missing expected build error file: %s\n' "$errfile"
         fails=$((fails+1))
     else
-        error_codes="$(sed 's/.*"errorId":"\([^"]*\).*/\1/' "$errfile" |\
+        error_codes="$(sed "$errid_pat" "$errfile" |\
         sort -u | xargs)"
         # I'd rather write this hackery instead of requiring a tool like jq or
         # a JSON parsing library for the test suite
@@ -54,6 +55,20 @@ test_error () {
     fi
 }
 
+# errors thrown when processing arguments
+test_arg_error () {
+    total=$((total+1))
+    err_codes="$1"; shift
+    cond="$1"; shift
+    if [ "$(../eambfc -j "$@" 2>&1 | sed "$errid_pat")" = "$err_codes" ]; then
+        printf 'SUCCESS - proper error id when %s.\n' "$cond"
+        successes=$((successes+1))
+    else
+        printf 'FAIL - wrong error id when %s.\n' "$cond"
+        fails=$((fails+1))
+    fi
+}
+
 test_simple alternative-extension '1639980005 14'
 test_simple colortest '1395950558 3437'
 test_simple hello '1639980005 14'
@@ -63,10 +78,36 @@ test_simple wrap '781852651 4'
 test_simple wrap2 '1742477431 4'
 
 # ensure that the proper errors were encountered
+
+# argument processing error
+test_arg_error MULTIPLE_EXTENSIONS 'multiple file extensions' \
+    -e .brf -e .bf hello.bf
+test_arg_error MISSING_OPERAND '-e missing argument' \
+    -e
+test_arg_error UNKNOWN_ARG 'invalid argument provided' \
+    -t
+test_arg_error NO_SOURCE_FILES 'no source files provided'
+test_arg_error BAD_EXTENSION 'wrong file extension for source file' \
+    'test.sh'
+
+# some permission issues
+chmod 'u-r' 'hello.bf'
+test_arg_error OPEN_R_FAILED 'failure to open input file for reading' \
+    'hello.bf'
+chmod 'u+r' 'hello.bf'
+touch hello.b
+chmod -w hello.b
+test_arg_error OPEN_W_FAILED 'failure to open output file for writing' \
+    -e f hello.bf
+rm -f hello.b
+
+# compiler errors
 test_error too-many-nested-loops OVERFLOW UNMATCHED_CLOSE
+test_error unmatched-close UNMATCHED_CLOSE
+test_error unmatched-open UNMATCHED_OPEN
+test_error unseekable FAILED_SEEK
 
-
-# lastly, some special cases
+# lastly, some special cases that need some more work
 
 # ensure that every possible character is handled properly by rw
 # octal is portable across all POSIX-compliant printf.1 implementations

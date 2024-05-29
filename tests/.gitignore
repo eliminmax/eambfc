@@ -12,6 +12,9 @@ too-many-nested-loops
 truthmachine
 wrap
 wrap2
+unmatched-open
+unmatched-close
+unseekable
 
 # test assets
 *.build_err
