@@ -428,7 +428,7 @@ bool bfCleanup(int fd) {
  * them return a falsy value, it aborts, returning 0.
  *
  * If all of the other functions succeeded, it returns 1. */
-int bfCompile(int inputFD, int outputFD, bool keep){
+int bfCompile(int inputFD, int outputFD){
     char instruction;
     int ret = 1;
     /* reset codesize variable used in several macros in eam_compiler_macros */

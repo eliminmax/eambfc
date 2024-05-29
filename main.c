@@ -229,7 +229,7 @@ int main(int argc, char* argv[]) {
                 return EXIT_FAILURE;
             }
         }
-        result = bfCompile(srcFD, dstFD, keep);
+        result = bfCompile(srcFD, dstFD);
         close(srcFD);
         close(dstFD);
         if (!result) {

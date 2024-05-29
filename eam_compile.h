@@ -20,7 +20,7 @@
  *
  * If keep is set to true, that means that `main` won't delete incomplete
  * executables if the compilation fails, so headers will still be written. */
-int bfCompile(int inputFD, int outputFD, bool keep);
+int bfCompile(int inputFD, int outputFD);
 
 /* values for use in printing an error message if compilation fails.*/
 
