@@ -107,6 +107,7 @@ make PREFIX="$HOME/.local" install
 
 * [ ] add `-j` flag to write errors in JSON-compatible format
   * currently JSON-compatible if there are no bad characters in file names
+* [ ] refactor code to reduce use of function-like macros
 
 #### Planned
 
