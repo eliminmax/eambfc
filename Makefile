@@ -41,10 +41,14 @@ can-run-linux-amd64: minielf
 	./minielf && touch can-run-linux-amd64
 test: can-run-linux-amd64 eambfc
 	(cd tests; make clean test)
+multibuild:
+	env SKIP_TEST=y ./multibuild.sh
+multibuild-test: can-run-linux-amd64
+	./multibuild.sh
 
 
 # remove eambfc and the objects it's build from, then remove test artifacts
 clean:
-	rm -f serialize.o eam_compile.o main.o eambfc \
+	rm -rf serialize.o eam_compile.o main.o eambfc alt-builds \
 		createminielf createminielf.o minielf can-run-linux-amd64
 	(cd tests; make clean)

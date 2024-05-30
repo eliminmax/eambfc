@@ -7,6 +7,9 @@
 eambfc
 *.o
 
+# ignore binaries created by multibuild.sh
+alt-builds/
+
 # some test assets and tools that are generated locally
 createminielf
 minielf
