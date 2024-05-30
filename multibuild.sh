@@ -59,6 +59,8 @@ if [ "$(uname -m)" = s390x ] || { [ "$(uname)" = Linux ] &&
     [ "$(head -n1 /proc/sys/fs/binfmt_misc/qemu-s390x)" = 'enabled' ]; } ; then
     # shellcheck disable=2086 # word splitting is intentional here
     build_with s390x-linux-gnu-gcc $gcc_clang_args -static
+else
+    skipped=$((skipped+1))
 fi
 
 build_with tcc
