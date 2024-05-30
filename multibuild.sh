@@ -24,21 +24,26 @@ build_with () {
         printf 'running %s with arguments [%s %s].\n' "$cc" "$*" \
             '-D _POSIX_C_SOURCE=200809L'
         total=$((total+1))
-        "$cc" "$@" -D _POSIX_C_SOURCE=200809L \
-            serialize.c eam_compile.c main.c -o "$build_name"
-        eambfc_cmd="$build_name"
-        if [ -z "$SKIP_TEST" ]; then
-            if (cd tests && make -s EAMBFC="../$eambfc_cmd" test) \
-                >"alt-builds/$build_id.out"; then
-                success=$((success+1))
+        if "$cc" "$@" -D _POSIX_C_SOURCE=200809L \
+            serialize.c eam_compile.c main.c -o "$build_name"; then
+            eambfc_cmd="$build_name"
+            if [ -z "$SKIP_TEST" ]; then
+                if (cd tests && make -s EAMBFC="../$eambfc_cmd" test) \
+                    >"alt-builds/$build_id.out"; then
+                    success=$((success+1))
+                else
+                    failed=$((failed+1))
+                    return 1
+                fi
             else
-                failed=$((failed+1))
-                return 1
+                success=$((success+1))
             fi
         else
-            success=$((success+1))
+            failed=$((failed+1))
+            return 1
         fi
     else
+        printf 'compiler %s not found, skipping.\n' "$cc"
         skipped=$((skipped+1))
     fi
 }
