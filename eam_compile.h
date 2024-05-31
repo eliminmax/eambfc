@@ -16,10 +16,7 @@
  * nor that they are open properly.
  *
  * returns 1 if compilation succeeded.
- * if it runs into a problem, it aborts and returns 0.
- *
- * If keep is set to true, that means that `main` won't delete incomplete
- * executables if the compilation fails, so headers will still be written. */
+ * if it runs into a problem, it aborts and returns 0. */
 int bfCompile(int inputFD, int outputFD);
 
 /* values for use in printing an error message if compilation fails.*/
