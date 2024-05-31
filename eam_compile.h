@@ -7,12 +7,12 @@
 #define EAM_COMPILE_H 1
 #include <stdbool.h>
 
-/* Takes 2 open file descriptors - inputFD and outputFD.
- * inputFD is a brainfuck source file, open for reading.
- * outputFS is the destination file, open for writing.
- * It compiles the source code in inputFD, writing the output to outputFD.
+/* Takes 2 open file descriptors - in_fd and out_fd.
+ * in_fd is a brainfuck source file, open for reading.
+ * out_fd is the destination file, open for writing.
+ * It compiles the source code in in_fd, writing the output to out_fd.
  *
- * It does not verify that inputFD and outputFD are valid file descriptors,
+ * It does not verify that in_fd and out_fd are valid file descriptors,
  * nor that they are open properly.
  *
  * returns 1 if compilation succeeded.
