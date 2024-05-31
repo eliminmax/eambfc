@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     /* stop GCC complaint when -Wextra is passed */
     (void)argc; (void)argv;
     /* Don't bother worrying about umask for this one. */
-    int fd = open("minielf", O_WRONLY+O_CREAT+O_TRUNC, 0755);
+    int fd = open("mini_elf", O_WRONLY+O_CREAT+O_TRUNC, 0755);
     /* Skip over the header space, going straight to writing the code itself. */
     lseek(fd, START_PADDR, SEEK_SET);
     bfExit(fd);
