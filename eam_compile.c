@@ -208,7 +208,7 @@ bool writePhdrTable(int fd) {
 bool bfInit(int fd) {
     /* set the brainfuck pointer register to the start of the tape  */
     uint8_t instructionBytes[] = {
-        eamasm_setregd(REG_BF_POINTER, TAPE_ADDRESS)
+        eamAsmSetRegD(REG_BF_POINTER, TAPE_ADDRESS)
     };
     codesize += sizeof(instructionBytes);
     return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
@@ -216,10 +216,10 @@ bool bfInit(int fd) {
 
 /* the INC and DEC instructions are encoded very similarly, and share opcodes.
  * the brainfuck instructions "<", ">", "+", and "-" can all be implemented
- * with a few variations of them, using the eamasm_offset macro. */
+ * with a few variations of them, using the eamAsmOffset macro. */
 bool bfOffset(int fd, uint8_t direction, uint8_t addressMode) {
     uint8_t instructionBytes[] = {
-        eamasm_offset(direction, addressMode, REG_BF_POINTER)
+        eamAsmOffset(direction, addressMode, REG_BF_POINTER)
     };
     codesize += sizeof(instructionBytes);
     return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
@@ -239,15 +239,15 @@ bool bfIO(int fd, int bfFD, int sc) {
      * sc is the system call number for the system call to use */
     uint8_t instructionBytes[] = {
         /* load the number for the write system call into REG_SC_NUM */
-        eamasm_setregd(REG_SC_NUM, sc),
+        eamAsmSetRegD(REG_SC_NUM, sc),
         /* load the number for the stdout file descriptor into REG_ARG1 */
-        eamasm_setregd(REG_ARG1, bfFD),
+        eamAsmSetRegD(REG_ARG1, bfFD),
         /* copy the address in REG_BF_POINTER to REG_ARG2 */
-        eamasm_regcopy(REG_ARG2, REG_BF_POINTER),
+        eamAsmRegCopy(REG_ARG2, REG_BF_POINTER),
         /* load number of bytes to read/write (1, specifically) into REG_ARG3 */
-        eamasm_setregd(REG_ARG3, 1),
+        eamAsmSetRegD(REG_ARG3, 1),
         /* perform a system call */
-        eamasm_syscall()
+        eamAsmSyscall()
     };
     codesize += sizeof(instructionBytes);
     return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
@@ -307,7 +307,7 @@ bool bfJumpClose(int fd) {
 
     uint8_t openJumpBytes[] = {
         /* if the current loop is done, jump past the closing check */
-        eamasm_jump_zero(REG_BF_POINTER, distance)
+        eamAsmJZ(REG_BF_POINTER, distance)
     };
     /* jump to the skipped `[` instruction, write it, and jump back */
     if (lseek(fd, openAddress, SEEK_SET) != openAddress) {
@@ -333,7 +333,7 @@ bool bfJumpClose(int fd) {
     }
     uint8_t instructionBytes[] = {
         /* jump to right after the `[` instruction, to skip a redundant check */
-        eamasm_jump_not_zero(REG_BF_POINTER, -distance)
+        eamAsmJNZ(REG_BF_POINTER, -distance)
     };
     codesize += sizeof(instructionBytes);
     return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
@@ -395,11 +395,11 @@ bool bfCompileInstruction(char c, int fd) {
 bool bfExit(int fd) {
     uint8_t instructionBytes[] = {
         /* set system call register to exit system call number */
-        eamasm_setregd(REG_SC_NUM, SYSCALL_EXIT),
+        eamAsmSetRegD(REG_SC_NUM, SYSCALL_EXIT),
         /* set system call register to the desired exit code (0) */
-        eamasm_setregd(REG_ARG1, 0),
+        eamAsmSetRegD(REG_ARG1, 0),
         /* perform a system call */
-        eamasm_syscall()
+        eamAsmSyscall()
     };
     codesize += sizeof(instructionBytes);
     return writeBytes(fd, instructionBytes, sizeof(instructionBytes));

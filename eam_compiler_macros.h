@@ -66,23 +66,23 @@
  * 89 c0+(src<<3)+dst copies the contents of the register dst to src
  *
  * equivalent to MOV src, dst */
-#define eamasm_regcopy(dst, src) 0x89, 0xc0 + (src << 3) + dst
+#define eamAsmRegCopy(dst, src) 0x89, 0xc0 + (src << 3) + dst
 
 /* The system call instruction, in all of its glory. */
-#define eamasm_syscall() 0x0f, 0x05
+#define eamAsmSyscall() 0x0f, 0x05
 
 /* set various CPU flags based on the byte pointed to by reg
  * equivalent to TEST byte [reg], 0xff */
-#define eamasm_jump_test(reg) 0xf6, reg, 0xff
+#define eamAsmJumpTest(reg) 0xf6, reg, 0xff
 
 /* jump by jump_offset bytes if the memory address pointed to by reg isn't 0 */
-#define eamasm_jump_not_zero(reg, jump_offset) \
-    eamasm_jump_test(reg),\
+#define eamAsmJNZ(reg, jump_offset) \
+    eamAsmJumpTest(reg),\
     0x0f, 0x85, dwordToBytes(jump_offset) /* equivalent to JNZ jump_offset */
 
 /* jump by jump_offset bytes if the memory address pointed to by reg == 0 */
-#define eamasm_jump_zero(reg, jump_offset) \
-    eamasm_jump_test(reg),\
+#define eamAsmJZ(reg, jump_offset) \
+    eamAsmJumpTest(reg),\
     0x0f, 0x84, dwordToBytes(jump_offset) /* equivalent to JZ jump_offset */
 
 /* the size of the jump instructions, in bytes. */
@@ -111,8 +111,8 @@
  * dir is one of OFFDIR_POSITIVE or OFFDIR_NEGATIVE
  * adr is one of OFFMODE_MEMORY or OFFMODE_REGISTER
  * reg is the definition register */
-#define eamasm_offset(dir, adr, reg) (0xfe|(adr&1)), (dir|reg|(adr<<6))
-/* macros for use as arguments to eamasm_offset */
+#define eamAsmOffset(dir, adr, reg) (0xfe|(adr&1)), (dir|reg|(adr<<6))
+/* macros for use as arguments to eamAsmOffset */
 #define OFFMODE_MEMORY 0
 #define OFFMODE_REGISTER 3
 #define OFFDIR_POSITIVE 0
@@ -127,7 +127,7 @@
  * document it in excessive detail.
  *
  * I'll walk through the macro with the following args (used for brainfuck ">"):
- *      eamasm_offset(OFFDIR_POSITIVE, OFFMODE_REGISTER, REG_BF_POINTER)
+ *      eamAsmOffset(OFFDIR_POSITIVE, OFFMODE_REGISTER, REG_BF_POINTER)
  *
  * * OFFDIR_POSITIVE->0, OFFDIR_REGISTER->3, REG_BF_POINTER->03
  * * (0xfe|(3&1)), in binary, is (0b1111_1110|(0b0000_0011 & 0b0000_0001))
@@ -138,7 +138,7 @@
  * * that left 6 times results in 0b1100_0000, or 0xc0.
  * * (0|03|(3<<6)), is (0|03|0xc0), or (0b0000_0000|0b0000_0011|0b1100_0000).
  * * (0b0000_0000|0b0000_0011|0b1100_0000) evaluates to 0b1100_0011 (i.e. 0xc3)
- * * thus, the eamasm_offset example evaluates to 0xff, 0xc3.
+ * * thus, the eamAsmOffset example evaluates to 0xff, 0xc3.
  *
  * * ffc3 disassembles (with rasm2) to `inc ebx`.
  *
@@ -156,7 +156,7 @@
  *
  * equivalent to PUSH b; POP dst
  * */
-#define eamasm_setregb(dst, b) 0x6a, b, 0x58 + dst
+#define eamAsmSetRegB(dst, b) 0x6a, b, 0x58 + dst
 
 /* Set a register (dst) to a double word value (d).
  * In x86 terminology, a word is 2 bytes and a double word is 4 bytes.
@@ -165,7 +165,7 @@
  * b8+rd, followed by an LSB-encoded 4 byte value, stores the 4 byte value in rd
  *
  * equivalent to MOV dst, d */
-#define eamasm_setregd(dst, d) (0xb8 + (dst)), dwordToBytes(d)
+#define eamAsmSetRegD(dst, d) (0xb8 + (dst)), dwordToBytes(d)
 
 /* assorted macros for the size/address of different elements in the ELF file */
 

@@ -21,7 +21,7 @@
 #include "eam_compile.h"
 
 /* Return the permission mask to use for the output file */
-mode_t _getperms(void) {
+mode_t getPerms(void) {
     /* The umask function sets the file mode creation mask to its argument and
      * returns the previous mask.
      *
@@ -49,7 +49,7 @@ mode_t _getperms(void) {
 
 
 /* print the help message to outfile. progname should be argv[0]. */
-void _showhelp(FILE *outfile, char *progname) {
+void showHelp(FILE *outfile, char *progname) {
     fprintf(outfile,
         "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
         " -h        - display this help text\n"
@@ -72,7 +72,7 @@ void _showhelp(FILE *outfile, char *progname) {
 
 /* check if str ends with ext. If so, remove ext from the end and return a
  * truthy value. If not, return 0. */
-int _rmext(char *str, const char *ext) {
+int rmExt(char *str, const char *ext) {
     size_t strsz = strlen(str);
     size_t extsz = strlen(ext);
     /* strsz must be at least 1 character longer than extsz to continue. */
@@ -92,18 +92,18 @@ int _rmext(char *str, const char *ext) {
 
 
 /* macros for use in main function only.
- * showerror:
+ * showError:
  *  * unless -q was passed, print an error message to stderr using fprintf
  *
- * filefail:
+ * fileFail:
  *  * call if compiling a file failed. Depending on moveahead, either
  *    exit immediately or set the return code to EXIT_FAILURE for later.
  *
- * showhint:
+ * showHint:
  *  * unless -q was passed, write the help text to stderr. */
-#define showerror(...) if (!quiet) fprintf(stderr, __VA_ARGS__)
-#define filefail() if (moveahead) ret = EXIT_FAILURE; else return EXIT_FAILURE
-#define showhint() if (!quiet) _showhelp(stderr, argv[0])
+#define showError(...) if (!quiet) fprintf(stderr, __VA_ARGS__)
+#define fileFail() if (moveahead) ret = EXIT_FAILURE; else return EXIT_FAILURE
+#define showHint() if (!quiet) showHelp(stderr, argv[0])
 
 int main(int argc, char* argv[]) {
     int srcFD, dstFD;
@@ -118,12 +118,12 @@ int main(int argc, char* argv[]) {
     char *ext = "";
     /* default to false, set to true if relevant argument was passed. */
     bool quiet = false, keep = false, moveahead = false, json = false;
-    mode_t permissions = _getperms();
+    mode_t permissions = getPerms();
 
     while ((opt = getopt(argc, argv, ":hqjkme:")) != -1) {
         switch(opt) {
           case 'h':
-            _showhelp(stdout, argv[0]);
+            showHelp(stdout, argv[0]);
             return EXIT_SUCCESS;
           case 'q':
             quiet = true;
@@ -143,8 +143,8 @@ int main(int argc, char* argv[]) {
                 if (json) {
                     printf("{\"errorId\":\"MULTIPLE_EXTENSIONS\"}\n");
                 } else {
-                    showerror("provided -e multiple times!\n");
-                    showhint();
+                    showError("provided -e multiple times!\n");
+                    showHint();
                 }
                 return EXIT_FAILURE;
             }
@@ -158,8 +158,8 @@ int main(int argc, char* argv[]) {
                     optopt
                 );
             } else {
-                showerror("%c requires an additional argument.\n", optopt);
-                showhint();
+                showError("%c requires an additional argument.\n", optopt);
+                showHint();
             }
             return EXIT_FAILURE;
           case '?': /* unknown argument */
@@ -169,8 +169,8 @@ int main(int argc, char* argv[]) {
                     optopt
                 );
             } else {
-                showerror("Unknown argument: %c.\n", optopt);
-                showhint();
+                showError("Unknown argument: %c.\n", optopt);
+                showHint();
             }
             return EXIT_FAILURE;
         }
@@ -179,8 +179,8 @@ int main(int argc, char* argv[]) {
         if (json) {
             printf("{\"errorId\":\"NO_SOURCE_FILES\"}\n");
         } else {
-            showerror("No source files provided.\n");
-            showhint();
+            showError("No source files provided.\n");
+            showHint();
         }
         return EXIT_FAILURE;
     }
@@ -193,7 +193,7 @@ int main(int argc, char* argv[]) {
     for (/* reusing optind here */; optind < argc; optind++) {
         outname = (char *)malloc(strlen(argv[optind]) + 1);
         if (outname == NULL) {
-            showerror("malloc failure!\n");
+            showError("malloc failure!\n");
             exit(EXIT_FAILURE);
         }
         if (json) {
@@ -209,20 +209,20 @@ int main(int argc, char* argv[]) {
                     filenameJSON
                 );
             } else {
-                showerror("Failed to open %s for reading.\n", argv[optind]);
+                showError("Failed to open %s for reading.\n", argv[optind]);
             }
-            filefail();
+            fileFail();
         }
-        if (! _rmext(outname, ext)) {
+        if (! rmExt(outname, ext)) {
             if (json) {
                 printf(
                     "{\"errorId\":\"BAD_EXTENSION\",\"file\":\"%s\"}\n",
                     argv[optind]
                 );
             } else {
-                showerror("%s does not end with %s.\n", argv[optind], ext);
+                showError("%s does not end with %s.\n", argv[optind], ext);
             }
-            filefail();
+            fileFail();
         }
         dstFD = open(outname, O_WRONLY+O_CREAT+O_TRUNC, permissions);
         if (dstFD < 0) {
@@ -232,7 +232,7 @@ int main(int argc, char* argv[]) {
                     outname
                 );
             } else {
-                showerror(
+                showError(
                     "Failed to open destination file %s for writing.\n",
                     outname
                 );
@@ -261,7 +261,7 @@ int main(int argc, char* argv[]) {
                     );
                     free(errorMsgJSON);
                 } else {
-                    showerror(
+                    showError(
                         "%s: Failed to compile '%c' at line %d, column %d.\n"
                         "Error ID: %s\n"
                         "Error message: \"%s\"\n",
@@ -275,7 +275,7 @@ int main(int argc, char* argv[]) {
                 }
             }
             if (!keep) remove(outname);
-            filefail();
+            fileFail();
         }
         if (json) {
             free(filenameJSON);
