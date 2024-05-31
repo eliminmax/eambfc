@@ -1,7 +1,9 @@
 /* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
- * */
+ *
+ * This file defines macros for use in the compilation process, as a more
+ * readable alternative to just having byte values with no clear meaning. */
 #ifndef EAM_COMPILER_MACROS_H
 #define EAM_COMPILER_MACROS_H 1
 /* C99 */

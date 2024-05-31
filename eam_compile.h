@@ -1,7 +1,8 @@
 /* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
- * */
+ *
+ * This file provides an interface to eam_compile.c. */
 
 #ifndef EAM_COMPILE_H
 #define EAM_COMPILE_H 1

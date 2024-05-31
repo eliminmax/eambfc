@@ -1,6 +1,8 @@
 /* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
  *
- * SPDX-License-Identifier: GPL-3.0-only */
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * This file declares the interface to the jsonStr function in json_escape.c */
 
 #ifndef EAMBFC_JSON_ESCAPE_H
 #define EAMBFC_JSON_ESCAPE_H 1

@@ -1,6 +1,8 @@
 /* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
  *
- * SPDX-License-Identifier: GPL-3.0-only */
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * This defines functions to convert 64-bit ELF structs into LSB char arrays. */
 
 /* C99 */
 #include <stdint.h>

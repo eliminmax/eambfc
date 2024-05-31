@@ -1,6 +1,10 @@
 /* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
  *
- * SPDX-License-Identifier: GPL-3.0-only */
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * This file defines a function that can be used to JSON-escape a string.
+ *
+ * It doesn't fit anywhere else in the code, so it's on its own in here. */
 
 /* C99 */
 #include <stdlib.h>

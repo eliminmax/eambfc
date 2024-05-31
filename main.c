@@ -2,8 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * A basic non-optimizing Brainfuck to x86_64 Linux ELF compiler.
- * */
+ * A basic non-optimizing Brainfuck to x86_64 Linux ELF compiler. */
 
 /* C99 */
 #include <stdbool.h>
