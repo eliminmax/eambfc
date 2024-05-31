@@ -64,8 +64,8 @@ typedef struct {
 } Elf64_Ehdr;
 
 /* Fields in the e_ident array.  The EI_* macros are indices into the
-   array.  The macros under each EI_* macro are the values the byte
-   may have.  */
+ * array.  The macros under each EI_* macro are the values the byte
+ * may have.  */
 
 #define EI_MAG0       0    /* File identification byte 0 index */
 #define ELFMAG0       0x7f /* Magic number byte 0 */
