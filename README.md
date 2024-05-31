@@ -84,10 +84,19 @@ POSIX.1-2008 standard and/or the ISO/IEC 9899:1999 standard (i.e. C99).
 
 ### Code style
 
-C89-style comments. 80 columns. 4 spaces for indentation. Half-indent `case`s
-within `switch` statements. Open braces are on the same line as the function
-signature. Variable and function names are whatever I think looks right.
-I am very inconsistent about that.
+The following are the formatting I follow for source code:
+
+* C89-style comments (i.e. `/* comment */`, not `// comment`).
+* 80 character maximum per line.
+* 4 spaces for indentation, but half-indent `case`s within `switch` statements.
+  * Makefiles use tabs due to the contraints of the format.
+    * for the purposes of line width, a tab is considered 4 characters.
+  * Markdown files use 2 spaces due to the constraints of the format.
+* Open braces are on the same line as the function signature/conditional/etc.
+* function names and function-like macros are `camelCase`.
+* struct names are `PascalCase`.
+* variables names are `snake_case`.
+* constant macros are `SCREAMING_SNAKE_CASE`.
 
 ## To-do
 
