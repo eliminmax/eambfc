@@ -73,6 +73,22 @@ make clean; make CC=tcc
 make PREFIX="$HOME/.local" install
 ```
 
+## Development process
+
+I have a dev branch and a main branch. When I feel like it, and all of the tests
+pass, I merge the dev branch into the main branch. I work from multiple devices,
+but only push changes from one.
+
+Other than some tests, all C code, shell scripts, and Makefiles must target the
+POSIX.1-2008 standard and/or the ISO/IEC 9899:1999 standard (i.e. C99).
+
+### Code style
+
+C89-style comments. 80 columns. 4 spaces for indentation. Half-indent `case`s
+within `switch` statements. Open braces are on the same line as the function
+signature. Variable and function names are whatever I think looks right.
+I am very inconsistent about that.
+
 ## To-do
 
 ### Core functionality
@@ -103,6 +119,8 @@ make PREFIX="$HOME/.local" install
 * [x] automatic testing of brainfuck source files in `test/` directory
 * [x] add tests for additional errors
 * [x] refactor code to reduce use of function-like macros
+* [x] add script to build with different compilers and compiler flags
+  * this should hopefully catch any undefined behavior or portability issues
 
 #### In Progress
 
@@ -112,8 +130,7 @@ make PREFIX="$HOME/.local" install
 #### Planned
 
 * [ ] make some hard-coded values (like tape size) configurable when building
-* [ ] add script to build with different compilers and compiler flags
-  * this should hopefully catch any undefined behavior or portability issues
+* [ ] refactor for more consistent and idiomatic style
 
 #### Under Consideration
 
