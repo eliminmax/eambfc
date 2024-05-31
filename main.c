@@ -197,8 +197,8 @@ int main(int argc, char* argv[]) {
             exit(EXIT_FAILURE);
         }
         if (json) {
-            filenameJSON = json_escape(argv[optind]);
-            outnameJSON = json_escape(outname);
+            filenameJSON = jsonStr(argv[optind]);
+            outnameJSON = jsonStr(outname);
         }
         strcpy(outname, argv[optind]);
         srcFD = open(argv[optind], O_RDONLY);
@@ -249,7 +249,7 @@ int main(int argc, char* argv[]) {
         if (!result) {
             for(uint8_t i = 0; i < MAX_ERROR && ErrorList[i].active; i++) {
                 if (json) {
-                    errorMsgJSON = json_escape(ErrorList[i].errorMessage);
+                    errorMsgJSON = jsonStr(ErrorList[i].errorMessage);
                     printf(
                         "{\"errorId\":\"%s\",\"file\":\"%s\",\"line\":%d,"
                         "\"column\":%d,\"message\":\"%s\"}\n",

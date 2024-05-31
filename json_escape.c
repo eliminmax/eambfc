@@ -11,7 +11,7 @@
 
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
-char *json_escape(char* str) {
+char *jsonStr(char* str) {
     size_t bufsz = 1; /* start with 1 for the null terminator at the end */
     char *p = str;
     /* 2 passes - 1 to determine bufsz, and 1 to actually build the string. */

@@ -6,5 +6,5 @@
 #define JSON_ESCAPE_H 1
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
-char *json_escape(char* str);
+char *jsonStr(char* str);
 #endif
