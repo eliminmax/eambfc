@@ -51,7 +51,6 @@ void showHelp(FILE *outfile, char *progname) {
         " -h        - display this help text\n"
         " -q        - don't print compilation errors.\n"
         " -j        - print compilation errors in JSON-like format.\n"
-        "             (should be JSON compatible for *sensible* filenames.)\n"
         " -k        - keep files that failed to compile for debugging\n"
         " -m        - Move ahead to the next file instead of quitting if a\n"
         "             file fails to compile\n"
