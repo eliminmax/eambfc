@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-only */
 
 
-#ifndef EAMBFC_SERIALIZE
-#define EAMBFC_SERIALIZE
+#ifndef EAMBFC_SERIALIZE_H
+#define EAMBFC_SERIALIZE_H 1
 /* internal */
 #include "elf.h"
 
@@ -13,4 +13,4 @@
  * padding bytes. */
 void serializeEhdr64(Elf64_Ehdr* ehdr, char* dest); /* Elf64_Ehdr */
 void serializePhdr64(Elf64_Phdr* phdr, char* dest); /* Elf64_Phdr */
-#endif /* EAMBFC_SERIALIZE */
+#endif /* EAMBFC_SERIALIZE_H */

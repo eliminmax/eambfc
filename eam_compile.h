@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-only
  * */
 
-#ifndef EAM_COMPILE
-#define EAM_COMPILE
+#ifndef EAM_COMPILE_H
+#define EAM_COMPILE_H 1
 #include <stdbool.h>
 
 /* Takes 2 open file descriptors - inputFD and outputFD.
@@ -34,4 +34,4 @@ typedef struct {
 
 extern BFCompilerError ErrorList[MAX_ERROR];
 
-#endif /* EAM_COMPILE */
+#endif /* EAM_COMPILE_H */

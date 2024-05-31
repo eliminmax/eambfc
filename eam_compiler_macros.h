@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  * */
-#ifndef EAMASM_MACROS
-#define EAMASM_MACROS
+#ifndef EAM_COMPILER_MACROS_H
+#define EAM_COMPILER_MACROS_H 1
 /* C99 */
 #include <stdint.h>
 /* POSIX */
@@ -225,4 +225,4 @@
 #define SYSCALL_WRITE 1
 #define SYSCALL_EXIT 60
 
-#endif /* EAMASM_MACROS */
+#endif /* EAM_COMPILER_MACROS_H */
