@@ -17,48 +17,58 @@
 #include "elf.h"
 #include "serialize.h"
 
+#define MAX_ERROR 32
+/* ensure that an appropriate type is used for error index */
+#if MAX_ERROR <= UINT8_MAX
+typedef uint8_t err_index_t;
+#elif MAX_ERROR <= UINT16_MAX
+typedef uint16_t err_index_t;
+#elif MAX_ERROR <= UINT32_MAX
+typedef uint32_t err_index_t;
+#else
+typedef uint64_t err_index_t;
+#endif
+err_index_t err_ind;
+
 off_t codesize;
 
-char currentInstruction;
-unsigned int currentInstructionLine, currentInstructionColumn;
+char instr;
+unsigned int instr_line, instr_col;
 
 typedef struct {
-    unsigned int currentInstructionLine;
-    unsigned int currentInstructionColumn;
-    char *errorId;
-    char *errorMessage;
-    char currentInstruction;
+    unsigned int line;
+    unsigned int col;
+    char *err_id;
+    char *err_msg;
+    char instr;
     bool active;
 } BFCompilerError;
 
-#define MAX_ERROR 32
-
-uint8_t errorIndex;
-BFCompilerError ErrorList[MAX_ERROR];
+BFCompilerError err_list[MAX_ERROR];
 
 void resetErrors(void) {
     /* reset error list */
-    for(int i = 0; i < MAX_ERROR; i++) {
-        ErrorList[i].currentInstructionLine = 1;
-        ErrorList[i].currentInstructionColumn = 0;
-        ErrorList[i].errorId = "";
-        ErrorList[i].errorMessage = "";
-        ErrorList[i].currentInstruction = '\0';
-        ErrorList[i].active = false;
+    for(err_index_t i = 0; i < MAX_ERROR; i++) {
+        err_list[i].line = 1;
+        err_list[i].col = 0;
+        err_list[i].err_id = "";
+        err_list[i].err_msg = "";
+        err_list[i].instr = '\0';
+        err_list[i].active = false;
     }
-    errorIndex = 0;
+    err_ind = 0;
 }
 
-void appendError(char *errormsg, char *errorId) {
-    uint8_t i = errorIndex++;
+void appendError(char *error_msg, char *err_id) {
+    uint8_t i = err_ind++;
     /* Ensure i is in bounds; discard errors after MAX_ERROR */
     if (i < MAX_ERROR) {
-        ErrorList[i].errorMessage = errormsg;
-        ErrorList[i].errorId = errorId;
-        ErrorList[i].currentInstruction = currentInstruction;
-        ErrorList[i].currentInstructionLine = currentInstructionLine;
-        ErrorList[i].currentInstructionColumn = currentInstructionColumn;
-        ErrorList[i].active = true;
+        err_list[i].err_msg = error_msg;
+        err_list[i].err_id = err_id;
+        err_list[i].instr = instr;
+        err_list[i].line = instr_line;
+        err_list[i].col = instr_col;
+        err_list[i].active = true;
     }
 }
 
@@ -79,7 +89,7 @@ bool writeEhdr(int fd) {
      * of the values used in here. */
 
     Elf64_Ehdr header;
-    char headerBytes[EHDR_SIZE];
+    char header_bytes[EHDR_SIZE];
 
     /* the first 4 bytes are "magic values" that are pre-defined and used to
      * identify the format. */
@@ -150,58 +160,58 @@ bool writeEhdr(int fd) {
      * defined, and it should be set to 0. */
     header.e_flags = 0;
 
-    serializeEhdr64(&header, headerBytes);
-    return writeBytes(fd, headerBytes, EHDR_SIZE);
+    serializeEhdr64(&header, header_bytes);
+    return writeBytes(fd, header_bytes, EHDR_SIZE);
 }
 
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
 bool writePhdrTable(int fd) {
-    Elf64_Phdr headerTable[PHNUM];
-    char headerTableBytes[PHTB_SIZE];
+    Elf64_Phdr phdr_table[PHNUM];
+    char phdr_table_bytes[PHTB_SIZE];
 
     /* header for the tape contents section */
-    headerTable[0].p_type = PT_LOAD;
+    phdr_table[0].p_type = PT_LOAD;
     /* It is readable and writable */
-    headerTable[0].p_flags = PF_R | PF_W;
+    phdr_table[0].p_flags = PF_R | PF_W;
     /* Load initial bytes from this offset within the file */
-    headerTable[0].p_offset = 0;
+    phdr_table[0].p_offset = 0;
     /* Start at this memory address */
-    headerTable[0].p_vaddr = TAPE_ADDRESS;
+    phdr_table[0].p_vaddr = TAPE_ADDRESS;
     /* Load from this physical address */
-    headerTable[0].p_paddr = 0;
+    phdr_table[0].p_paddr = 0;
     /* Size within the file on disk - 0, as the tape is empty. */
-    headerTable[0].p_filesz = 0;
+    phdr_table[0].p_filesz = 0;
     /* Size within memory - must be at least p_filesz.
      * In this case, it's the size of the tape itself. */
-    headerTable[0].p_memsz = TAPE_SIZE;
+    phdr_table[0].p_memsz = TAPE_SIZE;
     /* supposed to be a power of 2, went with 2^12 */
-    headerTable[0].p_align = 0x1000;
+    phdr_table[0].p_align = 0x1000;
 
     /* header for the segment that contains the actual binary */
-    headerTable[1].p_type = PT_LOAD;
+    phdr_table[1].p_type = PT_LOAD;
     /* It is readable and executable */
-    headerTable[1].p_flags = PF_R | PF_X;
+    phdr_table[1].p_flags = PF_R | PF_X;
     /* Load initial bytes from this offset within the file */
-    headerTable[1].p_offset = 0;
+    phdr_table[1].p_offset = 0;
     /* Start at this memory address */
-    headerTable[1].p_vaddr = LOAD_VADDR;
+    phdr_table[1].p_vaddr = LOAD_VADDR;
     /* Load from this physical address */
-    headerTable[1].p_paddr = 0;
+    phdr_table[1].p_paddr = 0;
     /* Size within the file on disk - the size of the whole file, as this
      * segment contains the whole thing. */
-    headerTable[1].p_filesz = FILE_SIZE;
+    phdr_table[1].p_filesz = FILE_SIZE;
     /* size within memory - must be at least p_filesz.
      * In this case, it's the size of the whole file, as the whole file is
      * loaded into this segment */
-    headerTable[1].p_memsz = FILE_SIZE;
+    phdr_table[1].p_memsz = FILE_SIZE;
     /* supposed to be a power of 2, went with 2^0 */
-    headerTable[1].p_align = 1;
+    phdr_table[1].p_align = 1;
 
     for (int i = 0; i < PHNUM; i++) {
-        serializePhdr64(&headerTable[i], &(headerTableBytes[i * PHDR_SIZE]));
+        serializePhdr64(&phdr_table[i], &(phdr_table_bytes[i * PHDR_SIZE]));
     }
-    return writeBytes(fd, headerTableBytes, PHTB_SIZE);
+    return writeBytes(fd, phdr_table_bytes, PHTB_SIZE);
 }
 
 /* write code to set up a new brainfuck program to the file descriptor fd. */
@@ -233,15 +243,15 @@ bool bfOffset(int fd, uint8_t direction, uint8_t addressMode) {
  *  - arg3 is the number of bytes to write/read
  *
  * Due to their similarity, ',' and '.' are both implemented with bfIO. */
-bool bfIO(int fd, int bfFD, int sc) {
-    /* bfFD is the brainfuck File Descriptor, not to be confused with FD,
+bool bfIO(int fd, int bf_fd, int sc) {
+    /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
     uint8_t instructionBytes[] = {
         /* load the number for the write system call into REG_SC_NUM */
         eamAsmSetRegD(REG_SC_NUM, sc),
         /* load the number for the stdout file descriptor into REG_ARG1 */
-        eamAsmSetRegD(REG_ARG1, bfFD),
+        eamAsmSetRegD(REG_ARG1, bf_fd),
         /* copy the address in REG_BF_POINTER to REG_ARG2 */
         eamAsmRegCopy(REG_ARG2, REG_BF_POINTER),
         /* load number of bytes to read/write (1, specifically) into REG_ARG3 */
@@ -344,8 +354,8 @@ bool bfJumpClose(int fd) {
  * particular instruction */
 bool bfCompileInstruction(char c, int fd) {
     int ret;
-    currentInstruction = c;
-    currentInstructionColumn++;
+    instr = c;
+    instr_col++;
     switch(c) {
         case '<':
             /* decrement the tape pointer register */
@@ -379,8 +389,8 @@ bool bfCompileInstruction(char c, int fd) {
             break;
         case '\n':
             /* add 1 to the line number and reset the column. */
-            currentInstructionLine++;
-            currentInstructionColumn = 0;
+            instr_line++;
+            instr_col = 0;
             ret = 1;
             break;
         default:
@@ -416,20 +426,19 @@ bool bfCleanup(int fd) {
     return ret;
 }
 
-/* Takes 2 open file descriptors - inputFD and outputFD.
- * inputFD is a brainfuck source file, open for reading.
+/* Takes 2 open file descriptors - in_fd and out_fd.
+ * in_fd is a brainfuck source file, open for reading.
  * outputFS is the destination file, open for writing.
- * It compiles the source code in inputFD, writing the output to outputFD.
+ * It compiles the source code in in_fd, writing the output to out_fd.
  *
- * It does not verify that inputFD and outputFD are valid file descriptors,
+ * It does not verify that in_fd and out_fd are valid file descriptors,
  * nor that they are open properly.
  *
  * It calls several other functions to compile the source code. If any of
  * them return a falsy value, it aborts, returning 0.
  *
  * If all of the other functions succeeded, it returns 1. */
-int bfCompile(int inputFD, int outputFD){
-    char instruction;
+int bfCompile(int in_fd, int out_fd){
     int ret = 1;
     /* reset codesize variable used in several macros in eam_compiler_macros */
     codesize = 0;
@@ -438,11 +447,11 @@ int bfCompile(int inputFD, int outputFD){
     /* reset the error stack for the new file */
     resetErrors();
     /* reset the current line and column */
-    currentInstructionLine = 1;
-    currentInstructionColumn = 0;
+    instr_line = 1;
+    instr_col = 0;
 
     /* skip the headers until we know the code size */
-    if (lseek(outputFD, START_PADDR, SEEK_SET) != START_PADDR) {
+    if (lseek(out_fd, START_PADDR, SEEK_SET) != START_PADDR) {
         appendError(
             "Could not seek to start of code. Output may be a FIFO.",
             "FAILED_SEEK"
@@ -451,7 +460,7 @@ int bfCompile(int inputFD, int outputFD){
         return 0;
     }
 
-    if (!bfInit(outputFD)) {
+    if (!bfInit(out_fd)) {
         appendError(
             "Failed to write initial setup instructions.",
             "FAILED_WRITE"
@@ -459,14 +468,14 @@ int bfCompile(int inputFD, int outputFD){
         ret = 0;
     }
 
-    while (read(inputFD, &instruction, 1)) {
+    while (read(in_fd, &instr, 1)) {
         /* the appropriate error message(s) are already appended */
-        if (!bfCompileInstruction(instruction, outputFD)) ret = 0;
+        if (!bfCompileInstruction(instr, out_fd)) ret = 0;
     }
 
 
     /* the appropriate error message(s) are already appended */
-    if (!bfCleanup(outputFD)) ret = 0;;
+    if (!bfCleanup(out_fd)) ret = 0;;
 
     /* now, code size is known, so we can write the headers */
     if(JumpStack.index > 0) {

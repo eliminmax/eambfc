@@ -17,21 +17,21 @@
  *
  * returns 1 if compilation succeeded.
  * if it runs into a problem, it aborts and returns 0. */
-int bfCompile(int inputFD, int outputFD);
+int bfCompile(int in_fd, int out_fd);
 
 /* values for use in printing an error message if compilation fails.*/
 
 typedef struct {
-    unsigned int currentInstructionLine;
-    unsigned int currentInstructionColumn;
-    char *errorId;
-    char *errorMessage;
-    char currentInstruction;
+    unsigned int line;
+    unsigned int col;
+    char *err_id;
+    char *err_msg;
+    char instr;
     bool active;
 } BFCompilerError;
 
 #define MAX_ERROR 32
 
-extern BFCompilerError ErrorList[MAX_ERROR];
+extern BFCompilerError err_list[MAX_ERROR];
 
 #endif /* EAM_COMPILE_H */

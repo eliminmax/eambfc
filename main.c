@@ -35,16 +35,12 @@ mode_t getPerms(void) {
     mode_t mask = umask(0022); umask(mask);
     /* default to the default file permissions for group and other, but rwx for
      * the owner. */
-    mode_t permissions = S_IRWXU | (~mask & 066);
+    mode_t perms = S_IRWXU | (~mask & 0066);
     /* if the file's group can read it, it should also be allowed to execute it.
      * the same goes for other users. */
-    if (permissions & S_IRGRP) {
-        permissions += S_IXGRP;
-    }
-    if (permissions & S_IROTH) {
-        permissions += S_IXOTH;
-    }
-    return permissions;
+    if (perms & S_IRGRP) perms |= S_IXGRP;
+    if (perms & S_IROTH) perms |= S_IXOTH;
+    return perms;
 }
 
 
@@ -111,14 +107,14 @@ int main(int argc, char* argv[]) {
     int opt;
     int ret = EXIT_SUCCESS;
     char *outname;
-    char *errorMsgJSON;
-    char *outnameJSON;
-    char *filenameJSON;
+    char *err_msg_json;
+    char *out_name_json;
+    char *in_name_json;
     /* default to empty string. */
     char *ext = "";
     /* default to false, set to true if relevant argument was passed. */
     bool quiet = false, keep = false, moveahead = false, json = false;
-    mode_t permissions = getPerms();
+    mode_t perms = getPerms();
 
     while ((opt = getopt(argc, argv, ":hqjkme:")) != -1) {
         switch(opt) {
@@ -193,12 +189,14 @@ int main(int argc, char* argv[]) {
     for (/* reusing optind here */; optind < argc; optind++) {
         outname = (char *)malloc(strlen(argv[optind]) + 1);
         if (outname == NULL) {
-            showError("malloc failure!\n");
+            showError(
+                "malloc failure when determining output file name! Aborting.\n"
+            );
             exit(EXIT_FAILURE);
         }
         if (json) {
-            filenameJSON = jsonStr(argv[optind]);
-            outnameJSON = jsonStr(outname);
+            in_name_json = jsonStr(argv[optind]);
+            out_name_json = jsonStr(outname);
         }
         strcpy(outname, argv[optind]);
         srcFD = open(argv[optind], O_RDONLY);
@@ -206,7 +204,7 @@ int main(int argc, char* argv[]) {
             if (json) {
                 printf(
                     "{\"errorId\":\"OPEN_R_FAILED\",\"file\":\"%s\"}\n",
-                    filenameJSON
+                    in_name_json
                 );
             } else {
                 showError("Failed to open %s for reading.\n", argv[optind]);
@@ -224,7 +222,7 @@ int main(int argc, char* argv[]) {
             }
             fileFail();
         }
-        dstFD = open(outname, O_WRONLY+O_CREAT+O_TRUNC, permissions);
+        dstFD = open(outname, O_WRONLY+O_CREAT+O_TRUNC, perms);
         if (dstFD < 0) {
             if (json) {
                 printf(
@@ -247,30 +245,30 @@ int main(int argc, char* argv[]) {
         close(srcFD);
         close(dstFD);
         if (!result) {
-            for(uint8_t i = 0; i < MAX_ERROR && ErrorList[i].active; i++) {
+            for(uint8_t i = 0; i < MAX_ERROR && err_list[i].active; i++) {
                 if (json) {
-                    errorMsgJSON = jsonStr(ErrorList[i].errorMessage);
+                    err_msg_json = jsonStr(err_list[i].err_msg);
                     printf(
                         "{\"errorId\":\"%s\",\"file\":\"%s\",\"line\":%d,"
                         "\"column\":%d,\"message\":\"%s\"}\n",
-                        ErrorList[i].errorId,
+                        err_list[i].err_id,
                         argv[optind],
-                        ErrorList[i].currentInstructionLine,
-                        ErrorList[i].currentInstructionColumn,
-                        errorMsgJSON
+                        err_list[i].line,
+                        err_list[i].col,
+                        err_msg_json
                     );
-                    free(errorMsgJSON);
+                    free(err_msg_json);
                 } else {
                     showError(
                         "%s: Failed to compile '%c' at line %d, column %d.\n"
                         "Error ID: %s\n"
                         "Error message: \"%s\"\n",
                         argv[optind],
-                        ErrorList[i].currentInstruction,
-                        ErrorList[i].currentInstructionLine,
-                        ErrorList[i].currentInstructionColumn,
-                        ErrorList[i].errorId,
-                        ErrorList[i].errorMessage
+                        err_list[i].instr,
+                        err_list[i].line,
+                        err_list[i].col,
+                        err_list[i].err_id,
+                        err_list[i].err_msg
                     );
                 }
             }
@@ -278,8 +276,8 @@ int main(int argc, char* argv[]) {
             fileFail();
         }
         if (json) {
-            free(filenameJSON);
-            free(outnameJSON);
+            free(in_name_json);
+            free(out_name_json);
         }
         free(outname);
     }
