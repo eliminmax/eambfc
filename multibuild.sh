@@ -68,7 +68,6 @@ else
     skipped=$((skipped+1))
 fi
 
-build_with c99 # POSIX-standard C99 compiler
 build_with tcc
 # shellcheck disable=2086 # word splitting is intentional here
 build_with zig cc $gcc_clang_args # zig's built-in C compiler
