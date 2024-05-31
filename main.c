@@ -137,7 +137,7 @@ int main(int argc, char* argv[]) {
             /* Print an error if ext was already set. */
             if (strlen(ext) > 0) {
                 if (json) {
-                    showerror("{\"errorId\":\"MULTIPLE_EXTENSIONS\"}\n");
+                    printf("{\"errorId\":\"MULTIPLE_EXTENSIONS\"}\n");
                 } else {
                     showerror("provided -e multiple times!\n");
                     showhint();
@@ -148,7 +148,7 @@ int main(int argc, char* argv[]) {
             break;
           case ':': /* -e without an argument */
             if (json) {
-                showerror(
+                printf(
                     "{\"errorId\":\"MISSING_OPERAND\","
                     "\"argument\":\"%c\"}\n",
                     optopt
@@ -160,7 +160,7 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
           case '?': /* unknown argument */
             if (json) {
-                showerror(
+                printf(
                     "{\"errorId\":\"UNKNOWN_ARG\",\"argument\":\"%c\"}\n",
                     optopt
                 );
@@ -173,7 +173,7 @@ int main(int argc, char* argv[]) {
     }
     if (optind == argc) {
         if (json) {
-            showerror("{\"errorId\":\"NO_SOURCE_FILES\"}\n");
+            printf("{\"errorId\":\"NO_SOURCE_FILES\"}\n");
         } else {
             showerror("No source files provided.\n");
             showhint();
@@ -190,7 +190,7 @@ int main(int argc, char* argv[]) {
         srcFD = open(argv[optind], O_RDONLY);
         if (srcFD < 0) {
             if (json) {
-                showerror(
+                printf(
                     "{\"errorId\":\"OPEN_R_FAILED\",\"file\":\"%s\"}\n",
                     argv[optind]
                 );
@@ -201,7 +201,7 @@ int main(int argc, char* argv[]) {
         }
         if (! _rmext(argv[optind], ext)) {
             if (json) {
-                showerror(
+                printf(
                     "{\"errorId\":\"BAD_EXTENSION\",\"file\":\"%s%s\"}\n",
                     argv[optind], ext
                 );
@@ -213,7 +213,7 @@ int main(int argc, char* argv[]) {
         dstFD = open(argv[optind], O_WRONLY+O_CREAT+O_TRUNC, permissions);
         if (dstFD < 0) {
             if (json) {
-                showerror(
+                printf(
                     "{\"errorId\":\"OPEN_W_FAILED\",\"file\":\"%s%s\"}\n",
                     argv[optind], ext
                 );
@@ -235,7 +235,7 @@ int main(int argc, char* argv[]) {
         if (!result) {
             for(uint8_t i = 0; i < MAX_ERROR && ErrorList[i].active; i++) {
                 if (json) {
-                    showerror(
+                    printf(
                         "{\"errorId\":\"%s\",\"file\":\"%s%s\",\"line\":%d,"
                         "\"column\":%d}\n",
                         ErrorList[i].errorId,
