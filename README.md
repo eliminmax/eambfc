@@ -121,18 +121,17 @@ I am very inconsistent about that.
 * [x] refactor code to reduce use of function-like macros
 * [x] add script to build with different compilers and compiler flags
   * this should hopefully catch any undefined behavior or portability issues
+* [x] add `-j` flag to write errors in JSON-compatible format
 
 #### In Progress
 
-* [ ] add `-j` flag to write errors in JSON-compatible format
-  * currently JSON-compatible if there are no bad characters in file names
+* [ ] refactor for more consistent and idiomatic style
 
 #### Planned
 
 * [ ] make some hard-coded values (like tape size) configurable when building
-* [ ] refactor for more consistent and idiomatic style
+* [ ] possible small optimizations, like compiling `[-]` as 'set 0'
 
 #### Under Consideration
 
-* [ ] possible small optimizations, like compiling `[-]` as 'set 0'
 * [ ] extend the jump stack as needed instead of erroring out at > 64 nested
