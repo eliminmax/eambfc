@@ -53,5 +53,5 @@ multibuild-test: can-run-linux-amd64
 clean:
 	rm -rf serialize.o eam_compile.o main.o eambfc alt-builds \
 		create_mini_elf create_mini_elf.o json_escape.o mini_elf \
-		can-run-linux-amd64
+		can-run-linux-amd64 tags
 	(cd tests; make clean)
