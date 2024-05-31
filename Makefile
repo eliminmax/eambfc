@@ -13,8 +13,9 @@ CC ?= c99
 
 PREFIX ?= /usr/local
 
-eambfc: serialize.o eam_compile.o main.o
-	$(CC) $(LDFLAGS) -o eambfc serialize.o eam_compile.o main.o $(LDLIBS)
+eambfc: serialize.o eam_compile.o json_escape.o main.o
+	$(CC) $(LDFLAGS) -o eambfc \
+		serialize.o eam_compile.o json_escape.o main.o $(LDLIBS)
 
 install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
@@ -22,6 +23,7 @@ install: eambfc
 
 serialize.o: serialize.c
 eam_compile.o: eam_compile.c
+json_escape.o: json_escape.c
 main.o: main.c
 
 # for testing
@@ -50,5 +52,5 @@ multibuild-test: can-run-linux-amd64
 # remove eambfc and the objects it's build from, then remove test artifacts
 clean:
 	rm -rf serialize.o eam_compile.o main.o eambfc alt-builds \
-		createminielf createminielf.o minielf can-run-linux-amd64
+		createminielf createminielf.o json_escape.o minielf can-run-linux-amd64
 	(cd tests; make clean)

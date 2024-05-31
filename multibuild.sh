@@ -25,7 +25,8 @@ build_with () {
             '-D _POSIX_C_SOURCE=200809L'
         total=$((total+1))
         if "$cc" "$@" -D _POSIX_C_SOURCE=200809L \
-            serialize.c eam_compile.c main.c -o "$build_name"; then
+            serialize.c eam_compile.c json_escape.c main.c \
+            -o "$build_name"; then
             eambfc_cmd="$build_name"
             if [ -z "$SKIP_TEST" ]; then
                 if (cd tests && make -s EAMBFC="../$eambfc_cmd" test) \

@@ -17,8 +17,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 /* internal */
-#include "eam_compile.h"
 #include "json_escape.h"
+#include "eam_compile.h"
 
 /* Return the permission mask to use for the output file */
 mode_t _getperms(void) {
@@ -110,6 +110,10 @@ int main(int argc, char* argv[]) {
     int result;
     int opt;
     int ret = EXIT_SUCCESS;
+    char *outname;
+    char *errorMsgJSON;
+    char *outnameJSON;
+    char *filenameJSON;
     /* default to empty string. */
     char *ext = "";
     /* default to false, set to true if relevant argument was passed. */
@@ -137,7 +141,7 @@ int main(int argc, char* argv[]) {
             /* Print an error if ext was already set. */
             if (strlen(ext) > 0) {
                 if (json) {
-                    showerror("{\"errorId\":\"MULTIPLE_EXTENSIONS\"}\n");
+                    printf("{\"errorId\":\"MULTIPLE_EXTENSIONS\"}\n");
                 } else {
                     showerror("provided -e multiple times!\n");
                     showhint();
@@ -148,7 +152,7 @@ int main(int argc, char* argv[]) {
             break;
           case ':': /* -e without an argument */
             if (json) {
-                showerror(
+                printf(
                     "{\"errorId\":\"MISSING_OPERAND\","
                     "\"argument\":\"%c\"}\n",
                     optopt
@@ -160,7 +164,7 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
           case '?': /* unknown argument */
             if (json) {
-                showerror(
+                printf(
                     "{\"errorId\":\"UNKNOWN_ARG\",\"argument\":\"%c\"}\n",
                     optopt
                 );
@@ -173,7 +177,7 @@ int main(int argc, char* argv[]) {
     }
     if (optind == argc) {
         if (json) {
-            showerror("{\"errorId\":\"NO_SOURCE_FILES\"}\n");
+            printf("{\"errorId\":\"NO_SOURCE_FILES\"}\n");
         } else {
             showerror("No source files provided.\n");
             showhint();
@@ -187,40 +191,50 @@ int main(int argc, char* argv[]) {
     }
 
     for (/* reusing optind here */; optind < argc; optind++) {
+        outname = (char *)malloc(strlen(argv[optind]) + 1);
+        if (outname == NULL) {
+            showerror("malloc failure!\n");
+            exit(EXIT_FAILURE);
+        }
+        if (json) {
+            filenameJSON = json_escape(argv[optind]);
+            outnameJSON = json_escape(outname);
+        }
+        strcpy(outname, argv[optind]);
         srcFD = open(argv[optind], O_RDONLY);
         if (srcFD < 0) {
             if (json) {
-                showerror(
+                printf(
                     "{\"errorId\":\"OPEN_R_FAILED\",\"file\":\"%s\"}\n",
-                    argv[optind]
+                    filenameJSON
                 );
             } else {
                 showerror("Failed to open %s for reading.\n", argv[optind]);
             }
             filefail();
         }
-        if (! _rmext(argv[optind], ext)) {
+        if (! _rmext(outname, ext)) {
             if (json) {
-                showerror(
-                    "{\"errorId\":\"BAD_EXTENSION\",\"file\":\"%s%s\"}\n",
-                    argv[optind], ext
+                printf(
+                    "{\"errorId\":\"BAD_EXTENSION\",\"file\":\"%s\"}\n",
+                    argv[optind]
                 );
             } else {
                 showerror("%s does not end with %s.\n", argv[optind], ext);
             }
             filefail();
         }
-        dstFD = open(argv[optind], O_WRONLY+O_CREAT+O_TRUNC, permissions);
+        dstFD = open(outname, O_WRONLY+O_CREAT+O_TRUNC, permissions);
         if (dstFD < 0) {
             if (json) {
-                showerror(
-                    "{\"errorId\":\"OPEN_W_FAILED\",\"file\":\"%s%s\"}\n",
-                    argv[optind], ext
+                printf(
+                    "{\"errorId\":\"OPEN_W_FAILED\",\"file\":\"%s\"}\n",
+                    outname
                 );
             } else {
                 showerror(
                     "Failed to open destination file %s for writing.\n",
-                    argv[optind]
+                    outname
                 );
             }
             if (moveahead) {
@@ -235,20 +249,23 @@ int main(int argc, char* argv[]) {
         if (!result) {
             for(uint8_t i = 0; i < MAX_ERROR && ErrorList[i].active; i++) {
                 if (json) {
-                    showerror(
-                        "{\"errorId\":\"%s\",\"file\":\"%s%s\",\"line\":%d,"
-                        "\"column\":%d}\n",
+                    errorMsgJSON = json_escape(ErrorList[i].errorMessage);
+                    printf(
+                        "{\"errorId\":\"%s\",\"file\":\"%s\",\"line\":%d,"
+                        "\"column\":%d,\"message\":\"%s\"}\n",
                         ErrorList[i].errorId,
-                        argv[optind], ext,
+                        argv[optind],
                         ErrorList[i].currentInstructionLine,
-                        ErrorList[i].currentInstructionColumn
+                        ErrorList[i].currentInstructionColumn,
+                        errorMsgJSON
                     );
+                    free(errorMsgJSON);
                 } else {
                     showerror(
-                        "%s%s: Failed to compile '%c' at line %d, column %d.\n"
+                        "%s: Failed to compile '%c' at line %d, column %d.\n"
                         "Error ID: %s\n"
                         "Error message: \"%s\"\n",
-                        argv[optind], ext,
+                        argv[optind],
                         ErrorList[i].currentInstruction,
                         ErrorList[i].currentInstructionLine,
                         ErrorList[i].currentInstructionColumn,
@@ -257,9 +274,14 @@ int main(int argc, char* argv[]) {
                     );
                 }
             }
-            if (!keep) remove(argv[optind]);
+            if (!keep) remove(outname);
             filefail();
         }
+        if (json) {
+            free(filenameJSON);
+            free(outnameJSON);
+        }
+        free(outname);
     }
 
     return ret;

@@ -7,7 +7,7 @@ EAMBFC ?= ../eambfc
 .POSIX:
 .SUFFIXES: .bf
 .bf:
-	$(EAMBFC) -kj $*.bf 2>.$*.build_err && rm .$*.build_err
+	$(EAMBFC) -kj $*.bf >.$*.build_err && rm .$*.build_err
 
 # build test assets
 build-all: hello loop null rw wrap wrap2 colortest truthmachine \
@@ -31,7 +31,7 @@ unmatched-open: unmatched-open.bf
 unseekable:
 	mkfifo unseekable
 	($(EAMBFC) -kj unseekable.bf & tail unseekable >/dev/null; wait) \
-		2>.unseekable.build_err
+		>.unseekable.build_err
 # test support for alternative extensions
 alternative-extension:
 	$(EAMBFC) -kj -e .brnfck alternative-extension.brnfck

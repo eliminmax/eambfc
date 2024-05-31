@@ -63,7 +63,7 @@ test_arg_error () {
     total=$((total+1))
     err_codes="$1"; shift
     cond="$1"; shift
-    if [ "$("$EAMBFC" -j "$@" 2>&1 | sed "$errid_pat")" = "$err_codes" ]; then
+    if [ "$("$EAMBFC" -j "$@" | sed "$errid_pat")" = "$err_codes" ]; then
         printf 'SUCCESS - proper error id when %s.\n' "$cond"
         successes=$((successes+1))
     else
