@@ -118,13 +118,13 @@ may or may not be adapted to fit some or all of the formatting and style rules.
 
 ## To-do
 
-### Core functionality
+### Bare minimum
 
 * [x] successfully compile "sub-bf" - brainfuck without `[` and `]`
 * [x] successfully add the needed ELF headers to be able to run compiled code
 * [x] successfully compile `[` and `]` to x86_64 machine code
 
-### Extra goals
+### Pre-1.0
 
 #### Completed
 
@@ -149,15 +149,16 @@ may or may not be adapted to fit some or all of the formatting and style rules.
 * [x] add script to build with different compilers and compiler flags
   * this should hopefully catch any undefined behavior or portability issues
 * [x] make some hard-coded values (like tape size) configurable when building
-
-#### In Progress
-
-* [ ] refactor for more consistent and idiomatic style
-* [ ] add `-j` flag to write errors in JSON-compatible format
-  * Currently works for ASCII text, but is untested for other text encodings
-  * assume UTF-8 file names when printing error messages.
+* [x] add `-j` flag to write errors in JSON-compatible format
+  * assumes UTF-8 file names when printing error messages.
+* [x] refactor for more consistent and idiomatic style
 
 #### Planned
+
+* [ ] add a `-V` flag that includes version and build info
+  * This requires explicitly-defined versions, and I'm not there yet.
+
+### Future versions
 
 * [ ] possible small optimizations, like compiling `[-]` as 'set 0'
 
