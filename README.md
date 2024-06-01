@@ -22,18 +22,20 @@ considered complete - see [the To-do section](#to-do).
 ```
 Usage: eambfc [options] <program.bf> [<program2.bf> ...]
 
- -h        - display this help text and exit.
- -V        - print version information and exit.
- -q        - don't print compilation errors unless -j was passed
- -j        - print compilation errors in JSON-like format.
+ -h        - display this help text and exit
+ -V        - print version information and exit
+ -q        - don't print errors unless -j was passed*
+ -j        - print errors in JSON format*
              (assumes file names are UTF-8-encoded.)
  -k        - keep files that failed to compile (for debugging)
  -c        - continue to the next file instead of quitting if a
              file fails to compile
  -e ext    - (only provide once) use 'ext' as the extension for
-             source files instead of '.bf'.
+             source files instead of '.bf'
              (This program will remove this at the end of the input
              file to create the output file name)
+
+* -q and -j will not affect arguments passed before they were
 
 Remaining options are treated as source file names. If they don't
 end with '.bf' (or the extension specified with '-e'), the program
@@ -156,11 +158,6 @@ may or may not be adapted to fit some or all of the formatting and style rules.
   * assumes UTF-8 file names when printing error messages.
 * [x] refactor for more consistent and idiomatic style
 * [x] add a `-V` flag that includes version info
-
-#### Planned
-
-* [ ] don't print output until after args are processed
-  * that way `-q` and `-j` can take effect before anything would be printed.
 
 ### Future versions
 
