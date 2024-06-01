@@ -24,7 +24,7 @@ Usage: eambfc [options] <program.bf> [<program2.bf> ...]
 
  -h        - display this help text and exit.
  -V        - print version information and exit.
- -q        - don't print compilation errors.
+ -q        - don't print compilation errors unless -j was passed
  -j        - print compilation errors in JSON-like format.
              (assumes file names are UTF-8-encoded.)
  -k        - keep files that failed to compile (for debugging)

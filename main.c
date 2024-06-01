@@ -50,7 +50,7 @@ void showHelp(FILE *outfile, char *progname) {
         "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
         " -h        - display this help text and exit.\n"
         " -V        - print version information and exit.\n"
-        " -q        - don't print compilation errors.\n"
+        " -q        - don't print compilation errors unless -j was passed\n"
         " -j        - print compilation errors in JSON-like format.\n"
         "             (assumes file names are UTF-8-encoded.)\n"
         " -k        - keep files that failed to compile (for debugging)\n"
