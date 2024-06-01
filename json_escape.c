@@ -49,6 +49,8 @@ char *jsonStr(char* str) {
             bs_escaped('\"');
             break;
           default:
+            /* would use a switch statement, but case a ... d is non-portable.
+             * Instead, I went with this ugly hybrid system */
             if (*p < 040) {
                 sprintf(outp, "\\u%04hhx", *p);
                 used += 6;
