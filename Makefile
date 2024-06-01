@@ -25,8 +25,8 @@ install: eambfc
 	cp -f eambfc $(DESTDIR)$(PREFIX)/bin
 
 config.h:
-	sed -e 's/@@MAX_ERROR@@/$(MAX_ERROR)/' \
-		-e 's/@@TAPE_BLOCKS@@/$(TAPE_BLOCKS)/' \
+	sed -e '/MAX_ERROR/s/@@/$(MAX_ERROR)/' \
+		-e '/TAPE_BLOCKS/s/@@/$(TAPE_BLOCKS)/' \
 		<config.template.h >config.h
 
 serialize.o: serialize.c

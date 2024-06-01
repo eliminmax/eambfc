@@ -8,13 +8,13 @@
 #define EAM_CONFIG_H 1
 
 /* Maximum number of errors to store before discarding them */
-#define MAX_ERROR @@MAX_ERROR@@
+#define MAX_ERROR @@
 
 /* Tape size in 4096-byte blocks */
 /* the tape size in Urban Müller's original implementation, and the de facto
  * minimum tape size for a "proper" implementation, is 30,000. I increased that
  * to the nearest multiple of 4096 (i.e. 32687, which is 8*4096) as the default.
  * I would not recommend decreasing it. */
-#define TAPE_BLOCKS @@TAPE_BLOCKS@@
+#define TAPE_BLOCKS @@
 
 #endif /* EAM_CONFIG_H */
