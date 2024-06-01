@@ -11,8 +11,6 @@ CFLAGS += -D _POSIX_C_SOURCE=200809L
 # which supports the POSIX-specified options
 CC ?= c99
 
-PREFIX ?= /usr/local
-
 eambfc: serialize.o eam_compile.o json_escape.o main.o
 	$(CC) $(LDFLAGS) -o eambfc \
 		serialize.o eam_compile.o json_escape.o main.o $(LDLIBS)
