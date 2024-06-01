@@ -11,6 +11,7 @@
 /* POSIX */
 #include <sys/types.h>
 /* internal */
+#include "config.h"
 #include "elf.h"
 
 /* the Linux kernel reads system call numbers from RAX on x86_64 systems,
@@ -171,11 +172,6 @@
 
 /* assorted macros for the size/address of different elements in the ELF file */
 
-/* the tape size in Urban Müller's original implementation, and the de facto
- * minimum tape size for a "proper" implementation, is 30,000. I increased that
- * to the nearest power of 2 (namely 32768), because I can, and it's cleaner. */
-#define TAPE_SIZE 32768
-
 /* virtual memory address of the tape - cannot overlap with the instructions
  * chosen fairly arbitrarily. */
 #define TAPE_ADDRESS 0x10000
@@ -196,8 +192,12 @@
 #define SHTB_SIZE SHNUM * SHDR_SIZE
 
 /* virtual address of the section containing the machine code
- * chosen to avoid overlapping with the tape. */
-#define LOAD_VADDR 0x20000
+ * should be after the tape ends to avoid overlapping with the tape.
+ *
+ * Zero out the lowest 2 bytes of the end of the tape and add 0x10000 to ensure
+ * that there is enough room. */
+
+#define LOAD_VADDR (((TAPE_ADDRESS + TAPE_SIZE) & (~ 0xffff)) + 0x10000)
 
 /* physical address of the starting instruction */
 #define START_PADDR padTo256((EHDR_SIZE + PHTB_SIZE))
