@@ -6,16 +6,12 @@ SPDX-License-Identifier: 0BSD
 
 # Eli Array Minkoff's BFC
 
-A non-optimizing compiler for brainfuck, written in C.
+A non-optimizing compiler for brainfuck, written in C for Unix-like systems.
 
 Outputs an x86_64 ELF executable that uses Linux system calls for I/O.
 
-I am not an experienced C programmer, and this is an attempt to gain practice by
-writing something somewhat simple yet not trivial.
-
-Currently, it's working in the sense that it compiles the code properly on
-`amd64` systems, but there a host of things to do before the project can be
-considered complete - see [the To-do section](#to-do).
+I started this as an inexperienced C programmer, and this was originally an
+attempt to gain practice by writing something somewhat simple yet not trivial.
 
 ## Usage
 
@@ -52,15 +48,6 @@ system with a C99 compiler. Please open an issue if that is not the case.
 \* *Specifically POSIX.1-2008. Compilation requires the optional C-Language
 Development Utilities, or at least something similar enough.*
 
-The test suite consists of a series of brainfuck programs, and a script to
-compare their actual behavior against their expected behavior. Because of this,
-it must be able to run the created binaries, which means that it does not work
-on systems that can't run x86-64 ELF files with Linux system calls. That said, I
-have successfully run the test suite in a FreeBSD VM with
-[Linuxulator](https://docs.freebsd.org/en/books/handbook/linuxemu/) enabled, and
-a Debian 12 "Bookworm" arm64 system with the `qemu-user-binfmt` package
-installed.
-
 ## Building and Installing
 
 ```sh
@@ -88,6 +75,17 @@ but only push changes from one.
 
 Other than some tests, all C code, shell scripts, and Makefiles must target the
 POSIX.1-2008 standard and/or the ISO/IEC 9899:1999 standard (i.e. C99).
+
+### Test suite
+
+The test suite consists of a series of brainfuck programs, and a script to
+compare their actual behavior against their expected behavior. Because of this,
+it must be able to run the created binaries, which means that it does not work
+on systems that can't run x86-64 ELF files with Linux system calls. That said, I
+have successfully run the test suite in a FreeBSD VM with
+[Linuxulator](https://docs.freebsd.org/en/books/handbook/linuxemu/) enabled, and
+a Debian 12 "Bookworm" arm64 system with the `qemu-user-binfmt` package
+installed.
 
 ### Code style
 
@@ -121,49 +119,16 @@ Most of the code in this repository was written specifically for this project,
 and follows the formatting and style rules. Code originally from other projects
 may or may not be adapted to fit some or all of the formatting and style rules.
 
-## To-do
+Brainfuck source code in the `test/` directory is the exception - it has no
+formatting rules or style guides.
 
-### Bare minimum
+## Ideas for future versions
 
-* [x] successfully compile "sub-bf" - brainfuck without `[` and `]`
-* [x] successfully add the needed ELF headers to be able to run compiled code
-* [x] successfully compile `[` and `]` to x86_64 machine code
+### Planned
 
-### Pre-1.0
+* [ ] do some small optimizations, like compiling `[-]` as 'set 0'
 
-#### Completed
-
-* [x] remove unused macros and definitions from header files
-* [x] account for umask when creating a file
-* [x] delete output file if compilation fails
-* [x] better command-line interface for the compiler
-* [x] add the ability to compile multiple source files in one run
-* [x] add a command-line argument to continue on if a source file fails to build
-* [x] add a command-line argument to disable deletion of failed files
-  * [x] write headers if an instruction fails to compile and that option is set
-* [x] address portability issues
-  * [x] writing Ehdr and Phdr structs and using their sizes should be avoided
-  * [x] ensure multi-byte values are written in an endian-agnostic manner.
-  * [x] Bundle `elf.h` - its not always available on POSIX+C99 systems
-  * [x] replace the Makefile with a better, more portable one
-* [x] support printing multiple error messages
-* [x] include machine-readable error IDs in error messages
-* [x] automatic testing of brainfuck source files in `test/` directory
-* [x] add tests for additional errors
-* [x] refactor code to reduce use of function-like macros
-* [x] add script to build with different compilers and compiler flags
-  * this should hopefully catch any undefined behavior or portability issues
-* [x] make some hard-coded values (like tape size) configurable when building
-* [x] add `-j` flag to write errors in JSON-compatible format
-  * assumes UTF-8 file names when printing error messages.
-* [x] refactor for more consistent and idiomatic style
-* [x] add a `-V` flag that includes version info
-
-### Future versions
-
-* [ ] possible small optimizations, like compiling `[-]` as 'set 0'
-
-#### Under Consideration
+### Under Consideration
 
 * [ ] extend the jump stack as needed instead of erroring out at > 64 nested
 * [ ] include C compiler and flags used in `-V` output
