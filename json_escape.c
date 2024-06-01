@@ -16,32 +16,9 @@
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
 char *jsonStr(char* str) {
-    size_t bufsz = 1; /* start with 1 for the null terminator at the end */
+    size_t bufsz = strlen(str) + 16; /* +16 for padding */
+    size_t used = 0;
     char *p = str;
-    /* 2 passes - 1 to determine bufsz, and 1 to actually build the string. */
-    while (*p) {
-        switch(*p) {
-          case '\n':
-          case '\r':
-          case '\f':
-          case '\t':
-          case '\b':
-          case '\\':
-          case '\"':
-            bufsz += 2;
-            break;
-          default:
-        /* was going to be a switch statement, but case a ... d is non-portable.
-         * Instead, I went with this ugly hybrid system */
-            if (*p < 040) {
-                bufsz += 6;
-            } else {
-                bufsz++;
-            }
-            break;
-        }
-        p++;
-    }
     char *json_escaped = (char *)malloc(bufsz);
     char *outp = json_escaped;
     if (json_escaped == NULL) return "malloc failed for json_escape";
@@ -51,39 +28,54 @@ char *jsonStr(char* str) {
           case '\n':
             *(outp++) = '\\';
             *(outp++) = 'n';
+            used += 2;
             break;
           case '\r':
             *(outp++) = '\\';
             *(outp++) = 'r';
+            used += 2;
             break;
           case '\f':
             *(outp++) = '\\';
             *(outp++) = 'f';
+            used += 2;
             break;
           case '\t':
             *(outp++) = '\\';
             *(outp++) = 't';
+            used += 2;
             break;
           case '\b':
             *(outp++) = '\\';
             *(outp++) = 'b';
+            used += 2;
             break;
           case '\\':
             *(outp++) = '\\';
             *(outp++) = '\\';
+            used += 2;
             break;
           case '\"':
             *(outp++) = '\\';
             *(outp++) = '\"';
+            used += 2;
             break;
           default:
             if (*p < 040) {
                 sprintf(outp, "\\u%04hhx", *p);
+                used += 6;
                 outp += 6;
             } else {
+                used++;
                 *(outp++) = *p;
             }
             break;
+        }
+        /* If less than 8 chars are available, allocate more space */
+        if (used > (bufsz - 8)) {
+            bufsz += 16;
+            json_escaped = (char *)realloc(json_escaped, bufsz);
+            if (json_escaped == NULL) return "malloc failed for json_escape";
         }
         p++;
     }
