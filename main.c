@@ -16,8 +16,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 /* internal */
-#include "json_escape.h"
+#include "config.h"
 #include "eam_compile.h"
+#include "json_escape.h"
 
 /* Return the permission mask to use for the output file */
 mode_t getPerms(void) {
@@ -47,7 +48,8 @@ mode_t getPerms(void) {
 void showHelp(FILE *outfile, char *progname) {
     fprintf(outfile,
         "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
-        " -h        - display this help text\n"
+        " -h        - display this help text and exit.\n"
+        " -V        - print version information and exit.\n"
         " -q        - don't print compilation errors.\n"
         " -j        - print compilation errors in JSON-like format.\n"
         "             (assumes file names are UTF-8-encoded.)\n"
@@ -115,10 +117,13 @@ int main(int argc, char* argv[]) {
     bool quiet = false, keep = false, moveahead = false, json = false;
     mode_t perms = getPerms();
 
-    while ((opt = getopt(argc, argv, ":hqjkme:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hVqjkme:")) != -1) {
         switch(opt) {
           case 'h':
             showHelp(stdout, argv[0]);
+            return EXIT_SUCCESS;
+          case 'V':
+            printf("%s: eambfc version %s.\n", argv[0], EAMBFC_VERSION);
             return EXIT_SUCCESS;
           case 'q':
             quiet = true;

@@ -27,12 +27,13 @@ install: eambfc
 config.h:
 	sed -e '/MAX_ERROR/s/@@/$(MAX_ERROR)/' \
 		-e '/TAPE_BLOCKS/s/@@/$(TAPE_BLOCKS)/' \
+		-e "/EAMBFC_VERSION/s/@@/\"$$(cat version)\"/" \
 		<config.template.h >config.h
 
 serialize.o: serialize.c
 eam_compile.o: config.h eam_compile.c
 json_escape.o: json_escape.c
-main.o: main.c
+main.o: config.h main.c
 
 # for testing
 #

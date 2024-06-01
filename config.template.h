@@ -17,4 +17,7 @@
  * I would not recommend decreasing it. */
 #define TAPE_BLOCKS @@
 
+/* The current version */
+#define EAMBFC_VERSION @@
+
 #endif /* EAM_CONFIG_H */
