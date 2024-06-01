@@ -13,6 +13,8 @@
 /* POSIX */
 #include <unistd.h>
 
+#define bs_escaped(c) *(outp++) = '\\'; *(outp++) = c; used += 2
+
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
 char *jsonStr(char* str) {
@@ -26,39 +28,25 @@ char *jsonStr(char* str) {
     while (*p) {
         switch(*p) {
           case '\n':
-            *(outp++) = '\\';
-            *(outp++) = 'n';
-            used += 2;
+            bs_escaped('n');
             break;
           case '\r':
-            *(outp++) = '\\';
-            *(outp++) = 'r';
-            used += 2;
+            bs_escaped('r');
             break;
           case '\f':
-            *(outp++) = '\\';
-            *(outp++) = 'f';
-            used += 2;
+            bs_escaped('f');
             break;
           case '\t':
-            *(outp++) = '\\';
-            *(outp++) = 't';
-            used += 2;
+            bs_escaped('t');
             break;
           case '\b':
-            *(outp++) = '\\';
-            *(outp++) = 'b';
-            used += 2;
+            bs_escaped('b');
             break;
           case '\\':
-            *(outp++) = '\\';
-            *(outp++) = '\\';
-            used += 2;
+            bs_escaped('\\');
             break;
           case '\"':
-            *(outp++) = '\\';
-            *(outp++) = '\"';
-            used += 2;
+            bs_escaped('\"');
             break;
           default:
             if (*p < 040) {
