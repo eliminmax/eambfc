@@ -155,8 +155,10 @@ may or may not be adapted to fit some or all of the formatting and style rules.
 
 #### Planned
 
-* [ ] add a `-V` flag that includes version and build info
+* [ ] add a `-V` flag that includes version info
   * This requires explicitly-defined versions, and I'm not there yet.
+* [ ] don't print output until after args are processed
+  * that way `-q` and `-j` can take effect before anything would be printed.
 
 ### Future versions
 
@@ -165,3 +167,4 @@ may or may not be adapted to fit some or all of the formatting and style rules.
 #### Under Consideration
 
 * [ ] extend the jump stack as needed instead of erroring out at > 64 nested
+* [ ] include C compiler and flags used in `-V` output
