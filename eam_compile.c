@@ -24,6 +24,16 @@ off_t codesize;
 char instr;
 unsigned int instr_line, instr_col;
 
+/* ensure that an appropriate type is used for error index */
+#if MAX_ERROR <= UINT8_MAX
+typedef uint8_t err_index_t;
+#elif MAX_ERROR <= UINT16_MAX
+typedef uint16_t err_index_t;
+#elif MAX_ERROR <= UINT32_MAX
+typedef uint32_t err_index_t;
+#else
+typedef uint64_t err_index_t;
+#endif
 /* index of the current error in the error list */
 err_index_t err_ind;
 
@@ -464,7 +474,6 @@ int bfCompile(int in_fd, int out_fd){
         /* the appropriate error message(s) are already appended */
         if (!bfCompileInstruction(instr, out_fd)) ret = 0;
     }
-
 
     /* the appropriate error message(s) are already appended */
     if (!bfCleanup(out_fd)) ret = 0;;

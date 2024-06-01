@@ -191,6 +191,9 @@
 #define PHTB_SIZE PHNUM * PHDR_SIZE
 #define SHTB_SIZE SHNUM * SHDR_SIZE
 
+/* TAPE_BLOCKS is defined in config.h */
+# define TAPE_SIZE (TAPE_BLOCKS * 0x1000)
+
 /* virtual address of the section containing the machine code
  * should be after the tape ends to avoid overlapping with the tape.
  *
