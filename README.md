@@ -121,15 +121,16 @@ I am very inconsistent about that.
 * [x] refactor code to reduce use of function-like macros
 * [x] add script to build with different compilers and compiler flags
   * this should hopefully catch any undefined behavior or portability issues
-* [x] add `-j` flag to write errors in JSON-compatible format
 
 #### In Progress
 
 * [ ] refactor for more consistent and idiomatic style
+* [ ] add `-j` flag to write errors in JSON-compatible format
+  * Currently works for ASCII text, but is untested for other text encodings
+* [ ] make some hard-coded values (like tape size) configurable when building
 
 #### Planned
 
-* [ ] make some hard-coded values (like tape size) configurable when building
 * [ ] possible small optimizations, like compiling `[-]` as 'set 0'
 
 #### Under Consideration
