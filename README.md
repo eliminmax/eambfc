@@ -148,13 +148,14 @@ may or may not be adapted to fit some or all of the formatting and style rules.
 * [x] refactor code to reduce use of function-like macros
 * [x] add script to build with different compilers and compiler flags
   * this should hopefully catch any undefined behavior or portability issues
+* [x] make some hard-coded values (like tape size) configurable when building
 
 #### In Progress
 
 * [ ] refactor for more consistent and idiomatic style
 * [ ] add `-j` flag to write errors in JSON-compatible format
   * Currently works for ASCII text, but is untested for other text encodings
-* [ ] make some hard-coded values (like tape size) configurable when building
+  * assume UTF-8 file names when printing error messages.
 
 #### Planned
 
