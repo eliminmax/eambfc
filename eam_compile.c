@@ -14,18 +14,27 @@
 #include <fcntl.h>
 #include <unistd.h>
 /* internal */
-#include "config.h"
 #include "eam_compiler_macros.h"
 #include "elf.h"
 #include "serialize.h"
+
+#define MAX_ERROR 32
+/* ensure that an appropriate type is used for error index */
+#if MAX_ERROR <= UINT8_MAX
+typedef uint8_t err_index_t;
+#elif MAX_ERROR <= UINT16_MAX
+typedef uint16_t err_index_t;
+#elif MAX_ERROR <= UINT32_MAX
+typedef uint32_t err_index_t;
+#else
+typedef uint64_t err_index_t;
+#endif
+err_index_t err_ind;
 
 off_t codesize;
 
 char instr;
 unsigned int instr_line, instr_col;
-
-/* index of the current error in the error list */
-err_index_t err_ind;
 
 typedef struct {
     unsigned int line;
