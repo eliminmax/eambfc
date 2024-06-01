@@ -61,6 +61,10 @@ installed.
 ```sh
 # Build eambfc
 make
+# rebuild eambfc with a different number of 4096-byte blocks for the tape size
+make TAPE_BLOCKS=16  # default is 8
+# rebuild eambfc so that it only prints 4 compiler errors
+make MAX_ERROR=4  # default is 32
 # Run the test suite
 make test
 # install eambfc to /usr/local with sudo
