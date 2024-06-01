@@ -11,6 +11,9 @@ eambfc
 alt-builds/
 
 # some test assets and tools that are generated locally
-createminielf
-minielf
+create_mini_elf
+mini_elf
 can-run-linux-amd64
+
+# ctags tag file
+tags

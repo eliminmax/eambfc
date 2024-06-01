@@ -1,6 +1,10 @@
 /* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
  *
- * SPDX-License-Identifier: GPL-3.0-only */
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * This file defines a function that can be used to JSON-escape a string.
+ *
+ * It doesn't fit anywhere else in the code, so it's on its own in here. */
 
 /* C99 */
 #include <stdlib.h>
@@ -11,7 +15,7 @@
 
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
-char *json_escape(char* str) {
+char *jsonStr(char* str) {
     size_t bufsz = 1; /* start with 1 for the null terminator at the end */
     char *p = str;
     /* 2 passes - 1 to determine bufsz, and 1 to actually build the string. */
@@ -27,7 +31,7 @@ char *json_escape(char* str) {
             bufsz += 2;
             break;
           default:
-        /* was going to be a switch statement, but case a ... d is non-portable. 
+        /* was going to be a switch statement, but case a ... d is non-portable.
          * Instead, I went with this ugly hybrid system */
             if (*p < 040) {
                 bufsz += 6;
