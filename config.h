@@ -15,6 +15,6 @@
  * minimum tape size for a "proper" implementation, is 30,000. I increased that
  * to the nearest multiple of 4096 (i.e. 32687, which is 8*4096) as the default.
  * I would not recommend decreasing it. */
-extern int tape_blocks;
+#define TAPE_BLOCKS 8
 
 #endif /* EAM_CONFIG_H */
