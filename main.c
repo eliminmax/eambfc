@@ -126,7 +126,14 @@ int main(int argc, char* argv[]) {
             showHelp(stdout, argv[0]);
             return EXIT_SUCCESS;
           case 'V':
-            printf("%s: eambfc version %s.\n", argv[0], EAMBFC_VERSION);
+            printf(
+                "%s: eambfc version %s, tape size: %d 4-KiB blocks, "
+                "maximum errors %d.\n",
+                argv[0],
+                EAMBFC_VERSION,
+                TAPE_BLOCKS,
+                MAX_ERROR
+            );
             return EXIT_SUCCESS;
           case 'q':
             quiet = true;
