@@ -58,6 +58,8 @@ installed.
 
 ## Building and Installing
 
+Tape size is set in `config.h`. For now, you need to manually edit it.
+
 ```sh
 # Build eambfc
 make
