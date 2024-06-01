@@ -1,7 +1,7 @@
 /* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
- * 
+ *
  * This file contains the implementation of the actual compilation process. */
 
 /* C99 */

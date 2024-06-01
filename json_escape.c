@@ -31,7 +31,7 @@ char *jsonStr(char* str) {
             bufsz += 2;
             break;
           default:
-        /* was going to be a switch statement, but case a ... d is non-portable. 
+        /* was going to be a switch statement, but case a ... d is non-portable.
          * Instead, I went with this ugly hybrid system */
             if (*p < 040) {
                 bufsz += 6;

@@ -1,7 +1,7 @@
 /* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
- * 
+ *
  * A simple program that reuses functions and macros from eam_compile.c and
  * eam_compiler_macros.h to create a minimal AMD x86_64 Linux ELF binary that
  * simply calls exit(0), to validate that a system can run Linux binaries. */
