@@ -37,7 +37,7 @@ char *jsonStr(char* str) {
           default:
             /* would use a switch statement, but case a ... d is non-portable.
              * Instead, I went with this ugly hybrid system */
-            if (*p < 040) {
+            if ((unsigned char)(*p) < 040) { /* control chars are 000 to 037 */
                 sprintf(outp, "\\u%04hhx", *p);
                 used += 6;
                 outp += 6;
