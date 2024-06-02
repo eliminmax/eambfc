@@ -17,6 +17,9 @@
  * I would not recommend decreasing it. */
 #define TAPE_BLOCKS @@
 
+/* The maximum number of nested loops to support */
+#define MAX_NESTING_LEVEL @@
+
 /* The current version */
 #define EAMBFC_VERSION @@
 

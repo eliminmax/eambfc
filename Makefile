@@ -14,7 +14,7 @@ CC ?= c99
 # Compile-time configuration values
 MAX_ERROR ?= 32
 TAPE_BLOCKS ?= 8
-
+MAX_NESTING_LEVEL ?= 64
 
 eambfc: serialize.o eam_compile.o json_escape.o main.o
 	$(CC) $(LDFLAGS) -o eambfc \
@@ -27,6 +27,7 @@ install: eambfc
 config.h:
 	sed -e '/MAX_ERROR/s/@@/$(MAX_ERROR)/' \
 		-e '/TAPE_BLOCKS/s/@@/$(TAPE_BLOCKS)/' \
+		-e '/MAX_NESTING_LEVEL/s/@@/$(MAX_NESTING_LEVEL)/' \
 		-e "/EAMBFC_VERSION/s/@@/\"$$(cat version)\"/" \
 		<config.template.h >config.h
 

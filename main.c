@@ -127,11 +127,12 @@ int main(int argc, char* argv[]) {
             return EXIT_SUCCESS;
           case 'V':
             printf(
-                "%s: eambfc version %s, tape size: %d 4-KiB blocks, "
-                "maximum errors %d.\n",
+                "%s: eambfc version %s\ntape size: %d 4-KiB blocks\n"\
+                "maximum nesting level: %d\nmaximum errors: %d\n",
                 argv[0],
                 EAMBFC_VERSION,
                 TAPE_BLOCKS,
+                MAX_NESTING_LEVEL,
                 MAX_ERROR
             );
             return EXIT_SUCCESS;

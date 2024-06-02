@@ -265,10 +265,20 @@ bool bfIO(int fd, int bf_fd, int sc) {
     return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
-#define MAX_NESTING_LEVEL 64
+
+/* ensure that an appropriate type is used for jump stack index */
+#if MAX_ERROR <= INT8_MAX
+typedef int8_t jump_stack_index_t;
+#elif MAX_ERROR <= INT16_MAX
+typedef int16_t jump_stack_index_t;
+#elif MAX_ERROR <= INT32_MAX
+typedef int32_t jump_stack_index_t;
+#else
+typedef int64_t jump_stack_index_t;
+#endif
 
 struct stack {
-    int8_t index;
+    jump_stack_index_t index;
     off_t addresses[MAX_NESTING_LEVEL];
 } JumpStack;
 
