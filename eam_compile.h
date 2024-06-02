@@ -7,6 +7,8 @@
 #ifndef EAM_COMPILE_H
 #define EAM_COMPILE_H 1
 #include <stdbool.h>
+/* includes the BFCompilerError typedef */
+#include "eambfc_types.h"
 
 /* Takes 2 open file descriptors - in_fd and out_fd.
  * in_fd is a brainfuck source file, open for reading.
@@ -21,17 +23,6 @@
 int bfCompile(int in_fd, int out_fd);
 
 /* values for use in printing an error message if compilation fails.*/
-
-typedef struct {
-    unsigned int line;
-    unsigned int col;
-    char *err_id;
-    char *err_msg;
-    char instr;
-    bool active;
-} BFCompilerError;
-
-#define MAX_ERROR 32
 
 extern BFCompilerError err_list[MAX_ERROR];
 

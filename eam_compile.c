@@ -16,6 +16,7 @@
 /* internal */
 #include "config.h"
 #include "eam_compiler_macros.h"
+#include "eambfc_types.h"
 #include "elf.h"
 #include "serialize.h"
 
@@ -24,29 +25,10 @@ off_t codesize;
 char instr;
 unsigned int instr_line, instr_col;
 
-/* ensure that an appropriate type is used for error index */
-#if MAX_ERROR <= UINT8_MAX
-typedef uint8_t err_index_t;
-#elif MAX_ERROR <= UINT16_MAX
-typedef uint16_t err_index_t;
-#elif MAX_ERROR <= UINT32_MAX
-typedef uint32_t err_index_t;
-#else
-typedef uint64_t err_index_t;
-#endif
+BFCompilerError err_list[MAX_ERROR];
+
 /* index of the current error in the error list */
 err_index_t err_ind;
-
-typedef struct {
-    unsigned int line;
-    unsigned int col;
-    char *err_id;
-    char *err_msg;
-    char instr;
-    bool active;
-} BFCompilerError;
-
-BFCompilerError err_list[MAX_ERROR];
 
 void resetErrors(void) {
     /* reset error list */
@@ -265,17 +247,6 @@ bool bfIO(int fd, int bf_fd, int sc) {
     return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
 }
 
-
-/* ensure that an appropriate type is used for jump stack index */
-#if MAX_ERROR <= INT8_MAX
-typedef int8_t jump_stack_index_t;
-#elif MAX_ERROR <= INT16_MAX
-typedef int16_t jump_stack_index_t;
-#elif MAX_ERROR <= INT32_MAX
-typedef int32_t jump_stack_index_t;
-#else
-typedef int64_t jump_stack_index_t;
-#endif
 
 struct stack {
     jump_stack_index_t index;
