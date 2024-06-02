@@ -23,13 +23,13 @@ typedef uint64_t err_index_t;
 
 /* ensure that an appropriate type is used for jump stack index */
 #if MAX_ERROR <= INT8_MAX
-typedef int8_t jump_stack_index_t;
+typedef int8_t jump_index_t;
 #elif MAX_ERROR <= INT16_MAX
-typedef int16_t jump_stack_index_t;
+typedef int16_t jump_index_t;
 #elif MAX_ERROR <= INT32_MAX
-typedef int32_t jump_stack_index_t;
+typedef int32_t jump_index_t;
 #else
-typedef int64_t jump_stack_index_t;
+typedef int64_t jump_index_t;
 #endif
 
 
