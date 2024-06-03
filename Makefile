@@ -1,15 +1,16 @@
 # SPDX-FileCopyrightText: 2024 Eli Array Minkoff
 #
-# SPDX-License-Identifier: 0BSD
+# SPDX-License-Identifier: GPL-3.0-only
 .POSIX:
 
 PREFIX ?= /usr/local
 
-CFLAGS += -D _POSIX_C_SOURCE=200809L
-
 # POSIX standard tool to compile C99 code, could be any C99-compatible compiler
 # which supports the POSIX-specified options
 CC ?= c99
+
+# Enable POSIX.1-2008 C features and headers
+CFLAGS += -D _POSIX_C_SOURCE=200809L
 
 # Compile-time configuration values
 MAX_ERROR ?= 32
@@ -24,11 +25,19 @@ install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp -f eambfc $(DESTDIR)$(PREFIX)/bin
 
-config.h:
+config.h config.template.h:
+	if command -v git >/dev/null && [ -e .git ]; then \
+		git_commit="$$(git log -n1 --pretty=format:'git commit: %h')"; \
+	else \
+		git_commit='Not built from git repo'; \
+	fi; \
 	sed -e '/MAX_ERROR/s/@@/$(MAX_ERROR)/' \
 		-e '/TAPE_BLOCKS/s/@@/$(TAPE_BLOCKS)/' \
 		-e '/MAX_NESTING_LEVEL/s/@@/$(MAX_NESTING_LEVEL)/' \
 		-e "/EAMBFC_VERSION/s/@@/\"$$(cat version)\"/" \
+		-e '/EAMBFC_CC/s/@@/"$(CC)"/' \
+		-e '/EAMBFC_CFLAGS/s/@@/"$(CFLAGS)"/' \
+		-e "/EAMBFC_COMMIT/s/@@/\"$$git_commit\"/" \
 		<config.template.h >config.h
 
 serialize.o: serialize.c
@@ -54,9 +63,8 @@ can-run-linux-amd64: mini_elf
 test: can-run-linux-amd64 eambfc
 	(cd tests; make clean test)
 
-
 multibuild: config.h
-	env SKIP_TEST=y ./multibuild.sh
+	env SKIP_TEST=y ./multibuild.svh
 multibuild-test: can-run-linux-amd64 config.h
 	./multibuild.sh
 
