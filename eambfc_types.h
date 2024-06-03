@@ -2,12 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * This file contains typedefs and structs used within eambfc. */
+ * This file contains typedefs used throughout eambfc. */
 
 #ifndef EAMBFC_TYPES_H
 #define EAMBFC_TYPES_H 1
 
-/* A few values should be set based on the configured values, so #include */
+/* C99 */
+#include <stdint.h>
+/* internal */
 #include "config.h"
 
 /* ensure that an appropriate type is used for error index */
