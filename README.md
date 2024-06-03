@@ -124,7 +124,7 @@ formatting rules or style guides.
 
 ## Ideas for future versions
 
-### Planned
+### In Progress
 
 * [ ] do some small optimizations, like compiling `[-]` as 'set 0'
 
