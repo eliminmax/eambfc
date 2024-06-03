@@ -129,7 +129,6 @@ came from.
 ### In Progress
 
 * [ ] do some small optimizations, like compiling `[-]` as 'set 0'
-* [ ] generate code in a tmpfile and write in the end to avoid seeks on FIFOS
 
 ### Under Consideration
 
