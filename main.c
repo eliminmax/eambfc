@@ -137,16 +137,12 @@ int main(int argc, char* argv[]) {
                 "tape size: %d 4-KiB blocks\n"
                 "max nesting level: %d\n"
                 "max compiler errors shown: %d\n"
-                "compiler: %s\n"
-                "compiler flags: %s\n"
                 "%s\n", /* git info or message stating git not used. */
                 argv[0],
                 EAMBFC_VERSION,
                 TAPE_BLOCKS,
                 MAX_NESTING_LEVEL,
                 MAX_ERROR,
-                EAMBFC_CC,
-                EAMBFC_CFLAGS,
                 EAMBFC_COMMIT
             );
             return EXIT_SUCCESS;

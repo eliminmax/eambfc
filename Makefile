@@ -35,8 +35,6 @@ config.h config.template.h:
 		-e '/TAPE_BLOCKS/s/@@/$(TAPE_BLOCKS)/' \
 		-e '/MAX_NESTING_LEVEL/s/@@/$(MAX_NESTING_LEVEL)/' \
 		-e "/EAMBFC_VERSION/s/@@/\"$$(cat version)\"/" \
-		-e '/EAMBFC_CC/s/@@/"$(CC)"/' \
-		-e '/EAMBFC_CFLAGS/s/@@/"$(CFLAGS)"/' \
 		-e "/EAMBFC_COMMIT/s/@@/\"$$git_commit\"/" \
 		<config.template.h >config.h
 

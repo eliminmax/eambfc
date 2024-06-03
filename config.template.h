@@ -26,9 +26,5 @@
 /* The current git commit */
 #define EAMBFC_COMMIT @@
 
-/* The C compiler and build flags */
-#define EAMBFC_CC @@
-#define EAMBFC_CFLAGS @@
-
 #endif /* EAM_CONFIG_H */
 /* vim:set ft=cpp: */
