@@ -120,7 +120,9 @@ and follows the formatting and style rules. Code originally from other projects
 may or may not be adapted to fit some or all of the formatting and style rules.
 
 Brainfuck source code in the `test/` directory is the exception - it has no
-formatting rules or style guides.
+formatting rules or style guides, but the code should include commentary to
+explain what it's doing, how, and, if not written for this project, where it
+came from.
 
 ## Ideas for future versions
 
