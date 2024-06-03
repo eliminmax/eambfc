@@ -19,3 +19,6 @@ dead-code
 
 # test assets
 *.build_err
+unseekable_f
+piped-in
+piped-in.bf

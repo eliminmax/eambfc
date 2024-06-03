@@ -72,13 +72,18 @@ test_arg_error () {
     fi
 }
 
-test_simple alternative-extension '1639980005 14'
 test_simple colortest '1395950558 3437'
 test_simple hello '1639980005 14'
 test_simple loop '159651250 1'
 test_simple null '4294967295 0'
 test_simple wrap '781852651 4'
 test_simple wrap2 '1742477431 4'
+
+# identical to the hello world program, but something is different about the
+# source file
+test_simple alternative-extension '1639980005 14' # self-explanatory
+test_simple unseekable '1639980005 14' # output is a FIFO, can't be seeked
+test_simple piped-in '1639980005 14' # input is a FIFO, can't be seeked
 
 # ensure that the proper errors were encountered
 
@@ -108,7 +113,6 @@ rm -f hello.b
 test_error too-many-nested-loops OVERFLOW UNMATCHED_CLOSE
 test_error unmatched-close UNMATCHED_CLOSE
 test_error unmatched-open UNMATCHED_OPEN
-test_error unseekable FAILED_SEEK
 
 # lastly, some special cases that need some more work
 

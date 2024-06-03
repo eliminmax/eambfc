@@ -12,7 +12,7 @@ EAMBFC ?= ../eambfc
 # build test assets
 build-all: hello loop null rw wrap wrap2 colortest truthmachine \
 	too-many-nested-loops unmatched-close unmatched-open \
-	unseekable alternative-extension
+	unseekable alternative-extension piped-in
 
 test: clean build-all
 	./test.sh $(EAMBFC)
@@ -29,9 +29,23 @@ unmatched-close: unmatched-close.bf
 unmatched-open: unmatched-open.bf
 # test error from unseekable outputs
 unseekable:
+	# make a fifo (named pipe) that will be written to
 	mkfifo unseekable
-	($(EAMBFC) -kj unseekable.bf & tail unseekable >/dev/null; wait) \
+	# compile, writing to the fifo
+	($(EAMBFC) -kj unseekable.bf & cat unseekable >unseekable_f; wait) \
 		>.unseekable.build_err
+	rm unseekable
+	mv unseekable_f unseekable
+	chmod u+x unseekable
+	if [ "$$(wc -c .unseekable.build_err | cut -d' ' -f1)" -eq 0 ]; then\
+		rm .unseekable.build_err; else false; fi
+
+piped-in:
+	mkfifo piped-in.bf
+	(cat hello.bf > piped-in.bf & $(EAMBFC) -kj piped-in.bf; wait) \
+		>.piped-in.build_err
+	if [ "$$(wc -c .piped-in.build_err | cut -d' ' -f1)" -eq 0 ]; then\
+		rm .piped-in.build_err; else false; fi
 # test support for alternative extensions
 alternative-extension:
 	$(EAMBFC) -kj -e .brnfck alternative-extension.brnfck
@@ -41,7 +55,6 @@ alternative-extension:
 .IGNORE: too-many-nested-loops unmatched-close unmatched-open
 
 clean:
-	rm -f .*.build_err \
-		hello rw loop null wrap wrap2 colortest truthmachine \
-		too-many-nested-loops unmatched-close unmatched-open \
-		unseekable alternative-extension
+	rm -f .*.build_err hello rw loop null wrap wrap2 colortest truthmachine \
+		too-many-nested-loops unmatched-close unmatched-open unseekable \
+		alternative-extension unseekable_f piped-in piped-in.bf
