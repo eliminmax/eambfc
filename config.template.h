@@ -27,4 +27,3 @@
 #define EAMBFC_COMMIT @@
 
 #endif /* EAM_CONFIG_H */
-/* vim:set ft=cpp: */
