@@ -8,7 +8,7 @@ SPDX-License-Identifier: 0BSD
 
 A non-optimizing compiler for brainfuck, written in C for Unix-like systems.
 
-Outputs an x86_64 ELF executable that uses Linux system calls for I/O.
+Outputs x86_64 ELF executables that uses Linux system calls for I/O.
 
 I started this as an inexperienced C programmer, and this was originally an
 attempt to gain practice by writing something somewhat simple yet not trivial.
