@@ -15,6 +15,7 @@ wrap2
 unmatched-open
 unmatched-close
 unseekable
+dead-code
 
 # test assets
 *.build_err
