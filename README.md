@@ -128,9 +128,9 @@ came from.
 
 ### In Progress
 
-* [ ] do some small optimizations, like compiling `[-]` as 'set 0'
+* do some small optimizations, like compiling `[-]` as 'set 0'
 
 ### Under Consideration
 
-* [ ] extend the jump stack as needed instead of erroring out at > 64 nested
-* [ ] include C compiler and flags used in `-V` output
+* extend the jump stack as needed instead of erroring out at > 64 nested
+* include C compiler and flags used in `-V` output
