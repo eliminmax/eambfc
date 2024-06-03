@@ -133,4 +133,3 @@ came from.
 ### Under Consideration
 
 * extend the jump stack as needed instead of erroring out at > 64 nested
-* include C compiler and flags used in `-V` output
