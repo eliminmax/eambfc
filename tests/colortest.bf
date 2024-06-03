@@ -1,5 +1,12 @@
 #!/usr/bin/env bf
 # vi:sw=5:ts=5:sts=5:et:nowrap:noai:ft=brainfuck
+[
+ This was originally created for colortest. Colortest is a personal project where I rewrite the same simple
+ program in many different programming languages, which using XTerm ANSI escape sequences, prints a 256-color
+ test pattern which is strictly defined. It is available at https://github.com/eliminmax/colortest.
+ The only change made between the colortest.bf in the colortest repo and this colortest.bf is the existence of this
+ information, which is in a loop that will never run.
+]
 In these comments cells are zero indexed and cell values are hex unless specified otherwise
 This program is not particularly optimized
 
