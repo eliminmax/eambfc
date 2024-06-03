@@ -27,15 +27,18 @@ install: eambfc
 
 config.h config.template.h:
 	if command -v git >/dev/null && [ -e .git ]; then \
-		git_commit="$$(git log -n1 --pretty=format:'git commit: %h')"; \
+		git_str="$$(git log -n1 --pretty=format:'git commit: %h')"; \
+		if [ -n "$$(git status --short)" ]; then \
+			git_str="$$git_str (modified)"; \
+		fi \
 	else \
-		git_commit='Not built from git repo'; \
+		git_str='Not built from git repo'; \
 	fi; \
 	sed -e '/MAX_ERROR/s/@@/$(MAX_ERROR)/' \
 		-e '/TAPE_BLOCKS/s/@@/$(TAPE_BLOCKS)/' \
 		-e '/MAX_NESTING_LEVEL/s/@@/$(MAX_NESTING_LEVEL)/' \
 		-e "/EAMBFC_VERSION/s/@@/\"$$(cat version)\"/" \
-		-e "/EAMBFC_COMMIT/s/@@/\"$$git_commit\"/" \
+		-e "/EAMBFC_COMMIT/s/@@/\"$$git_str\"/" \
 		<config.template.h >config.h
 
 serialize.o: serialize.c
