@@ -66,7 +66,7 @@ test: can-run-linux-amd64 eambfc
 	(cd tests; make clean test)
 
 multibuild: config.h
-	env SKIP_TEST=y ./multibuild.svh
+	env SKIP_TEST=y ./multibuild.sh
 multibuild-test: can-run-linux-amd64 config.h
 	./multibuild.sh
 
