@@ -23,4 +23,7 @@
 /* The current version */
 #define EAMBFC_VERSION @@
 
+/* The current git commit */
+#define EAMBFC_COMMIT @@
+
 #endif /* EAM_CONFIG_H */

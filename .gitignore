@@ -16,6 +16,7 @@ alt-builds/
 create_mini_elf
 mini_elf
 can-run-linux-amd64
+optimize
 
 # ctags tag file
 tags

@@ -8,7 +8,7 @@ SPDX-License-Identifier: 0BSD
 
 A non-optimizing compiler for brainfuck, written in C for Unix-like systems.
 
-Outputs an x86_64 ELF executable that uses Linux system calls for I/O.
+Outputs x86_64 ELF executables that uses Linux system calls for I/O.
 
 I started this as an inexperienced C programmer, and this was originally an
 attempt to gain practice by writing something somewhat simple yet not trivial.
@@ -120,15 +120,16 @@ and follows the formatting and style rules. Code originally from other projects
 may or may not be adapted to fit some or all of the formatting and style rules.
 
 Brainfuck source code in the `test/` directory is the exception - it has no
-formatting rules or style guides.
+formatting rules or style guides, but the code should include commentary to
+explain what it's doing, how, and, if not written for this project, where it
+came from.
 
 ## Ideas for future versions
 
 ### In Progress
 
-* [ ] do some small optimizations, like compiling `[-]` as 'set 0'
+* do some small optimizations, like compiling `[-]` as 'set 0'
 
 ### Under Consideration
 
-* [ ] extend the jump stack as needed instead of erroring out at > 64 nested
-* [ ] include C compiler and flags used in `-V` output
+* extend the jump stack as needed instead of erroring out at > 64 nested

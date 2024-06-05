@@ -16,6 +16,7 @@
 /* internal */
 #include "config.h"
 #include "eam_compiler_macros.h"
+#include "eambfc_types.h"
 #include "elf.h"
 #include "serialize.h"
 
@@ -24,29 +25,10 @@ off_t codesize;
 char instr;
 unsigned int instr_line, instr_col;
 
-/* ensure that an appropriate type is used for error index */
-#if MAX_ERROR <= UINT8_MAX
-typedef uint8_t err_index_t;
-#elif MAX_ERROR <= UINT16_MAX
-typedef uint16_t err_index_t;
-#elif MAX_ERROR <= UINT32_MAX
-typedef uint32_t err_index_t;
-#else
-typedef uint64_t err_index_t;
-#endif
+BFCompilerError err_list[MAX_ERROR];
+
 /* index of the current error in the error list */
 err_index_t err_ind;
-
-typedef struct {
-    unsigned int line;
-    unsigned int col;
-    char *err_id;
-    char *err_msg;
-    char instr;
-    bool active;
-} BFCompilerError;
-
-BFCompilerError err_list[MAX_ERROR];
 
 void resetErrors(void) {
     /* reset error list */
@@ -266,19 +248,8 @@ bool bfIO(int fd, int bf_fd, int sc) {
 }
 
 
-/* ensure that an appropriate type is used for jump stack index */
-#if MAX_ERROR <= INT8_MAX
-typedef int8_t jump_stack_index_t;
-#elif MAX_ERROR <= INT16_MAX
-typedef int16_t jump_stack_index_t;
-#elif MAX_ERROR <= INT32_MAX
-typedef int32_t jump_stack_index_t;
-#else
-typedef int64_t jump_stack_index_t;
-#endif
-
 struct stack {
-    jump_stack_index_t index;
+    jump_index_t index;
     off_t addresses[MAX_NESTING_LEVEL];
 } JumpStack;
 
@@ -438,6 +409,8 @@ bool bfCleanup(int fd) {
     return ret;
 }
 
+/* maximum number of bytes to transfer from tmpfile at a time */
+#define MAX_TRANS_SZ 1024
 /* Takes 2 open file descriptors - in_fd and out_fd.
  * in_fd is a brainfuck source file, open for reading.
  * outputFS is the destination file, open for writing.
@@ -452,6 +425,19 @@ bool bfCleanup(int fd) {
  * If all of the other functions succeeded, it returns 1. */
 int bfCompile(int in_fd, int out_fd){
     int ret = 1;
+    FILE *tmp_file = tmpfile();
+    if (tmp_file == NULL) {
+        appendError("Could not open a tmpfile.", "FAILED_TMPFILE");
+        return 0;
+    }
+    int tmp_fd = fileno(tmp_file);
+    if (tmp_fd == -1) {
+        appendError(
+            "Could not get file descriptor for tmpfile",
+            "FAILED_TMPFILE"
+        );
+        return 0;
+    }
     /* reset codesize variable used in several macros in eam_compiler_macros */
     codesize = 0;
     /* reset the jump stack for the new file */
@@ -463,16 +449,12 @@ int bfCompile(int in_fd, int out_fd){
     instr_col = 0;
 
     /* skip the headers until we know the code size */
-    if (lseek(out_fd, START_PADDR, SEEK_SET) != START_PADDR) {
-        appendError(
-            "Could not seek to start of code. Output may be a FIFO.",
-            "FAILED_SEEK"
-        );
-        /* FAILED_SEEK - abort immediately. */
+    if (fseek(tmp_file, START_PADDR, SEEK_SET) != 0) {
+        appendError("Failed to seek to start of code.", "FAILED_SEEK");
         return 0;
     }
 
-    if (!bfInit(out_fd)) {
+    if (!bfInit(tmp_fd)) {
         appendError(
             "Failed to write initial setup instructions.",
             "FAILED_WRITE"
@@ -482,19 +464,41 @@ int bfCompile(int in_fd, int out_fd){
 
     while (read(in_fd, &instr, 1)) {
         /* the appropriate error message(s) are already appended */
-        if (!bfCompileInstruction(instr, out_fd)) ret = 0;
+        if (!bfCompileInstruction(instr, tmp_fd)) ret = 0;
     }
 
-    /* the appropriate error message(s) are already appended */
-    if (!bfCleanup(out_fd)) ret = 0;;
-
-    /* now, code size is known, so we can write the headers */
+    /* now, code size is known, so we can write the headers
+     * the appropriate error message(s) are already appended */
+    if (!bfCleanup(tmp_fd)) ret = 0;
     if(JumpStack.index > 0) {
         appendError(
             "Reached the end of the file with an unmatched `[`!",
             "UNMATCHED_OPEN"
         );
-        return 0;
+        ret = 0;
     }
+
+    if (fseek(tmp_file, 0, SEEK_SET) != 0) {
+        appendError("Failed to seek to start of tmpfile.", "FAILED_SEEK");
+        ret = 0;
+    }
+
+    /* copy tmpfile over to the output file. */
+
+    char trans[MAX_TRANS_SZ];
+    ssize_t trans_sz;
+
+    while ((trans_sz = read(tmp_fd, &trans, MAX_TRANS_SZ))) {
+        if (trans_sz == -1) {
+            appendError("Failed to read bytes from tmpfile", "FAILED_TMPFILE");
+            ret = 0;
+        } else if ((write(out_fd, &trans, trans_sz) != trans_sz)) {
+            appendError("Failed to write bytes from tmpfile", "FAILED_TMPFILE");
+            ret = 0;
+        }
+    }
+
+    fclose(tmp_file);
+
     return ret;
 }
