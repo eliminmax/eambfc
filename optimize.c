@@ -8,10 +8,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
-/* #include <unistd.h> */
-/* internal */
-/* #include "config.h" */
-#include "eambfc_types.h"
 
 #define MALLOC_CHUNK_SIZE 0x100
 
