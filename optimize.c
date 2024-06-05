@@ -1,3 +1,11 @@
+/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+ *
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Either provides a function that retuns EAMBFC IR from an FD, or prints out a
+ * step-by-step overview of the optimization process, depending on whether the
+ * OPTIMIZE_STANDALONE macro is defined at compile time. */
+
 /* C99 */
 #include <inttypes.h> /* provides a superset of stdint with macros for printf */
 #include <stdbool.h>
@@ -12,9 +20,7 @@
 #define MALLOC_CHUNK_SIZE 0x100
 
 static size_t optim_sz;
-/* return a pointer to a string containing just the brainfuck characters.
- *
- * Calling function is responsible for `free`ing the value. */
+/* return a pointer to a string containing just the brainfuck characters. */
 static char *filterNonBFChars(int in_fd) {
     optim_sz = 0;
     size_t limit = MALLOC_CHUNK_SIZE;
@@ -45,12 +51,9 @@ static char *filterNonBFChars(int in_fd) {
             break;
         }
     }
-    close(in_fd);
     /* null terminate it */
     *p = '\0';
     optim_sz++;
-    /* reallocate it to the exact size needed */
-    filtered = realloc(filtered, optim_sz);
     return filtered;
 }
 
@@ -122,7 +125,6 @@ static char *stripUselessCode(char *str) {
         }
     } while (matched);
     optim_sz = strlen(str) + 1;
-    str = (char *)realloc(str, optim_sz);
     return str;
 }
 
@@ -207,7 +209,7 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
     return (size_t)sprintf(dest, "%c%" PRIu64, opcode, consec_ct);
 }
 
-char *mergeInstructions(char *s) {
+static char *mergeInstructions(char *s) {
     /* TODO */
     /* used to check what's between [ and ] if they're 2 apart */
     char m;
@@ -250,7 +252,11 @@ char *mergeInstructions(char *s) {
     *p = '\0'; /* NULL terminate the new string */
     strcpy(s, new_str);
     free(new_str);
-    /* don't bother `realloc`ing s for this one. */
+    /* realloc down to size */
+    s = (char *)realloc(s, optim_sz);
+    if (s == NULL) {
+        /* TODO: error message */
+    }
     return s;
 }
 
@@ -280,5 +286,17 @@ int main(int argc, char *argv[]) {
     }
     puts(new_s);
     free(s);
+}
+#else
+/* Reads the content of the file fd, and returns a string containing optimized
+ * internal representation of that file's code.
+ * fd must be open for reading already, no check is performed.
+ * Calling function is responsible for `free`ing the returned string. */
+char *toIR(int fd) {
+    char *bf_code = filterNonBFChars(fd);
+    if (bf_code == NULL) return NULL;
+    bf_code = stripUselessCode(bf_code);
+    if (bf_code == NULL) return NULL;
+    bf_code = mergeInstructions(bf_code);
 }
 #endif /* OPTIMIZE_STANDALONE */
