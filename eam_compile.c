@@ -18,6 +18,7 @@
 #include "eam_compiler_macros.h"
 #include "eambfc_types.h"
 #include "elf.h"
+#include "optimize.h"
 #include "serialize.h"
 
 off_t codesize;

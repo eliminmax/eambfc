@@ -45,6 +45,7 @@ serialize.o: serialize.c
 eam_compile.o: config.h eam_compile.c
 json_escape.o: json_escape.c
 main.o: config.h main.c
+optimize.o: optimize.c
 
 # for testing
 #
@@ -78,5 +79,5 @@ optimize:
 clean:
 	rm -rf serialize.o eam_compile.o main.o eambfc alt-builds \
 		create_mini_elf create_mini_elf.o json_escape.o mini_elf \
-		can-run-linux-amd64 tags config.h optimize
+		can-run-linux-amd64 tags config.h optimize optimize.o
 	(cd tests; make clean)
