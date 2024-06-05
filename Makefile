@@ -70,9 +70,13 @@ multibuild-test: can-run-linux-amd64 config.h
 	./multibuild.sh
 
 
+optimize:
+	$(CC) $(CFLAGS) $(LDFLAGS) -D OPTIMIZE_STANDALONE -o optimize optimize.c
+
+
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
 	rm -rf serialize.o eam_compile.o main.o eambfc alt-builds \
 		create_mini_elf create_mini_elf.o json_escape.o mini_elf \
-		can-run-linux-amd64 tags config.h
+		can-run-linux-amd64 tags config.h optimize
 	(cd tests; make clean)
