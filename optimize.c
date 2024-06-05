@@ -297,6 +297,6 @@ char *toIR(int fd) {
     if (bf_code == NULL) return NULL;
     bf_code = stripUselessCode(bf_code);
     if (bf_code == NULL) return NULL;
-    bf_code = mergeInstructions(bf_code);
+    return mergeInstructions(bf_code);
 }
 #endif /* OPTIMIZE_STANDALONE */
