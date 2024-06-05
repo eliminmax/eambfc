@@ -424,7 +424,10 @@ bool bfCleanup(int fd) {
  * them return a falsy value, it aborts, returning 0.
  *
  * If all of the other functions succeeded, it returns 1. */
-int bfCompile(int in_fd, int out_fd){
+int bfCompile(int in_fd, int out_fd, bool optimize) {
+    /* TODO: use optimize */
+    /* allow compiling with -Werror -Wall -Wextra before optimize is used */
+    (void) optimize;
     int ret = 1;
     FILE *tmp_file = tmpfile();
     if (tmp_file == NULL) {

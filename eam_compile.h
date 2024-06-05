@@ -20,7 +20,7 @@
  *
  * returns 1 if compilation succeeded.
  * if it runs into a problem, it aborts and returns 0. */
-int bfCompile(int in_fd, int out_fd);
+int bfCompile(int in_fd, int out_fd, bool optimize);
 
 /* values for use in printing an error message if compilation fails.*/
 

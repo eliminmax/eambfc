@@ -266,7 +266,7 @@ int main(int argc, char* argv[]) {
                 return EXIT_FAILURE;
             }
         }
-        result = bfCompile(srcFD, dstFD);
+        result = bfCompile(srcFD, dstFD, false);
         close(srcFD);
         close(dstFD);
         if (!result) {
