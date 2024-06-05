@@ -477,7 +477,7 @@ int bfCompile(int in_fd, int out_fd){
         );
         ret = 0;
     }
-    
+
     if (fseek(tmp_file, 0, SEEK_SET) != 0) {
         appendError("Failed to seek to start of tmpfile.", "FAILED_SEEK");
         ret = 0;
