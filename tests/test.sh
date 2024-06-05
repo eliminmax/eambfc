@@ -79,6 +79,8 @@ test_simple null '4294967295 0'
 test_simple wrap '781852651 4'
 test_simple wrap2 '1742477431 4'
 
+
+
 # identical to the hello world program, but something is different about the
 # source file
 test_simple alternative-extension '1639980005 14' # self-explanatory
@@ -164,6 +166,15 @@ if [ "$(printf 0 | ./truthmachine)" = 0 ] &&:\
 else
     fails=$((fails+1))
     printf 'FAIL - truthmachine fails for at least one of its two inputs.\n'
+fi
+
+total=$((total+1))
+if diff null dead-code >/dev/null 2>&1; then
+    successes=$((successes+1))
+    printf 'SUCCESS - dead-code.bf optimized down to be identical to null.bf\n'
+else
+    fails=$((fails+1))
+    printf 'FAIL - dead-code.bf not optimized down to be identical to null.bf\n'
 fi
 
 printf '########################\n'

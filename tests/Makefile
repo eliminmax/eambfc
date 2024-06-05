@@ -12,11 +12,12 @@ EAMBFC ?= ../eambfc
 # build test assets
 build-all: hello loop null rw wrap wrap2 colortest truthmachine \
 	too-many-nested-loops unmatched-close unmatched-open \
-	unseekable alternative-extension piped-in
+	unseekable alternative-extension piped-in dead-code
 
 test: clean build-all
 	./test.sh $(EAMBFC)
 
+dead-code: dead-code.bf
 hello: hello.bf
 loop: loop.bf
 null: null.bf
