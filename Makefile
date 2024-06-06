@@ -25,7 +25,7 @@ install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp -f eambfc $(DESTDIR)$(PREFIX)/bin
 
-config.h config.template.h:
+config.h: config.template.h
 	if command -v git >/dev/null && [ -e .git ]; then \
 		git_str="$$(git log -n1 --pretty=format:'git commit: %h')"; \
 		if [ -n "$$(git status --short)" ]; then \
@@ -70,7 +70,7 @@ multibuild-test: can-run-linux-amd64 config.h
 	./multibuild.sh
 
 
-optimize:
+optimize: optimize.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -D OPTIMIZE_STANDALONE -o optimize optimize.c
 
 
