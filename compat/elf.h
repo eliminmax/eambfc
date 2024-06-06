@@ -16,7 +16,7 @@
  * The unmodified GNU C Library's elf.h file can be used in place of this, as
  * can the FreeBSD sys/elf64.h file. Simply replace `#include "compat/elf.h"`
  * with `#include <elf.h>` for the former, or `#include <sys/elf64.h>` for the
- * latter. Doing so is neither necesarry nor beneficial, as this file will still
+ * latter. Doing so is neither necessary nor beneficial, as this file will still
  * be available */
 
 /* This file defines standard ELF types, structures, and macros.

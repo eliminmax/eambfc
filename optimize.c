@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * Either provides a function that retuns EAMBFC IR from an FD, or prints out a
+ * Either provides a function that returns EAMBFC IR from an FD, or prints out a
  * step-by-step overview of the optimization process, depending on whether the
  * OPTIMIZE_STANDALONE macro is defined at compile time. */
 

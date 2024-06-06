@@ -18,7 +18,7 @@ TAPE_BLOCKS ?= 8
 MAX_NESTING_LEVEL ?= 64
 
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
-# overridden if CFLAGS are passsed as an argument to make.
+# overridden if CFLAGS are passed as an argument to make.
 .SUFFIXES: .c.o
 .c.o:
 	$(CC) $(CFLAGS) $(POSIX_CFLAG) -c -o $@ $<

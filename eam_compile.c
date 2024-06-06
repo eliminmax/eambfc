@@ -261,7 +261,7 @@ bool bfJumpOpen (int fd) {
     off_t expectedLocation;
     /* calculate the expected locationto seek to */
     expectedLocation = (CURRENT_ADDRESS + JUMP_SIZE);
-    /* ensure that there are no more than the maximun nesting level */
+    /* ensure that there are no more than the maximum nesting level */
     if (JumpStack.index + 1 == MAX_NESTING_LEVEL) {
         appendError(
             "Too many nested loops!",
