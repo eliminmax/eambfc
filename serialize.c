@@ -7,7 +7,7 @@
 /* C99 */
 #include <stdint.h>
 /* internal */
-#include "elf.h"
+#include "compat/elf.h"
 
 /* internal macros for serializing 16, 32, and 64-bit values with little-endian
  * byte ordering to position `index` within a char array `dest`, incrementing

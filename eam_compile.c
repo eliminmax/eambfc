@@ -17,7 +17,7 @@
 #include "config.h"
 #include "eam_compiler_macros.h"
 #include "eambfc_types.h"
-#include "elf.h"
+#include "compat/elf.h"
 #include "serialize.h"
 
 off_t codesize;
@@ -69,7 +69,7 @@ bool writeBytes(int fd, const void * bytes, ssize_t expected_size) {
 bool writeEhdr(int fd) {
 
     /* The format of the ELF header is well-defined and well-documented
-     * elsewhere. The struct for it is defined in elf.h, as are most
+     * elsewhere. The struct for it is defined in compat/elf.h, as are most
      * of the values used in here. */
 
     Elf64_Ehdr header;

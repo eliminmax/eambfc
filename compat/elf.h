@@ -4,12 +4,20 @@
  *
  * SPDX-License-Identifier: LGPL-2.1-or-later
  *
- * This file contains some macros and typedefs from glibc's `elf.h`
+ * This file contains some macros and typedefs from the GNU C Library's `elf.h`,
+ * to allow eambfc to be compiled on systems that do not provide an `elf.h`
+ * header file.
  *
  * Only those needed for eambfc were retained, and comments were edited to
  * reflect that.
  *
- * Code was reformatted to fit my preferred style of C code. */
+ * Code was refactord, and reformatted to fit my preferred style of C code.
+ *
+ * The unmodified GNU C Library's elf.h file can be used in place of this, as
+ * can the FreeBSD sys/elf64.h file. Simply replace `#include "compat/elf.h"`
+ * with `#include <elf.h>` for the former, or `#include <sys/elf64.h>` for the
+ * latter. Doing so is neither necesarry nor beneficial, as this file will still
+ * be available */
 
 /* This file defines standard ELF types, structures, and macros.
    Copyright (C) 1995-2022 Free Software Foundation, Inc.
