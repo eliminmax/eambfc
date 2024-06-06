@@ -9,16 +9,22 @@ PREFIX ?= /usr/local
 # which supports the POSIX-specified options
 CC ?= c99
 
-# Enable POSIX.1-2008 C features and headers
-CFLAGS += -D _POSIX_C_SOURCE=200809L
+# This flag enables POSIX.1-2008-specific macros and features
+POSIX_CFLAG := -D _POSIX_C_SOURCE=200908L
 
 # Compile-time configuration values
 MAX_ERROR ?= 32
 TAPE_BLOCKS ?= 8
 MAX_NESTING_LEVEL ?= 64
 
+# replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
+# overridden if CFLAGS are passsed as an argument to make.
+.SUFFIXES: .c.o
+.c.o:
+	$(CC) $(CFLAGS) $(POSIX_CFLAG) -c -o $@ $<
+
 eambfc: serialize.o eam_compile.o json_escape.o main.o
-	$(CC) $(LDFLAGS) -o eambfc \
+	$(CC) $(POSIX_CFLAG) $(LDFLAGS) -o eambfc \
 		serialize.o eam_compile.o json_escape.o main.o $(LDLIBS)
 
 install: eambfc
@@ -56,7 +62,8 @@ main.o: config.h main.c
 # `make test` works in both of those example cases
 create_mini_elf.o: config.h create_mini_elf.c
 create_mini_elf: create_mini_elf.o serialize.o eam_compile.o
-	$(CC) $(LDFLAGS) -o $@ serialize.o eam_compile.o $@.o $(LDLIBS)
+	$(CC) $(LDFLAGS) -o $@ $(POSIX_CFLAG)\
+		serialize.o eam_compile.o $@.o $(LDLIBS)
 mini_elf: create_mini_elf
 	./create_mini_elf
 can-run-linux-amd64: mini_elf
@@ -71,7 +78,8 @@ multibuild-test: can-run-linux-amd64 config.h
 
 
 optimize: optimize.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -D OPTIMIZE_STANDALONE -o optimize optimize.c
+	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) \
+		-D OPTIMIZE_STANDALONE -o optimize optimize.c
 
 
 # remove eambfc and the objects it's built from, then remove test artifacts
