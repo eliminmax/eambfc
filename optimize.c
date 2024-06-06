@@ -61,7 +61,7 @@ static char *filterNonBFChars(int in_fd) {
  * search_start is a pointer to the character after the [ */
 static char *findLoopEnd(char *search_start) {
     char *open_p = strchr(search_start, '[');
-    /* If no match is found for open_p, set it to the end of the string*/
+    /* If no match is found for open_p, set it to the end of the string */
     char *close_p = strchr(search_start, ']');
 
     /* TODO: error message */
@@ -267,24 +267,35 @@ static char *mergeInstructions(char *s) {
 #ifdef OPTIMIZE_STANDALONE
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        puts("Not enough arguments.");
+        fputs("Not enough arguments.\n", stderr);
+        return EXIT_FAILURE;
+    }
+    int fd = open(argv[1], O_RDONLY);
+    if (fd == -1) {
+        fputs("failed to open file.\n", stderr);
         return EXIT_FAILURE;
     }
     puts("stage 1:");
-    char *s = filterNonBFChars(open(argv[1], O_RDONLY));
-    if (s == NULL) return EXIT_FAILURE;
+    char *s = filterNonBFChars(fd);
+    if (s == NULL) {
+        fputs("stage 1 came back null.\n", stderr);
+        return EXIT_FAILURE;
+    }
     puts(s);
     puts("stage 2:");
     s = stripUselessCode(s);
-    puts(s);
-    puts("stage 3:");
-    char *new_s = mergeInstructions(s);
-    if (new_s == NULL) {
-        puts("new_s == NULL");
-        free(s);
+    if (s == NULL) {
+        fputs("stage 2 came back null.\n", stderr);
         return EXIT_FAILURE;
     }
-    puts(new_s);
+    puts(s);
+    puts("stage 3:");
+    s = mergeInstructions(s);
+    if (s == NULL) {
+        fputs("stage 3 came back null.\n", stderr);
+        return EXIT_FAILURE;
+    }
+    puts(s);
     free(s);
 }
 #else
