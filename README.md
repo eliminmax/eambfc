@@ -133,3 +133,22 @@ came from.
 ### Under Consideration
 
 * extend the jump stack as needed instead of erroring out at > 64 nested
+
+## Legal Stuff
+
+`eambfc` as a whole is licensed under the GNU General Public License version 3.
+Some individual components of the source code, infrastructure, and test assets
+are licensed under other compatible licenses, mainly the Zero-Clause BSD license
+(a public-domain-equivalent license).
+
+Some brainfuck test programs include snippets of sample code taken from the
+esolangs.org pages
+[brainfuck algorithms](https://esolangs.org/wiki/Brainfuck_algorithms) and
+[brainfuck constants](https://esolangs.org/wiki/Brainfuck_constants), which are
+available under the CC0 public-domain-equivalent license.
+
+The contents the `compat/` directory are under their own compatible FOSS
+licenses.
+
+All licenses used in any part of this repository are in the LICENSES/ directory,
+and every file has an SPDX License header identifying the license(s) it's under.
