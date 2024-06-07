@@ -45,7 +45,7 @@ piped-in:
 	mkfifo piped-in.bf
 	(cat hello.bf > piped-in.bf & $(EAMBFC) -kj piped-in.bf; wait) \
 		>.piped-in.build_err
-	if [ "$$(wc -c .piped-in.build_err | cut -d' ' -f1)" -eq 0 ]; then\
+	if [ "$$(wc -c .piped-in.build_err | awk '{print $$1}')" -eq 0 ]; then\
 		rm .piped-in.build_err; else false; fi
 # test support for alternative extensions
 alternative-extension:
