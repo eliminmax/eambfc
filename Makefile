@@ -31,11 +31,11 @@ install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp -f eambfc $(DESTDIR)$(PREFIX)/bin
 
-config.h: config.template.h
+config.h: config.template.h version
 	if command -v git >/dev/null && [ -e .git ]; then \
 		git_str="$$(git log -n1 --pretty=format:'git commit: %h')"; \
 		if [ -n "$$(git status --short)" ]; then \
-			git_str="$$git_str (modified)"; \
+			git_str="$$git_str (with local changes)"; \
 		fi \
 	else \
 		git_str='Not built from git repo'; \

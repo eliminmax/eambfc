@@ -127,17 +127,18 @@ int main(int argc, char* argv[]) {
             return EXIT_SUCCESS;
           case 'V':
             printf(
-                "%s: eambfc version %s\n"
+                "%s: eambfc version %s\n\n"
                 "Copyright (c) 2024 Eli Array Minkoff.\n"
                 "License: GNU GPL version 3 "
                 "<https://gnu.org/licenses/gpl.html>.\n"
                 "This is free software: "
                 "you are free to change and redistribute it.\n"
-                "There is NO WARRANTY, to the extent permitted by law.\n"
-                "tape size: %d 4-KiB blocks\n"
-                "max nesting level: %d\n"
-                "max compiler errors shown: %d\n"
-                "%s\n", /* git info or message stating git not used. */
+                "There is NO WARRANTY, to the extent permitted by law.\n\n"
+                "Build configuration:\n"
+                " * tape size: %d 4-KiB blocks\n"
+                " * max nesting level: %d\n"
+                " * max compiler errors shown: %d\n"
+                " * %s\n", /* git info or message stating git not used. */
                 argv[0],
                 EAMBFC_VERSION,
                 TAPE_BLOCKS,
