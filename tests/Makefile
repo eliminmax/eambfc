@@ -38,7 +38,7 @@ unseekable:
 	rm unseekable
 	mv unseekable_f unseekable
 	chmod u+x unseekable
-	if [ "$$(wc -c .unseekable.build_err | cut -d' ' -f1)" -eq 0 ]; then\
+	if [ "$$(wc -c .unseekable.build_err | awk '{print $$1}')" -eq 0 ]; then\
 		rm .unseekable.build_err; else false; fi
 
 piped-in:
