@@ -52,7 +52,7 @@ size_t serializeEhdr64(Elf64_Ehdr* ehdr, char* dest) {
     i += serialize16(ehdr->e_shentsize, dest + i);
     i += serialize16(ehdr->e_shnum,     dest + i);
     i += serialize16(ehdr->e_shstrndx,  dest + i);
-    return i; 
+    return i;
 }
 
 size_t serializePhdr64(Elf64_Phdr* phdr, char* dest) {
