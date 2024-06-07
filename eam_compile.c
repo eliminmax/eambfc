@@ -270,7 +270,7 @@ bool bfJumpOpen (int fd) {
             "Too many nested loops!",
             "OVERFLOW"
         );
-        return 0;
+        return false;
     }
     /* push the current address onto the stack */
     JumpStack.addresses[JumpStack.index++] = CURRENT_ADDRESS;
@@ -293,7 +293,7 @@ bool bfJumpClose(int fd) {
             "Found `]` without matching `[`!",
             "UNMATCHED_CLOSE"
         );
-        return 0;
+        return false;
     }
     /* pop the matching `[` instruction's location */
     openAddress = JumpStack.addresses[JumpStack.index];
@@ -311,21 +311,21 @@ bool bfJumpClose(int fd) {
             "Failed to return to `[` instruction!",
             "FAILED_SEEK"
         );
-        return 0;
+        return false;
     }
     if (write(fd, openJumpBytes, JUMP_SIZE) != JUMP_SIZE) {
         appendError(
             "Failed to compile `[` instruction!",
             "FAILED_WRITE"
         );
-        return 0;
+        return false;
     }
     if (lseek(fd, closeAddress, SEEK_SET) != closeAddress) {
         appendError(
             "Failed to return to `]` instruction!",
             "FAILED_SEEK"
         );
-        return 0;
+        return false;
     }
     uint8_t instructionBytes[] = {
         /* jump to right after the `[` instruction, to skip a redundant check */
@@ -423,19 +423,19 @@ bool bfCleanup(int fd) {
  * nor that they are open properly.
  *
  * It calls several other functions to compile the source code. If any of
- * them return a falsy value, it aborts, returning 0.
+ * them return false it returns false as well.
  *
- * If all of the other functions succeeded, it returns 1. */
-int bfCompile(int in_fd, int out_fd, bool optimize) {
+ * If all of the other functions succeeded, it returns true. */
+bool bfCompile(int in_fd, int out_fd, bool optimize) {
     /* TODO: use optimize */
     optimized = optimize;
     /* allow compiling with -Werror -Wall -Wextra before optimize is used */
     (void) optimize;
-    int ret = 1;
+    int ret = true;
     FILE *tmp_file = tmpfile();
     if (tmp_file == NULL) {
         appendError("Could not open a tmpfile.", "FAILED_TMPFILE");
-        return 0;
+        return false;
     }
     int tmp_fd = fileno(tmp_file);
     if (tmp_fd == -1) {
@@ -443,7 +443,7 @@ int bfCompile(int in_fd, int out_fd, bool optimize) {
             "Could not get file descriptor for tmpfile",
             "FAILED_TMPFILE"
         );
-        return 0;
+        return false;
     }
     /* reset codesize variable used in several macros in eam_compiler_macros */
     codesize = 0;
@@ -458,7 +458,7 @@ int bfCompile(int in_fd, int out_fd, bool optimize) {
     /* skip the headers until we know the code size */
     if (fseek(tmp_file, START_PADDR, SEEK_SET) != 0) {
         appendError("Failed to seek to start of code.", "FAILED_SEEK");
-        return 0;
+        return false;
     }
 
     if (!bfInit(tmp_fd)) {
@@ -466,28 +466,26 @@ int bfCompile(int in_fd, int out_fd, bool optimize) {
             "Failed to write initial setup instructions.",
             "FAILED_WRITE"
         );
-        ret = 0;
+        ret = false;
     }
 
-    while (read(in_fd, &instr, 1)) {
-        /* the appropriate error message(s) are already appended */
-        if (!bfCompileInstruction(instr, tmp_fd)) ret = 0;
-    }
+    /* the appropriate error message(s) are already appended if issues occur */
+    while (read(in_fd, &instr, 1)) ret &= bfCompileInstruction(instr, tmp_fd);
 
     /* now, code size is known, so we can write the headers
      * the appropriate error message(s) are already appended */
-    if (!bfCleanup(tmp_fd)) ret = 0;
+    if (!bfCleanup(tmp_fd)) ret = false;
     if(JumpStack.index > 0) {
         appendError(
             "Reached the end of the file with an unmatched `[`!",
             "UNMATCHED_OPEN"
         );
-        ret = 0;
+        ret = false;
     }
 
     if (fseek(tmp_file, 0, SEEK_SET) != 0) {
         appendError("Failed to seek to start of tmpfile.", "FAILED_SEEK");
-        ret = 0;
+        ret = false;
     }
 
     /* copy tmpfile over to the output file. */
@@ -498,10 +496,10 @@ int bfCompile(int in_fd, int out_fd, bool optimize) {
     while ((trans_sz = read(tmp_fd, &trans, MAX_TRANS_SZ))) {
         if (trans_sz == -1) {
             appendError("Failed to read bytes from tmpfile", "FAILED_TMPFILE");
-            ret = 0;
+            ret = false;
         } else if ((write(out_fd, &trans, trans_sz) != trans_sz)) {
             appendError("Failed to write bytes from tmpfile", "FAILED_TMPFILE");
-            ret = 0;
+            ret = false;
         }
     }
 
