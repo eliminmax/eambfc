@@ -14,10 +14,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 /* internal */
+#include "compat/elf.h"
 #include "config.h"
 #include "eam_compiler_macros.h"
 #include "eambfc_types.h"
-#include "elf.h"
 #include "optimize.h"
 #include "serialize.h"
 
@@ -70,7 +70,7 @@ bool writeBytes(int fd, const void * bytes, ssize_t expected_size) {
 bool writeEhdr(int fd) {
 
     /* The format of the ELF header is well-defined and well-documented
-     * elsewhere. The struct for it is defined in elf.h, as are most
+     * elsewhere. The struct for it is defined in compat/elf.h, as are most
      * of the values used in here. */
 
     Elf64_Ehdr header;
@@ -262,7 +262,7 @@ bool bfJumpOpen (int fd) {
     off_t expectedLocation;
     /* calculate the expected locationto seek to */
     expectedLocation = (CURRENT_ADDRESS + JUMP_SIZE);
-    /* ensure that there are no more than the maximun nesting level */
+    /* ensure that there are no more than the maximum nesting level */
     if (JumpStack.index + 1 == MAX_NESTING_LEVEL) {
         appendError(
             "Too many nested loops!",

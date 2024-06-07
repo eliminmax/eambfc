@@ -8,7 +8,7 @@
 #ifndef EAMBFC_SERIALIZE_H
 #define EAMBFC_SERIALIZE_H 1
 /* internal */
-#include "elf.h"
+#include "compat/elf.h"
 
 /* given a pointers to a struct of a given type and a char array, these write
  * the fields of the struct, in little-endian order, to the byte array, with no

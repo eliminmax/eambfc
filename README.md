@@ -8,7 +8,7 @@ SPDX-License-Identifier: 0BSD
 
 A non-optimizing compiler for brainfuck, written in C for Unix-like systems.
 
-Outputs x86_64 ELF executables that uses Linux system calls for I/O.
+Outputs x86\_64 ELF executables that uses Linux system calls for I/O.
 
 I started this as an inexperienced C programmer, and this was originally an
 attempt to gain practice by writing something somewhat simple yet not trivial.
@@ -93,14 +93,14 @@ The following are the formatting I follow for source code:
 
 * C: C89-style comments (i.e. `/* comment */`, not `// comment`)
 * 80 character maximum per line, regardless of language.
-  * tabs are 4 wide when they apperar.
+  * tabs are 4 wide when they appear.
 * Indentation:
   * General: 4 spaces for indentation, except in the following cases:
     * C: `case`s within `switch` statements are half indented
-    * Makefiles use tabs due to the contraints of the format
+    * Makefiles use tabs due to the constraints of the format
     * Markdown files use 2 spaces due to the constraints of the format
 * C: Open braces are on the same line as the function signature/conditional/etc.
-* C: Multi-line comments should have an asterix at the start of each line
+* C: Multi-line comments should have an asterisk at the start of each line
 * Names:
   * function names and function-like macros are `camelCase`
   * struct names are `PascalCase`.
@@ -133,3 +133,23 @@ came from.
 ### Under Consideration
 
 * extend the jump stack as needed instead of erroring out at > 64 nested
+
+## Legal Stuff
+
+`eambfc` as a whole is licensed under the GNU General Public License version 3.
+Some individual components of the source code, infrastructure, and test assets
+are licensed under other compatible licenses, mainly the Zero-Clause BSD license
+(a public-domain-equivalent license).
+
+Some brainfuck test programs include snippets of sample code taken from the
+esolangs.org pages
+[brainfuck algorithms](https://esolangs.org/wiki/Brainfuck_algorithms) and
+[brainfuck constants](https://esolangs.org/wiki/Brainfuck_constants), which are
+available under the CC0 public-domain-equivalent license.
+
+The contents the `compat/` directory are under their own compatible FOSS
+licenses.
+
+All licenses used in any part of this repository are in the LICENSES/ directory,
+and every file has an SPDX License header identifying the license(s) it's under,
+either near the top of the file, or in an associated `.license` file.
