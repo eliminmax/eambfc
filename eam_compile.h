@@ -6,7 +6,9 @@
 
 #ifndef EAM_COMPILE_H
 #define EAM_COMPILE_H 1
+/* C99 */
 #include <stdbool.h>
+/* internal */
 /* includes the BFCompilerError typedef */
 #include "eambfc_types.h"
 
