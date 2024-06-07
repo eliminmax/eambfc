@@ -44,6 +44,8 @@ void resetErrors(void) {
     err_ind = 0;
 }
 
+bool optimized;
+
 void appendError(char *error_msg, char *err_id) {
     uint8_t i = err_ind++;
     /* Ensure i is in bounds; discard errors after MAX_ERROR */
@@ -337,7 +339,7 @@ bool bfJumpClose(int fd) {
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
 bool bfCompileInstruction(char c, int fd) {
-    int ret;
+    bool ret;
     instr = c;
     instr_col++;
     switch(c) {
@@ -375,11 +377,11 @@ bool bfCompileInstruction(char c, int fd) {
             /* add 1 to the line number and reset the column. */
             instr_line++;
             instr_col = 0;
-            ret = 1;
+            ret = true;
             break;
         default:
             /* any other characters are comments, silently continue. */
-            ret = 1;
+            ret = true;
             break;
     }
     return ret;
@@ -426,6 +428,7 @@ bool bfCleanup(int fd) {
  * If all of the other functions succeeded, it returns 1. */
 int bfCompile(int in_fd, int out_fd, bool optimize) {
     /* TODO: use optimize */
+    optimized = optimize;
     /* allow compiling with -Werror -Wall -Wextra before optimize is used */
     (void) optimize;
     int ret = 1;
