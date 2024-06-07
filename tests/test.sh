@@ -158,7 +158,7 @@ fi
 get16c () { dd bs=16 count=1 2>/dev/null; }
 
 total=$((total+1))
-if [ "$(printf 0 | ./truthmachine)" = 0 ] &&:\
+if [ "$(printf 0 | ./truthmachine)" = 0 ] && \
     [ "$(printf 1 | ./truthmachine | get16c)" = '1111111111111111' ]; then
         successes=$((successes+1))
         printf 'SUCCESS - truthmachine works for 0, and seems to work for 1. '
