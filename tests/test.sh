@@ -155,7 +155,7 @@ fi
 # POSIX does not mandate that head support the -c argument to read bytes instead
 # of lines, but the following is a POSIX-compliant way to grab the first 16
 # bytes of stdin.
-get16c () { dd bs=16 count=1 2>/dev/null; }
+get16c () { dd bs=1 count=16 2>/dev/null; }
 
 total=$((total+1))
 if [ "$(printf 0 | ./truthmachine)" = 0 ] && \
