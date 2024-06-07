@@ -151,4 +151,5 @@ The contents the `compat/` directory are under their own compatible FOSS
 licenses.
 
 All licenses used in any part of this repository are in the LICENSES/ directory,
-and every file has an SPDX License header identifying the license(s) it's under.
+and every file has an SPDX License header identifying the license(s) it's under,
+either near the top of the file, or in an associated `.license` file.
