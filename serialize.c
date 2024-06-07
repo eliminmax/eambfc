@@ -5,55 +5,65 @@
  * This defines functions to convert 64-bit ELF structs into LSB char arrays. */
 
 /* C99 */
+#include <stddef.h>
 #include <stdint.h>
 /* internal */
 #include "compat/elf.h"
 
-/* internal macros for serializing 16, 32, and 64-bit values with little-endian
- * byte ordering to position `index` within a char array `dest`, incrementing
- * index. */
-#define serialize16(v16) \
-    dest[index++] = v16; \
-    dest[index++] = v16 >> 8
-
-#define serialize32(v32) \
-    serialize16(v32); \
-    serialize16(v32 >> 16)
-
-#define serialize64(v64) \
-    serialize32(v64); \
-    serialize32(v64 >> 32)
-
-
-void serializeEhdr64(Elf64_Ehdr* ehdr, char* dest) {
-    uint8_t index;
-    /* first 16 bytes are easy - it's a series of literal byte values */
-    for (index = 0; index < EI_NIDENT; index++) {
-        dest[index] = ehdr->e_ident[index];
-    }
-    serialize16(ehdr->e_type);
-    serialize16(ehdr->e_machine);
-    serialize32(ehdr->e_version);
-    serialize64(ehdr->e_entry);
-    serialize64(ehdr->e_phoff);
-    serialize64(ehdr->e_shoff);
-    serialize32(ehdr->e_flags);
-    serialize16(ehdr->e_ehsize);
-    serialize16(ehdr->e_phentsize);
-    serialize16(ehdr->e_phnum);
-    serialize16(ehdr->e_shentsize);
-    serialize16(ehdr->e_shnum);
-    serialize16(ehdr->e_shstrndx);
+/* serialize a 16-bit value pointed to by v16 into 2 bytes in dest, in LSB order
+ * return value is the byte after the 2 bytes are inserted */
+size_t serialize16(uint16_t u16, char *dest) {
+    size_t written = 0;
+    uint8_t byte_val = (uint8_t)u16;
+    *(dest + (++written)) = (char)byte_val;
+    byte_val = (uint8_t)(u16 >> 8);
+    *(dest + (++written)) = (char)byte_val;
+    return written;
 }
 
-void serializePhdr64(Elf64_Phdr* phdr, char* dest) {
-    uint8_t index = 0;
-    serialize32(phdr->p_type);
-    serialize32(phdr->p_flags);
-    serialize64(phdr->p_offset);
-    serialize64(phdr->p_vaddr);
-    serialize64(phdr->p_paddr);
-    serialize64(phdr->p_filesz);
-    serialize64(phdr->p_memsz);
-    serialize64(phdr->p_align);
+size_t serialize32(uint32_t u32, char *dest) {
+    size_t written = serialize16((uint16_t)u32, dest);
+    written += serialize16((uint16_t)(u32 >> 16), dest);
+    return written;
+}
+
+size_t serialize64(uint64_t u64, char *dest) {
+    size_t written = serialize32((uint32_t)u64, dest);
+    written += serialize32((uint32_t)(u64 >> 32), dest);
+    return written;
+}
+
+size_t serializeEhdr64(Elf64_Ehdr* ehdr, char* dest) {
+    size_t i;
+    /* first 16 bytes are easy - it's a series of literal byte values */
+    for (i = 0; i < EI_NIDENT; i++) {
+        *(dest + i) = ehdr->e_ident[i];
+    }
+    i += serialize16(ehdr->e_type,      dest + i);
+    i += serialize16(ehdr->e_machine,   dest + i);
+    i += serialize32(ehdr->e_version,   dest + i);
+    i += serialize64(ehdr->e_entry,     dest + i);
+    i += serialize64(ehdr->e_phoff,     dest + i);
+    i += serialize64(ehdr->e_shoff,     dest + i);
+    i += serialize32(ehdr->e_flags,     dest + i);
+    i += serialize16(ehdr->e_ehsize,    dest + i);
+    i += serialize16(ehdr->e_phentsize, dest + i);
+    i += serialize16(ehdr->e_phnum,     dest + i);
+    i += serialize16(ehdr->e_shentsize, dest + i);
+    i += serialize16(ehdr->e_shnum,     dest + i);
+    i += serialize16(ehdr->e_shstrndx,  dest + i);
+    return i; 
+}
+
+size_t serializePhdr64(Elf64_Phdr* phdr, char* dest) {
+    size_t i = 0;
+    i += serialize32(phdr->p_type,      dest + i);
+    i += serialize32(phdr->p_flags,     dest + i);
+    i += serialize64(phdr->p_offset,    dest + i);
+    i += serialize64(phdr->p_vaddr,     dest + i);
+    i += serialize64(phdr->p_paddr,     dest + i);
+    i += serialize64(phdr->p_filesz,    dest + i);
+    i += serialize64(phdr->p_memsz,     dest + i);
+    i += serialize64(phdr->p_align,     dest + i);
+    return i;
 }
