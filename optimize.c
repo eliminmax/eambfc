@@ -253,7 +253,7 @@ static char *mergeInstructions(char *s) {
     strcpy(s, new_str);
     free(new_str);
     /* realloc down to size */
-    s = (char *)realloc(s, optim_sz);
+    s = (char *)realloc(s, strlen(s) + 1);
     if (s == NULL) {
         /* TODO: error message */
     }
