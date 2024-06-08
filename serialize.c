@@ -13,24 +13,24 @@
 /* serialize a 16-bit value pointed to by v16 into 2 bytes in dest, in LSB order
  * return value is the byte after the 2 bytes are inserted */
 size_t serialize16(uint16_t u16, char *dest) {
-    size_t written = 0;
+    size_t size = 0;
     uint8_t byte_val = (uint8_t)u16;
-    *(dest + (written++)) = (char)byte_val;
+    *(dest + (size++)) = (char)byte_val;
     byte_val = (uint8_t)(u16 >> 8);
-    *(dest + (written++)) = (char)byte_val;
-    return written;
+    *(dest + (size++)) = (char)byte_val;
+    return size;
 }
 
 size_t serialize32(uint32_t u32, char *dest) {
-    size_t written = serialize16((uint16_t)u32, dest);
-    written += serialize16((uint16_t)(u32 >> 16), dest);
-    return written;
+    size_t size = serialize16((uint16_t)u32, dest);
+    size += serialize16((uint16_t)(u32 >> 16), dest);
+    return size;
 }
 
 size_t serialize64(uint64_t u64, char *dest) {
-    size_t written = serialize32((uint32_t)u64, dest);
-    written += serialize32((uint32_t)(u64 >> 32), dest);
-    return written;
+    size_t size = serialize32((uint32_t)u64, dest);
+    size += serialize32((uint32_t)(u64 >> 32), dest);
+    return size;
 }
 
 size_t serializeEhdr64(Elf64_Ehdr* ehdr, char* dest) {
