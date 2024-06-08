@@ -206,7 +206,7 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
         return 0;
         break;
       }
-    return (size_t)sprintf(dest, "%c%" PRIu64, opcode, consec_ct);
+    return (size_t)sprintf(dest, "%c%" PRIx64, opcode, consec_ct);
 }
 
 static char *mergeInstructions(char *s) {
