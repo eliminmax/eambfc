@@ -209,7 +209,6 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
 static char *mergeInstructions(char *s) {
     /* TODO */
     /* used to check what's between [ and ] if they're 2 apart */
-    char m;
     char current_mode;
     char prev_mode = *s;
     char *new_str = (char *)malloc(optim_sz);
@@ -221,18 +220,9 @@ static char *mergeInstructions(char *s) {
     uint64_t consec_ct = 1;
     size_t i;
     size_t skip;
+    /* condese consecutive identical instructions */
     for (i = 1; i < optim_sz; i++) {
         current_mode = *(s+i);
-        /* handle [-] and [+] */
-        if (current_mode == '[') {
-            m = *(s + i + 1);
-            if ((*(s + i + 2)) == ']' && (m == '+' || m == '-')) {
-                *(p++) = '@';
-                i += 2; /* skip rest of bf conditional loop */
-                prev_mode = ']'; /* the last of the skipped characters */
-                continue;
-            }
-        }
         if (current_mode != prev_mode) {
             if (!((skip = condense(prev_mode, consec_ct, p)))) {
                 free(new_str);
@@ -247,6 +237,17 @@ static char *mergeInstructions(char *s) {
         }
     }
     *p = '\0'; /* NULL terminate the new string */
+
+    /* handle [-] */
+    while ((p = strstr(new_str, "[-]"))) {
+        *p = '@';
+        memmove(p + 1, p + 3, strlen(p + 3) + 1);
+    }
+    /* handle [+] */
+    while ((p = strstr(new_str, "[+]"))) {
+        *p = '@';
+        memmove(p + 1, p + 3, strlen(p + 3) + 1);
+    }
     strcpy(s, new_str);
     free(new_str);
     /* realloc down to size */
