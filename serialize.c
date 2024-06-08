@@ -23,13 +23,13 @@ size_t serialize16(uint16_t u16, char *dest) {
 
 size_t serialize32(uint32_t u32, char *dest) {
     size_t size = serialize16((uint16_t)u32, dest);
-    size += serialize16((uint16_t)(u32 >> 16), dest);
+    size += serialize16((uint16_t)(u32 >> 16), dest + size);
     return size;
 }
 
 size_t serialize64(uint64_t u64, char *dest) {
     size_t size = serialize32((uint32_t)u64, dest);
-    size += serialize32((uint32_t)(u64 >> 32), dest);
+    size += serialize32((uint32_t)(u64 >> 32), dest + size);
     return size;
 }
 
