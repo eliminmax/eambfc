@@ -15,9 +15,9 @@
 size_t serialize16(uint16_t u16, char *dest) {
     size_t written = 0;
     uint8_t byte_val = (uint8_t)u16;
-    *(dest + (++written)) = (char)byte_val;
+    *(dest + (written++)) = (char)byte_val;
     byte_val = (uint8_t)(u16 >> 8);
-    *(dest + (++written)) = (char)byte_val;
+    *(dest + (written++)) = (char)byte_val;
     return written;
 }
 
