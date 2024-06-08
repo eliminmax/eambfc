@@ -192,15 +192,12 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
         else return 0; /* again, this takes over 8192 PiB of '<'s in a row */
         break;
       /* for + and -, assume that consec_ct is less than 256, as a larger
-       * value would have been optimized down. Due to 2's complement behavior,
-       * switch opcodes from add to subtract, or subtract to add, if consec_ct
-       * is greater than INT8_MAX, so that the machine code subtracts a negative
-       * or adds */
+       * value would have been optimized down. */
       case '+':
-        opcode = (consec_ct <= INT8_MAX) ? '#' : '=';
+        opcode = '#';
         break;
       case '-':
-        opcode = (consec_ct <= INT8_MAX) ? '=' : '#';
+        opcode = '=';
         break;
       default:
         return 0;
