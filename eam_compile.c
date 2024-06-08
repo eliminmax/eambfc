@@ -258,8 +258,7 @@ struct stack {
 
 
 /* prepare to compile the brainfuck `[` instruction to file descriptor fd.
- * doesn't actually write to the file yet, as
- * */
+ * doesn't actually write to the file yet, as the address of `]` is unknown. */
 bool bfJumpOpen (int fd) {
     off_t expectedLocation;
     /* calculate the expected locationto seek to */
