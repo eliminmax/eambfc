@@ -58,4 +58,4 @@ alternative-extension:
 clean:
 	rm -f .*.build_err hello rw loop null wrap wrap2 colortest truthmachine \
 		too-many-nested-loops unmatched-close unmatched-open unseekable \
-		alternative-extension unseekable_f piped-in piped-in.bf
+		alternative-extension unseekable_f piped-in piped-in.bf dead-code
