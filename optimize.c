@@ -146,11 +146,8 @@ static char *stripUselessCode(char *str) {
  * >*N | (INT32_MAX < N <= INT64_MAX): nN | (the first n or N is the opcode)
  * <*N | (INT32_MAX < N <= INT64_MAX): NN | inspired by Vim keybindings
  *
- * +*N | (1 < N <= 127): #N   | chosen as a "double stroked" version of the
- * -*N | (1 < N <= 127): =N   | symbol, not for mathematical meaning.
- * +*N | (127 < N <= 255): =N | due to 2's complement representation, these
- * -*N | (127 < N <= 255): +N | should wrap around to be correct
- * (more than 255 should be optimized down already before this point)
+ * +*N : #N   | chosen as a "double stroked" version of the
+ * -*N : =N   | symbol, not for mathematical meaning.
  *
  * single +, -, <, and > instructions are left as is.
  *
