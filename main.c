@@ -220,10 +220,8 @@ int main(int argc, char* argv[]) {
             );
             exit(EXIT_FAILURE);
         }
-        if (json) {
-            in_name_json = jsonStr(argv[optind]);
-            out_name_json = jsonStr(outname);
-        }
+        in_name_json = jsonStr(argv[optind]);
+        out_name_json = jsonStr(outname);
         strcpy(outname, argv[optind]);
         srcFD = open(argv[optind], O_RDONLY);
         if (srcFD < 0) {
@@ -301,10 +299,8 @@ int main(int argc, char* argv[]) {
             if (!keep) remove(outname);
             fileFail();
         }
-        if (json) {
-            free(in_name_json);
-            free(out_name_json);
-        }
+        free(in_name_json);
+        free(out_name_json);
         free(outname);
     }
 
