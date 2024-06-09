@@ -52,6 +52,7 @@ eam_compile.o: config.h eam_compile.c
 json_escape.o: json_escape.c
 main.o: config.h main.c
 optimize.o: optimize.c
+x86_64_encoders.o: x86_64_encoders.c
 
 # for testing
 #
@@ -87,5 +88,5 @@ optimize: optimize.c
 clean:
 	rm -rf serialize.o eam_compile.o main.o eambfc alt-builds \
 		create_mini_elf create_mini_elf.o json_escape.o mini_elf \
-		can-run-linux-amd64 tags config.h optimize optimize.o
+		can-run-linux-amd64 tags config.h optimize optimize.o x86_64_encoders.o
 	(cd tests; make clean)
