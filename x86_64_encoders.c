@@ -15,12 +15,14 @@
 #include "serialize.h"
 
 /* MOV rs, rd */
-bool eamAsmRegCopy(unsigned char dst, unsigned char src, int fd) {
+bool eamAsmRegCopy(unsigned char dst, unsigned char src, int fd, off_t *sz) {
+    *sz += 2;
     return write(fd, (uint8_t[]){ 0x89U, 0xc0U + (src << 3) + dst}, 2) == 2;
 }
 
 /* SYSCALL */
-bool eamAsmSyscall(int fd) {
+bool eamAsmSyscall(int fd, off_t *sz) {
+    *sz += 2;
     return write(fd, (uint8_t[]){ 0x0f, 0x05 }, 2) == 2;
 }
 
@@ -43,13 +45,15 @@ static inline \
 }
 
 /* TEST byte [reg], 0xff; JNZ jmp_offset */
-bool eamAsmJumpNotZero(unsigned char reg, int32_t offset, int fd) {
+bool eamAsmJumpNotZero(unsigned char reg, int32_t offset, int fd, off_t *sz) {
+    *sz += 9;
     /* Jcc with tttn=0b0101 is JNZ or JNE */
     return eamAsmCondJump(0x5, reg, offset, fd);
 }
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
-bool eamAsmJumpZero(unsigned char reg, int32_t offset, int fd) {
+bool eamAsmJumpZero(unsigned char reg, int32_t offset, int fd, off_t *sz) {
+    *sz += 9;
     /* Jcc with tttn=0b0100 is JZ or JE */
     return eamAsmCondJump(0x4, reg, offset, fd);
 }
@@ -73,25 +77,29 @@ static inline \
 }
 
 /* INC reg */
-bool eamAsmIncReg(unsigned char reg, int fd) {
+bool eamAsmIncReg(unsigned char reg, int fd, off_t *sz) {
+    *sz += 2;
     /* 0 is INC, 3 is register mode */
     return eamAsmOffset(0x0, 0x3, reg, fd);
 }
 
 /* DEC reg */
-bool eamAsmDecReg(unsigned char reg, int fd) {
+bool eamAsmDecReg(unsigned char reg, int fd, off_t *sz) {
+    *sz += 2;
     /* 8 is DEC, 3 is register mode */
     return eamAsmOffset(0x8, 0x3, reg, fd);
 }
 
 /* INC byte [reg] */
-bool eamAsmIncByte(unsigned char reg, int fd) {
+bool eamAsmIncByte(unsigned char reg, int fd, off_t *sz) {
+    *sz += 2;
     /* 0 is INC, 0 is memory pointer mode */
     return eamAsmOffset(0x0, 0x0, reg, fd);
 }
 
 /* DEC byte [reg] */
-bool eamAsmDecByte(unsigned char reg, int fd) {
+bool eamAsmDecByte(unsigned char reg, int fd, off_t *sz) {
+    *sz += 2;
     /* 8 is DEC, 0 is memory pointer mode */
     return eamAsmOffset(0x8, 0x0, reg, fd);
 }
@@ -106,51 +114,46 @@ static inline \
     return write(fd, &i_bytes, 5) == 5;
 }
 
-/* PUSH imm8; POP reg */
-static inline \
-bool eamAsmSetRegByte(unsigned char reg, int8_t imm8, int fd) {
-    return write(fd, (uint8_t[]){ 0x6a, (uint8_t)imm8, 0x58 + reg}, 3) == 3;
-}
-
-/* more efficient than PUSH 0; POP reg */
-/* XOR reg, reg */
-static inline \
-    bool eamAsmSetRegZero(unsigned char reg, int fd) {
-    return write(fd, (uint8_t[]){ 0x31, 0xc0|(reg<<3)|reg }, 2) == 2;
-}
-
+    uint8_t i_bytes[5] = { 0xb8 + reg, 0x00, 0x00, 0x00, 0x00 };
 /* use the most efficient way to set a register to imm */
-bool eamAsmSetReg(unsigned char reg, int32_t imm, int fd) {
-    if (imm == 0) return eamAsmSetRegZero(reg, fd);
-    
+bool eamAsmSetReg(unsigned char reg, int32_t imm, int fd, off_t *sz) {
+    if (imm == 0) {
+        *sz += 2;
+        /* XOR reg, reg */
+        return write(fd, (uint8_t[]){ 0x31, 0xc0|(reg<<3)|reg }, 2) == 2;
+    }
+
     if (imm >= INT8_MIN && imm <= INT8_MAX) {
-        return eamAsmSetRegByte(reg, (int8_t)imm, fd);
+        *sz += 3;
+        /* PUSH imm8; POP reg */
+        return write(fd, (uint8_t[]){ 0x6a, (uint8_t)imm8, 0x58 + reg}, 3) == 3;
     }
 
     /* fall back to using the full 32-bit value */
+    *sz += 5;
     return eamAsmSetRegDoubleWord(reg, imm, fd);
 }
 
 /* TODO - machine code for extra instructions from eambfc-ir */
 /* } */
-bool eamAsmAddRegByte(unsigned char reg, int8_t imm8, int fd);
+bool eamAsmAddRegByte(unsigned char reg, int8_t imm8, int fd, off_t *sz);
 /* { */
-bool eamAsmSubRegByte(unsigned char reg, int8_t imm8, int fd);
+bool eamAsmSubRegByte(unsigned char reg, int8_t imm8, int fd, off_t *sz);
 /* ) */
-bool eamAsmAddRegWord(unsigned char reg, int16_t imm16, int fd);
+bool eamAsmAddRegWord(unsigned char reg, int16_t imm16, int fd, off_t *sz);
 /* ( */
-bool eamAsmSubRegWord(unsigned char reg, int16_t imm16, int fd);
+bool eamAsmSubRegWord(unsigned char reg, int16_t imm16, int fd, off_t *sz);
 /* $ */
-bool eamAsmAddRegDoubleWord(unsigned char reg, int32_t imm32, int fd);
+bool eamAsmAddRegDoubWord(unsigned char reg, int32_t imm32, int fd, off_t *sz);
 /* ^ */
-bool eamAsmSubRegDoubleWord(unsigned char reg, int32_t imm32, int fd);
+bool eamAsmSubRegDoubWord(unsigned char reg, int32_t imm32, int fd, off_t *sz);
 /* n */
-bool eamAsmAddRegQuadWord(unsigned char reg, int64_t imm64, int fd);
+bool eamAsmAddRegQuadWord(unsigned char reg, int64_t imm64, int fd, off_t *sz);
 /* N */
-bool eamAsmSubRegQuadWord(unsigned char reg, int64_t imm64, int fd);
+bool eamAsmSubRegQuadWord(unsigned char reg, int64_t imm64, int fd, off_t *sz);
 /* # */
-bool eamAsmAddMem(unsigned char rec, int8_t imm8, int fd);
+bool eamAsmAddMem(unsigned char rec, int8_t imm8, int fd, off_t *sz);
 /* = */
-bool eamAsmSubMem(unsigned char rec, int8_t imm8, int fd);
+bool eamAsmSubMem(unsigned char rec, int8_t imm8, int fd, off_t *sz);
 /* @ */
-bool eamAsmSetMemZero(unsigned char reg, int fd);
+bool eamAsmSetMemZero(unsigned char reg, int fd, off_t *sz);
