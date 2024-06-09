@@ -283,10 +283,10 @@ bool bfJumpClose(int fd) {
         );
         return false;
     }
-
-    if (eamAsmJumpZero(REG_BF_POINTER, distance, fd, &codesize)) {
+    off_t phony = 0; /* already added to code size for this one */
+    if (!eamAsmJumpZero(REG_BF_POINTER, distance, fd, &phony)) {
         appendError(
-            "Failed to compile `[` instruction!",
+            "Failed to write `[` instruction!",
             "FAILED_WRITE"
         );
         return false;
@@ -301,11 +301,9 @@ bool bfJumpClose(int fd) {
     }
     /* jump to right after the `[` instruction, to skip a redundant check */
     if (!eamAsmJumpNotZero(REG_BF_POINTER, -distance, fd, &codesize)) {
-        appendError("Failed to write instruction", "FAILED_WRITE");
+        appendError("Failed to write `]` instruction", "FAILED_WRITE");
         return false;
     }
-    /* CURRENT_ADDRESS is now JUMP_SIZE too big. Fix that. */
-    codesize -= JUMP_SIZE;
 
     return true;
 }
@@ -321,29 +319,36 @@ bool bfCompileInstruction(char c, int fd) {
         case '<':
             /* decrement the tape pointer register */
             ret = eamAsmDecReg(REG_BF_POINTER, fd, &codesize);
+            if (!ret) appendError("Failed to write to file", "FAILED_WRITE");
             break;
         case '>':
             /* increment the tape pointer register */
             ret = eamAsmIncReg(REG_BF_POINTER, fd, &codesize);
+            if (!ret) appendError("Failed to write to file", "FAILED_WRITE");
             break;
         case '+':
             /* increment the current tape value */
             ret = eamAsmIncByte(REG_BF_POINTER, fd, &codesize);
+            if (!ret) appendError("Failed to write to file", "FAILED_WRITE");
             break;
         case '-':
             /* decrement the current tape value */
             ret = eamAsmDecByte(REG_BF_POINTER, fd, &codesize);
+            if (!ret) appendError("Failed to write to file", "FAILED_WRITE");
             break;
         case '.':
             /* write to stdout */
             ret = bfIO(fd, STDOUT_FILENO, SYSCALL_WRITE);
+            if (!ret) appendError("Failed to write to file", "FAILED_WRITE");
             break;
         case ',':
             /* read from stdin */
             ret = bfIO(fd, STDIN_FILENO, SYSCALL_READ);
+            if (!ret) appendError("Failed to write to file", "FAILED_WRITE");
             break;
         case '[':
             ret = bfJumpOpen(fd);
+            /* `[` and `]` do their own error handling. */
             break;
         case ']':
             ret = bfJumpClose(fd);
