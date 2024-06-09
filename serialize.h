@@ -7,6 +7,8 @@
 
 #ifndef EAMBFC_SERIALIZE_H
 #define EAMBFC_SERIALIZE_H 1
+/* C99 */
+#include <stdint.h>
 /* internal */
 #include "compat/elf.h"
 
