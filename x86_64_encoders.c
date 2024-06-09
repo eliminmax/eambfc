@@ -114,7 +114,6 @@ static inline \
     return write(fd, &i_bytes, 5) == 5;
 }
 
-    uint8_t i_bytes[5] = { 0xb8 + reg, 0x00, 0x00, 0x00, 0x00 };
 /* use the most efficient way to set a register to imm */
 bool eamAsmSetReg(unsigned char reg, int32_t imm, int fd, off_t *sz) {
     if (imm == 0) {
@@ -126,7 +125,7 @@ bool eamAsmSetReg(unsigned char reg, int32_t imm, int fd, off_t *sz) {
     if (imm >= INT8_MIN && imm <= INT8_MAX) {
         *sz += 3;
         /* PUSH imm8; POP reg */
-        return write(fd, (uint8_t[]){ 0x6a, (uint8_t)imm8, 0x58 + reg}, 3) == 3;
+        return write(fd, (uint8_t[]){ 0x6a, (uint8_t)imm, 0x58 + reg}, 3) == 3;
     }
 
     /* fall back to using the full 32-bit value */

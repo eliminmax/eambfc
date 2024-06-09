@@ -23,9 +23,10 @@ MAX_NESTING_LEVEL ?= 64
 .c.o:
 	$(CC) $(CFLAGS) $(POSIX_CFLAG) -c -o $@ $<
 
-eambfc: serialize.o eam_compile.o json_escape.o main.o
+eambfc: serialize.o eam_compile.o json_escape.o main.o x86_64_encoders.o
 	$(CC) $(POSIX_CFLAG) $(LDFLAGS) -o eambfc \
-		serialize.o eam_compile.o json_escape.o main.o $(LDLIBS)
+		serialize.o eam_compile.o json_escape.o main.o x86_64_encoders.o \
+		$(LDLIBS)
 
 install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
@@ -48,7 +49,7 @@ config.h: config.template.h version
 		<config.template.h >config.h
 
 serialize.o: serialize.c
-eam_compile.o: config.h eam_compile.c
+eam_compile.o: config.h x86_64_encoders.o eam_compile.c
 json_escape.o: json_escape.c
 main.o: config.h main.c
 optimize.o: optimize.c
@@ -63,9 +64,9 @@ x86_64_encoders.o: x86_64_encoders.c
 # For an example of the latter, see FreeBSD's Linux syscall emulation.
 # `make test` works in both of those example cases
 create_mini_elf.o: config.h create_mini_elf.c
-create_mini_elf: create_mini_elf.o serialize.o eam_compile.o
+create_mini_elf: create_mini_elf.o serialize.o eam_compile.o x86_64_encoders.o
 	$(CC) $(LDFLAGS) -o $@ $(POSIX_CFLAG)\
-		serialize.o eam_compile.o $@.o $(LDLIBS)
+		serialize.o eam_compile.o x86_64_encoders.o $@.o $(LDLIBS)
 mini_elf: create_mini_elf
 	./create_mini_elf
 can-run-linux-amd64: mini_elf

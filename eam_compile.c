@@ -20,6 +20,7 @@
 #include "eambfc_types.h"
 #include "optimize.h"
 #include "serialize.h"
+#include "x86_64_encoders.h"
 
 off_t codesize;
 
@@ -44,9 +45,9 @@ void resetErrors(void) {
     err_ind = 0;
 }
 
-bool optimized;
+static bool optimized;
 
-void appendError(char *error_msg, char *err_id) {
+static void appendError(char *error_msg, char *err_id) {
     uint8_t i = err_ind++;
     /* Ensure i is in bounds; discard errors after MAX_ERROR */
     if (i < MAX_ERROR) {
@@ -59,7 +60,8 @@ void appendError(char *error_msg, char *err_id) {
     }
 }
 
-bool writeBytes(int fd, const void * bytes, ssize_t expected_size) {
+static inline \
+    bool writeBytes(int fd, const void * bytes, ssize_t expected_size) {
     ssize_t written = write(fd, bytes, expected_size);
     if (written != expected_size) {
         appendError("Failed to write instruction bytes", "FAILED_WRITE");
@@ -201,27 +203,6 @@ bool writePhdrTable(int fd) {
     return writeBytes(fd, phdr_table_bytes, PHTB_SIZE);
 }
 
-/* write code to set up a new brainfuck program to the file descriptor fd. */
-bool bfInit(int fd) {
-    /* set the brainfuck pointer register to the start of the tape  */
-    uint8_t instructionBytes[] = {
-        eamAsmSetRegD(REG_BF_POINTER, TAPE_ADDRESS)
-    };
-    codesize += sizeof(instructionBytes);
-    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
-}
-
-/* the INC and DEC instructions are encoded very similarly, and share opcodes.
- * the brainfuck instructions "<", ">", "+", and "-" can all be implemented
- * with a few variations of them, using the eamAsmOffset macro. */
-bool bfOffset(int fd, uint8_t direction, uint8_t addressMode) {
-    uint8_t instructionBytes[] = {
-        eamAsmOffset(direction, addressMode, REG_BF_POINTER)
-    };
-    codesize += sizeof(instructionBytes);
-    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
-}
-
 /* The brainfuck instructions "." and "," are similar from an implementation
  * perspective. Both require making system calls for I/O, and the system calls
  * have 3 nearly identical arguments:
@@ -234,28 +215,22 @@ bool bfIO(int fd, int bf_fd, int sc) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
-    uint8_t instructionBytes[] = {
-        /* load the number for the write system call into REG_SC_NUM */
-        eamAsmSetRegD(REG_SC_NUM, sc),
-        /* load the number for the stdout file descriptor into REG_ARG1 */
-        eamAsmSetRegD(REG_ARG1, bf_fd),
-        /* copy the address in REG_BF_POINTER to REG_ARG2 */
-        eamAsmRegCopy(REG_ARG2, REG_BF_POINTER),
-        /* load number of bytes to read/write (1, specifically) into REG_ARG3 */
-        eamAsmSetRegD(REG_ARG3, 1),
-        /* perform a system call */
-        eamAsmSyscall()
-    };
-    codesize += sizeof(instructionBytes);
-    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
+    /* load the number for the write system call into REG_SC_NUM */
+    bool ret = eamAsmSetReg(REG_SC_NUM, sc, fd, &codesize);
+    /* load the number for the stdout file descriptor into REG_ARG1 */
+    ret &= eamAsmSetReg(REG_ARG1, bf_fd, fd, &codesize);
+    /* copy the address in REG_BF_POINTER to REG_ARG2 */
+    ret &= eamAsmRegCopy(REG_ARG2, REG_BF_POINTER, fd, &codesize);
+    /* load number of bytes to read/write (1, specifically) into REG_ARG3 */
+    ret &= eamAsmSetReg(REG_ARG3, 1, fd, &codesize);
+    ret &= eamAsmSyscall(fd, &codesize);
+    return ret;
 }
-
 
 struct stack {
     jump_index_t index;
     off_t addresses[MAX_NESTING_LEVEL];
 } JumpStack;
-
 
 /* prepare to compile the brainfuck `[` instruction to file descriptor fd.
  * doesn't actually write to the file yet, as the address of `]` is unknown. */
@@ -300,10 +275,6 @@ bool bfJumpClose(int fd) {
 
     distance = (int32_t) (closeAddress - openAddress);
 
-    uint8_t openJumpBytes[] = {
-        /* if the current loop is done, jump past the closing check */
-        eamAsmJZ(REG_BF_POINTER, distance)
-    };
     /* jump to the skipped `[` instruction, write it, and jump back */
     if (lseek(fd, openAddress, SEEK_SET) != openAddress) {
         appendError(
@@ -312,13 +283,15 @@ bool bfJumpClose(int fd) {
         );
         return false;
     }
-    if (write(fd, openJumpBytes, JUMP_SIZE) != JUMP_SIZE) {
+
+    if (eamAsmJumpZero(REG_BF_POINTER, distance, fd, &codesize)) {
         appendError(
             "Failed to compile `[` instruction!",
             "FAILED_WRITE"
         );
         return false;
     }
+
     if (lseek(fd, closeAddress, SEEK_SET) != closeAddress) {
         appendError(
             "Failed to return to `]` instruction!",
@@ -326,12 +299,15 @@ bool bfJumpClose(int fd) {
         );
         return false;
     }
-    uint8_t instructionBytes[] = {
-        /* jump to right after the `[` instruction, to skip a redundant check */
-        eamAsmJNZ(REG_BF_POINTER, -distance)
-    };
-    codesize += sizeof(instructionBytes);
-    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
+    /* jump to right after the `[` instruction, to skip a redundant check */
+    if (!eamAsmJumpNotZero(REG_BF_POINTER, -distance, fd, &codesize)) {
+        appendError("Failed to write instruction", "FAILED_WRITE");
+        return false;
+    }
+    /* CURRENT_ADDRESS is now JUMP_SIZE too big. Fix that. */
+    codesize -= JUMP_SIZE;
+
+    return true;
 }
 
 /* compile an individual instruction (c), to the file descriptor fd.
@@ -344,19 +320,19 @@ bool bfCompileInstruction(char c, int fd) {
     switch(c) {
         case '<':
             /* decrement the tape pointer register */
-            ret = bfOffset(fd, OFFDIR_NEGATIVE, OFFMODE_REGISTER);
+            ret = eamAsmDecReg(REG_BF_POINTER, fd, &codesize);
             break;
         case '>':
             /* increment the tape pointer register */
-            ret = bfOffset(fd, OFFDIR_POSITIVE, OFFMODE_REGISTER);
+            ret = eamAsmIncReg(REG_BF_POINTER, fd, &codesize);
             break;
         case '+':
             /* increment the current tape value */
-            ret = bfOffset(fd, OFFDIR_POSITIVE, OFFMODE_MEMORY);
+            ret = eamAsmIncByte(REG_BF_POINTER, fd, &codesize);
             break;
         case '-':
             /* decrement the current tape value */
-            ret = bfOffset(fd, OFFDIR_NEGATIVE, OFFMODE_MEMORY);
+            ret = eamAsmDecByte(REG_BF_POINTER, fd, &codesize);
             break;
         case '.':
             /* write to stdout */
@@ -388,16 +364,24 @@ bool bfCompileInstruction(char c, int fd) {
 
 /* write code to perform the exit(0) syscall */
 bool bfExit(int fd) {
-    uint8_t instructionBytes[] = {
-        /* set system call register to exit system call number */
-        eamAsmSetRegD(REG_SC_NUM, SYSCALL_EXIT),
-        /* set system call register to the desired exit code (0) */
-        eamAsmSetRegD(REG_ARG1, 0),
-        /* perform a system call */
-        eamAsmSyscall()
-    };
-    codesize += sizeof(instructionBytes);
-    return writeBytes(fd, instructionBytes, sizeof(instructionBytes));
+    bool ret = true;
+    /* set system call register to exit system call number */
+    if (!eamAsmSetReg(REG_SC_NUM, SYSCALL_EXIT, fd, &codesize)) {
+        appendError("Failed to write exit syscall number", "FAILED_WRITE");
+        ret = false;
+    }
+    /* set system call register to the desired exit code (0) */
+    if (!eamAsmSetReg(REG_ARG1, 0, fd, &codesize)) {
+        appendError("Failed to write exit syscall argument", "FAILED_WRITE");
+        ret = false;
+    }
+    /* perform a system call */
+    if (!eamAsmSyscall(fd, &codesize)) {
+        appendError("Failed to write syscall instruction", "FAILED_WRITE");
+        ret = false;
+    }
+
+    return ret;
 }
 
 
@@ -412,10 +396,13 @@ bool bfCleanup(int fd) {
 }
 
 /* maximum number of bytes to transfer from tmpfile at a time */
-#define MAX_TRANS_SZ 1024
-/* Takes 2 open file descriptors - in_fd and out_fd.
+#define MAX_TRANS_SZ 4096
+/* Takes 2 open file descriptors - in_fd and out_fd, and a boolean - optimize
  * in_fd is a brainfuck source file, open for reading.
- * outputFS is the destination file, open for writing.
+ * out_fd is the destination file, open for writing.
+ * if optimize is true, then first optimize code, then compile optimized code.
+ *      (optimize is currently not used)
+ *
  * It compiles the source code in in_fd, writing the output to out_fd.
  *
  * It does not verify that in_fd and out_fd are valid file descriptors,
@@ -460,7 +447,7 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
         return false;
     }
 
-    if (!bfInit(tmp_fd)) {
+    if (!eamAsmSetReg(REG_BF_POINTER, TAPE_ADDRESS, tmp_fd, &codesize)) {
         appendError(
             "Failed to write initial setup instructions.",
             "FAILED_WRITE"
