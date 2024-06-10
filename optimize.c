@@ -16,6 +16,8 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
+/* internal */
+#include "err.h"
 
 #define MALLOC_CHUNK_SIZE 0x100
 
@@ -25,9 +27,11 @@ static char *filterNonBFChars(int in_fd) {
     optim_sz = 0;
     size_t limit = MALLOC_CHUNK_SIZE;
     char *filtered = (char *)malloc(limit);
+    if (filtered == NULL) {
+        appendError('?', "Failed to allocate buffer", "ICE_ICE_BABY");
+        return NULL;
+    }
     char *p = filtered;
-    /* TODO: error message */
-    if (filtered == NULL) return NULL;
     char instr;
     while (read(in_fd, &instr, sizeof(char))) {
         switch(instr) {
@@ -44,8 +48,10 @@ static char *filterNonBFChars(int in_fd) {
             if (optim_sz == limit) {
                 limit += MALLOC_CHUNK_SIZE;
                 filtered = realloc(filtered, limit);
-                /* TODO: error message */
-                if (filtered == NULL) return NULL;
+                if (filtered == NULL) {
+                    appendError('?', "Failed to extend buffer", "ICE_ICE_BABY");
+                    return NULL;
+                }
                 p = filtered + optim_sz;
             }
             break;
@@ -64,8 +70,14 @@ static char *findLoopEnd(char *search_start) {
     /* If no match is found for open_p, set it to the end of the string */
     char *close_p = strchr(search_start, ']');
 
-    /* TODO: error message */
-    if (close_p == NULL) return NULL;
+    if (close_p == NULL) {
+        appendError(
+            '[',
+            "Could not optimize due to unmatched '['",
+            "UNMATCHED_OPEN"
+        );
+        return NULL;
+    }
     /* indicates a nested loop begins before the end of the current loop. */
     if ((open_p != NULL) && (close_p > open_p)) {
         close_p = findLoopEnd(open_p + 1);
@@ -80,7 +92,23 @@ static bool loopsMatch(char *code) {
     /* if none are found, it's fine. */
     if ((open_p == NULL) && (close_p == NULL)) return true;
     /* if only one is found, that's a mismatch */
-    if ((open_p == NULL) != (close_p == NULL)) return false;
+    if ((open_p == NULL) && !(close_p == NULL)) {
+        appendError(
+            '?',
+            "Could not optimize due to unmatched ']'",
+            "UNMATCHED_CLOSE"
+        );
+        return false;
+    }
+    if ((close_p == NULL) && !(open_p == NULL)) {
+        appendError(
+            '?',
+            "Could not optimize due to unmatched '['",
+            "UNMATCHED_OPEN"
+        );
+        return false;
+    }
+    
     /* ensure that it opens before it closes */
     if (open_p > close_p) return false;
     /* if this point is reached, both are found. Ensure they are balanced. */
@@ -172,7 +200,11 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
     char opcode;
 #if SIZE_MAX < UINT64_MAX
     if (consec_t > SIZE_MAX) {
-        /* TODO: error message that should never be possible. */
+        appendError(
+            instr,
+            "More than SIZE_MAX consecutive identical instructions. Somehow.",
+            "THIS_SHOULD_BE_IMPOSSIBLE"
+        );
         return 0;
     }
 #endif
@@ -191,16 +223,28 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
         else if (consec_ct <= INT16_MAX) opcode = ')';
         else if (consec_ct <= INT32_MAX) opcode = '$';
         else if (consec_ct <= INT64_MAX) opcode = 'n';
-        /* TODO: error message */
-        else return 0; /* over 8192 PiB of '>' instructions shouldn't happen. */
+        else {
+            appendError(
+                '>',
+                "Over 8192 Pebibytes of '>' in a row.",
+                "PUTTING_WHAT_THE_ACTUAL_FUCK_IN_BRAINFUCK"
+            );
+            return 0;
+        }
         break;
       case '<':
         if      (consec_ct <= INT8_MAX)  opcode = '{';
         else if (consec_ct <= INT16_MAX) opcode = '(';
         else if (consec_ct <= INT32_MAX) opcode = '^';
         else if (consec_ct <= INT32_MAX) opcode = 'N';
-        /* TODO: error message */
-        else return 0; /* again, this takes over 8192 PiB of '<'s in a row */
+        else {
+            appendError(
+                '<',
+                "Over 8192 Pebibytes of '<' in a row.",
+                "PUTTING_WHAT_THE_ACTUAL_FUCK_IN_BRAINFUCK"
+            );
+            return 0;
+        }
         break;
       /* for + and -, assume that consec_ct is less than 256, as a larger
        * value would have been optimized down. */
@@ -218,13 +262,11 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
 }
 
 static char *mergeInstructions(char *s) {
-    /* TODO */
     /* used to check what's between [ and ] if they're 2 apart */
     char current_mode;
     char prev_mode = *s;
     char *new_str = (char *)malloc(optim_sz);
     if (new_str == NULL) {
-        /* TODO: error message */
         return NULL;
     }
     char *p = new_str;
@@ -237,7 +279,11 @@ static char *mergeInstructions(char *s) {
         if (current_mode != prev_mode) {
             if (!((skip = condense(prev_mode, consec_ct, p)))) {
                 free(new_str);
-                /* TODO: error message */
+                appendError(
+                    prev_mode,
+                    "Failed to consense consecutive instructions",
+                    "ICE_ICE_BABY"
+                );
                 return NULL;
             }
             p += skip;
@@ -263,9 +309,11 @@ static char *mergeInstructions(char *s) {
     free(new_str);
     /* realloc down to size */
     s = (char *)realloc(s, strlen(s) + 1);
-    if (s == NULL) {
-        /* TODO: error message */
-    }
+    if (s == NULL) appendError(
+        '?',
+        "Failed to reallocate down to size",
+        "ICE_ICE_BABY"
+    );
     return s;
 }
 
@@ -322,7 +370,6 @@ char *toIR(int fd) {
     if (bf_code == NULL) return NULL;
     if (!loopsMatch(bf_code)) {
         free(bf_code);
-        /* TODO: Error message */
         return NULL;
     }
     bf_code = stripUselessCode(bf_code);

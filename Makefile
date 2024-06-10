@@ -17,7 +17,7 @@ MAX_ERROR ?= 32
 TAPE_BLOCKS ?= 8
 MAX_NESTING_LEVEL ?= 64
 
-EAM_COMPILE_DEPS := serialize.o x86_64_encoders.o optimize.o
+EAM_COMPILE_DEPS := serialize.o x86_64_encoders.o optimize.o err.o
 EAMBFC_DEPS := json_escape.o eam_compile.o $(EAM_COMPILE_DEPS) main.o
 
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
@@ -53,8 +53,9 @@ serialize.o: serialize.c
 eam_compile.o: config.h x86_64_encoders.o eam_compile.c
 json_escape.o: json_escape.c
 main.o: config.h main.c
-optimize.o: optimize.c
+optimize.o: err.o optimize.c
 x86_64_encoders.o: x86_64_encoders.c
+err.o: config.h err.c
 
 # for testing
 #
@@ -81,9 +82,9 @@ multibuild-test: can-run-linux-amd64 config.h
 	./multibuild.sh
 
 
-optimize: optimize.c
+optimize: optimize.c err.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) \
-		-D OPTIMIZE_STANDALONE -o optimize optimize.c
+		-D OPTIMIZE_STANDALONE -o optimize optimize.c err.o
 
 
 # remove eambfc and the objects it's built from, then remove test artifacts

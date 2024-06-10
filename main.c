@@ -18,6 +18,7 @@
 /* internal */
 #include "config.h"
 #include "eam_compile.h"
+#include "err.h"
 #include "json_escape.h"
 
 /* Return the permission mask to use for the output file */
