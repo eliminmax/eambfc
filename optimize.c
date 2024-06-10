@@ -73,6 +73,20 @@ static char *findLoopEnd(char *search_start) {
     return close_p + 1;
 }
 
+/* recursively ensure that the loops are balanced */
+static bool loopsMatch(char *code) {
+    char *open_p = strchr(code, '[');
+    char *close_p = strchr(code, ']');
+    /* if none are found, it's fine. */
+    if ((open_p == NULL) && (close_p == NULL)) return true;
+    /* if only one is found, that's a mismatch */
+    if ((open_p == NULL) != (close_p == NULL)) return false;
+    /* ensure that it opens before it closes */
+    if (open_p > close_p) return false;
+    /* if this point is reached, both are found. Ensure they are balanced. */
+    return (findLoopEnd(open_p + 1) != NULL);
+}
+
 #define SIMPLE_PATTERN_NUM 6
 /* remove redundant instructions like `<>` */
 static char *stripUselessCode(char *str) {
@@ -277,6 +291,11 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
     puts(s);
+    if (!loopsMatch(s)) {
+        free(s);
+        fputs("Mismatched [ and ]. refusing to continue.\n", stderr);
+        return EXIT_FAILURE;
+    }
     puts("stage 2:");
     s = stripUselessCode(s);
     if (s == NULL) {
@@ -301,6 +320,11 @@ int main(int argc, char *argv[]) {
 char *toIR(int fd) {
     char *bf_code = filterNonBFChars(fd);
     if (bf_code == NULL) return NULL;
+    if (!loopsMatch(bf_code)) {
+        free(bf_code);
+        /* TODO: Error message */
+        return NULL;
+    }
     bf_code = stripUselessCode(bf_code);
     if (bf_code == NULL) return NULL;
     return mergeInstructions(bf_code);

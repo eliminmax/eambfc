@@ -5,8 +5,8 @@
  * This file contains functions that encode x86_64 machine instructions and
  * write them to open file descriptors. Each returns a boolean value indicating
  * whether or not the write was successful. */
-#ifndef INSTRUCTION_ENCODERS_H
-#define INSTRUCTION_ENCODERS_H 1
+#ifndef EAM_INSTRUCTION_ENCODERS_H
+#define EAM_INSTRUCTION_ENCODERS_H 1
 /* C99 */
 #include <stdbool.h>
 #include <stdint.h>
@@ -47,9 +47,9 @@ bool eamAsmAddRegQuadWord(uint8_t reg, int64_t imm64, int fd, off_t *sz);
 /* N */
 bool eamAsmSubRegQuadWord(uint8_t reg, int64_t imm64, int fd, off_t *sz);
 /* # */
-bool eamAsmAddMem(uint8_t rec, int8_t imm8, int fd, off_t *sz);
+bool eamAsmAddMem(uint8_t reg, int8_t imm8, int fd, off_t *sz);
 /* = */
-bool eamAsmSubMem(uint8_t rec, int8_t imm8, int fd, off_t *sz);
+bool eamAsmSubMem(uint8_t reg, int8_t imm8, int fd, off_t *sz);
 /* @ */
 bool eamAsmSetMemZero(uint8_t reg, int fd, off_t *sz);
-#endif /* INSTRUCTION_ENCODERS_H */
+#endif /* EAM_INSTRUCTION_ENCODERS_H */

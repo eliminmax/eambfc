@@ -50,9 +50,10 @@ void showHelp(FILE *outfile, char *progname) {
         "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
         " -h        - display this help text and exit\n"
         " -V        - print version information and exit\n"
-        " -q        - don't print errors unless -j was passed*\n"
         " -j        - print errors in JSON format*\n"
         "             (assumes file names are UTF-8-encoded.)\n"
+        " -q        - don't print errors unless -j was passed*\n"
+        " -O        - enable optimzation**.\n"
         " -k        - keep files that failed to compile (for debugging)\n"
         " -c        - continue to the next file instead of quitting if a\n"
         "             file fails to compile\n"
@@ -61,7 +62,11 @@ void showHelp(FILE *outfile, char *progname) {
         "             (This program will remove this at the end of the input\n"
         "             file to create the output file name)\n"
         "\n"
-        "* -q and -j will not affect arguments passed before they were\n"
+        "* -q and -j will not affect arguments passed before they were.\n"
+        "\n"
+        "** Optimization will mess with error reporting, as error locations\n"
+        "   will be location in the intermidiate representation text, rather\n"
+        "   than the source code.\n"
         "\n"
         "Remaining options are treated as source file names. If they don't\n"
         "end with '.bf' (or the extension specified with '-e'), the program\n"
@@ -118,9 +123,10 @@ int main(int argc, char* argv[]) {
     char *ext = "";
     /* default to false, set to true if relevant argument was passed. */
     bool quiet = false, keep = false, moveahead = false, json = false;
+    bool optimize = false;
     mode_t perms = getPerms();
 
-    while ((opt = getopt(argc, argv, ":hVqjkme:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hVqjOkme:")) != -1) {
         switch(opt) {
           case 'h':
             showHelp(stdout, argv[0]);
@@ -152,6 +158,9 @@ int main(int argc, char* argv[]) {
             break;
           case 'j':
             json = true;
+            break;
+          case 'O':
+            optimize = true;
             break;
           case 'k':
             keep = true;
@@ -265,7 +274,7 @@ int main(int argc, char* argv[]) {
                 return EXIT_FAILURE;
             }
         }
-        result = bfCompile(srcFD, dstFD, false);
+        result = bfCompile(srcFD, dstFD, optimize);
         close(srcFD);
         close(dstFD);
         if (!result) {
