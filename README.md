@@ -67,14 +67,26 @@ make clean; make CC=tcc
 make PREFIX="$HOME/.local" install
 ```
 
-## Development process
+## Development process and Standards
 
 I have a dev branch and a main branch. When I feel like it, and all of the tests
 pass, I merge the dev branch into the main branch. I work from multiple devices,
-but only push changes from one.
+but only push changes from one. The main branch has been successfully built and
+passed the full test suite on Debian 12 amd64, Debian 12 arm64 with qemu-binfmt,
+and FreeBSD 14.1 amd64 with Linux binary support. Features that are documented
+and exposed via command-line flags are tested, working, and complete, though
+code that's part of WIP features may be present, but not activated.
 
-Other than some tests, all C code, shell scripts, and Makefiles must target the
+The dev branch has no guarantees of any kind. It may have untested code, fatal
+bugs, invalid code that won't compile at all, failing tests, undefined behavior,
+improperly-formatted files, or other problems. Do not use it.
+
+### Standards compliance
+
+Other than some tests, all C code, shell scripts, and Makefiles target the
 POSIX.1-2008 standard and/or the ISO/IEC 9899:1999 standard (i.e. C99).
+
+Source code must also comply with version 3.0 of the REUSE specification.
 
 ### Test suite
 
