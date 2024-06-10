@@ -395,7 +395,7 @@ static inline \
             return false;
         }
     }
-}     
+}
 
 bool irCompileInstruction(char *p, int fd, int* skip_ct_p) {
     *skip_ct_p = 0;
@@ -492,7 +492,7 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
 
     if (!eamAsmSetReg(REG_BF_PTR, TAPE_ADDRESS, tmp_fd, &out_sz)) {
         appendError(
-            instr, 
+            instr,
             "Failed to write initial setup instructions.",
             "FAILED_WRITE"
         );

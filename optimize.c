@@ -108,7 +108,7 @@ static bool loopsMatch(char *code) {
         );
         return false;
     }
-    
+
     /* ensure that it opens before it closes */
     if (open_p > close_p) return false;
     /* if this point is reached, both are found. Ensure they are balanced. */
