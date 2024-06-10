@@ -108,7 +108,7 @@ int rmExt(char *str, const char *ext) {
  * showHint:
  *  * unless -q was passed, write the help text to stderr. */
 #define showError(...) if (!quiet) fprintf(stderr, __VA_ARGS__)
-#define fileFail() if (moveahead) ret = EXIT_FAILURE; else return EXIT_FAILURE
+#define fileFail() free(outname); if (moveahead) ret = EXIT_FAILURE; else return EXIT_FAILURE
 #define showHint() if (!quiet) showHelp(stderr, argv[0])
 
 int main(int argc, char* argv[]) {
@@ -118,8 +118,6 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     char *outname;
     char *err_msg_json;
-    char *out_name_json;
-    char *in_name_json;
     /* default to empty string. */
     char *ext = "";
     /* default to false, set to true if relevant argument was passed. */
@@ -225,20 +223,26 @@ int main(int argc, char* argv[]) {
     for (/* reusing optind here */; optind < argc; optind++) {
         outname = (char *)malloc(strlen(argv[optind]) + 1);
         if (outname == NULL) {
-            showError(
-                "malloc failure when determining output file name! Aborting.\n"
-            );
+            if (json) {
+                printf(
+                    "{\"errorId\":\"ICE_ICE_BABY\",\"message\":\"%s\"}",
+                    "malloc failed when determining outfile name! Aborting."
+                );
+
+            } else {
+                showError(
+                    "malloc failed when determining outfile name! Aborting.\n"
+                );
+            }
             exit(EXIT_FAILURE);
         }
-        in_name_json = jsonStr(argv[optind]);
-        out_name_json = jsonStr(outname);
         strcpy(outname, argv[optind]);
         srcFD = open(argv[optind], O_RDONLY);
         if (srcFD < 0) {
             if (json) {
-                printf(
+                printJsonError(
                     "{\"errorId\":\"OPEN_R_FAILED\",\"file\":\"%s\"}\n",
-                    in_name_json
+                    argv[optind]
                 );
             } else {
                 showError("Failed to open %s for reading.\n", argv[optind]);
@@ -247,7 +251,7 @@ int main(int argc, char* argv[]) {
         }
         if (! rmExt(outname, ext)) {
             if (json) {
-                printf(
+                printJsonError(
                     "{\"errorId\":\"BAD_EXTENSION\",\"file\":\"%s\"}\n",
                     argv[optind]
                 );
@@ -259,7 +263,7 @@ int main(int argc, char* argv[]) {
         dstFD = open(outname, O_WRONLY+O_CREAT+O_TRUNC, perms);
         if (dstFD < 0) {
             if (json) {
-                printf(
+                printJsonError(
                     "{\"errorId\":\"OPEN_W_FAILED\",\"file\":\"%s\"}\n",
                     outname
                 );
@@ -269,6 +273,7 @@ int main(int argc, char* argv[]) {
                     outname
                 );
             }
+            free(outname);
             if (moveahead) {
                 close(srcFD);
             } else {
@@ -309,8 +314,6 @@ int main(int argc, char* argv[]) {
             if (!keep) remove(outname);
             fileFail();
         }
-        free(in_name_json);
-        free(out_name_json);
         free(outname);
     }
 
