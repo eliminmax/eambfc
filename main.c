@@ -54,7 +54,7 @@ void showHelp(FILE *outfile, char *progname) {
         " -j        - print errors in JSON format*\n"
         "             (assumes file names are UTF-8-encoded.)\n"
         " -q        - don't print errors unless -j was passed*\n"
-        " -O        - enable optimzation**.\n"
+        " -O        - enable optimization**.\n"
         " -k        - keep files that failed to compile (for debugging)\n"
         " -c        - continue to the next file instead of quitting if a\n"
         "             file fails to compile\n"
@@ -66,7 +66,7 @@ void showHelp(FILE *outfile, char *progname) {
         "* -q and -j will not affect arguments passed before they were.\n"
         "\n"
         "** Optimization will mess with error reporting, as error locations\n"
-        "   will be location in the intermidiate representation text, rather\n"
+        "   will be location in the intermediate representation text, rather\n"
         "   than the source code.\n"
         "\n"
         "Remaining options are treated as source file names. If they don't\n"
@@ -108,7 +108,8 @@ int rmExt(char *str, const char *ext) {
  * showHint:
  *  * unless -q was passed, write the help text to stderr. */
 #define showError(...) if (!quiet) fprintf(stderr, __VA_ARGS__)
-#define fileFail() free(outname); if (moveahead) ret = EXIT_FAILURE; else return EXIT_FAILURE
+#define fileFail() free(outname); \
+    if (moveahead) ret = EXIT_FAILURE; else return EXIT_FAILURE
 #define showHint() if (!quiet) showHelp(stderr, argv[0])
 
 int main(int argc, char* argv[]) {

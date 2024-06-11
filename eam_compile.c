@@ -391,7 +391,7 @@ static inline \
           case 'N':
             return eamAsmSubRegQuadWord(REG_BF_PTR, (int64_t)ct, fd, &out_sz);
           default:
-            appendError(instr, "Invaild IR Opcode", "INVALID_IR");
+            appendError(instr, "Invalid IR Opcode", "INVALID_IR");
             return false;
         }
     }
