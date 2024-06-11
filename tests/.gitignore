@@ -2,23 +2,23 @@
 #
 # SPDX-License-Identifier: 0BSD
 
-alternative-extension
+alternative_extension
 colortest
 hello
 loop
 null
 rw
-too-many-nested-loops
+too_many_nested_loops
 truthmachine
 wrap
 wrap2
-unmatched-open
-unmatched-close
+unmatched_open
+unmatched_close
 unseekable
-dead-code
+dead_code
 
 # test assets
 *.build_err
 unseekable_f
-piped-in
-piped-in.bf
+piped_in
+piped_in.bf

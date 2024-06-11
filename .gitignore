@@ -15,7 +15,7 @@ alt-builds/
 # some test assets and tools that are generated locally
 create_mini_elf
 mini_elf
-can-run-linux-amd64
+can_run_linux_amd64
 optimize
 
 # ctags tag file
