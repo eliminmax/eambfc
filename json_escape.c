@@ -23,7 +23,7 @@ char *jsonStr(char* str) {
     char *p = str;
     char *json_escaped = (char *)malloc(bufsz);
     char *outp = json_escaped;
-    if (json_escaped == NULL) return "malloc failed for json_escape";
+    if (json_escaped == NULL) return NULL;
     p = str;
     while (*p) {
         switch(*p) {
@@ -51,10 +51,24 @@ char *jsonStr(char* str) {
         if (used > (bufsz - 8)) {
             bufsz += 16;
             json_escaped = (char *)realloc(json_escaped, bufsz);
-            if (json_escaped == NULL) return "malloc failed for json_escape";
+            if (json_escaped == NULL) return NULL;
         }
         p++;
     }
     *outp = 0;
     return json_escaped;
+}
+
+void printJsonError(char *fmt, char *str) {
+    char *json_str = jsonStr(str);
+    if (json_str == NULL) {
+        puts(
+            "{\"errorId\":\"ICE_ICE_BABY\","
+            "\"message:\"Failed to allocate memory to generate "
+            "JSON-escaped string\"}"
+        );
+    } else {
+        printf(fmt, json_str);
+        free(json_str);
+    }
 }

@@ -17,16 +17,17 @@ MAX_ERROR ?= 32
 TAPE_BLOCKS ?= 8
 MAX_NESTING_LEVEL ?= 64
 
+EAM_COMPILE_DEPS := serialize.o x86_64_encoders.o optimize.o err.o
+EAMBFC_DEPS := json_escape.o eam_compile.o $(EAM_COMPILE_DEPS) main.o
+
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
 # overridden if CFLAGS are passed as an argument to make.
 .SUFFIXES: .c.o
 .c.o:
 	$(CC) $(CFLAGS) $(POSIX_CFLAG) -c -o $@ $<
 
-eambfc: serialize.o eam_compile.o json_escape.o main.o x86_64_encoders.o
-	$(CC) $(POSIX_CFLAG) $(LDFLAGS) -o eambfc \
-		serialize.o eam_compile.o json_escape.o main.o x86_64_encoders.o \
-		$(LDLIBS)
+eambfc: $(EAMBFC_DEPS)
+	$(CC) $(POSIX_CFLAG) $(LDFLAGS) -o eambfc $(EAMBFC_DEPS) $(LDLIBS)
 
 install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
@@ -52,8 +53,9 @@ serialize.o: serialize.c
 eam_compile.o: config.h x86_64_encoders.o eam_compile.c
 json_escape.o: json_escape.c
 main.o: config.h main.c
-optimize.o: optimize.c
+optimize.o: err.o optimize.c
 x86_64_encoders.o: x86_64_encoders.c
+err.o: config.h err.c
 
 # for testing
 #
@@ -64,9 +66,9 @@ x86_64_encoders.o: x86_64_encoders.c
 # For an example of the latter, see FreeBSD's Linux syscall emulation.
 # `make test` works in both of those example cases
 create_mini_elf.o: config.h create_mini_elf.c
-create_mini_elf: create_mini_elf.o serialize.o eam_compile.o x86_64_encoders.o
+create_mini_elf: create_mini_elf.o eam_compile.o $(EAM_COMPILE_DEPS)
 	$(CC) $(LDFLAGS) -o $@ $(POSIX_CFLAG)\
-		serialize.o eam_compile.o x86_64_encoders.o $@.o $(LDLIBS)
+		$(EAM_COMPILE_DEPS) eam_compile.o $@.o $(LDLIBS)
 mini_elf: create_mini_elf
 	./create_mini_elf
 can-run-linux-amd64: mini_elf
@@ -80,9 +82,9 @@ multibuild-test: can-run-linux-amd64 config.h
 	./multibuild.sh
 
 
-optimize: optimize.c
+optimize: optimize.c err.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) \
-		-D OPTIMIZE_STANDALONE -o optimize optimize.c
+		-D OPTIMIZE_STANDALONE -o optimize optimize.c err.o
 
 
 # remove eambfc and the objects it's built from, then remove test artifacts

@@ -41,7 +41,7 @@
 #define REG_ARG1        07 /* RDI */
 #define REG_ARG2        06 /* RSI */
 #define REG_ARG3        02 /* RDX */
-#define REG_BF_POINTER  03 /* RBX */
+#define REG_BF_PTR  03 /* RBX */
 
 
 /* A couple of macros that are useful for various purposes */
@@ -100,13 +100,13 @@
 /* section header table offset is 0, as there is no section header table. */
 #define SHOFF 0
 
-/* codesize must be defined as the size in bytes of the machine code.
+/* out_sz must be defined as the size in bytes of the machine code.
  * FILE_SIZE should not be used until after its final value is known.
  * It is the size (in bytes) of the file. */
-#define FILE_SIZE (START_PADDR + codesize)
+#define FILE_SIZE (START_PADDR + out_sz)
 
 /* the memory address of the current instruction. */
-#define CURRENT_ADDRESS (START_PADDR + codesize)
+#define CURRENT_ADDRESS (START_PADDR + out_sz)
 
 /* Linux system call numbers */
 

@@ -7,7 +7,7 @@ EAMBFC ?= ../eambfc
 .POSIX:
 .SUFFIXES: .bf
 .bf:
-	$(EAMBFC) -kj $*.bf >.$*.build_err && rm .$*.build_err
+	$(EAMBFC) -kOj $*.bf >.$*.build_err && rm .$*.build_err
 
 # build test assets
 build-all: hello loop null rw wrap wrap2 colortest truthmachine \
@@ -33,7 +33,7 @@ unseekable:
 	# make a fifo (named pipe) that will be written to
 	mkfifo unseekable
 	# compile, writing to the fifo
-	($(EAMBFC) -kj unseekable.bf & cat unseekable >unseekable_f; wait) \
+	($(EAMBFC) -kOj unseekable.bf & cat unseekable >unseekable_f; wait) \
 		>.unseekable.build_err
 	rm unseekable
 	mv unseekable_f unseekable
@@ -43,13 +43,13 @@ unseekable:
 
 piped-in:
 	mkfifo piped-in.bf
-	(cat hello.bf > piped-in.bf & $(EAMBFC) -kj piped-in.bf; wait) \
+	(cat hello.bf > piped-in.bf & $(EAMBFC) -kOj piped-in.bf; wait) \
 		>.piped-in.build_err
 	if [ "$$(wc -c .piped-in.build_err | awk '{print $$1}')" -eq 0 ]; then\
 		rm .piped-in.build_err; else false; fi
 # test support for alternative extensions
 alternative-extension:
-	$(EAMBFC) -kj -e .brnfck alternative-extension.brnfck
+	$(EAMBFC) -kOj -e .brnfck alternative-extension.brnfck
 
 
 # expect to encounter a compiler error for these, don't treat as a failure

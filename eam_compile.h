@@ -24,8 +24,4 @@
  * if it runs into a problem, it aborts and returns 0. */
 bool bfCompile(int in_fd, int out_fd, bool optimize);
 
-/* values for use in printing an error message if compilation fails.*/
-
-extern BFCompilerError err_list[MAX_ERROR];
-
 #endif /* EAM_COMPILE_H */

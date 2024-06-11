@@ -15,18 +15,21 @@ success=0
 failed=0
 skipped=0
 
+src_files='serialize.c eam_compile.c json_escape.c x86_64_encoders.c err.c'
+src_files="$src_files optimize.c main.c"
+
+posix_flag='-D _POSIX_C_SOURCE=200809L'
+
 build_with () {
     build_id="$(printf '%s\0' "$@" | cksum | cut -d ' ' -f 1)"
     cc="$1"
     shift
     build_name="alt-builds/eambfc-$build_id"
     if command -v "$cc" >/dev/null; then
-        printf 'running %s with arguments [%s %s].\n' "$cc" "$*" \
-            '-D _POSIX_C_SOURCE=200809L'
+        printf 'running %s with arguments [%s %s].\n' "$cc" "$*" "$posix_flag"
         total=$((total+1))
-        if "$cc" "$@" -D _POSIX_C_SOURCE=200809L \
-            serialize.c eam_compile.c json_escape.c x86_64_encoders.c main.c \
-            -o "$build_name"; then
+        # shellcheck disable=SC2086 # word splitting is intentional here
+        if "$cc" "$@" $posix_flag $src_files -o "$build_name"; then
             eambfc_cmd="$build_name"
             if [ -z "$SKIP_TEST" ]; then
                 if (cd tests && make -s EAMBFC="../$eambfc_cmd" test) \

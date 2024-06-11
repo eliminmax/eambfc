@@ -9,4 +9,5 @@
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
 char *jsonStr(char* str);
+void printJsonError(char *fmt, char *s);
 #endif /* EAMBFC_JSON_ESCAPE_H */

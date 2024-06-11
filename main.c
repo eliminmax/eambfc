@@ -18,6 +18,7 @@
 /* internal */
 #include "config.h"
 #include "eam_compile.h"
+#include "err.h"
 #include "json_escape.h"
 
 /* Return the permission mask to use for the output file */
@@ -50,9 +51,10 @@ void showHelp(FILE *outfile, char *progname) {
         "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
         " -h        - display this help text and exit\n"
         " -V        - print version information and exit\n"
-        " -q        - don't print errors unless -j was passed*\n"
         " -j        - print errors in JSON format*\n"
         "             (assumes file names are UTF-8-encoded.)\n"
+        " -q        - don't print errors unless -j was passed*\n"
+        " -O        - enable optimzation**.\n"
         " -k        - keep files that failed to compile (for debugging)\n"
         " -c        - continue to the next file instead of quitting if a\n"
         "             file fails to compile\n"
@@ -61,7 +63,11 @@ void showHelp(FILE *outfile, char *progname) {
         "             (This program will remove this at the end of the input\n"
         "             file to create the output file name)\n"
         "\n"
-        "* -q and -j will not affect arguments passed before they were\n"
+        "* -q and -j will not affect arguments passed before they were.\n"
+        "\n"
+        "** Optimization will mess with error reporting, as error locations\n"
+        "   will be location in the intermidiate representation text, rather\n"
+        "   than the source code.\n"
         "\n"
         "Remaining options are treated as source file names. If they don't\n"
         "end with '.bf' (or the extension specified with '-e'), the program\n"
@@ -102,7 +108,7 @@ int rmExt(char *str, const char *ext) {
  * showHint:
  *  * unless -q was passed, write the help text to stderr. */
 #define showError(...) if (!quiet) fprintf(stderr, __VA_ARGS__)
-#define fileFail() if (moveahead) ret = EXIT_FAILURE; else return EXIT_FAILURE
+#define fileFail() free(outname); if (moveahead) ret = EXIT_FAILURE; else return EXIT_FAILURE
 #define showHint() if (!quiet) showHelp(stderr, argv[0])
 
 int main(int argc, char* argv[]) {
@@ -112,15 +118,14 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     char *outname;
     char *err_msg_json;
-    char *out_name_json;
-    char *in_name_json;
     /* default to empty string. */
     char *ext = "";
     /* default to false, set to true if relevant argument was passed. */
     bool quiet = false, keep = false, moveahead = false, json = false;
+    bool optimize = false;
     mode_t perms = getPerms();
 
-    while ((opt = getopt(argc, argv, ":hVqjkme:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hVqjOkme:")) != -1) {
         switch(opt) {
           case 'h':
             showHelp(stdout, argv[0]);
@@ -152,6 +157,9 @@ int main(int argc, char* argv[]) {
             break;
           case 'j':
             json = true;
+            break;
+          case 'O':
+            optimize = true;
             break;
           case 'k':
             keep = true;
@@ -215,20 +223,26 @@ int main(int argc, char* argv[]) {
     for (/* reusing optind here */; optind < argc; optind++) {
         outname = (char *)malloc(strlen(argv[optind]) + 1);
         if (outname == NULL) {
-            showError(
-                "malloc failure when determining output file name! Aborting.\n"
-            );
+            if (json) {
+                printf(
+                    "{\"errorId\":\"ICE_ICE_BABY\",\"message\":\"%s\"}",
+                    "malloc failed when determining outfile name! Aborting."
+                );
+
+            } else {
+                showError(
+                    "malloc failed when determining outfile name! Aborting.\n"
+                );
+            }
             exit(EXIT_FAILURE);
         }
-        in_name_json = jsonStr(argv[optind]);
-        out_name_json = jsonStr(outname);
         strcpy(outname, argv[optind]);
         srcFD = open(argv[optind], O_RDONLY);
         if (srcFD < 0) {
             if (json) {
-                printf(
+                printJsonError(
                     "{\"errorId\":\"OPEN_R_FAILED\",\"file\":\"%s\"}\n",
-                    in_name_json
+                    argv[optind]
                 );
             } else {
                 showError("Failed to open %s for reading.\n", argv[optind]);
@@ -237,7 +251,7 @@ int main(int argc, char* argv[]) {
         }
         if (! rmExt(outname, ext)) {
             if (json) {
-                printf(
+                printJsonError(
                     "{\"errorId\":\"BAD_EXTENSION\",\"file\":\"%s\"}\n",
                     argv[optind]
                 );
@@ -249,7 +263,7 @@ int main(int argc, char* argv[]) {
         dstFD = open(outname, O_WRONLY+O_CREAT+O_TRUNC, perms);
         if (dstFD < 0) {
             if (json) {
-                printf(
+                printJsonError(
                     "{\"errorId\":\"OPEN_W_FAILED\",\"file\":\"%s\"}\n",
                     outname
                 );
@@ -259,13 +273,14 @@ int main(int argc, char* argv[]) {
                     outname
                 );
             }
+            free(outname);
             if (moveahead) {
                 close(srcFD);
             } else {
                 return EXIT_FAILURE;
             }
         }
-        result = bfCompile(srcFD, dstFD, false);
+        result = bfCompile(srcFD, dstFD, optimize);
         close(srcFD);
         close(dstFD);
         if (!result) {
@@ -299,8 +314,6 @@ int main(int argc, char* argv[]) {
             if (!keep) remove(outname);
             fileFail();
         }
-        free(in_name_json);
-        free(out_name_json);
         free(outname);
     }
 
