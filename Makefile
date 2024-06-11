@@ -89,7 +89,6 @@ optimize: optimize.c err.o
 
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
-	rm -rf serialize.o eam_compile.o main.o eambfc alt-builds err.o \
-		create_mini_elf create_mini_elf.o json_escape.o mini_elf \
-		can-run-linux-amd64 tags config.h optimize optimize.o x86_64_encoders.o
+	rm -rf *.o eambfc alt-builds create_mini_elf mini_elf \
+		can-run-linux-amd64 tags config.h optimize
 	(cd tests; make clean)

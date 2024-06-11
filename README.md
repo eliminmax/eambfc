@@ -109,7 +109,7 @@ The following are the formatting I follow for source code:
 * Indentation:
   * General: 4 spaces for indentation, except in the following cases:
     * C: `case`s within `switch` statements are half indented
-    * Makefiles use tabs due to the constraints of the format
+    * Makefiles use 8-wide tabs due to the constraints of the format
     * Markdown files use 2 spaces due to the constraints of the format
 * C: Open braces are on the same line as the function signature/conditional/etc.
 * C: Multi-line comments should have an asterisk at the start of each line
