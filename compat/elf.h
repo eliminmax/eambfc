@@ -1,8 +1,7 @@
 /* SPDX-FileCopyrightText: 1995-2022 Free Software Foundation, Inc.
- *
  * SPDX-FileCopyrightText: 2024 Eli Array Minkoff
  *
- * SPDX-License-Identifier: LGPL-2.1-or-later
+ * SPDX-License-Identifier: GPL-3.0-only
  *
  * This file contains some macros and typedefs from the GNU C Library's `elf.h`,
  * to allow eambfc to be compiled on systems that do not provide an `elf.h`
@@ -17,23 +16,22 @@
  * can the FreeBSD sys/elf64.h file. Simply replace `#include "compat/elf.h"`
  * with `#include <elf.h>` for the former, or `#include <sys/elf64.h>` for the
  * latter. Doing so is neither necessary nor beneficial, as this file will still
- * be available */
+ * be available, but it is still an option. */
 
 /* This file defines standard ELF types, structures, and macros.
    Copyright (C) 1995-2022 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
+   modify it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; version 3.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
+   General Public License for more details.
 
-   You should have received a copy of the GNU Lesser General Public
+   You should have received a copy of the GNU General Public
    License along with the GNU C Library; if not, see
    <https://www.gnu.org/licenses/>.  */
 
