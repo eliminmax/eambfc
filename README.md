@@ -20,9 +20,10 @@ Usage: eambfc [options] <program.bf> [<program2.bf> ...]
 
  -h        - display this help text and exit
  -V        - print version information and exit
- -q        - don't print errors unless -j was passed*
  -j        - print errors in JSON format*
              (assumes file names are UTF-8-encoded.)
+ -q        - don't print errors unless -j was passed*
+ -O        - enable optimization**.
  -k        - keep files that failed to compile (for debugging)
  -c        - continue to the next file instead of quitting if a
              file fails to compile
@@ -31,7 +32,11 @@ Usage: eambfc [options] <program.bf> [<program2.bf> ...]
              (This program will remove this at the end of the input
              file to create the output file name)
 
-* -q and -j will not affect arguments passed before they were
+* -q and -j will not affect arguments passed before they were.
+
+** Optimization will mess with error reporting, as error locations
+   will be location in the intermediate representation text, rather
+   than the source code.
 
 Remaining options are treated as source file names. If they don't
 end with '.bf' (or the extension specified with '-e'), the program
