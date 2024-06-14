@@ -307,13 +307,6 @@ static char *mergeInstructions(char *s) {
     }
     strcpy(s, new_str);
     free(new_str);
-    /* realloc down to size */
-    s = realloc(s, strlen(s) + 1);
-    if (s == NULL) appendError(
-        '?',
-        "Failed to reallocate down to size",
-        "ICE_ICE_BABY"
-    );
     return s;
 }
 
