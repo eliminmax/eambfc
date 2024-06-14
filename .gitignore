@@ -20,3 +20,6 @@ optimize
 
 # ctags tag file
 tags
+
+# release tarball directory
+releases/
