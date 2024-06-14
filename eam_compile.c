@@ -243,7 +243,7 @@ bool bfJumpClose(int fd) {
     openAddress = JumpStack.addresses[JumpStack.index];
     closeAddress = CURRENT_ADDRESS;
 
-    distance = (int32_t) (closeAddress - openAddress);
+    distance = closeAddress - openAddress;
 
     /* jump to the skipped `[` instruction, write it, and jump back */
     if (lseek(fd, openAddress, SEEK_SET) != openAddress) {
@@ -371,25 +371,25 @@ static inline \
     } else {
         switch (*p) {
           case '#':
-            return eamAsmAddMem(REG_BF_PTR, (int8_t)ct, fd, &out_sz);
+            return eamAsmAddMem(REG_BF_PTR, ct, fd, &out_sz);
           case '=':
-            return eamAsmSubMem(REG_BF_PTR, (int8_t)ct, fd, &out_sz);
+            return eamAsmSubMem(REG_BF_PTR, ct, fd, &out_sz);
           case '}':
-            return eamAsmAddRegByte(REG_BF_PTR, (int8_t)ct, fd, &out_sz);
+            return eamAsmAddRegByte(REG_BF_PTR, ct, fd, &out_sz);
           case '{':
-            return eamAsmSubRegByte(REG_BF_PTR, (int8_t)ct, fd, &out_sz);
+            return eamAsmSubRegByte(REG_BF_PTR, ct, fd, &out_sz);
           case ')':
-            return eamAsmAddRegWord(REG_BF_PTR, (int16_t)ct, fd, &out_sz);
+            return eamAsmAddRegWord(REG_BF_PTR, ct, fd, &out_sz);
           case '(':
-            return eamAsmSubRegWord(REG_BF_PTR, (int16_t)ct, fd, &out_sz);
+            return eamAsmSubRegWord(REG_BF_PTR, ct, fd, &out_sz);
           case '$':
-            return eamAsmAddRegDoubWord(REG_BF_PTR, (int32_t)ct, fd, &out_sz);
+            return eamAsmAddRegDoubWord(REG_BF_PTR, ct, fd, &out_sz);
           case '^':
-            return eamAsmSubRegDoubWord(REG_BF_PTR, (int32_t)ct, fd, &out_sz);
+            return eamAsmSubRegDoubWord(REG_BF_PTR, ct, fd, &out_sz);
           case 'n':
-            return eamAsmAddRegQuadWord(REG_BF_PTR, (int64_t)ct, fd, &out_sz);
+            return eamAsmAddRegQuadWord(REG_BF_PTR, ct, fd, &out_sz);
           case 'N':
-            return eamAsmSubRegQuadWord(REG_BF_PTR, (int64_t)ct, fd, &out_sz);
+            return eamAsmSubRegQuadWord(REG_BF_PTR, ct, fd, &out_sz);
           default:
             appendError(instr, "Invalid IR Opcode", "INVALID_IR");
             return false;

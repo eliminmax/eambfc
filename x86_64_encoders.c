@@ -44,7 +44,7 @@ static inline \
     if (!eamAsmJumpTest(reg, fd)) return false;
     /* need to cast to uint32_t for serialize32.
      * Acceptable as POSIX requires 2's complement for signed types. */
-    if (serialize32((uint32_t)offset, (char *)&i_bytes[2]) != 4) return false;
+    if (serialize32(offset, (char *)&i_bytes[2]) != 4) return false;
     return write(fd, &i_bytes, 6) == 6;
 }
 
@@ -114,7 +114,7 @@ static inline \
     uint8_t i_bytes[5] = { 0xb8 + reg, 0x00, 0x00, 0x00, 0x00 };
     /* need to cast to uint32_t for serialize32.
      * Acceptable as POSIX requires 2's complement for signed types. */
-    if (serialize32((uint32_t)imm32, (char *)&i_bytes[1]) != 4) return false;
+    if (serialize32(imm32, (char *)&i_bytes[1]) != 4) return false;
     return write(fd, &i_bytes, 5) == 5;
 }
 
@@ -129,7 +129,7 @@ bool eamAsmSetReg(uint8_t reg, int32_t imm, int fd, off_t *sz) {
     if (imm >= INT8_MIN && imm <= INT8_MAX) {
         *sz += 3;
         /* PUSH imm8; POP reg */
-        return write(fd, (uint8_t[]){ 0x6a, (uint8_t)imm, 0x58 + reg}, 3) == 3;
+        return write(fd, (uint8_t[]){ 0x6a, imm, 0x58 + reg}, 3) == 3;
     }
 
     /* fall back to using the full 32-bit value */
@@ -154,7 +154,7 @@ bool eamAsmAddRegWord(uint8_t reg, int16_t imm16, int fd, off_t *sz) {
     /* use the 32-bit immediate instruction, as there's no 16-bit equivalent. */
     *sz += 6;
     uint8_t i_bytes[6] = { 0x81, 0xc0 + reg, 0x00, 0x00, 0x00, 0x00 };
-    if (serialize16((uint16_t)imm16, (char *)&i_bytes[2]) != 2) return false;
+    if (serialize16(imm16, (char *)&i_bytes[2]) != 2) return false;
     return write(fd, &i_bytes, 6) == 6;
 }
 
@@ -163,7 +163,7 @@ bool eamAsmSubRegWord(uint8_t reg, int16_t imm16, int fd, off_t *sz) {
     /* use the 32-bit immediate instruction, as there's no 16-bit equivalent. */
     *sz += 6;
     uint8_t i_bytes[6] = { 0x81, 0xe8 + reg, 0x00, 0x00, 0x00, 0x00 };
-    if (serialize16((uint16_t)imm16, (char *)&i_bytes[2]) != 2) return false;
+    if (serialize16(imm16, (char *)&i_bytes[2]) != 2) return false;
     return write(fd, &i_bytes, 6) == 6;
 }
 
@@ -171,7 +171,7 @@ bool eamAsmSubRegWord(uint8_t reg, int16_t imm16, int fd, off_t *sz) {
 bool eamAsmAddRegDoubWord(uint8_t reg, int32_t imm32, int fd, off_t *sz) {
     *sz += 6;
     uint8_t i_bytes[6] = { 0x81, 0xc0 + reg, 0x00, 0x00, 0x00, 0x00 };
-    if (serialize32((uint32_t)imm32, (char *)&i_bytes[2]) != 4) return false;
+    if (serialize32(imm32, (char *)&i_bytes[2]) != 4) return false;
     return write(fd, &i_bytes, 6) == 6;
 }
 
@@ -179,7 +179,7 @@ bool eamAsmAddRegDoubWord(uint8_t reg, int32_t imm32, int fd, off_t *sz) {
 bool eamAsmSubRegDoubWord(uint8_t reg, int32_t imm32, int fd, off_t *sz) {
     *sz += 6;
     uint8_t i_bytes[6] = { 0x81, 0xe8 + reg, 0x00, 0x00, 0x00, 0x00 };
-    if (serialize32((uint32_t)imm32, (char *)&i_bytes[2]) != 4) return false;
+    if (serialize32(imm32, (char *)&i_bytes[2]) != 4) return false;
     return write(fd, &i_bytes, 6) == 6;
 }
 
@@ -203,7 +203,7 @@ static inline \
         0x58 + tmp_reg
     };
     /* replace 0x0000000000000000 with imm64 */
-    if (serialize64((uint64_t)imm64, (char *)&i_bytes[3]) != 8) return false;
+    if (serialize64(imm64, (char *)&i_bytes[3]) != 8) return false;
     return write(fd, &i_bytes, 15) == 15;
 
 }
