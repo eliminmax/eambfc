@@ -7,7 +7,7 @@
 cd "$(dirname "$0")"
 
 
-if [ -n "$(git status --short)" ]; then
+if [ ! -n "$FORCE_RELEASE" ] && [ -n "$(git status --short)" ]; then
     printf 'Will not build source tarball with uncommitted changes!\n' >&2
     exit 1
 fi
