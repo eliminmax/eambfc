@@ -236,7 +236,7 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
         if      (consec_ct <= INT8_MAX)  opcode = '{';
         else if (consec_ct <= INT16_MAX) opcode = '(';
         else if (consec_ct <= INT32_MAX) opcode = '^';
-        else if (consec_ct <= INT32_MAX) opcode = 'N';
+        else if (consec_ct <= INT64_MAX) opcode = 'N';
         else {
             appendError(
                 '<',
