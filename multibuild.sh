@@ -26,7 +26,10 @@ build_with () {
     shift
     build_name="alt-builds/eambfc-$build_id"
     if command -v "$cc" >/dev/null; then
-        printf 'running %s with arguments [%s %s].\n' "$cc" "$*" "$posix_flag"
+        # split command in 3 to not have an extra space if no args were passed
+        printf 'running %s with arguments [' "$cc"
+        printf '%s ' "$@"
+        printf '%s].\n' "$posix_flag"
         total=$((total+1))
         # shellcheck disable=SC2086 # word splitting is intentional here
         if "$cc" "$@" $posix_flag $src_files -o "$build_name"; then
