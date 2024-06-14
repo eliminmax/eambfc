@@ -289,8 +289,8 @@ int main(int argc, char* argv[]) {
                 if (json) {
                     err_msg_json = jsonStr(err_list[i].err_msg);
                     printf(
-                        "{\"errorId\":\"%s\",\"file\":\"%s\",\"line\":%d,"
-                        "\"column\":%d,\"message\":\"%s\"}\n",
+                        "{\"errorId\":\"%s\",\"file\":\"%s\",\"line\":%ud,"
+                        "\"column\":%ud,\"message\":\"%s\"}\n",
                         err_list[i].err_id,
                         argv[optind],
                         err_list[i].line,
@@ -300,7 +300,7 @@ int main(int argc, char* argv[]) {
                     free(err_msg_json);
                 } else {
                     showError(
-                        "%s: Failed to compile '%c' at line %d, column %d.\n"
+                        "%s: Failed to compile '%c' at line %ud, column %ud.\n"
                         "Error ID: %s\n"
                         "Error message: \"%s\"\n",
                         argv[optind],
