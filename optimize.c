@@ -26,7 +26,7 @@ static size_t optim_sz;
 static char *filterNonBFChars(int in_fd) {
     optim_sz = 0;
     size_t limit = MALLOC_CHUNK_SIZE;
-    char *filtered = (char *)malloc(limit);
+    char *filtered = malloc(limit);
     if (filtered == NULL) {
         appendError('?', "Failed to allocate buffer", "ICE_ICE_BABY");
         return NULL;
@@ -265,7 +265,7 @@ static char *mergeInstructions(char *s) {
     /* used to check what's between [ and ] if they're 2 apart */
     char current_mode;
     char prev_mode = *s;
-    char *new_str = (char *)malloc(optim_sz);
+    char *new_str = malloc(optim_sz);
     if (new_str == NULL) {
         return NULL;
     }
@@ -308,7 +308,7 @@ static char *mergeInstructions(char *s) {
     strcpy(s, new_str);
     free(new_str);
     /* realloc down to size */
-    s = (char *)realloc(s, strlen(s) + 1);
+    s = realloc(s, strlen(s) + 1);
     if (s == NULL) appendError(
         '?',
         "Failed to reallocate down to size",

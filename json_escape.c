@@ -21,7 +21,7 @@ char *jsonStr(char* str) {
     size_t bufsz = strlen(str) + 16; /* +16 for padding */
     size_t used = 0;
     char *p = str;
-    char *json_escaped = (char *)malloc(bufsz);
+    char *json_escaped = malloc(bufsz);
     char *outp = json_escaped;
     if (json_escaped == NULL) return NULL;
     p = str;

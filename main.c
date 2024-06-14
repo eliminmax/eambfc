@@ -222,7 +222,7 @@ int main(int argc, char* argv[]) {
     }
 
     for (/* reusing optind here */; optind < argc; optind++) {
-        outname = (char *)malloc(strlen(argv[optind]) + 1);
+        outname = malloc(strlen(argv[optind]) + 1);
         if (outname == NULL) {
             if (json) {
                 printf(
