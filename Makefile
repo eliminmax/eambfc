@@ -81,9 +81,6 @@ multibuild: config.h
 multibuild_test: can_run_linux_amd64 config.h
 	./multibuild.sh
 
-# tags: *.c *.h compat/*.h
-# 	ctags *.c *.h compat/*.h
-
 optimize: optimize.c err.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) \
 		-D OPTIMIZE_STANDALONE -o optimize optimize.c err.o
@@ -91,6 +88,6 @@ optimize: optimize.c err.o
 
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
-	rm -rf *.o eambfc alt-builds create_mini_elf mini_elf \
-		can_run_linux_amd64 tags config.h optimize
+	rm -rf *.o eambfc alt-builds create_mini_elf mini_elf config.h \
+		can_run_linux_amd64 optimize
 	(cd tests; make clean)
