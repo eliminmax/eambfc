@@ -85,6 +85,30 @@ optimize: optimize.c err.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) \
 		-D OPTIMIZE_STANDALONE -o optimize optimize.c err.o
 
+strict: can_run_linux_amd64 config.h
+	mkdir -p alt-builds
+	@printf 'WARNING: `make $@` IS NOT PORTABLE!\n' >&2
+	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) -std=c99 -fanalyzer       \
+		-Wall -Wextra -Wpedantic -Werror -Winit-self -Winline       \
+		-Wno-error=inline -Wundef -Wunused-macros -Wshadow          \
+		-Wlogical-op -Wtrampolines -Wformat-signedness -Wlogical-op \
+		-Wnull-dereference -Wduplicated-cond -Wduplicated-branches  \
+		-Wbad-function-cast -Wredundant-decls -Wcast-qual           \
+		serialize.c eam_compile.c json_escape.c optimize.c err.c    \
+		x86_64_encoders.c main.c -o alt-builds/eambfc-$@
+	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
+
+ubsan: can_run_linux_amd64 config.h
+	mkdir -p alt-builds
+	@printf 'WARNING: `make $@` IS PORTABLE AT ALL!\n' >&2
+	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) -std=c99 -fanalyzer      \
+		-fsanitize=address -fsanitize=undefined	                   \
+		-fno-sanitize-recover=all                                  \
+		serialize.c eam_compile.c json_escape.c optimize.c err.c   \
+		x86_64_encoders.c main.c -o alt-builds/eambfc-$@
+	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
+
+all_tests: test multibuild_test strict ubsan
 
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
