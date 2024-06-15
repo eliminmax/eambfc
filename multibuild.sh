@@ -84,4 +84,7 @@ printf 'TOTAL COMPILERS TESTED: %d\n' "$total"
 printf 'TOTAL COMPILERS SKIPPED: %d\n' "$skipped"
 printf 'TOTAL COMPILERS SUCCESSFUL: %d\n' "$success"
 printf 'TOTAL COMPILERS FAILED: %d\n' "$failed"
-[ "$failed" -eq 0 ]
+
+# exit code set by this last line
+# shellcheck disable=2015 # different semantics than if-then-else are intended.
+[ "$failed" -eq 0 ] && [ -z "$NO_SKIP_MULTIBUILD" ] || [ "$skipped" -eq 0 ]
