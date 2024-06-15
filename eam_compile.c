@@ -472,6 +472,7 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
             "Could not get file descriptor for tmpfile",
             "FAILED_TMPFILE"
         );
+        fclose(tmp_file);
         return false;
     }
     /* reset out_sz variable used in several macros in eam_compiler_macros */
@@ -487,6 +488,7 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
     /* skip the headers until we know the code size */
     if (fseek(tmp_file, START_PADDR, SEEK_SET) != 0) {
         appendError(instr, "Failed to seek to start of code.", "FAILED_SEEK");
+        fclose(tmp_file);
         return false;
     }
 
@@ -500,7 +502,10 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
     }
     if (optimize) {
         char *ir = toIR(in_fd);
-        if (ir == NULL) return false;
+        if (ir == NULL) {
+            fclose(tmp_file);
+            return false;
+        }
         ret &= irCompile(ir, tmp_fd);
     } else {
         /* the error message(s) are already appended if issues occur */
