@@ -31,7 +31,6 @@ static char *filterNonBFChars(int in_fd) {
         appendError('?', "Failed to allocate buffer", "ICE_ICE_BABY");
         return NULL;
     }
-    char *p = filtered;
     char instr;
     while (read(in_fd, &instr, sizeof(char))) {
         switch(instr) {
@@ -43,8 +42,7 @@ static char *filterNonBFChars(int in_fd) {
           case ',':
           case '+':
           case ']':
-            *(p++) = instr;
-            optim_sz++;
+            *(filtered + optim_sz++) = instr;
             if (optim_sz == limit) {
                 limit += MALLOC_CHUNK_SIZE;
                 filtered = realloc(filtered, limit);
@@ -52,14 +50,12 @@ static char *filterNonBFChars(int in_fd) {
                     appendError('?', "Failed to extend buffer", "ICE_ICE_BABY");
                     return NULL;
                 }
-                p = filtered + optim_sz;
             }
             break;
         }
     }
     /* null terminate it */
-    *p = '\0';
-    optim_sz++;
+    *(filtered + optim_sz++) = '\0';
     return filtered;
 }
 
@@ -144,6 +140,10 @@ static char *stripUselessCode(char *str) {
         if (*str == '[') {
             matched = true;
             loop_end = findLoopEnd(str + 1);
+            if (loop_end == NULL) {
+                free(str);
+                return NULL;
+            }
             memmove(str, loop_end, strlen(loop_end) + 1);
         }
         /* next, remove any matches for simple_patterns[*] */
@@ -161,8 +161,11 @@ static char *stripUselessCode(char *str) {
         while (((match_start = strstr(str, "][")) != NULL)) {
             matched = true;
             /* skip past the closing `]` */
-            match_start++;
-            loop_end = findLoopEnd(match_start + 1);
+            loop_end = findLoopEnd(++match_start + 1);
+            if (loop_end == NULL) {
+                free(str);
+                return NULL;
+            }
             memmove(match_start, loop_end, strlen(loop_end) + 1);
         }
     } while (matched);

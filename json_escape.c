@@ -22,6 +22,7 @@ char *jsonStr(char* str) {
     size_t used = 0;
     char *p = str;
     char *json_escaped = malloc(bufsz);
+    char *reallocator;
     char *outp = json_escaped;
     if (json_escaped == NULL) return NULL;
     p = str;
@@ -50,8 +51,11 @@ char *jsonStr(char* str) {
         /* If less than 8 chars are available, allocate more space */
         if (used > (bufsz - 8)) {
             bufsz += 16;
-            json_escaped = (char *)realloc(json_escaped, bufsz);
-            if (json_escaped == NULL) return NULL;
+            if (((reallocator = realloc(json_escaped, bufsz)) == NULL)) {
+                free(json_escaped);
+                return NULL;
+            }
+            json_escaped = reallocator;
         }
         p++;
     }
