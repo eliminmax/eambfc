@@ -48,15 +48,10 @@ cp releases/"eambfc-$version-src.tar" "$build_dir"
 old_pwd="$PWD"
 cd "$build_dir"
 tar --strip-components=1 -xf "eambfc-$version-src.tar"
+# multibuild.sh fails if any compilers are skipped
+NO_SKIP_MULTIBUILD=yep make all_tests
 
-gcc_warnings='-O2 -Wall -Wextra -Wno-error=inline -Werror -Wpedantic '\
-'-Winline -Wformat-security -Wformat-signedness -Wduplicated-branches '\
-'-Wduplicated-cond -Wbad-function-cast -Waggregate-return '\
-'-Wdate-time -Winit-self -Wundef -Wexpansion-to-defined -Wunused-macros '\
-'-Wnull-dereference -Wsuggest-attribute=const'
-
-# test has eambfc as a prerequisite, and tests should pass.
-make CC=gcc CFLAGS="-flto -std=c99 -O2 $gcc_warnings" LDFLAGS="-flto" test
+make CC=gcc CFLAGS="-O2 -std=c99 -flto" LDFLAGS="-flto"
 mv eambfc "$old_pwd/releases/eambfc-$version"
 cd "$old_pwd"
 rm -rf "$build_dir"
