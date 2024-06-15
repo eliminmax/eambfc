@@ -4,6 +4,19 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
+# this script is used to generate release builds and source tarballs
+# it is not written with portability in mind.
+# Requires Git, xz, gzip, several GNU-isms, and QEMU binfmt support,
+# and the following C compilers:
+# gcc
+# s390x-linux-gnu-gcc
+# tcc
+# musl-gcc
+# clang
+# zig cc
+#
+# all of the dependencies except for zig are available in the Debian repos
+
 cd "$(dirname "$0")"
 
 
@@ -36,20 +49,16 @@ gzip -9 -k "releases/$src_tarball_name"
 xz -9 -k "releases/$src_tarball_name"
 
 
-# stop here on unsupported systems
-if [ "$(uname -mo)" != 'x86_64 GNU/Linux' ]; then
-    printf 'Not building for non-x86_64 systems.\n'
-    exit 0
-fi
-
 build_dir="$(mktemp -d "/tmp/eambfc-$version-build-XXXXXXXXXX")"
 cp releases/"eambfc-$version-src.tar" "$build_dir"
 
 old_pwd="$PWD"
 cd "$build_dir"
 tar --strip-components=1 -xf "eambfc-$version-src.tar"
-# multibuild.sh fails if any compilers are skipped
-NO_SKIP_MULTIBUILD=yep make all_tests
+# multibuild.sh fails if any compilers are skipped and env var is non-empty
+NO_SKIP_MULTIBUILD=yep make CC=gcc all_tests
+
+make clean
 
 make CC=gcc CFLAGS="-O2 -std=c99 -flto" LDFLAGS="-flto"
 mv eambfc "$old_pwd/releases/eambfc-$version"
