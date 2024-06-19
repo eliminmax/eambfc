@@ -167,8 +167,8 @@ esolangs.org pages
 [brainfuck constants](https://esolangs.org/wiki/Brainfuck_constants), which are
 available under the CC0 public-domain-equivalent license.
 
-The contents the `compat/` directory are under their own compatible FOSS
-licenses.
+Other than the macros and `typedefs` in `compat/elf.h` and the sample code
+from esolangs.org, all content in this repository is my original work.
 
 All licenses used in any part of this repository are in the LICENSES/ directory,
 and every file has an SPDX License header identifying the license(s) it's under,
