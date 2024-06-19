@@ -65,4 +65,10 @@ typedef unsigned long long int uint64_t
 #define "" SCNxLEAST64
 #endif /* UINT64_MAX */
 
+#ifdef INT_TORTURE_TEST
+/* __int128 is a type supported by gcc on some platforms. Use it to make sure
+ * that the logic does not break for >64-bit long long types */
+#define int64_t __int128
+#define uint64_t unsigned __int128
+#endif /* INT_TORTURE_TEST */
 #endif /* EAMBFC_INTTYPES_H */
