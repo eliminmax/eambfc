@@ -24,7 +24,7 @@
 cd "$(dirname "$(realpath "$0")")"
 
 
-if [ ! -n "$FORCE_RELEASE" ] && [ -n "$(git status --short)" ]; then
+if [ -z "$FORCE_RELEASE" ] && [ -n "$(git status --short)" ]; then
     printf 'Will not build source tarball with uncommitted changes!\n' >&2
     printf 'If you want to test changes to this script, set the ' >&2
     printf 'FORCE_RELEASE environment variable to a non-empty value.\n' >&2
