@@ -7,7 +7,6 @@
  * OPTIMIZE_STANDALONE macro is defined at compile time. */
 
 /* C99 */
-#include <inttypes.h> /* provides a superset of stdint with macros for printf */
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +16,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 /* internal */
+#include "compat/eambfc_inttypes.h"
 #include "err.h"
 
 #define MALLOC_CHUNK_SIZE 0x100
@@ -358,7 +358,7 @@ int main(int argc, char *argv[]) {
 }
 #else
 /* Reads the content of the file fd, and returns a string containing optimized
- * internal representation of that file's code.
+ * internal intermediate representation of that file's code.
  * fd must be open for reading already, no check is performed.
  * Calling function is responsible for `free`ing the returned string. */
 char *toIR(int fd) {

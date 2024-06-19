@@ -38,7 +38,7 @@
 #ifndef _ELF_H
 #define _ELF_H 1
 
-#include <stdint.h>
+#include "eambfc_inttypes.h"
 
 /* Standard ELF types.  */
 

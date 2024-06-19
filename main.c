@@ -7,7 +7,6 @@
 /* C99 */
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 /* POSIX */
@@ -17,6 +16,7 @@
 #include <unistd.h>
 /* internal */
 #include "config.h"
+#include "compat/eambfc_inttypes.h"
 #include "eam_compile.h"
 #include "err.h"
 #include "json_escape.h"

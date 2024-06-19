@@ -7,9 +7,8 @@
 
 #ifndef EAMBFC_SERIALIZE_H
 #define EAMBFC_SERIALIZE_H 1
-/* C99 */
-#include <stdint.h>
 /* internal */
+#include "compat/eambfc_inttypes.h"
 #include "compat/elf.h"
 
 /* given an unsigned integer of a given size and a char array, these write the
@@ -18,6 +17,7 @@
 size_t serialize16(uint16_t u16, char *dest);
 size_t serialize32(uint32_t u32, char *dest);
 size_t serialize64(uint64_t u64, char *dest);
+
 /* given a pointers to a struct of a given type and a char array, these write
  * the fields of the struct, in little-endian order, to the char array, with no
  * padding bytes. */

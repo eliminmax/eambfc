@@ -6,7 +6,6 @@
  * It is by far the most significant part of the EAMBFC codebase. */
 
 /* C99 */
-#include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
