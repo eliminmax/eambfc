@@ -20,6 +20,24 @@ MAX_NESTING_LEVEL = 64
 EAM_COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o
 EAMBFC_DEPS = json_escape.o eam_compile.o $(EAM_COMPILE_DEPS) main.o
 
+
+# flags for some of the more specialized, non-portable builds
+GCC_STRICT_FLAGS = -Wall -Wextra -Werror -Wpedantic -Winit-self -Winline       \
+		-Wno-error=inline -Wundef -Wunused-macros -Wlogical-op         \
+		-Wshadow -Wtrampolines -Wformat-signedness -Wcast-qual         \
+		-Wnull-dereference -Wduplicated-cond -Wredundant-decls         \
+		-Wduplicated-branches -Wbad-function-cast -std=c99 -fanalyzer  \
+		$(POSIX_CFLAG) $(CFLAGS)
+
+GCC_UBSAN_FLAGS = -std=c99 -fanalyzer -fsanitize=address,undefined \
+		-fno-sanitize-recover=all $(POSIX_CFLAG) $(CFLAGS)
+
+GCC_INT_TORTURE_FLAGS = -D INT_TORTURE_TEST=1 $(GCC_STRICT_FLAGS) -Wno-format \
+			-Wno-pedantic -fsanitize=address,undefined
+
+UNIBUILD_FILES = serialize.c eam_compile.c json_escape.c optimize.c err.c \
+			x86_64_encoders.c main.c
+
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
 # overridden if CFLAGS are passed as an argument to make.
 .SUFFIXES: .c.o
@@ -88,27 +106,26 @@ optimize: optimize.c err.o
 strict: can_run_linux_amd64 config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE!\n' >&2
-	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) -std=c99 -fanalyzer       \
-		-Wall -Wextra -Wpedantic -Werror -Winit-self -Winline       \
-		-Wno-error=inline -Wundef -Wunused-macros -Wshadow          \
-		-Wlogical-op -Wtrampolines -Wformat-signedness -Wlogical-op \
-		-Wnull-dereference -Wduplicated-cond -Wduplicated-branches  \
-		-Wbad-function-cast -Wredundant-decls -Wcast-qual           \
-		serialize.c eam_compile.c json_escape.c optimize.c err.c    \
-		x86_64_encoders.c main.c -o alt-builds/eambfc-$@
+	gcc $(GCC_STRICT_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
+		-o alt-builds/eambfc-$@
 	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
 
 ubsan: can_run_linux_amd64 config.h
 	mkdir -p alt-builds
-	@printf 'WARNING: `make $@` IS PORTABLE AT ALL!\n' >&2
-	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) -std=c99 -fanalyzer      \
-		-fsanitize=address -fsanitize=undefined	                   \
-		-fno-sanitize-recover=all                                  \
-		serialize.c eam_compile.c json_escape.c optimize.c err.c   \
-		x86_64_encoders.c main.c -o alt-builds/eambfc-$@
+	@printf 'WARNING: `make $@` IS NOT PORTABLE AT ALL!\n' >&2
+	gcc $(GCC_UBSAN_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
+		-o alt-builds/eambfc-$@
 	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
 
-all_tests: test multibuild_test strict ubsan
+int_torture_test: can_run_linux_amd64 config.h
+	mkdir -p alt-builds
+	@printf 'WARNING: `make $@` IS NOT PORTABLE AT ALL!\n' >&2
+	gcc $(GCC_INT_TORTURE_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
+		-o alt-builds/eambfc-$@
+	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
+
+
+all_tests: test multibuild_test strict ubsan int_torture_test
 
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
