@@ -8,22 +8,35 @@
 # it is not written with portability in mind.
 # Requires Git, xz, gzip, several GNU-isms, and QEMU binfmt support,
 # and the following C compilers:
-# gcc
-# s390x-linux-gnu-gcc
-# tcc
-# musl-gcc
-# clang
-# zig cc
+# - gcc
+# - s390x-linux-gnu-gcc
+# - tcc
+# - musl-gcc
+# - clang
+# - zig cc
+#
+# the following linting tools are needed:
+# - codespell
+# - shellcheck
 #
 # all of the dependencies except for zig are available in the Debian repos
 
-cd "$(dirname "$0")"
+cd "$(dirname "$(realpath "$0")")"
 
 
 if [ ! -n "$FORCE_RELEASE" ] && [ -n "$(git status --short)" ]; then
     printf 'Will not build source tarball with uncommitted changes!\n' >&2
+    printf 'If you want to test changes to this script, set the ' >&2
+    printf 'FORCE_RELEASE environment variable to a non-empty value.\n' >&2
     exit 1
 fi
+
+# first, some linting
+# Catch typos in the code.
+# Learned about this one from Lasse Colin's writeup of the xz backdoor. Really.
+codespell --skip=.git
+
+find . -name '*.sh' -type f -exec shellcheck --norc {} \+
 
 version="$(cat version)-$(
     git log -n 1 --date=format:'%Y-%m-%d' --pretty=format:'%ad-%h'
