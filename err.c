@@ -10,7 +10,7 @@
 #include "eambfc_types.h"
 
 /* index of the current error in the error list */
-err_index_t err_ind;
+err_index err_ind;
 
 /* location the error was triggered at */
 unsigned int instr_line, instr_col;
@@ -19,7 +19,7 @@ BFCompilerError err_list[MAX_ERROR];
 
 void resetErrors(void) {
     /* reset error list */
-    for(err_index_t i = 0; i < MAX_ERROR; i++) {
+    for(err_index i = 0; i < MAX_ERROR; i++) {
         err_list[i].line = 1;
         err_list[i].col = 0;
         err_list[i].err_id = "";

@@ -46,11 +46,6 @@
 
 /* A couple of macros that are useful for various purposes */
 
-/* Add somewhere from 1 to 256 bytes to a memory address to ensure it's
- * 256-byte-aligned and separated from whatever came before it by at least 1
- * byte. */
-#define padTo256(address) (((address & ~ 0xff) + 0x100))
-
 /* test and jump are associated with each other. */
 #define JUMP_SIZE 9
 
@@ -86,8 +81,10 @@
 
 #define LOAD_VADDR (((TAPE_ADDRESS + TAPE_SIZE) & (~ 0xffff)) + 0x10000)
 
-/* physical address of the starting instruction */
-#define START_PADDR padTo256((EHDR_SIZE + PHTB_SIZE))
+/* physical address of the starting instruction
+ * use the same technique as LOAD_VADDR to ensure that it is at a 256-byte
+ * boundry. */
+#define START_PADDR (((((EHDR_SIZE + PHTB_SIZE)) & ~ 0xff) + 0x100))
 
 /* virtual address of the starting instruction */
 #define START_VADDR (START_PADDR + LOAD_VADDR)

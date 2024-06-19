@@ -195,7 +195,7 @@ static bool bfIO(int fd, int bf_fd, int sc) {
 }
 
 static struct stack {
-    jump_index_t index;
+    jump_index index;
     off_t addresses[MAX_NESTING_LEVEL];
 } JumpStack;
 

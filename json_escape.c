@@ -13,7 +13,7 @@
 /* POSIX */
 #include <unistd.h>
 
-#define bs_escaped(c) *(outp++) = '\\'; *(outp++) = c; used += 2; break
+#define BS_ESCAPED(c) *(outp++) = '\\'; *(outp++) = c; used += 2
 
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
@@ -28,13 +28,13 @@ char *jsonStr(char* str) {
     p = str;
     while (*p) {
         switch(*p) {
-          case '\n': bs_escaped('n');
-          case '\r': bs_escaped('r');
-          case '\f': bs_escaped('f');
-          case '\t': bs_escaped('t');
-          case '\b': bs_escaped('b');
-          case '\\': bs_escaped('\\');
-          case '\"': bs_escaped('\"');
+          case '\n': BS_ESCAPED('n'); break;
+          case '\r': BS_ESCAPED('r'); break;
+          case '\f': BS_ESCAPED('f'); break;
+          case '\t': BS_ESCAPED('t'); break;
+          case '\b': BS_ESCAPED('b'); break;
+          case '\\': BS_ESCAPED('\\'); break;
+          case '\"': BS_ESCAPED('\"'); break;
           default:
             /* would use a switch statement, but case a ... d is non-portable.
              * Instead, I went with this ugly hybrid system */

@@ -119,11 +119,10 @@ The following are the formatting I follow for source code:
 * C: Open braces are on the same line as the function signature/conditional/etc.
 * C: Multi-line comments should have an asterisk at the start of each line
 * Names:
-  * function names and function-like macros are `camelCase`
+  * function names are `camelCase`.
   * struct names are `PascalCase`.
-  * non-struct `typedef`ed types are `snake_case`, and end with `_t`
-  * variables names are `snake_case`.
-  * constant macros are `SCREAMING_SNAKE_CASE`.
+  * variables names and non-struct `typedef`ed types are `snake_case`.
+  * macros are `SCREAMING_SNAKE_CASE`.
 * C: `include`s are split into sections starting with one of the following:
   * `/* C99 */`: the header is defined by the C99 standard
     * either the C99 standard or the POSIX.1-2008 must require it to be present
