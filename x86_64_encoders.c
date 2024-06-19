@@ -8,10 +8,10 @@
 
 /* C99 */
 #include <stdbool.h>
-#include <stdint.h>
 /* POSIX */
 #include <unistd.h>
 /* internal */
+#include "compat/eambfc_inttypes.h"
 #include "serialize.h"
 
 /* if there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ

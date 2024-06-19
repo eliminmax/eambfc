@@ -7,9 +7,8 @@
 #ifndef EAMBFC_TYPES_H
 #define EAMBFC_TYPES_H 1
 
-/* C99 */
-#include <stdint.h>
 /* internal */
+#include "compat/eambfc_inttypes.h"
 #include "config.h"
 
 /* ensure that an appropriate type is used for error index */

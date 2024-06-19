@@ -7,9 +7,8 @@
 
 #ifndef EAMBFC_SERIALIZE_H
 #define EAMBFC_SERIALIZE_H 1
-/* C99 */
-#include <stdint.h>
 /* internal */
+#include "compat/eambfc_inttypes.h"
 #include "compat/elf.h"
 
 /* given an unsigned integer of a given size and a char array, these write the

@@ -7,11 +7,11 @@
 #ifndef EAM_COMPILER_MACROS_H
 #define EAM_COMPILER_MACROS_H 1
 /* C99 */
-#include <stdint.h>
 /* POSIX */
 #include <sys/types.h>
 /* internal */
 #include "config.h"
+#include "compat/eambfc_inttypes.h"
 #include "compat/elf.h"
 
 /* the Linux kernel reads system call numbers from RAX on x86_64 systems,

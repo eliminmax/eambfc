@@ -6,8 +6,8 @@
 
 /* C99 */
 #include <stddef.h>
-#include <stdint.h>
 /* internal */
+#include "compat/eambfc_inttypes.h"
 #include "compat/elf.h"
 
 /* serialize a 16-bit value pointed to by v16 into 2 bytes in dest, in LSB order
