@@ -35,7 +35,7 @@ static inline bool x86TestJcc(char tttn, uint8_t reg, int32_t offset, int fd) {
     uint8_t i_bytes[9] = {
         /* TEST byte [reg], 0xff */
         0xf6, reg, 0xff,
-        /* Jcc|tttn jmp_offset */
+        /* Jcc|tttn 0x00000000 (will replace with jump offset) */
         0x0f, 0x80 | tttn, 0x00, 0x00, 0x00, 0x00
     };
     /* need to cast to uint32_t for serialize32.
