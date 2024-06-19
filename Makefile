@@ -3,22 +3,22 @@
 # SPDX-License-Identifier: GPL-3.0-only
 .POSIX:
 
-PREFIX ?= /usr/local
+PREFIX = /usr/local
 
 # POSIX standard tool to compile C99 code, could be any C99-compatible compiler
 # which supports the POSIX-specified options
-CC ?= c99
+CC = c99
 
 # This flag enables POSIX.1-2008-specific macros and features
-POSIX_CFLAG := -D _POSIX_C_SOURCE=200908L
+POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
 # Compile-time configuration values
-MAX_ERROR ?= 32
-TAPE_BLOCKS ?= 8
-MAX_NESTING_LEVEL ?= 64
+MAX_ERROR = 32
+TAPE_BLOCKS = 8
+MAX_NESTING_LEVEL = 64
 
-EAM_COMPILE_DEPS := serialize.o x86_64_encoders.o optimize.o err.o
-EAMBFC_DEPS := json_escape.o eam_compile.o $(EAM_COMPILE_DEPS) main.o
+EAM_COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o
+EAMBFC_DEPS = json_escape.o eam_compile.o $(EAM_COMPILE_DEPS) main.o
 
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
 # overridden if CFLAGS are passed as an argument to make.
@@ -71,25 +71,47 @@ create_mini_elf: create_mini_elf.o eam_compile.o $(EAM_COMPILE_DEPS)
 		$(EAM_COMPILE_DEPS) eam_compile.o $@.o $(LDLIBS)
 mini_elf: create_mini_elf
 	./create_mini_elf
-can-run-linux-amd64: mini_elf
-	./mini_elf && touch can-run-linux-amd64
-test: can-run-linux-amd64 eambfc
+can_run_linux_amd64: mini_elf
+	./mini_elf && touch $@
+test: can_run_linux_amd64 eambfc
 	(cd tests; make clean test)
 
 multibuild: config.h
 	env SKIP_TEST=y ./multibuild.sh
-multibuild-test: can-run-linux-amd64 config.h
+multibuild_test: can_run_linux_amd64 config.h
 	./multibuild.sh
-
 
 optimize: optimize.c err.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) \
 		-D OPTIMIZE_STANDALONE -o optimize optimize.c err.o
 
+strict: can_run_linux_amd64 config.h
+	mkdir -p alt-builds
+	@printf 'WARNING: `make $@` IS NOT PORTABLE!\n' >&2
+	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) -std=c99 -fanalyzer       \
+		-Wall -Wextra -Wpedantic -Werror -Winit-self -Winline       \
+		-Wno-error=inline -Wundef -Wunused-macros -Wshadow          \
+		-Wlogical-op -Wtrampolines -Wformat-signedness -Wlogical-op \
+		-Wnull-dereference -Wduplicated-cond -Wduplicated-branches  \
+		-Wbad-function-cast -Wredundant-decls -Wcast-qual           \
+		serialize.c eam_compile.c json_escape.c optimize.c err.c    \
+		x86_64_encoders.c main.c -o alt-builds/eambfc-$@
+	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
+
+ubsan: can_run_linux_amd64 config.h
+	mkdir -p alt-builds
+	@printf 'WARNING: `make $@` IS PORTABLE AT ALL!\n' >&2
+	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) -std=c99 -fanalyzer      \
+		-fsanitize=address -fsanitize=undefined	                   \
+		-fno-sanitize-recover=all                                  \
+		serialize.c eam_compile.c json_escape.c optimize.c err.c   \
+		x86_64_encoders.c main.c -o alt-builds/eambfc-$@
+	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
+
+all_tests: test multibuild_test strict ubsan
 
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
-	rm -rf serialize.o eam_compile.o main.o eambfc alt-builds err.o \
-		create_mini_elf create_mini_elf.o json_escape.o mini_elf \
-		can-run-linux-amd64 tags config.h optimize optimize.o x86_64_encoders.o
+	rm -rf *.o eambfc alt-builds *mini_elf optimize can_run_linux_amd64
+	if [ -e .git ]; then rm -f config.h; fi
 	(cd tests; make clean)

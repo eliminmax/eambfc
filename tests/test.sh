@@ -83,9 +83,9 @@ test_simple wrap2 '1742477431 4'
 
 # identical to the hello world program, but something is different about the
 # source file
-test_simple alternative-extension '1639980005 14' # self-explanatory
+test_simple alternative_extension '1639980005 14' # self-explanatory
 test_simple unseekable '1639980005 14' # output is a FIFO, can't be seeked
-test_simple piped-in '1639980005 14' # input is a FIFO, can't be seeked
+test_simple piped_in '1639980005 14' # input is a FIFO, can't be seeked
 
 # ensure that the proper errors were encountered
 
@@ -112,9 +112,9 @@ test_arg_error OPEN_W_FAILED 'failure to open output file for writing' \
 rm -f hello.b
 
 # compiler errors
-test_error too-many-nested-loops OVERFLOW UNMATCHED_CLOSE
-test_error unmatched-close UNMATCHED_CLOSE
-test_error unmatched-open UNMATCHED_OPEN
+test_error too_many_nested_loops OVERFLOW UNMATCHED_CLOSE
+test_error unmatched_close UNMATCHED_CLOSE
+test_error unmatched_open UNMATCHED_OPEN
 
 # lastly, some special cases that need some more work
 
@@ -169,12 +169,12 @@ else
 fi
 
 total=$((total+1))
-if diff null dead-code >/dev/null 2>&1; then
+if diff null dead_code >/dev/null 2>&1; then
     successes=$((successes+1))
-    printf 'SUCCESS - dead-code.bf optimized down to be identical to null.bf\n'
+    printf 'SUCCESS - dead_code.bf optimized down to be identical to null.bf\n'
 else
     fails=$((fails+1))
-    printf 'FAIL - dead-code.bf not optimized down to be identical to null.bf\n'
+    printf 'FAIL - dead_code.bf not optimized down to be identical to null.bf\n'
 fi
 
 printf '########################\n'

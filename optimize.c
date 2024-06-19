@@ -26,12 +26,11 @@ static size_t optim_sz;
 static char *filterNonBFChars(int in_fd) {
     optim_sz = 0;
     size_t limit = MALLOC_CHUNK_SIZE;
-    char *filtered = (char *)malloc(limit);
+    char *filtered = malloc(limit);
     if (filtered == NULL) {
         appendError('?', "Failed to allocate buffer", "ICE_ICE_BABY");
         return NULL;
     }
-    char *p = filtered;
     char instr;
     while (read(in_fd, &instr, sizeof(char))) {
         switch(instr) {
@@ -43,8 +42,7 @@ static char *filterNonBFChars(int in_fd) {
           case ',':
           case '+':
           case ']':
-            *(p++) = instr;
-            optim_sz++;
+            *(filtered + optim_sz++) = instr;
             if (optim_sz == limit) {
                 limit += MALLOC_CHUNK_SIZE;
                 filtered = realloc(filtered, limit);
@@ -52,14 +50,12 @@ static char *filterNonBFChars(int in_fd) {
                     appendError('?', "Failed to extend buffer", "ICE_ICE_BABY");
                     return NULL;
                 }
-                p = filtered + optim_sz;
             }
             break;
         }
     }
     /* null terminate it */
-    *p = '\0';
-    optim_sz++;
+    *(filtered + optim_sz++) = '\0';
     return filtered;
 }
 
@@ -144,6 +140,10 @@ static char *stripUselessCode(char *str) {
         if (*str == '[') {
             matched = true;
             loop_end = findLoopEnd(str + 1);
+            if (loop_end == NULL) {
+                free(str);
+                return NULL;
+            }
             memmove(str, loop_end, strlen(loop_end) + 1);
         }
         /* next, remove any matches for simple_patterns[*] */
@@ -161,8 +161,11 @@ static char *stripUselessCode(char *str) {
         while (((match_start = strstr(str, "][")) != NULL)) {
             matched = true;
             /* skip past the closing `]` */
-            match_start++;
-            loop_end = findLoopEnd(match_start + 1);
+            loop_end = findLoopEnd(++match_start + 1);
+            if (loop_end == NULL) {
+                free(str);
+                return NULL;
+            }
             memmove(match_start, loop_end, strlen(loop_end) + 1);
         }
     } while (matched);
@@ -236,7 +239,7 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
         if      (consec_ct <= INT8_MAX)  opcode = '{';
         else if (consec_ct <= INT16_MAX) opcode = '(';
         else if (consec_ct <= INT32_MAX) opcode = '^';
-        else if (consec_ct <= INT32_MAX) opcode = 'N';
+        else if (consec_ct <= INT64_MAX) opcode = 'N';
         else {
             appendError(
                 '<',
@@ -265,7 +268,7 @@ static char *mergeInstructions(char *s) {
     /* used to check what's between [ and ] if they're 2 apart */
     char current_mode;
     char prev_mode = *s;
-    char *new_str = (char *)malloc(optim_sz);
+    char *new_str = malloc(optim_sz);
     if (new_str == NULL) {
         return NULL;
     }
@@ -307,13 +310,6 @@ static char *mergeInstructions(char *s) {
     }
     strcpy(s, new_str);
     free(new_str);
-    /* realloc down to size */
-    s = (char *)realloc(s, strlen(s) + 1);
-    if (s == NULL) appendError(
-        '?',
-        "Failed to reallocate down to size",
-        "ICE_ICE_BABY"
-    );
     return s;
 }
 

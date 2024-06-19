@@ -24,14 +24,13 @@
 #include "serialize.h"
 #include "x86_64_encoders.h"
 
-off_t out_sz;
+static off_t out_sz;
 
-char instr;
+static char instr;
 
-static inline \
-    bool writeBytes(int fd, const void * bytes, ssize_t expected_size) {
-    ssize_t written = write(fd, bytes, expected_size);
-    if (written != expected_size) {
+static inline bool writeBytes(int fd, const void *bytes, ssize_t sz) {
+    ssize_t written = write(fd, bytes, sz);
+    if (written != sz) {
         appendError(instr, "Failed to write instruction bytes", "FAILED_WRITE");
         return false;
     }
@@ -39,7 +38,7 @@ static inline \
 }
 
 /* Write the ELF header to the file descriptor fd. */
-bool writeEhdr(int fd) {
+static bool writeEhdr(int fd) {
 
     /* The format of the ELF header is well-defined and well-documented
      * elsewhere. The struct for it is defined in compat/elf.h, as are most
@@ -123,7 +122,7 @@ bool writeEhdr(int fd) {
 
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
-bool writePhdrTable(int fd) {
+static bool writePhdrTable(int fd) {
     Elf64_Phdr phdr_table[PHNUM];
     char phdr_table_bytes[PHTB_SIZE];
 
@@ -179,7 +178,7 @@ bool writePhdrTable(int fd) {
  *  - arg3 is the number of bytes to write/read
  *
  * Due to their similarity, ',' and '.' are both implemented with bfIO. */
-bool bfIO(int fd, int bf_fd, int sc) {
+static bool bfIO(int fd, int bf_fd, int sc) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
@@ -195,14 +194,14 @@ bool bfIO(int fd, int bf_fd, int sc) {
     return ret;
 }
 
-struct stack {
-    jump_index_t index;
+static struct stack {
+    jump_index index;
     off_t addresses[MAX_NESTING_LEVEL];
 } JumpStack;
 
 /* prepare to compile the brainfuck `[` instruction to file descriptor fd.
  * doesn't actually write to the file yet, as the address of `]` is unknown. */
-bool bfJumpOpen (int fd) {
+static bool bfJumpOpen (int fd) {
     off_t expectedLocation;
     /* calculate the expected locationto seek to */
     expectedLocation = (CURRENT_ADDRESS + JUMP_SIZE);
@@ -226,7 +225,7 @@ bool bfJumpOpen (int fd) {
 
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
-bool bfJumpClose(int fd) {
+static bool bfJumpClose(int fd) {
     off_t openAddress, closeAddress;
     int32_t distance;
 
@@ -243,7 +242,7 @@ bool bfJumpClose(int fd) {
     openAddress = JumpStack.addresses[JumpStack.index];
     closeAddress = CURRENT_ADDRESS;
 
-    distance = (int32_t) (closeAddress - openAddress);
+    distance = closeAddress - openAddress;
 
     /* jump to the skipped `[` instruction, write it, and jump back */
     if (lseek(fd, openAddress, SEEK_SET) != openAddress) {
@@ -284,7 +283,7 @@ bool bfJumpClose(int fd) {
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
-bool bfCompileInstruction(char c, int fd) {
+static bool bfCompileInstruction(char c, int fd) {
     bool ret;
     instr = c;
     instr_col++;
@@ -341,7 +340,7 @@ bool bfCompileInstruction(char c, int fd) {
 }
 
 /* write code to perform the exit(0) syscall */
-bool bfExit(int fd) {
+static bool bfExit(int fd) {
     bool ret = true;
     /* set system call register to exit system call numbifer */
     if (!eamAsmSetReg(REG_SC_NUM, SYSCALL_EXIT, fd, &out_sz)) {
@@ -362,42 +361,41 @@ bool bfExit(int fd) {
     return ret;
 }
 
-static inline \
-    bool irCompileComplexInstruction(char *p, int fd, int* skip_ct_p) {
+static inline bool irCompileComplexInstruction(char *p, int fd, int* skip_p) {
     uint64_t ct;
-    if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_ct_p) != 1) {
+    if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_p) != 1) {
         appendError(instr, "Failed to read count for opcode.", "FAILED_SCAN");
         return false;
     } else {
         switch (*p) {
           case '#':
-            return eamAsmAddMem(REG_BF_PTR, (int8_t)ct, fd, &out_sz);
+            return eamAsmAddMem(REG_BF_PTR, ct, fd, &out_sz);
           case '=':
-            return eamAsmSubMem(REG_BF_PTR, (int8_t)ct, fd, &out_sz);
+            return eamAsmSubMem(REG_BF_PTR, ct, fd, &out_sz);
           case '}':
-            return eamAsmAddRegByte(REG_BF_PTR, (int8_t)ct, fd, &out_sz);
+            return eamAsmAddRegByte(REG_BF_PTR, ct, fd, &out_sz);
           case '{':
-            return eamAsmSubRegByte(REG_BF_PTR, (int8_t)ct, fd, &out_sz);
+            return eamAsmSubRegByte(REG_BF_PTR, ct, fd, &out_sz);
           case ')':
-            return eamAsmAddRegWord(REG_BF_PTR, (int16_t)ct, fd, &out_sz);
+            return eamAsmAddRegWord(REG_BF_PTR, ct, fd, &out_sz);
           case '(':
-            return eamAsmSubRegWord(REG_BF_PTR, (int16_t)ct, fd, &out_sz);
+            return eamAsmSubRegWord(REG_BF_PTR, ct, fd, &out_sz);
           case '$':
-            return eamAsmAddRegDoubWord(REG_BF_PTR, (int32_t)ct, fd, &out_sz);
+            return eamAsmAddRegDoubWord(REG_BF_PTR, ct, fd, &out_sz);
           case '^':
-            return eamAsmSubRegDoubWord(REG_BF_PTR, (int32_t)ct, fd, &out_sz);
+            return eamAsmSubRegDoubWord(REG_BF_PTR, ct, fd, &out_sz);
           case 'n':
-            return eamAsmAddRegQuadWord(REG_BF_PTR, (int64_t)ct, fd, &out_sz);
+            return eamAsmAddRegQuadWord(REG_BF_PTR, ct, fd, &out_sz);
           case 'N':
-            return eamAsmSubRegQuadWord(REG_BF_PTR, (int64_t)ct, fd, &out_sz);
+            return eamAsmSubRegQuadWord(REG_BF_PTR, ct, fd, &out_sz);
           default:
-            appendError(instr, "Invaild IR Opcode", "INVALID_IR");
+            appendError(instr, "Invalid IR Opcode", "INVALID_IR");
             return false;
         }
     }
 }
 
-bool irCompileInstruction(char *p, int fd, int* skip_ct_p) {
+static bool irCompileInstruction(char *p, int fd, int* skip_ct_p) {
     *skip_ct_p = 0;
     switch(*p) {
       case '+':
@@ -416,7 +414,7 @@ bool irCompileInstruction(char *p, int fd, int* skip_ct_p) {
     }
 }
 
-bool irCompile(char *ir, int fd) {
+static bool irCompile(char *ir, int fd) {
     bool ret = true;
     char *p = ir;
     int skip_ct;
@@ -430,7 +428,7 @@ bool irCompile(char *ir, int fd) {
     return ret;
 }
 
-bool bfCleanup(int fd) {
+static bool bfCleanup(int fd) {
     bool ret = bfExit(fd);
     /* Ehdr and Phdr table are at the start */
     lseek(fd, 0, SEEK_SET);
@@ -472,6 +470,7 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
             "Could not get file descriptor for tmpfile",
             "FAILED_TMPFILE"
         );
+        fclose(tmp_file);
         return false;
     }
     /* reset out_sz variable used in several macros in eam_compiler_macros */
@@ -487,6 +486,7 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
     /* skip the headers until we know the code size */
     if (fseek(tmp_file, START_PADDR, SEEK_SET) != 0) {
         appendError(instr, "Failed to seek to start of code.", "FAILED_SEEK");
+        fclose(tmp_file);
         return false;
     }
 
@@ -500,7 +500,10 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
     }
     if (optimize) {
         char *ir = toIR(in_fd);
-        if (ir == NULL) return false;
+        if (ir == NULL) {
+            fclose(tmp_file);
+            return false;
+        }
         ret &= irCompile(ir, tmp_fd);
     } else {
         /* the error message(s) are already appended if issues occur */

@@ -26,7 +26,10 @@ build_with () {
     shift
     build_name="alt-builds/eambfc-$build_id"
     if command -v "$cc" >/dev/null; then
-        printf 'running %s with arguments [%s %s].\n' "$cc" "$*" "$posix_flag"
+        # split command in 3 to not have an extra space if no args were passed
+        printf 'running %s with arguments [' "$cc"
+        printf '%s ' "$@"
+        printf '%s].\n' "$posix_flag"
         total=$((total+1))
         # shellcheck disable=SC2086 # word splitting is intentional here
         if "$cc" "$@" $posix_flag $src_files -o "$build_name"; then
@@ -53,32 +56,38 @@ build_with () {
 }
 
 gcc_clang_args='-Wall -Werror -Wextra -pedantic -std=c99'
-# shellcheck disable=2086 # word splitting is intentional here
-build_with gcc $gcc_clang_args
-# shellcheck disable=2086 # word splitting is intentional here
-build_with musl-gcc $gcc_clang_args
-# shellcheck disable=2086 # word splitting is intentional here
-build_with clang $gcc_clang_args
-
-# a bunch of prerequisites for testing on non-s390x systems - compiler must be
-# installed, and binfmt support must be enabled and provided for s390x ELF files
-# by qemu-s390x.
-if [ "$(uname -m)" = s390x ] || { [ "$(uname)" = Linux ] &&
-    [ "$(cat /proc/sys/fs/binfmt_misc/status)" = 'enabled' ] &&
-    [ "$(head -n1 /proc/sys/fs/binfmt_misc/qemu-s390x)" = 'enabled' ]; } ; then
+# test at different optimization levels
+for op_lv in 0 1 2 3; do
     # shellcheck disable=2086 # word splitting is intentional here
-    build_with s390x-linux-gnu-gcc $gcc_clang_args -static
-else
-    skipped=$((skipped+1))
-fi
+    build_with gcc $gcc_clang_args -O$op_lv
+    # shellcheck disable=2086 # word splitting is intentional here
+    build_with musl-gcc $gcc_clang_args -O$op_lv
+    # shellcheck disable=2086 # word splitting is intentional here
+    build_with clang $gcc_clang_args -O$op_lv
+    # shellcheck disable=2086 # word splitting is intentional here
+    build_with zig cc $gcc_clang_args -O$op_lv # zig's built-in C compiler
+
+    # a bunch of prerequisites for testing on non-s390x systems - qemu-user must
+    # be installed, and binfmt support must be enabled and provided for s390x
+    # ELF executables by qemu-s390x.
+    if [ "$(uname -m)" != s390x ] && [ "$(uname)" = Linux ] &&\
+        [ "$(cat /proc/sys/fs/binfmt_misc/status)" = 'enabled' ] &&\
+        [ "$(head -n1 /proc/sys/fs/binfmt_misc/qemu-s390x)" = 'enabled' ]; then
+        # shellcheck disable=2086 # word splitting is intentional here
+        build_with s390x-linux-gnu-gcc $gcc_clang_args -O$op_lv -static
+    else
+        skipped=$((skipped+1))
+    fi
+done
 
 build_with tcc
-# shellcheck disable=2086 # word splitting is intentional here
-build_with zig cc $gcc_clang_args # zig's built-in C compiler
 
 printf '\n\n################################\n'
 printf 'TOTAL COMPILERS TESTED: %d\n' "$total"
 printf 'TOTAL COMPILERS SKIPPED: %d\n' "$skipped"
 printf 'TOTAL COMPILERS SUCCESSFUL: %d\n' "$success"
 printf 'TOTAL COMPILERS FAILED: %d\n' "$failed"
-[ "$failed" -eq 0 ]
+
+# exit code set by this last line
+# shellcheck disable=2015 # different semantics than if-then-else are intended.
+[ "$failed" -eq 0 ] && [ -z "$NO_SKIP_MULTIBUILD" ] || [ "$skipped" -eq 0 ]

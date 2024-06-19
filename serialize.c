@@ -14,22 +14,22 @@
  * return value is the byte after the 2 bytes are inserted */
 size_t serialize16(uint16_t u16, char *dest) {
     size_t size = 0;
-    uint8_t byte_val = (uint8_t)u16;
+    uint8_t byte_val = u16;
     *(dest + (size++)) = (char)byte_val;
-    byte_val = (uint8_t)(u16 >> 8);
+    byte_val = (u16 >> 8);
     *(dest + (size++)) = (char)byte_val;
     return size;
 }
 
 size_t serialize32(uint32_t u32, char *dest) {
-    size_t size = serialize16((uint16_t)u32, dest);
-    size += serialize16((uint16_t)(u32 >> 16), dest + size);
+    size_t size = serialize16(u32, dest);
+    size += serialize16(u32 >> 16, dest + size);
     return size;
 }
 
 size_t serialize64(uint64_t u64, char *dest) {
-    size_t size = serialize32((uint32_t)u64, dest);
-    size += serialize32((uint32_t)(u64 >> 32), dest + size);
+    size_t size = serialize32(u64, dest);
+    size += serialize32(u64 >> 32, dest + size);
     return size;
 }
 

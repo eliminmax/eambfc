@@ -20,9 +20,10 @@ Usage: eambfc [options] <program.bf> [<program2.bf> ...]
 
  -h        - display this help text and exit
  -V        - print version information and exit
- -q        - don't print errors unless -j was passed*
  -j        - print errors in JSON format*
              (assumes file names are UTF-8-encoded.)
+ -q        - don't print errors unless -j was passed*
+ -O        - enable optimization**.
  -k        - keep files that failed to compile (for debugging)
  -c        - continue to the next file instead of quitting if a
              file fails to compile
@@ -31,7 +32,11 @@ Usage: eambfc [options] <program.bf> [<program2.bf> ...]
              (This program will remove this at the end of the input
              file to create the output file name)
 
-* -q and -j will not affect arguments passed before they were
+* -q and -j will not affect arguments passed before they were.
+
+** Optimization will mess with error reporting, as error locations
+   will be location in the intermediate representation text, rather
+   than the source code.
 
 Remaining options are treated as source file names. If they don't
 end with '.bf' (or the extension specified with '-e'), the program
@@ -109,16 +114,15 @@ The following are the formatting I follow for source code:
 * Indentation:
   * General: 4 spaces for indentation, except in the following cases:
     * C: `case`s within `switch` statements are half indented
-    * Makefiles use tabs due to the constraints of the format
+    * Makefiles use 8-wide tabs due to the constraints of the format
     * Markdown files use 2 spaces due to the constraints of the format
 * C: Open braces are on the same line as the function signature/conditional/etc.
 * C: Multi-line comments should have an asterisk at the start of each line
 * Names:
-  * function names and function-like macros are `camelCase`
+  * function names are `camelCase`.
   * struct names are `PascalCase`.
-  * non-struct `typedef`ed types are `snake_case`, and end with `_t`
-  * variables names are `snake_case`.
-  * constant macros are `SCREAMING_SNAKE_CASE`.
+  * variables names and non-struct `typedef`ed types are `snake_case`.
+  * macros are `SCREAMING_SNAKE_CASE`.
 * C: `include`s are split into sections starting with one of the following:
   * `/* C99 */`: the header is defined by the C99 standard
     * either the C99 standard or the POSIX.1-2008 must require it to be present
