@@ -48,10 +48,14 @@ will abort.
 
 Portability to other *target* platforms is outside of the scope of this project,
 but it should be possible to compile and run `eambfc` itself on any POSIX\*
-system with a C99 compiler. Please open an issue if that is not the case.
+system with a C99 compiler. If that is not the case, it's a bug.
 
 \* *Specifically POSIX.1-2008. Compilation requires the optional C-Language
 Development Utilities, or at least something similar enough.*
+
+It probably works on systems that comply with any version of the POSIX standard
+from POSIX.1-2001 on, and with any newer version of ISO standard C, but if it
+does not, it's not a bug.
 
 ## Building and Installing
 
