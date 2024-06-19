@@ -61,8 +61,8 @@ typedef long long int int64_t
 #ifndef UINT64_MAX /* if not defined, uint64_t is not supported. */
 #define UINT64_MAX 18446744073709551615ULL
 typedef unsigned long long int uint64_t
-#define "%llu" PRIxLEAST64
-#define "" SCNxLEAST64
+#define PRIx64 "%llu"
+#define SCNx64 "%llu"
 #endif /* UINT64_MAX */
 
 #ifdef INT_TORTURE_TEST
