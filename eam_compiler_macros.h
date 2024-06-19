@@ -41,12 +41,11 @@
 #define REG_ARG1        07 /* RDI */
 #define REG_ARG2        06 /* RSI */
 #define REG_ARG3        02 /* RDX */
-#define REG_BF_PTR  03 /* RBX */
+#define REG_BF_PTR      03 /* RBX */
 
-
-/* A couple of macros that are useful for various purposes */
-
-/* test and jump are associated with each other. */
+/* in eambfc, `[` and `]` are both compiled to TEST (3 bytes), followed by a Jcc
+ * instruction (6 bytes). When encountering a `[` instruction, skip this many
+ * bytes to leave room for them. */
 #define JUMP_SIZE 9
 
 /* assorted macros for the size/address of different elements in the ELF file */
@@ -63,10 +62,12 @@
 #define PHNUM 2
 #define SHNUM 0
 
-/* sizes of the Ehdr, Phdr table, and Shdr table */
+/* size of the Ehdr struct, once serialized. */
 #define EHDR_SIZE 64
+/* Sizes of Phdr table entries and Shdr table entries, respectively */
 #define PHDR_SIZE 56
 #define SHDR_SIZE 512
+/* sizes of the actual tables themselves */
 #define PHTB_SIZE PHNUM * PHDR_SIZE
 #define SHTB_SIZE SHNUM * SHDR_SIZE
 
@@ -83,7 +84,7 @@
 
 /* physical address of the starting instruction
  * use the same technique as LOAD_VADDR to ensure that it is at a 256-byte
- * boundry. */
+ * boundary. */
 #define START_PADDR (((((EHDR_SIZE + PHTB_SIZE)) & ~ 0xff) + 0x100))
 
 /* virtual address of the starting instruction */
@@ -105,7 +106,7 @@
 /* the memory address of the current instruction. */
 #define CURRENT_ADDRESS (START_PADDR + out_sz)
 
-/* Linux system call numbers */
+/* Linux system call numbers on AMD x86_64 */
 
 #define SYSCALL_READ 0
 #define SYSCALL_WRITE 1

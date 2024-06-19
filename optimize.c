@@ -358,7 +358,7 @@ int main(int argc, char *argv[]) {
 }
 #else
 /* Reads the content of the file fd, and returns a string containing optimized
- * internal representation of that file's code.
+ * internal intermediate representation of that file's code.
  * fd must be open for reading already, no check is performed.
  * Calling function is responsible for `free`ing the returned string. */
 char *toIR(int fd) {

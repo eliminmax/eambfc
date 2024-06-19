@@ -68,7 +68,7 @@ bool eamAsmJumpZero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
  * `>` is INC reg, which is encoded as 0xff 0xc0|reg
  * `<` is DEC reg, which is encoded as 0xff 0xc8|reg
  *
- * Therefore, setting op to 0 for INC and 8 for DEC and adm (Adddress Mode) to 3
+ * Therefore, setting op to 0 for INC and 8 for DEC and adm (Address Mode) to 3
  * when working on registers and 0 when working on memory, then doing some messy
  * bitwise hackery, the following function can be used. */
 static inline bool x86Offset(char op, uint8_t adm, uint8_t reg, int fd) {
