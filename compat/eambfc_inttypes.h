@@ -41,7 +41,7 @@
  * define the macros I use myself, and pretend that a long long that's more than
  * 64 bits is actually only 64 bits.
  * 
- * It is fragile, and not desireable, but I can do it, as a fall-back if the
+ * It is fragile, and not desirable, but I can do it, as a fall-back if the
  * sane approach that *should* work (i.e. just #include inttypes or stdint)
  * fails.
  *
