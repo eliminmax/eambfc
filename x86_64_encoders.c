@@ -50,14 +50,14 @@ static inline bool eamAsmJcc(char tttn, uint8_t reg, int32_t offset, int fd) {
 bool eamAsmJumpNotZero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
     *sz += 9;
     /* Jcc with tttn=0b0101 is JNZ or JNE */
-    return eamAsmCondJump(0x5, reg, offset, fd);
+    return eamAsmJcc(0x5, reg, offset, fd);
 }
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
 bool eamAsmJumpZero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
     *sz += 9;
     /* Jcc with tttn=0b0100 is JZ or JE */
-    return eamAsmCondJump(0x4, reg, offset, fd);
+    return eamAsmJcc(0x4, reg, offset, fd);
 }
 
 /* INC and DEC are encoded very similarly with very few differences between
@@ -130,7 +130,7 @@ bool eamAsmSetReg(uint8_t reg, int32_t imm, int fd, off_t *sz) {
 
     /* fall back to using the full 32-bit value */
     *sz += 5;
-    return eamAsmSetRegDoubleWord(reg, imm, fd);
+    return x86SetRegDoubleWord(reg, imm, fd);
 }
 
 /* } */
