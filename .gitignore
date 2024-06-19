@@ -9,10 +9,8 @@ config.h
 eambfc
 *.o
 
-# ignore binaries created by multibuild.sh
-alt-builds/
-
 # some test assets and tools that are generated locally
+alt-builds/
 create_mini_elf
 mini_elf
 can_run_linux_amd64
