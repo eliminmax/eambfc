@@ -4,12 +4,15 @@
  *
  * This file contains functions that encode x86_64 machine instructions and
  * write them to open file descriptors. Each returns a boolean value indicating
- * whether or not the write was successful. */
+ * whether or not the write was successful, and take a pointer to an off_t sz,
+ * to which they add the number of bytes written. */
 #ifndef EAM_INSTRUCTION_ENCODERS_H
 #define EAM_INSTRUCTION_ENCODERS_H 1
 /* C99 */
 #include <stdbool.h>
 #include <stdint.h>
+/* POSIX */
+#include <unistd.h>
 
 /* used for making system calls, setup, and other miscellaneous things */
 bool eamAsmSetReg(uint8_t reg, int32_t imm, int fd, off_t *sz);
