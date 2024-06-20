@@ -111,16 +111,3 @@ void resetErrors(void) {
     }
     err_ind = 0;
 }
-
-void appendError(char instr, char *error_msg, char *err_id) {
-    uint8_t i = err_ind++;
-    /* Ensure i is in bounds; discard errors after MAX_ERROR */
-    if (i < MAX_ERROR) {
-        err_list[i].err_msg = error_msg;
-        err_list[i].err_id = err_id;
-        err_list[i].instr = instr;
-        err_list[i].line = instr_line;
-        err_list[i].col = instr_col;
-        err_list[i].active = true;
-    }
-}

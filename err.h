@@ -34,7 +34,4 @@ extern uint instr_col;
 /* clear the error list for a new compilation job */
 void resetErrors(void);
 
-/* add an error to the list of errors */
-void appendError(char instr, char *error_msg, char *err_id);
-
 #endif /* EAM_ERR_H */
