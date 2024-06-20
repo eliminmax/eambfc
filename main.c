@@ -155,9 +155,11 @@ int main(int argc, char* argv[]) {
             return EXIT_SUCCESS;
           case 'q':
             quiet = true;
+            quietMode();
             break;
           case 'j':
             json = true;
+            jsonMode();
             break;
           case 'O':
             optimize = true;
