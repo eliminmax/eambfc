@@ -33,6 +33,7 @@ typedef int32_t jump_index;
 typedef int64_t jump_index;
 #endif
 
+typedef unsigned int uint;
 
 typedef struct {
     unsigned int line;
