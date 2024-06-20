@@ -17,13 +17,7 @@
 #include <unistd.h>
 /* internal */
 #include "compat/eambfc_inttypes.h"
-#ifdef OPTIMIZE_STANDALONE
-#define appendError(instr, msg, id) \
-    fprintf(stderr, "Error %s on %c: \"%s\"\n", id, instr, msg);
-#else
 #include "err.h"
-#endif /* OPTIMIZE_STANDALONE */
-
 #define MALLOC_CHUNK_SIZE 0x100
 
 static size_t optim_sz;
@@ -33,7 +27,7 @@ static char *filterNonBFChars(int in_fd) {
     size_t limit = MALLOC_CHUNK_SIZE;
     char *filtered = malloc(limit);
     if (filtered == NULL) {
-        appendError('?', "Failed to allocate buffer", "ICE_ICE_BABY");
+        basicError("FAILED_MALLOC", "Failed to allocate buffer");
         return NULL;
     }
     char instr;
@@ -52,7 +46,7 @@ static char *filterNonBFChars(int in_fd) {
                 limit += MALLOC_CHUNK_SIZE;
                 filtered = realloc(filtered, limit);
                 if (filtered == NULL) {
-                    appendError('?', "Failed to extend buffer", "ICE_ICE_BABY");
+                    basicError("FAILED_MALLOC", "Failed to extend buffer");
                     return NULL;
                 }
             }
@@ -72,10 +66,10 @@ static char *findLoopEnd(char *search_start) {
     char *close_p = strchr(search_start, ']');
 
     if (close_p == NULL) {
-        appendError(
-            '[',
+        instructionError(
+            "UNMATCHED_OPEN",
             "Could not optimize due to unmatched '['",
-            "UNMATCHED_OPEN"
+            '['
         );
         return NULL;
     }
@@ -94,18 +88,18 @@ static bool loopsMatch(char *code) {
     if ((open_p == NULL) && (close_p == NULL)) return true;
     /* if only one is found, that's a mismatch */
     if ((open_p == NULL) && !(close_p == NULL)) {
-        appendError(
-            ']',
+        instructionError(
+            "UNMATCHED_CLOSE",
             "Could not optimize due to unmatched ']'",
-            "UNMATCHED_CLOSE"
+            ']'
         );
         return false;
     }
     if ((close_p == NULL) && !(open_p == NULL)) {
-        appendError(
-            '[',
+        instructionError(
+            "UNMATCHED_OPEN",
             "Could not optimize due to unmatched '['",
-            "UNMATCHED_OPEN"
+            '['
         );
         return false;
     }
@@ -134,7 +128,8 @@ static char *stripUselessCode(char *str) {
         "----------------------------------------------------------------"\
         "----------------------------------------------------------------"
     };
-    /* don't want to compute these every loop */
+    /* don't want to compute these every loop, or even every run, so hard-code
+     * the known sizes sof the simple patterns here. */
     size_t simple_pattern_sizes[] = { 2, 2, 2, 2, 256, 256 };
     bool matched = false;
     char *match_start;
@@ -180,7 +175,7 @@ static char *stripUselessCode(char *str) {
 
 
 /* Replace certain instruction sequences with alternative instructions that
- * can be compiled to fewer machine instructions with the effect.
+ * can be compiled to fewer machine instructions with the same effect.
  *
  * Should be done on code that was already optimized.
  *
@@ -208,10 +203,10 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
     char opcode;
 #if SIZE_MAX < UINT64_MAX
     if (consec_t > SIZE_MAX) {
-        appendError(
-            instr,
+        instructionError(
+            "TOO_MANY_INSTRUCTIONS",
             "More than SIZE_MAX consecutive identical instructions. Somehow.",
-            "THIS_SHOULD_BE_IMPOSSIBLE"
+            instr
         );
         return 0;
     }
@@ -232,10 +227,10 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
         else if (consec_ct <= INT32_MAX) opcode = '$';
         else if (consec_ct <= INT64_MAX) opcode = 'n';
         else {
-            appendError(
-                '>',
+            instructionError(
+                "TOO_MANY_INSTRUCTIONS",
                 "Over 8192 Pebibytes of '>' in a row.",
-                "PUTTING_WHAT_THE_ACTUAL_FUCK_IN_BRAINFUCK"
+                '>'
             );
             return 0;
         }
@@ -246,10 +241,10 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
         else if (consec_ct <= INT32_MAX) opcode = '^';
         else if (consec_ct <= INT64_MAX) opcode = 'N';
         else {
-            appendError(
-                '<',
+            instructionError(
+                "TOO_MANY_INSTRUCTIONS",
                 "Over 8192 Pebibytes of '<' in a row.",
-                "PUTTING_WHAT_THE_ACTUAL_FUCK_IN_BRAINFUCK"
+                '<'
             );
             return 0;
         }
@@ -287,10 +282,10 @@ static char *mergeInstructions(char *s) {
         if (current_mode != prev_mode) {
             if (!((skip = condense(prev_mode, consec_ct, p)))) {
                 free(new_str);
-                appendError(
-                    prev_mode,
-                    "Failed to consense consecutive instructions",
-                    "ICE_ICE_BABY"
+                instructionError(
+                    "INTERNAL_ERROR",
+                    "Failed to condense consecutive instructions",
+                    prev_mode
                 );
                 return NULL;
             }
@@ -318,11 +313,11 @@ static char *mergeInstructions(char *s) {
     return s;
 }
 
+#ifdef OPTIMIZE_STANDALONE
 /* used for testing purposes
  * inspired by Python's `if __name__ == "__main__" idiom
  * compile with flag -D OPTIMIZE_STANDALONE to enable this and compile a
  * standalone program that provides insight into the optimization process. */
-#ifdef OPTIMIZE_STANDALONE
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         fputs("Not enough arguments.\n", stderr);
@@ -330,38 +325,38 @@ int main(int argc, char *argv[]) {
     }
     int fd = open(argv[1], O_RDONLY);
     if (fd == -1) {
-        fputs("failed to open file.\n", stderr);
+        fputs("Failed to open file.\n", stderr);
         return EXIT_FAILURE;
     }
-    puts("stage 1:");
+    puts("Stage 1:");
     char *s = filterNonBFChars(fd);
     if (s == NULL) {
-        fputs("stage 1 came back null.\n", stderr);
+        fputs("Stage 1 came back null.\n", stderr);
         return EXIT_FAILURE;
     }
     puts(s);
     if (!loopsMatch(s)) {
         free(s);
-        fputs("Mismatched [ and ]. refusing to continue.\n", stderr);
+        fputs("Mismatched [ and ]; refusing to continue.\n", stderr);
         return EXIT_FAILURE;
     }
-    puts("stage 2:");
+    puts("Stage 2:");
     s = stripUselessCode(s);
     if (s == NULL) {
-        fputs("stage 2 came back null.\n", stderr);
+        fputs("Stage 2 came back null.\n", stderr);
         return EXIT_FAILURE;
     }
     puts(s);
-    puts("stage 3:");
+    puts("Stage 3:");
     s = mergeInstructions(s);
     if (s == NULL) {
-        fputs("stage 3 came back null.\n", stderr);
+        fputs("Stage 3 came back null.\n", stderr);
         return EXIT_FAILURE;
     }
     puts(s);
     free(s);
 }
-#else
+#else /* OPTIMIZE_STANDALONE */
 /* Reads the content of the file fd, and returns a string containing optimized
  * internal intermediate representation of that file's code.
  * fd must be open for reading already, no check is performed.
