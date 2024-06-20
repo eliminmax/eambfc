@@ -122,6 +122,3 @@ strip eambfc
 mv eambfc "$old_pwd/releases/eambfc-$version"
 cd "$old_pwd"
 rm -rf "$build_dir"
-
-xz -9 -k releases/eambfc-"$version"
-gzip -9 -k releases/eambfc-"$version"
