@@ -12,12 +12,6 @@
 #include "eambfc_types.h"
 #include "json_escape.h"
 
-/* index of the current error in the error list */
-err_index err_ind;
-
-/* location the error was triggered at */
-uint instr_line, instr_col;
-
 static bool _quiet;
 static bool _json;
 
@@ -93,21 +87,4 @@ void instructionError(char *id, char *msg, char instr) {
     if (_json) instrErrJSON(id, msg, instr);
     else if (_quiet) return;
     else fprintf(stderr, "Error %s when compiling '%c: %s'.\n", id, instr, msg);
-}
-
-
-/* TODO: replace this mess */
-BFCompilerError err_list[MAX_ERROR];
-
-void resetErrors(void) {
-    /* reset error list */
-    for(err_index i = 0; i < MAX_ERROR; i++) {
-        err_list[i].line = 1;
-        err_list[i].col = 0;
-        err_list[i].err_id = "";
-        err_list[i].err_msg = "";
-        err_list[i].instr = '\0';
-        err_list[i].active = false;
-    }
-    err_ind = 0;
 }

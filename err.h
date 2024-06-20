@@ -22,16 +22,4 @@ void instructionError(char *id, char *msg, char instr);
 /* an error message related to a specific instruction at a specific location */
 void positionError(char *id, char *msg, char instr, uint line, uint col);
 
-/* TODO: Error handling needs a massive refactor. */
-/* list of errors from the current compilation job */
-extern BFCompilerError err_list[MAX_ERROR];
-/* ugly bad practice global variables used more in eam_compile.c than err.c */
-
-/* the location that the errors occurred. */
-extern uint instr_line;
-extern uint instr_col;
-
-/* clear the error list for a new compilation job */
-void resetErrors(void);
-
 #endif /* EAM_ERR_H */
