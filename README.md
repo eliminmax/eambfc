@@ -144,16 +144,6 @@ formatting rules or style guides, but the code should include commentary to
 explain what it's doing, how, and, if not written for this project, where it
 came from.
 
-## Ideas for future versions
-
-### In Progress
-
-* do some small optimizations, like compiling `[-]` as 'set 0'
-
-### Under Consideration
-
-* extend the jump stack as needed instead of erroring out at > 64 nested
-
 ## Legal Stuff
 
 `eambfc` as a whole is licensed under the GNU General Public License version 3.
