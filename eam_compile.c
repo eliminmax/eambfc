@@ -30,7 +30,6 @@ static char *failed_write_msg = "Failed to write to file.";
 static off_t out_sz;
 static uint _line;
 static uint _col;
-static char _instr;
 
 static inline bool writeBytes(int fd, const void *bytes, ssize_t sz) {
     ssize_t written = write(fd, bytes, sz);
@@ -476,7 +475,7 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
     /* reset the current line and column */
     _line = 1;
     _col = 0;
-    _instr = '\0';
+    char _instr = '\0';
 
     /* skip the headers until we know the code size */
     if (fseek(tmp_file, START_PADDR, SEEK_SET) != 0) {
