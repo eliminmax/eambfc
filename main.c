@@ -118,7 +118,6 @@ int main(int argc, char* argv[]) {
     int opt;
     int ret = EXIT_SUCCESS;
     char *outname;
-    char *err_msg_json;
     /* default to empty string. */
     char *ext = "";
     /* default to false, set to true if relevant argument was passed. */
@@ -283,33 +282,6 @@ int main(int argc, char* argv[]) {
         close(srcFD);
         close(dstFD);
         if (!result) {
-            for(uint8_t i = 0; i < MAX_ERROR && err_list[i].active; i++) {
-                if (json) {
-                    err_msg_json = jsonStr(err_list[i].err_msg);
-                    printf(
-                        "{\"errorId\":\"%s\",\"file\":\"%s\",\"line\":%ud,"
-                        "\"column\":%ud,\"message\":\"%s\"}\n",
-                        err_list[i].err_id,
-                        argv[optind],
-                        err_list[i].line,
-                        err_list[i].col,
-                        err_msg_json
-                    );
-                    free(err_msg_json);
-                } else {
-                    SHOW_ERROR(
-                        "%s: Failed to compile '%c' at line %ud, column %ud.\n"
-                        "Error ID: %s\n"
-                        "Error message: \"%s\"\n",
-                        argv[optind],
-                        err_list[i].instr,
-                        err_list[i].line,
-                        err_list[i].col,
-                        err_list[i].err_id,
-                        err_list[i].err_msg
-                    );
-                }
-            }
             if (!keep) remove(outname);
             FILE_FAIL();
         }
