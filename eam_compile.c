@@ -23,14 +23,19 @@
 #include "serialize.h"
 #include "x86_64_encoders.h"
 
-static off_t out_sz;
+/* the most common error message to pass, because of all of the places writes
+ * could theoretically fail. Not likely to see in practice however. */
+static char *failed_write_msg = "Failed to write to file.";
 
-static char instr;
+static off_t out_sz;
+static uint _line;
+static uint _col;
+static char _instr;
 
 static inline bool writeBytes(int fd, const void *bytes, ssize_t sz) {
     ssize_t written = write(fd, bytes, sz);
     if (written != sz) {
-        appendError(instr, "Failed to write instruction bytes", "FAILED_WRITE");
+        basicError("FAILED_WRITE", failed_write_msg);
         return false;
     }
     return true;
@@ -206,11 +211,7 @@ static bool bfJumpOpen (int fd) {
     expectedLocation = (CURRENT_ADDRESS + JUMP_SIZE);
     /* ensure that there are no more than the maximum nesting level */
     if (JumpStack.index + 1 == MAX_NESTING_LEVEL) {
-        appendError(
-            instr,
-            "Too many nested loops!",
-            "OVERFLOW"
-        );
+        positionError("OVERFLOW", "Too many nested loops.", '[', _line, _col);
         return false;
     }
     /* push the current address onto the stack */
@@ -230,10 +231,12 @@ static bool bfJumpClose(int fd) {
 
     /* ensure that the current index is in bounds */
     if (--JumpStack.index < 0) {
-        appendError(
-            instr,
-            "Found `]` without matching `[`!",
-            "UNMATCHED_CLOSE"
+        positionError(
+            "UNMATCHED_CLOSE",
+            "Found ']' without matching '['.",
+            ']',
+            _line,
+            _col
         );
         return false;
     }
@@ -245,89 +248,84 @@ static bool bfJumpClose(int fd) {
 
     /* jump to the skipped `[` instruction, write it, and jump back */
     if (lseek(fd, openAddress, SEEK_SET) != openAddress) {
-        appendError(
-            instr,
-            "Failed to return to `[` instruction!",
-            "FAILED_SEEK"
+        instructionError(
+            "FAILED_SEEK", "Failed to return to '[' instruction.", '['
         );
         return false;
     }
     off_t phony = 0; /* already added to code size for this one */
     if (!eamAsmJumpZero(REG_BF_PTR, distance, fd, &phony)) {
-        appendError(
-            instr,
-            "Failed to write `[` instruction!",
-            "FAILED_WRITE"
+        instructionError(
+            "FAILED_WRITE", failed_write_msg, '['
         );
         return false;
     }
 
     if (lseek(fd, closeAddress, SEEK_SET) != closeAddress) {
-        appendError(
-            instr,
-            "Failed to return to `]` instruction!",
-            "FAILED_SEEK"
+        positionError(
+            "FAILED_SEEK", "Failed to return to ']'.", ']', _line, _col
         );
         return false;
     }
     /* jump to right after the `[` instruction, to skip a redundant check */
     if (!eamAsmJumpNotZero(REG_BF_PTR, -distance, fd, &out_sz)) {
-        appendError(instr, "Failed to write `]` instruction", "FAILED_WRITE");
+        positionError(
+            "FAILED_WRITE", failed_write_msg, ']', _line, _col
+        );
         return false;
     }
 
     return true;
 }
 
+
+/* 4 of the 8 brainfuck instructions can be compiled with the same code flow,
+ * swapping out which specific function is used.*/
+#define COMPILE_WITH(f) if (!((ret = f(REG_BF_PTR, fd, &out_sz)))) \
+    positionError("FAILED_WRITE", failed_write_msg, c, _line, _col)
+
+
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
 static bool bfCompileInstruction(char c, int fd) {
     bool ret;
-    instr = c;
-    instr_col++;
+    _col++;
     switch(c) {
-      case '<':
-        /* decrement the tape pointer register */
-        ret = eamAsmDecReg(REG_BF_PTR, fd, &out_sz);
-        if (!ret) appendError(instr, "Failed to write to file", "FAILED_WRITE");
-        break;
-      case '>':
-        /* increment the tape pointer register */
-        ret = eamAsmIncReg(REG_BF_PTR, fd, &out_sz);
-        if (!ret) appendError(instr, "Failed to write to file", "FAILED_WRITE");
-        break;
-      case '+':
-        /* increment the current tape value */
-        ret = eamAsmIncByte(REG_BF_PTR, fd, &out_sz);
-        if (!ret) appendError(instr, "Failed to write to file", "FAILED_WRITE");
-        break;
-      case '-':
-        /* decrement the current tape value */
-        ret = eamAsmDecByte(REG_BF_PTR, fd, &out_sz);
-        if (!ret) appendError(instr, "Failed to write to file", "FAILED_WRITE");
-        break;
+      /* start with the simple cases handled with COMPILE_WITH */
+      /* decrement the tape pointer register */
+      case '<': COMPILE_WITH(eamAsmDecReg); break;
+      /* increment the tape pointer register */
+      case '>': COMPILE_WITH(eamAsmIncReg); break;
+      /* increment the current tape value */
+      case '+': COMPILE_WITH(eamAsmIncByte); break;
+      /* decrement the current tape value */
+      case '-': COMPILE_WITH(eamAsmDecByte); break;
       case '.':
         /* write to stdout */
         ret = bfIO(fd, STDOUT_FILENO, SYSCALL_WRITE);
-        if (!ret) appendError(instr, "Failed to write to file", "FAILED_WRITE");
+        if (!ret) {
+            positionError("FAILED_WRITE", failed_write_msg, c, _line, _col);
+        }
         break;
       case ',':
         /* read from stdin */
         ret = bfIO(fd, STDIN_FILENO, SYSCALL_READ);
-        if (!ret) appendError(instr, "Failed to write to file", "FAILED_WRITE");
+        if (!ret) { 
+            positionError("FAILED_WRITE", failed_write_msg, c, _line, _col);
+        }
         break;
+      /* `[` and `]` do their own error handling. */
       case '[':
         ret = bfJumpOpen(fd);
-        /* `[` and `]` do their own error handling. */
         break;
       case ']':
         ret = bfJumpClose(fd);
         break;
       case '\n':
         /* add 1 to the line number and reset the column. */
-        instr_line++;
-        instr_col = 0;
+        _line++;
+        _col = 0;
         ret = true;
         break;
       default:
@@ -343,52 +341,50 @@ static bool bfExit(int fd) {
     bool ret = true;
     /* set system call register to exit system call numbifer */
     if (!eamAsmSetReg(REG_SC_NUM, SYSCALL_EXIT, fd, &out_sz)) {
-        appendError(instr, "Failed to write exit syscall #", "FAILED_WRITE");
+        basicError("FAILED_WRITE", failed_write_msg);
         ret = false;
     }
     /* set system call register to the desired exit code (0) */
     if (!eamAsmSetReg(REG_ARG1, 0, fd, &out_sz)) {
-        appendError(instr, "Failed to write exit syscall arg1", "FAILED_WRITE");
+        basicError("FAILED_WRITE", failed_write_msg);
         ret = false;
     }
     /* perform a system call */
     if (!eamAsmSyscall(fd, &out_sz)) {
-        appendError(instr, "Failed to write syscall", "FAILED_WRITE");
+        basicError("FAILED_WRITE", failed_write_msg);
         ret = false;
     }
 
     return ret;
 }
 
+/* similar to the above COMPILE_WITH, but with an extra parameter passed to the
+ * function, and aa return statement added o right after the conditional.
+ * immediately returns, whether or not an error message is printed. */
+#define IR_COMPILE_WITH(f) if (!((ret = f(REG_BF_PTR, ct, fd, &out_sz)))) { \
+    basicError("FAILED_WRITE", failed_write_msg); }\
+    return ret
+/* compile a condensed instruction */
 static inline bool irCompileComplexInstruction(char *p, int fd, int* skip_p) {
     uint64_t ct;
+    bool ret; /* needed for IR_COMPILE_WITH macro */
     if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_p) != 1) {
-        appendError(instr, "Failed to read count for opcode.", "FAILED_SCAN");
+        basicError("IR_FAILED_SCAN", "Failed to get count for EAMBFC-IR op.");
         return false;
     } else {
         switch (*p) {
-          case '#':
-            return eamAsmAddMem(REG_BF_PTR, ct, fd, &out_sz);
-          case '=':
-            return eamAsmSubMem(REG_BF_PTR, ct, fd, &out_sz);
-          case '}':
-            return eamAsmAddRegByte(REG_BF_PTR, ct, fd, &out_sz);
-          case '{':
-            return eamAsmSubRegByte(REG_BF_PTR, ct, fd, &out_sz);
-          case ')':
-            return eamAsmAddRegWord(REG_BF_PTR, ct, fd, &out_sz);
-          case '(':
-            return eamAsmSubRegWord(REG_BF_PTR, ct, fd, &out_sz);
-          case '$':
-            return eamAsmAddRegDoubWord(REG_BF_PTR, ct, fd, &out_sz);
-          case '^':
-            return eamAsmSubRegDoubWord(REG_BF_PTR, ct, fd, &out_sz);
-          case 'n':
-            return eamAsmAddRegQuadWord(REG_BF_PTR, ct, fd, &out_sz);
-          case 'N':
-            return eamAsmSubRegQuadWord(REG_BF_PTR, ct, fd, &out_sz);
+          case '#': IR_COMPILE_WITH(eamAsmAddMem);
+          case '=': IR_COMPILE_WITH(eamAsmSubMem);
+          case '}': IR_COMPILE_WITH(eamAsmAddRegByte);
+          case '{': IR_COMPILE_WITH(eamAsmSubRegByte);
+          case ')': IR_COMPILE_WITH(eamAsmAddRegWord);
+          case '(': IR_COMPILE_WITH(eamAsmSubRegWord);
+          case '$': IR_COMPILE_WITH(eamAsmAddRegDoubWord);
+          case '^': IR_COMPILE_WITH(eamAsmSubRegDoubWord);
+          case 'n': IR_COMPILE_WITH(eamAsmAddRegQuadWord);
+          case 'N': IR_COMPILE_WITH(eamAsmSubRegQuadWord);
           default:
-            appendError(instr, "Invalid IR Opcode", "INVALID_IR");
+            basicError("INVALID_IR", "Invalid IR Opcode");
             return false;
         }
     }
@@ -407,7 +403,11 @@ static bool irCompileInstruction(char *p, int fd, int* skip_ct_p) {
       case ']':
         return bfCompileInstruction(*p, fd);
       case '@':
-        return eamAsmSetMemZero(REG_BF_PTR, fd, &out_sz);
+        if (eamAsmSetMemZero(REG_BF_PTR, fd, &out_sz)) return true;
+        else {
+            basicError("FAILED_WRITE", failed_write_msg);
+            return false;
+        }
       default:
         return irCompileComplexInstruction(p, fd, skip_ct_p);
     }
@@ -418,8 +418,7 @@ static bool irCompile(char *ir, int fd) {
     char *p = ir;
     int skip_ct;
     while (*p) {
-        instr_col++;
-        instr = *p;
+        _col++;
         ret &= irCompileInstruction(p++, fd, &skip_ct);
         p += skip_ct;
     }
@@ -457,17 +456,15 @@ static bool bfCleanup(int fd) {
 bool bfCompile(int in_fd, int out_fd, bool optimize) {
     int ret = true;
     FILE *tmp_file = tmpfile();
-    instr = '?';
     if (tmp_file == NULL) {
-        appendError(instr, "Could not open a tmpfile.", "FAILED_TMPFILE");
+        basicError("FAILED_TMPFILE", "Could not open a tmpfile.");
         return false;
     }
     int tmp_fd = fileno(tmp_file);
     if (tmp_fd == -1) {
-        appendError(
-            instr,
-            "Could not get file descriptor for tmpfile",
-            "FAILED_TMPFILE"
+        basicError(
+            "FAILED_TMPFILE",
+            "Could not get file descriptor for tmpfile"
         );
         fclose(tmp_file);
         return false;
@@ -476,24 +473,22 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
     out_sz = 0;
     /* reset the jump stack for the new file */
     JumpStack.index = 0;
-    /* reset the error stack for the new file */
-    resetErrors();
     /* reset the current line and column */
-    instr_line = 1;
-    instr_col = 0;
+    _line = 1;
+    _col = 0;
+    _instr = '\0';
 
     /* skip the headers until we know the code size */
     if (fseek(tmp_file, START_PADDR, SEEK_SET) != 0) {
-        appendError(instr, "Failed to seek to start of code.", "FAILED_SEEK");
+        basicError("FAILED_SEEK", "Failed to seek to start of code.");
         fclose(tmp_file);
         return false;
     }
 
     if (!eamAsmSetReg(REG_BF_PTR, TAPE_ADDRESS, tmp_fd, &out_sz)) {
-        appendError(
-            instr,
-            "Failed to write initial setup instructions.",
-            "FAILED_WRITE"
+        basicError(
+            "FAILED_WRITE",
+            failed_write_msg
         );
         ret = false;
     }
@@ -506,8 +501,8 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
         ret &= irCompile(ir, tmp_fd);
     } else {
         /* the error message(s) are already appended if issues occur */
-        while (read(in_fd, &instr, 1)) {
-            ret &= bfCompileInstruction(instr, tmp_fd);
+        while (read(in_fd, &_instr, 1)) {
+            ret &= bfCompileInstruction(_instr, tmp_fd);
         }
     }
 
@@ -515,16 +510,15 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
      * the appropriate error message(s) are already appended */
     if (!bfCleanup(tmp_fd)) ret = false;
     if(JumpStack.index > 0) {
-        appendError(
-            instr,
-            "Reached the end of the file with an unmatched `[`!",
-            "UNMATCHED_OPEN"
+        basicError(
+            "UNMATCHED_OPEN",
+            "Reached the end of the file with an unmatched '['."
         );
         ret = false;
     }
 
     if (fseek(tmp_file, 0, SEEK_SET) != 0) {
-        appendError(instr, "Failed to seek to start of tmpfile", "FAILED_SEEK");
+        basicError("FAILED_SEEK", "Failed to seek to start of tmpfile");
         ret = false;
     }
 
@@ -535,18 +529,10 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
 
     while ((trans_sz = read(tmp_fd, &trans, MAX_TRANS_SZ))) {
         if (trans_sz == -1) {
-            appendError(
-                instr,
-                "Failed to read bytes from tmpfile",
-                "FAILED_TMPFILE"
-            );
+            basicError("FAILED_TMPFILE", "Failed to read bytes from tmpfile");
             ret = false;
         } else if ((write(out_fd, &trans, trans_sz) != trans_sz)) {
-            appendError(
-                instr,
-                "Failed to write bytes from tmpfile",
-                "FAILED_TMPFILE"
-            );
+            basicError("FAILED_TMPFILE", failed_write_msg);
             ret = false;
         }
     }
