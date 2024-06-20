@@ -110,7 +110,7 @@ int rmExt(char *str, const char *ext) {
 #define SHOW_ERROR(...) if (!quiet) fprintf(stderr, __VA_ARGS__)
 #define FILE_FAIL() free(outname); \
     if (moveahead) ret = EXIT_FAILURE; else return EXIT_FAILURE
-#define SHOW_HINT() if (!quiet) showHelp(stderr, argv[0])
+#define SHOW_HINT() if (!(quiet || json)) showHelp(stderr, argv[0])
 
 int main(int argc, char* argv[]) {
     int srcFD, dstFD;
@@ -173,12 +173,8 @@ int main(int argc, char* argv[]) {
           case 'e':
             /* Print an error if ext was already set. */
             if (strlen(ext) > 0) {
-                if (json) {
-                    printf("{\"errorId\":\"MULTIPLE_EXTENSIONS\"}\n");
-                } else {
-                    SHOW_ERROR("provided -e multiple times!\n");
-                    SHOW_HINT();
-                }
+                basicError("MULTIPLE_EXTENSIONS", "passed -e multiple times.");
+                SHOW_HINT();
                 return EXIT_FAILURE;
             }
             ext = optarg;
