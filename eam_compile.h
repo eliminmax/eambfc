@@ -9,7 +9,6 @@
 /* C99 */
 #include <stdbool.h>
 /* internal */
-/* includes the BFCompilerError typedef */
 #include "eambfc_types.h"
 
 /* Takes 2 open file descriptors - in_fd and out_fd.
