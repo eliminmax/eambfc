@@ -17,8 +17,8 @@ MAX_ERROR = 32
 TAPE_BLOCKS = 8
 MAX_NESTING_LEVEL = 64
 
-EAM_COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o
-EAMBFC_DEPS = json_escape.o eam_compile.o $(EAM_COMPILE_DEPS) main.o
+EAM_COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o json_escape.o
+EAMBFC_DEPS = eam_compile.o $(EAM_COMPILE_DEPS) main.o
 
 
 # flags for some of the more specialized, non-portable builds
@@ -73,7 +73,7 @@ json_escape.o: json_escape.c
 main.o: config.h main.c
 optimize.o: err.o optimize.c
 x86_64_encoders.o: x86_64_encoders.c
-err.o: config.h err.c
+err.o: config.h json_escape.o err.c
 
 # for testing
 #
