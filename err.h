@@ -28,8 +28,8 @@ extern BFCompilerError err_list[MAX_ERROR];
 /* ugly bad practice global variables used more in eam_compile.c than err.c */
 
 /* the location that the errors occurred. */
-extern unsigned int instr_line;
-extern unsigned int instr_col;
+extern uint instr_line;
+extern uint instr_col;
 
 /* clear the error list for a new compilation job */
 void resetErrors(void);

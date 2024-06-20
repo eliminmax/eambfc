@@ -36,8 +36,8 @@ typedef int64_t jump_index;
 typedef unsigned int uint;
 
 typedef struct {
-    unsigned int line;
-    unsigned int col;
+    uint line;
+    uint col;
     char *err_id;
     char *err_msg;
     char instr;

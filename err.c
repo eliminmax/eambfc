@@ -16,7 +16,7 @@
 err_index err_ind;
 
 /* location the error was triggered at */
-unsigned int instr_line, instr_col;
+uint instr_line, instr_col;
 
 static bool _quiet;
 static bool _json;
