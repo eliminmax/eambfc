@@ -29,7 +29,7 @@ void jsonMode(void) { _json = true; }
 static inline void basicErrJSON(char* id, char *msg) {
     /* assume error id is json-safe, but don't assume that for msg. */
     if ((msg = jsonStr(msg)) != NULL) {
-        printf("{\"errorId\": \"%s\",\"message\":\"%s\"}\n", id, msg);
+        printf("{\"errorId\":\"%s\",\"message\":\"%s\"}\n", id, msg);
         free(msg);
     }
 }
