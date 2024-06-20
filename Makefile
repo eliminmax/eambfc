@@ -99,9 +99,9 @@ multibuild: config.h
 multibuild_test: can_run_linux_amd64 config.h
 	./multibuild.sh
 
-optimize: optimize.c err.o
+optimize: optimize.c
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) \
-		-D OPTIMIZE_STANDALONE -o optimize optimize.c err.o
+		-D OPTIMIZE_STANDALONE -o optimize optimize.c
 
 strict: can_run_linux_amd64 config.h
 	mkdir -p alt-builds

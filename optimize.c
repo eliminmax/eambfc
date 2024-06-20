@@ -17,7 +17,12 @@
 #include <unistd.h>
 /* internal */
 #include "compat/eambfc_inttypes.h"
+#ifdef OPTIMIZE_STANDALONE
+#define appendError(instr, msg, id) \
+    fprintf(stderr, "Error %s on %c: \"%s\"\n", id, instr, msg);
+#else
 #include "err.h"
+#endif /* OPTIMIZE_STANDALONE */
 
 #define MALLOC_CHUNK_SIZE 0x100
 
@@ -90,7 +95,7 @@ static bool loopsMatch(char *code) {
     /* if only one is found, that's a mismatch */
     if ((open_p == NULL) && !(close_p == NULL)) {
         appendError(
-            '?',
+            ']',
             "Could not optimize due to unmatched ']'",
             "UNMATCHED_CLOSE"
         );
@@ -98,7 +103,7 @@ static bool loopsMatch(char *code) {
     }
     if ((close_p == NULL) && !(open_p == NULL)) {
         appendError(
-            '?',
+            '[',
             "Could not optimize due to unmatched '['",
             "UNMATCHED_OPEN"
         );
