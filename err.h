@@ -8,8 +8,21 @@
 /* internal */
 #include "eambfc_types.h"
 
-/* TODO: Error handling needs a massive refactor. */
+/* enable quiet mode - this does not print error messages to stderr. */
+void quietMode(void);
+/* enable json display mode - this prints JSON-formatted error messagess to
+ * stdout instead of printing human-readable error messages to stderr. */
+void jsonMode(void);
 
+/* functions to display error messages, depending on the current mode. */
+/* a generic error message */
+void basicError(char* id, char *msg);
+/* an error message related to a specific instruction */
+void instructionError(char *id, char *msg, char instr);
+/* an error message related to a specific instruction at a specific location */
+void positionError(char *id, char *msg, char instr, uint line, uint col);
+
+/* TODO: Error handling needs a massive refactor. */
 /* list of errors from the current compilation job */
 extern BFCompilerError err_list[MAX_ERROR];
 /* ugly bad practice global variables used more in eam_compile.c than err.c */
