@@ -210,7 +210,7 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
         );
         return 0;
     }
-#endif
+#endif /* SIZE_MAX < UINT64_MAX */
     if (consec_ct == 1) {
         *dest = instr;
         return 1;
