@@ -229,6 +229,19 @@ int main(int argc, char* argv[]) {
             exit(EXIT_FAILURE);
         }
         strcpy(outname, argv[optind]);
+        if (! rmExt(outname, ext)) {
+            if (json) {
+                printJsonError(
+                    "{\"errorId\":\"BAD_EXTENSION\",\"file\":\"%s\"}\n",
+                    argv[optind]
+                );
+            } else {
+                SHOW_ERROR("%s does not end with %s.\n", argv[optind], ext);
+            }
+            free(outname);
+            ret = EXIT_FAILURE;
+            if (!moveahead) break;
+        }
         srcFD = open(argv[optind], O_RDONLY);
         if (srcFD < 0) {
             if (json) {
@@ -238,19 +251,6 @@ int main(int argc, char* argv[]) {
                 );
             } else {
                 SHOW_ERROR("Failed to open %s for reading.\n", argv[optind]);
-            }
-            free(outname);
-            ret = EXIT_FAILURE;
-            if (!moveahead) break;
-        }
-        if (! rmExt(outname, ext)) {
-            if (json) {
-                printJsonError(
-                    "{\"errorId\":\"BAD_EXTENSION\",\"file\":\"%s\"}\n",
-                    argv[optind]
-                );
-            } else {
-                SHOW_ERROR("%s does not end with %s.\n", argv[optind], ext);
             }
             free(outname);
             ret = EXIT_FAILURE;
