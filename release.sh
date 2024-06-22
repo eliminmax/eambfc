@@ -85,7 +85,7 @@ rm -rf releases/"$build_name"*
 # generate config.h
 make -s clean config.h
 
-# change the git commit in config.h
+# change the git commit in config.h to reflect that it's a source tarball build
 sed '/git commit: /s/"/"source tarball from /' -i config.h
 
 git archive HEAD --format=tar      \
@@ -112,14 +112,18 @@ for o_lvl in 0 1 2 3; do make -s CFLAGS="-O$o_lvl" clean ubsan strict; done
 
 # portability test - can a minimal, public domain POSIX make implementation
 # complete the clean, eambfc, and test targets?
+# move config.h out of the way so that it isn't clobbered by pdpmake
+mv config.h config.h-real
+# ensure that recursive calls use the right make by putting it first in $PATH
 mkdir -p .utils
 ln -sfv "$(command -v pdpmake)" .utils/make
-# include the path for the direct invocation in case shell hashed old location
-env PATH="$PWD/.utils/make:$PATH" .utils/make clean eambfc test
+env PATH="$PWD/.utils:$PATH" make clean eambfc test
 
 make clean
+# move config.h back in place for real build
+mv config.h-real config.h
 
-# if none of the previous tests failed, it's time to build the actual build
+# if none of the previous tests failed, it's time for the actual build
 make CC=gcc CFLAGS="-O2 -std=c99 -flto" LDFLAGS="-flto"
 strip eambfc
 mv eambfc "$old_pwd/releases/eambfc-$version"
