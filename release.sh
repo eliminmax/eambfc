@@ -107,6 +107,9 @@ tar --strip-components=1 -xf "eambfc-$version-src.tar"
 # multibuild.sh fails if any compilers are skipped and env var is non-empty
 NO_SKIP_MULTIBUILD=yep make CC=gcc all_tests
 
+# ensure strict and ubsan builds work at all optimization levels
+for o_lvl in 0 1 2 3; do make -s CFLAGS="-O$o_lvl" clean ubsan strict; done
+
 # portability test - can a minimal, public domain POSIX make implementation
 # complete the clean, eambfc, and test targets?
 mkdir -p .utils
