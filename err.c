@@ -12,8 +12,9 @@
 /* POSIX */
 #include <unistd.h>
 /* internal */
+#include "compat/eambfc_inttypes.h"
 #include "config.h"
-#include "eambfc_types.h"
+#include "uint.h"
 
 static bool _quiet;
 static bool _json;

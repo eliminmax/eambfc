@@ -14,13 +14,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 /* internal */
-#include "compat/elf.h"
-#include "config.h"
 #include "eam_compiler_macros.h"
-#include "eambfc_types.h"
 #include "err.h"
 #include "optimize.h"
 #include "serialize.h"
+#include "uint.h"
 #include "x86_64_encoders.h"
 
 /* the most common error message to pass, because of all of the places writes
@@ -206,7 +204,7 @@ typedef int16_t jump_index;
 typedef int32_t jump_index;
 #else
 typedef int64_t jump_index;
-#endif
+#endif /* MAX_ERROR <= INT8_MAX */
 
 static struct stack {
     jump_index index;
