@@ -47,7 +47,7 @@ static void posErrJSON(char *id, char *msg, char instr, uint line, uint col) {
     }
     printf(
         "{\"errorId\":\"%s\",\"message\":\"%s\",\"instruction\":\"%s\","
-        "\"line\":%ud,\"column\":%ud}\n", id, msg, instr_json, line, col
+        "\"line\":%u,\"column\":%u}\n", id, msg, instr_json, line, col
     );
     free(msg);
     free(instr_json);
@@ -59,7 +59,7 @@ void positionError(char *id, char *msg, char instr, uint line, uint col) {
     else {
         fprintf(
             stderr,
-            "Error %s when compiling '%c' at line %ud, column %ud: %s\n",
+            "Error %s when compiling '%c' at line %u, column %u: %s\n",
             id, instr, line, col, msg
         );
     }
