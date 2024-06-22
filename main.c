@@ -19,7 +19,6 @@
 #include "compat/eambfc_inttypes.h"
 #include "eam_compile.h"
 #include "err.h"
-#include "json_escape.h"
 
 /* Return the permission mask to use for the output file */
 mode_t getPerms(void) {
@@ -92,13 +91,9 @@ bool rmExt(char *str, const char *ext) {
 }
 
 
-/* macros for use in main function only.
- * SHOW_ERROR:
- *  * unless -q was passed, print an error message to stderr using fprintf
- *
+/* macro for use in main function only.
  * SHOW_HINT:
  *  * unless -q or -j was passed, write the help text to stderr. */
-#define SHOW_ERROR(...) if (!quiet) fprintf(stderr, __VA_ARGS__)
 #define SHOW_HINT() if (!(quiet || json)) showHelp(stderr, argv[0])
 
 int main(int argc, char* argv[]) {
@@ -113,6 +108,7 @@ int main(int argc, char* argv[]) {
     bool quiet = false, keep = false, moveahead = false, json = false;
     bool optimize = false;
     mode_t perms = getPerms();
+    char char_str_buf[2] = { '\0', '\0' };
 
     while ((opt = getopt(argc, argv, ":hVqjOkme:")) != -1) {
         switch(opt) {
@@ -168,108 +164,72 @@ int main(int argc, char* argv[]) {
             ext = optarg;
             break;
           case ':': /* -e without an argument */
-            if (json) {
-                printf(
-                    "{\"errorId\":\"MISSING_OPERAND\","
-                    "\"argument\":\"%c\"}\n",
-                    optopt
-                );
-            } else {
-                SHOW_ERROR("%c requires an additional argument.\n", optopt);
-                SHOW_HINT();
-            }
+            char_str_buf[0] = (char) optopt;
+            parameterError(
+                "MISSING_OPERAND",
+                "{} requires an additional argument",
+                char_str_buf
+            );
             return EXIT_FAILURE;
           case '?': /* unknown argument */
-            if (json) {
-                printf(
-                    "{\"errorId\":\"UNKNOWN_ARG\",\"argument\":\"%c\"}\n",
-                    optopt
-                );
-            } else {
-                SHOW_ERROR("Unknown argument: %c.\n", optopt);
-                SHOW_HINT();
-            }
+            char_str_buf[0] = (char) optopt;
+            parameterError(
+                "UNKNOWN_ARG",
+                "Unknown argument: {}.",
+                char_str_buf
+            );
             return EXIT_FAILURE;
         }
     }
     if (optind == argc) {
-        if (json) {
-            printf("{\"errorId\":\"NO_SOURCE_FILES\"}\n");
-        } else {
-            SHOW_ERROR("No source files provided.\n");
-            SHOW_HINT();
-        }
+        basicError("NO_SOURCE_FILES", "No source files provided.");
+        SHOW_HINT();
         return EXIT_FAILURE;
     }
 
     /* if no extension was provided, use .bf */
-    if (strlen(ext) == 0) {
-        ext = ".bf";
-    }
+    if (strlen(ext) == 0) ext = ".bf";
 
     for (/* reusing optind here */; optind < argc; optind++) {
         outname = malloc(strlen(argv[optind]) + 1);
         if (outname == NULL) {
-            if (json) {
-                printf(
-                    "{\"errorId\":\"ICE_ICE_BABY\",\"message\":\"%s\"}",
-                    "malloc failed when determining outfile name! Aborting."
-                );
-
-            } else {
-                SHOW_ERROR(
-                    "malloc failed when determining outfile name! Aborting.\n"
-                );
-            }
-            exit(EXIT_FAILURE);
+            allocError();
+            ret = EXIT_FAILURE;
+            if (moveahead) continue; else break;
         }
         strcpy(outname, argv[optind]);
-        if (! rmExt(outname, ext)) {
-            if (json) {
-                printJsonError(
-                    "{\"errorId\":\"BAD_EXTENSION\",\"file\":\"%s\"}\n",
-                    argv[optind]
-                );
-            } else {
-                SHOW_ERROR("%s does not end with %s.\n", argv[optind], ext);
-            }
-            free(outname);
+        if (!rmExt(outname, ext)) {
+            parameterError(
+                "BAD_EXTENSION",
+                "File {} does not end with expected extension.",
+                argv[optind]
+            );
             ret = EXIT_FAILURE;
-            if (!moveahead) break;
+            free(outname);
+            if (moveahead) continue; else break;
         }
         src_fd = open(argv[optind], O_RDONLY);
         if (src_fd < 0) {
-            if (json) {
-                printJsonError(
-                    "{\"errorId\":\"OPEN_R_FAILED\",\"file\":\"%s\"}\n",
-                    argv[optind]
-                );
-            } else {
-                SHOW_ERROR("Failed to open %s for reading.\n", argv[optind]);
-            }
+            parameterError(
+                "OPEN_R_FAILED",
+                "Failed to open {} for reading.",
+                argv[optind]
+            );
             free(outname);
             ret = EXIT_FAILURE;
-            if (!moveahead) break;
+            if (moveahead) continue; else break;
         }
         dst_fd = open(outname, O_WRONLY+O_CREAT+O_TRUNC, perms);
         if (dst_fd < 0) {
-            if (json) {
-                printJsonError(
-                    "{\"errorId\":\"OPEN_W_FAILED\",\"file\":\"%s\"}\n",
-                    outname
-                );
-            } else {
-                SHOW_ERROR(
-                    "Failed to open destination file %s for writing.\n",
-                    outname
-                );
-            }
+            parameterError(
+                "OPEN_W_FAILED",
+                "Failed to open {} for writing.",
+                outname
+            );
+            close(src_fd);
+            ret = EXIT_FAILURE;
             free(outname);
-            if (moveahead) {
-                close(src_fd);
-            } else {
-                return EXIT_FAILURE;
-            }
+            if (moveahead) continue; else break;
         }
         result = bfCompile(src_fd, dst_fd, optimize);
         close(src_fd);
@@ -277,10 +237,8 @@ int main(int argc, char* argv[]) {
         if (!result) {
             if (!keep) remove(outname);
             ret = EXIT_FAILURE;
-            if (!moveahead) {
-                free(outname);
-                break;
-            }
+            free(outname);
+            if (moveahead) continue; else break;
         }
         free(outname);
     }

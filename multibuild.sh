@@ -15,8 +15,7 @@ success=0
 failed=0
 skipped=0
 
-src_files='serialize.c eam_compile.c json_escape.c x86_64_encoders.c err.c'
-src_files="$src_files optimize.c main.c"
+src_files='serialize.c eam_compile.c x86_64_encoders.c err.c optimize.c main.c'
 
 posix_flag='-D _POSIX_C_SOURCE=200809L'
 

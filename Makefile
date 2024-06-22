@@ -13,11 +13,10 @@ CC = c99
 POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
 # Compile-time configuration values
-MAX_ERROR = 32
 TAPE_BLOCKS = 8
 MAX_NESTING_LEVEL = 64
 
-EAM_COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o json_escape.o
+EAM_COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o
 EAMBFC_DEPS = eam_compile.o $(EAM_COMPILE_DEPS) main.o
 
 
@@ -35,7 +34,7 @@ GCC_UBSAN_FLAGS = -std=c99 -fanalyzer -fsanitize=address,undefined \
 GCC_INT_TORTURE_FLAGS = -D INT_TORTURE_TEST=1 $(GCC_STRICT_FLAGS) -Wno-format \
 			-Wno-pedantic -fsanitize=address,undefined
 
-UNIBUILD_FILES = serialize.c eam_compile.c json_escape.c optimize.c err.c \
+UNIBUILD_FILES = serialize.c eam_compile.c optimize.c err.c \
 			x86_64_encoders.c main.c
 
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
@@ -60,8 +59,7 @@ config.h: config.template.h version
 	else \
 		git_str='Not built from git repo'; \
 	fi; \
-	sed -e '/MAX_ERROR/s/@@/$(MAX_ERROR)/' \
-		-e '/TAPE_BLOCKS/s/@@/$(TAPE_BLOCKS)/' \
+	sed -e '/TAPE_BLOCKS/s/@@/$(TAPE_BLOCKS)/' \
 		-e '/MAX_NESTING_LEVEL/s/@@/$(MAX_NESTING_LEVEL)/' \
 		-e "/EAMBFC_VERSION/s/@@/\"$$(cat version)\"/" \
 		-e "/EAMBFC_COMMIT/s/@@/\"$$git_str\"/" \
@@ -69,11 +67,10 @@ config.h: config.template.h version
 
 serialize.o: serialize.c
 eam_compile.o: config.h x86_64_encoders.o eam_compile.c
-json_escape.o: json_escape.c
 main.o: config.h main.c
 optimize.o: err.o optimize.c
 x86_64_encoders.o: x86_64_encoders.c
-err.o: config.h json_escape.o err.c
+err.o: config.h err.c
 
 # for testing
 #
@@ -101,7 +98,7 @@ multibuild_test: can_run_linux_amd64 config.h
 
 optimize: optimize.c err.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) \
-		-D OPTIMIZE_STANDALONE -o $@ optimize.c err.o json_escape.o
+		-D OPTIMIZE_STANDALONE -o $@ optimize.c err.o
 
 strict: can_run_linux_amd64 config.h
 	mkdir -p alt-builds
