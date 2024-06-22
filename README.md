@@ -34,13 +34,10 @@ Usage: eambfc [options] <program.bf> [<program2.bf> ...]
 
 * -q and -j will not affect arguments passed before they were.
 
-** Optimization will mess with error reporting, as error locations
-   will be location in the intermediate representation text, rather
-   than the source code.
-
+** Optimization can make error reporting less precise.
 Remaining options are treated as source file names. If they don't
 end with '.bf' (or the extension specified with '-e'), the program
-will abort.
+will raise an error.
 
 ```
 
