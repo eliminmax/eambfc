@@ -76,24 +76,19 @@ void showHelp(FILE *outfile, char *progname) {
     );
 }
 
-/* check if str ends with ext. If so, remove ext from the end and return a
- * truthy value. If not, return 0. */
-int rmExt(char *str, const char *ext) {
+/* remove ext from end of str. If ext is not in str, return false. */
+bool rmExt(char *str, const char *ext) {
     size_t strsz = strlen(str);
     size_t extsz = strlen(ext);
     /* strsz must be at least 1 character longer than extsz to continue. */
-    if (strsz <= extsz) {
-        return 0;
-    }
+    if (strsz <= extsz) return false;
     /* because of the above check, distance is known to be a positive value. */
     size_t distance = strsz - extsz;
     /* return 0 if str does not end in extsz*/
-    if (strncmp(str + distance, ext, extsz) != 0) {
-        return 0;
-    }
+    if (strncmp(str + distance, ext, extsz) != 0) return false;
     /* set the beginning of the match to the null byte, to end str early */
-    str[distance] = 0;
-    return 1;
+    str[distance] = false;
+    return true;
 }
 
 
@@ -107,7 +102,7 @@ int rmExt(char *str, const char *ext) {
 #define SHOW_HINT() if (!(quiet || json)) showHelp(stderr, argv[0])
 
 int main(int argc, char* argv[]) {
-    int srcFD, dstFD;
+    int src_fd, dst_fd;
     int result;
     int opt;
     int ret = EXIT_SUCCESS;
@@ -242,8 +237,8 @@ int main(int argc, char* argv[]) {
             ret = EXIT_FAILURE;
             if (!moveahead) break;
         }
-        srcFD = open(argv[optind], O_RDONLY);
-        if (srcFD < 0) {
+        src_fd = open(argv[optind], O_RDONLY);
+        if (src_fd < 0) {
             if (json) {
                 printJsonError(
                     "{\"errorId\":\"OPEN_R_FAILED\",\"file\":\"%s\"}\n",
@@ -256,8 +251,8 @@ int main(int argc, char* argv[]) {
             ret = EXIT_FAILURE;
             if (!moveahead) break;
         }
-        dstFD = open(outname, O_WRONLY+O_CREAT+O_TRUNC, perms);
-        if (dstFD < 0) {
+        dst_fd = open(outname, O_WRONLY+O_CREAT+O_TRUNC, perms);
+        if (dst_fd < 0) {
             if (json) {
                 printJsonError(
                     "{\"errorId\":\"OPEN_W_FAILED\",\"file\":\"%s\"}\n",
@@ -271,14 +266,14 @@ int main(int argc, char* argv[]) {
             }
             free(outname);
             if (moveahead) {
-                close(srcFD);
+                close(src_fd);
             } else {
                 return EXIT_FAILURE;
             }
         }
-        result = bfCompile(srcFD, dstFD, optimize);
-        close(srcFD);
-        close(dstFD);
+        result = bfCompile(src_fd, dst_fd, optimize);
+        close(src_fd);
+        close(dst_fd);
         if (!result) {
             if (!keep) remove(outname);
             ret = EXIT_FAILURE;
