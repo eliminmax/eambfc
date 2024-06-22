@@ -9,7 +9,6 @@
 
 /* internal */
 #include "compat/eambfc_inttypes.h"
-#include "config.h"
 typedef unsigned int uint;
 
 #endif /* EAMBFC_TYPES_H */

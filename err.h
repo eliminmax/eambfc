@@ -6,6 +6,7 @@
 #ifndef EAM_ERR_H
 #define EAM_ERR_H 1
 /* internal */
+#include "config.h"
 #include "eambfc_types.h"
 
 /* enable quiet mode - this does not print error messages to stderr. Does not

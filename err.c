@@ -12,6 +12,7 @@
 /* POSIX */
 #include <unistd.h>
 /* internal */
+#include "config.h"
 #include "eambfc_types.h"
 
 static bool _quiet;
