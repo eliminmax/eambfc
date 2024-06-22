@@ -101,15 +101,9 @@ int rmExt(char *str, const char *ext) {
  * SHOW_ERROR:
  *  * unless -q was passed, print an error message to stderr using fprintf
  *
- * FILE_FAIL:
- *  * call if compiling a file failed. Depending on moveahead, either
- *    exit immediately or set the return code to EXIT_FAILURE for later.
- *
  * SHOW_HINT:
- *  * unless -q was passed, write the help text to stderr. */
+ *  * unless -q or -j was passed, write the help text to stderr. */
 #define SHOW_ERROR(...) if (!quiet) fprintf(stderr, __VA_ARGS__)
-#define FILE_FAIL() free(outname); \
-    if (moveahead) ret = EXIT_FAILURE; else return EXIT_FAILURE
 #define SHOW_HINT() if (!(quiet || json)) showHelp(stderr, argv[0])
 
 int main(int argc, char* argv[]) {
@@ -245,7 +239,9 @@ int main(int argc, char* argv[]) {
             } else {
                 SHOW_ERROR("Failed to open %s for reading.\n", argv[optind]);
             }
-            FILE_FAIL();
+            free(outname);
+            ret = EXIT_FAILURE;
+            if (!moveahead) break;
         }
         if (! rmExt(outname, ext)) {
             if (json) {
@@ -256,7 +252,9 @@ int main(int argc, char* argv[]) {
             } else {
                 SHOW_ERROR("%s does not end with %s.\n", argv[optind], ext);
             }
-            FILE_FAIL();
+            free(outname);
+            ret = EXIT_FAILURE;
+            if (!moveahead) break;
         }
         dstFD = open(outname, O_WRONLY+O_CREAT+O_TRUNC, perms);
         if (dstFD < 0) {
@@ -283,7 +281,11 @@ int main(int argc, char* argv[]) {
         close(dstFD);
         if (!result) {
             if (!keep) remove(outname);
-            FILE_FAIL();
+            ret = EXIT_FAILURE;
+            if (!moveahead) {
+                free(outname);
+                break;
+            }
         }
         free(outname);
     }
