@@ -133,7 +133,7 @@ static void posErrJSON(char *id, char *msg, char instr, uint line, uint col) {
 }
 
 void positionError(char *id, char *msg, char instr, uint line, uint col) {
-    if (_json) posErrJSON(id, msg, line, col, instr);
+    if (_json) posErrJSON(id, msg, instr, line, col);
     else if (!_quiet) {
         fprintf(
             stderr,
