@@ -1,0 +1,7 @@
+# enable some optional checks
+# SC2248 prefer quotes even when no unsafe characters are in use
+enable=quote-safe-variables
+# SC2230 warn about uses of the non-standard which command
+enable=deprecate-which
+# SC2244 prefer `[ -n "$var" ]` over `[ "$var" ]`
+enable=avoid-nullary-conditions
