@@ -91,6 +91,7 @@ sed '/git commit: /s/"/"source tarball from /' -i config.h
 git archive HEAD --format=tar      \
     --prefix="$build_name"/        \
     --add-file=config.h            \
+    --add-file=eambfc.1            \
     --output=releases/"$src_tarball_name"
 
 gzip -9 -k "releases/$src_tarball_name"

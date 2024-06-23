@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: 0BSD
 
-# build-time configuration
+# build-time configuration and man page
 config.h
+eambfc.1
 
-# ignore the compiled binary
+# ignore the compiled binary and intermediate objects
 eambfc
 *.o
 

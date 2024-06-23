@@ -43,6 +43,10 @@ UNIBUILD_FILES = serialize.c eam_compile.c optimize.c err.c \
 .c.o:
 	$(CC) $(CFLAGS) $(POSIX_CFLAG) -c -o $@ $<
 
+all: eambfc optimize man
+
+man: eambfc.1
+
 eambfc: $(EAMBFC_DEPS)
 	$(CC) $(POSIX_CFLAG) $(LDFLAGS) -o eambfc $(EAMBFC_DEPS) $(LDLIBS)
 
@@ -100,6 +104,11 @@ optimize: optimize.c err.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) \
 		-D OPTIMIZE_STANDALONE -o $@ optimize.c err.o
 
+eambfc.1: eambfc.template.1
+	sed -e 's/@MAX_NESTING_LEVEL@/$(MAX_NESTING_LEVEL)/' \
+		-e 's/@TAPE_BLOCKS@/$(TAPE_BLOCKS)/' \
+		<eambfc.template.1 >eambfc.1
+
 strict: can_run_linux_amd64 config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE!\n' >&2
@@ -121,11 +130,10 @@ int_torture_test: can_run_linux_amd64 config.h
 		-o alt-builds/eambfc-$@
 	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
 
-
 all_tests: test multibuild_test strict ubsan int_torture_test
 
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
 	rm -rf *.o eambfc alt-builds *mini_elf optimize can_run_linux_amd64
-	if [ -e .git ]; then rm -f config.h; fi
+	if [ -e .git ]; then rm -f config.h eambfc.1; fi
 	(cd tests; make clean)
