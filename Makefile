@@ -53,6 +53,8 @@ eambfc: $(EAMBFC_DEPS)
 install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp -f eambfc $(DESTDIR)$(PREFIX)/bin
+	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
+	cp -f eambfc.1 $(DESTDIR)$(PREFIX)/share/man/man1/eambfc.1
 
 config.h: config.template.h version
 	if command -v git >/dev/null && [ -e .git ]; then \
