@@ -196,15 +196,15 @@ static bool bfIO(int fd, int bf_fd, int sc) {
 }
 
 /* ensure that an appropriate type is used for jump stack index */
-#if MAX_ERROR <= INT8_MAX
+#if MAX_NESTING_LEVEL <= INT8_MAX
 typedef int8_t jump_index;
-#elif MAX_ERROR <= INT16_MAX
+#elif MAX_NESTING_LEVEL <= INT16_MAX
 typedef int16_t jump_index;
-#elif MAX_ERROR <= INT32_MAX
+#elif MAX_NESTING_LEVEL <= INT32_MAX
 typedef int32_t jump_index;
 #else
 typedef int64_t jump_index;
-#endif /* MAX_ERROR <= INT8_MAX */
+#endif /* MAX_NESTING_LEVEL <= INT8_MAX */
 
 static struct stack {
     jump_index index;
