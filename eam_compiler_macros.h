@@ -54,10 +54,6 @@
  * chosen fairly arbitrarily. */
 #define TAPE_ADDRESS 0x10000
 
-/* Temporary value for use when initially creating the structure and control
- * flow of this file. */
-#define PLACEHOLDER 0
-
 /* number of entries in program and section header tables respectively */
 #define PHNUM 2
 #define SHNUM 0

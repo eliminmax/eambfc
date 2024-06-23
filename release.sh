@@ -5,25 +5,78 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 # this script is used to generate release builds and source tarballs
-# it is not written with portability in mind.
-# Requires Git, xz, gzip, several GNU-isms, and QEMU binfmt support,
-# and the following C compilers:
-# gcc
-# s390x-linux-gnu-gcc
-# tcc
-# musl-gcc
-# clang
-# zig cc
+# it is not written with portability in mind, in any way, shape, or form.
+
+# Dependencies:
+# this script uses commands from the following Debian 12 (Bookworm) packages:
 #
-# all of the dependencies except for zig are available in the Debian repos
+# * binutils
+# * codespell
+# * coreutils
+# * devscripts
+# * findutils
+# * git
+# * gzip
+# * make
+# * sed
+# * shellcheck
+# * tar
+# * xz-utils
+#
+# Additionally, the main Makefile, test Makefile, and scripts they call use
+# commands and libraries from the following packages and their dependencies:
+#
+# gcc
+# gcc-s390x-linux-gnu
+# musl-gcc
+# gawk
+# clang
+# libubsan1
+# libasan6
+# tcc
+#
+# Lastly, a few tools not packaged for Debian are required - here's a list, with
+# URLS and info on how I installed them.
+#
+# the Zig compiler's built-in C compiler
+#       https://ziglang.org/
+#   I downloaded the binary and symlinked it into the PATH
+#
+# Ron Yorston's Public Domain POSIX make implementation - installed as pdpmake
+#       https://frippery.org/make/
+#   I downloaded source, built by running GNU make, then copied into PATH
+#       
+# reuse helper ool >= 3.0.0 (newer than Debian package in bookworm/main)
+#       https://git.fsfe.org/reuse/tool
+#   I installed with pipx, and installed pipx with apt
 
-cd "$(dirname "$0")"
+cd "$(dirname "$(realpath "$0")")"
 
-
-if [ ! -n "$FORCE_RELEASE" ] && [ -n "$(git status --short)" ]; then
+if [ -z "$FORCE_RELEASE" ] && [ -n "$(git status --short)" ]; then
     printf 'Will not build source tarball with uncommitted changes!\n' >&2
+    printf 'If you want to test changes to this script, set the ' >&2
+    printf 'FORCE_RELEASE environment variable to a non-empty value.\n' >&2
     exit 1
 fi
+
+make clean
+
+# first, some linting
+# Catch typos in the code.
+# Learned about this one from Lasse Colin's writeup of the xz backdoor. Really.
+codespell --skip=.git,eambfc.template.1
+# 'bu' is part of the roff code for bullet points used in the man page, but
+# codespell detects it as a false positive, so handle it separately
+codespell --ignore-regex '\\\(bu' eambfc.template.1
+
+# run shellcheck and checkbashisms on all shell files
+find . -name '*.sh' -type f \
+    -exec shellcheck --norc {} +\
+    -exec checkbashisms {} +
+
+# ensure licensing information is structured in a manner that complies with the
+# REUSE 3.0 specification
+reuse lint -q
 
 version="$(cat version)-$(
     git log -n 1 --date=format:'%Y-%m-%d' --pretty=format:'%ad-%h'
@@ -35,14 +88,15 @@ mkdir -p releases/
 rm -rf releases/"$build_name"*
 
 # generate config.h
-make -s clean config.h
+make -s clean config.h eambfc.1
 
-# change the git commit in config.h
+# change the git commit in config.h to reflect that it's a source tarball build
 sed '/git commit: /s/"/"source tarball from /' -i config.h
 
 git archive HEAD --format=tar      \
     --prefix="$build_name"/        \
     --add-file=config.h            \
+    --add-file=eambfc.1            \
     --output=releases/"$src_tarball_name"
 
 gzip -9 -k "releases/$src_tarball_name"
@@ -54,16 +108,30 @@ cp releases/"eambfc-$version-src.tar" "$build_dir"
 
 old_pwd="$PWD"
 cd "$build_dir"
+
 tar --strip-components=1 -xf "eambfc-$version-src.tar"
 # multibuild.sh fails if any compilers are skipped and env var is non-empty
 NO_SKIP_MULTIBUILD=yep make CC=gcc all_tests
 
-make clean
+# ensure strict and ubsan builds work at all optimization levels
+for o_lvl in 0 1 2 3; do make -s CFLAGS="-O$o_lvl" clean ubsan strict; done
 
+# portability test - can a minimal, public domain POSIX make implementation
+# complete the clean, eambfc, and test targets?
+# move config.h out of the way so that it isn't clobbered by pdpmake
+mv config.h config.h-real
+# ensure that recursive calls use the right make by putting it first in $PATH
+mkdir -p .utils
+ln -sfv "$(command -v pdpmake)" .utils/make
+env PATH="$PWD/.utils:$PATH" make clean eambfc test
+
+make clean
+# move config.h back in place for real build
+mv config.h-real config.h
+
+# if none of the previous tests failed, it's time for the actual build
 make CC=gcc CFLAGS="-O2 -std=c99 -flto" LDFLAGS="-flto"
+strip eambfc
 mv eambfc "$old_pwd/releases/eambfc-$version"
 cd "$old_pwd"
 rm -rf "$build_dir"
-
-xz -9 -k releases/eambfc-"$version"
-gzip -9 -k releases/eambfc-"$version"

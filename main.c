@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * A basic non-optimizing Brainfuck to x86_64 Linux ELF compiler. */
+ * A Brainfuck to x86_64 Linux ELF compiler. */
 
 /* C99 */
 #include <stdbool.h>
@@ -19,7 +19,6 @@
 #include "compat/eambfc_inttypes.h"
 #include "eam_compile.h"
 #include "err.h"
-#include "json_escape.h"
 
 /* Return the permission mask to use for the output file */
 mode_t getPerms(void) {
@@ -65,66 +64,49 @@ void showHelp(FILE *outfile, char *progname) {
         "\n"
         "* -q and -j will not affect arguments passed before they were.\n"
         "\n"
-        "** Optimization will mess with error reporting, as error locations\n"
-        "   will be location in the intermediate representation text, rather\n"
-        "   than the source code.\n"
+        "** Optimization can make error reporting less precise."
         "\n"
         "Remaining options are treated as source file names. If they don't\n"
         "end with '.bf' (or the extension specified with '-e'), the program\n"
-        "will abort.\n\n",
+        "will raise an error.\n\n",
         progname
     );
 }
 
-/* check if str ends with ext. If so, remove ext from the end and return a
- * truthy value. If not, return 0. */
-int rmExt(char *str, const char *ext) {
+/* remove ext from end of str. If ext is not in str, return false. */
+bool rmExt(char *str, const char *ext) {
     size_t strsz = strlen(str);
     size_t extsz = strlen(ext);
     /* strsz must be at least 1 character longer than extsz to continue. */
-    if (strsz <= extsz) {
-        return 0;
-    }
+    if (strsz <= extsz) return false;
     /* because of the above check, distance is known to be a positive value. */
     size_t distance = strsz - extsz;
     /* return 0 if str does not end in extsz*/
-    if (strncmp(str + distance, ext, extsz) != 0) {
-        return 0;
-    }
+    if (strncmp(str + distance, ext, extsz) != 0) return false;
     /* set the beginning of the match to the null byte, to end str early */
-    str[distance] = 0;
-    return 1;
+    str[distance] = false;
+    return true;
 }
 
 
-/* macros for use in main function only.
- * SHOW_ERROR:
- *  * unless -q was passed, print an error message to stderr using fprintf
- *
- * FILE_FAIL:
- *  * call if compiling a file failed. Depending on moveahead, either
- *    exit immediately or set the return code to EXIT_FAILURE for later.
- *
+/* macro for use in main function only.
  * SHOW_HINT:
- *  * unless -q was passed, write the help text to stderr. */
-#define SHOW_ERROR(...) if (!quiet) fprintf(stderr, __VA_ARGS__)
-#define FILE_FAIL() free(outname); \
-    if (moveahead) ret = EXIT_FAILURE; else return EXIT_FAILURE
-#define SHOW_HINT() if (!quiet) showHelp(stderr, argv[0])
+ *  * unless -q or -j was passed, write the help text to stderr. */
+#define SHOW_HINT() if (!(quiet || json)) showHelp(stderr, argv[0])
 
 int main(int argc, char* argv[]) {
-    int srcFD, dstFD;
+    int src_fd, dst_fd;
     int result;
     int opt;
     int ret = EXIT_SUCCESS;
     char *outname;
-    char *err_msg_json;
     /* default to empty string. */
     char *ext = "";
     /* default to false, set to true if relevant argument was passed. */
     bool quiet = false, keep = false, moveahead = false, json = false;
     bool optimize = false;
     mode_t perms = getPerms();
+    char char_str_buf[2] = { '\0', '\0' };
 
     while ((opt = getopt(argc, argv, ":hVqjOkme:")) != -1) {
         switch(opt) {
@@ -143,21 +125,21 @@ int main(int argc, char* argv[]) {
                 "Build configuration:\n"
                 " * tape size: %d 4-KiB blocks\n"
                 " * max nesting level: %d\n"
-                " * max compiler errors shown: %d\n"
                 " * %s\n", /* git info or message stating git not used. */
                 argv[0],
                 EAMBFC_VERSION,
                 TAPE_BLOCKS,
                 MAX_NESTING_LEVEL,
-                MAX_ERROR,
                 EAMBFC_COMMIT
             );
             return EXIT_SUCCESS;
           case 'q':
             quiet = true;
+            quietMode();
             break;
           case 'j':
             json = true;
+            jsonMode();
             break;
           case 'O':
             optimize = true;
@@ -171,149 +153,88 @@ int main(int argc, char* argv[]) {
           case 'e':
             /* Print an error if ext was already set. */
             if (strlen(ext) > 0) {
-                if (json) {
-                    printf("{\"errorId\":\"MULTIPLE_EXTENSIONS\"}\n");
-                } else {
-                    SHOW_ERROR("provided -e multiple times!\n");
-                    SHOW_HINT();
-                }
+                basicError("MULTIPLE_EXTENSIONS", "passed -e multiple times.");
+                SHOW_HINT();
                 return EXIT_FAILURE;
             }
             ext = optarg;
             break;
           case ':': /* -e without an argument */
-            if (json) {
-                printf(
-                    "{\"errorId\":\"MISSING_OPERAND\","
-                    "\"argument\":\"%c\"}\n",
-                    optopt
-                );
-            } else {
-                SHOW_ERROR("%c requires an additional argument.\n", optopt);
-                SHOW_HINT();
-            }
+            char_str_buf[0] = (char) optopt;
+            parameterError(
+                "MISSING_OPERAND",
+                "{} requires an additional argument",
+                char_str_buf
+            );
             return EXIT_FAILURE;
           case '?': /* unknown argument */
-            if (json) {
-                printf(
-                    "{\"errorId\":\"UNKNOWN_ARG\",\"argument\":\"%c\"}\n",
-                    optopt
-                );
-            } else {
-                SHOW_ERROR("Unknown argument: %c.\n", optopt);
-                SHOW_HINT();
-            }
+            char_str_buf[0] = (char) optopt;
+            parameterError(
+                "UNKNOWN_ARG",
+                "Unknown argument: {}.",
+                char_str_buf
+            );
             return EXIT_FAILURE;
         }
     }
     if (optind == argc) {
-        if (json) {
-            printf("{\"errorId\":\"NO_SOURCE_FILES\"}\n");
-        } else {
-            SHOW_ERROR("No source files provided.\n");
-            SHOW_HINT();
-        }
+        basicError("NO_SOURCE_FILES", "No source files provided.");
+        SHOW_HINT();
         return EXIT_FAILURE;
     }
 
     /* if no extension was provided, use .bf */
-    if (strlen(ext) == 0) {
-        ext = ".bf";
-    }
+    if (strlen(ext) == 0) ext = ".bf";
 
     for (/* reusing optind here */; optind < argc; optind++) {
         outname = malloc(strlen(argv[optind]) + 1);
         if (outname == NULL) {
-            if (json) {
-                printf(
-                    "{\"errorId\":\"ICE_ICE_BABY\",\"message\":\"%s\"}",
-                    "malloc failed when determining outfile name! Aborting."
-                );
-
-            } else {
-                SHOW_ERROR(
-                    "malloc failed when determining outfile name! Aborting.\n"
-                );
-            }
-            exit(EXIT_FAILURE);
+            allocError();
+            ret = EXIT_FAILURE;
+            if (moveahead) continue; else break;
         }
         strcpy(outname, argv[optind]);
-        srcFD = open(argv[optind], O_RDONLY);
-        if (srcFD < 0) {
-            if (json) {
-                printJsonError(
-                    "{\"errorId\":\"OPEN_R_FAILED\",\"file\":\"%s\"}\n",
-                    argv[optind]
-                );
-            } else {
-                SHOW_ERROR("Failed to open %s for reading.\n", argv[optind]);
-            }
-            FILE_FAIL();
-        }
-        if (! rmExt(outname, ext)) {
-            if (json) {
-                printJsonError(
-                    "{\"errorId\":\"BAD_EXTENSION\",\"file\":\"%s\"}\n",
-                    argv[optind]
-                );
-            } else {
-                SHOW_ERROR("%s does not end with %s.\n", argv[optind], ext);
-            }
-            FILE_FAIL();
-        }
-        dstFD = open(outname, O_WRONLY+O_CREAT+O_TRUNC, perms);
-        if (dstFD < 0) {
-            if (json) {
-                printJsonError(
-                    "{\"errorId\":\"OPEN_W_FAILED\",\"file\":\"%s\"}\n",
-                    outname
-                );
-            } else {
-                SHOW_ERROR(
-                    "Failed to open destination file %s for writing.\n",
-                    outname
-                );
-            }
+        if (!rmExt(outname, ext)) {
+            parameterError(
+                "BAD_EXTENSION",
+                "File {} does not end with expected extension.",
+                argv[optind]
+            );
+            ret = EXIT_FAILURE;
             free(outname);
-            if (moveahead) {
-                close(srcFD);
-            } else {
-                return EXIT_FAILURE;
-            }
+            if (moveahead) continue; else break;
         }
-        result = bfCompile(srcFD, dstFD, optimize);
-        close(srcFD);
-        close(dstFD);
+        src_fd = open(argv[optind], O_RDONLY);
+        if (src_fd < 0) {
+            parameterError(
+                "OPEN_R_FAILED",
+                "Failed to open {} for reading.",
+                argv[optind]
+            );
+            free(outname);
+            ret = EXIT_FAILURE;
+            if (moveahead) continue; else break;
+        }
+        dst_fd = open(outname, O_WRONLY+O_CREAT+O_TRUNC, perms);
+        if (dst_fd < 0) {
+            parameterError(
+                "OPEN_W_FAILED",
+                "Failed to open {} for writing.",
+                outname
+            );
+            close(src_fd);
+            ret = EXIT_FAILURE;
+            free(outname);
+            if (moveahead) continue; else break;
+        }
+        result = bfCompile(src_fd, dst_fd, optimize);
+        close(src_fd);
+        close(dst_fd);
         if (!result) {
-            for(uint8_t i = 0; i < MAX_ERROR && err_list[i].active; i++) {
-                if (json) {
-                    err_msg_json = jsonStr(err_list[i].err_msg);
-                    printf(
-                        "{\"errorId\":\"%s\",\"file\":\"%s\",\"line\":%ud,"
-                        "\"column\":%ud,\"message\":\"%s\"}\n",
-                        err_list[i].err_id,
-                        argv[optind],
-                        err_list[i].line,
-                        err_list[i].col,
-                        err_msg_json
-                    );
-                    free(err_msg_json);
-                } else {
-                    SHOW_ERROR(
-                        "%s: Failed to compile '%c' at line %ud, column %ud.\n"
-                        "Error ID: %s\n"
-                        "Error message: \"%s\"\n",
-                        argv[optind],
-                        err_list[i].instr,
-                        err_list[i].line,
-                        err_list[i].col,
-                        err_list[i].err_id,
-                        err_list[i].err_msg
-                    );
-                }
-            }
             if (!keep) remove(outname);
-            FILE_FAIL();
+            ret = EXIT_FAILURE;
+            free(outname);
+            if (moveahead) continue; else break;
         }
         free(outname);
     }

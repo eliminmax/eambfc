@@ -11,7 +11,7 @@
 #include "compat/elf.h"
 
 /* serialize a 16-bit value pointed to by v16 into 2 bytes in dest, in LSB order
- * return value is the byte after the 2 bytes are inserted */
+ * return value is the number of bytes written. */
 size_t serialize16(uint16_t u16, char *dest) {
     size_t size = 0;
     uint8_t byte_val = u16;

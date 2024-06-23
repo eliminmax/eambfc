@@ -6,22 +6,34 @@
 #ifndef EAM_ERR_H
 #define EAM_ERR_H 1
 /* internal */
-#include "eambfc_types.h"
+#include "config.h"
+#include "uint.h"
 
-/* TODO: Error handling needs a massive refactor. */
+/* enable quiet mode - this does not print error messages to stderr. Does not
+ * affect JSON messages printed to stdout. */
+void quietMode(void);
+/* enable JSON display mode - this prints JSON-formatted error messagess to
+ * stdout instead of printing human-readable error messages to stderr. */
+void jsonMode(void);
 
-/* list of errors from the current compilation job */
-extern BFCompilerError err_list[MAX_ERROR];
-/* ugly bad practice global variables used more in eam_compile.c than err.c */
+/* functions to display error messages, depending on the current error mode. */
 
-/* the location that the errors occurred. */
-extern unsigned int instr_line;
-extern unsigned int instr_col;
+/* special handling for malloc/realloc failure error messages, which avoids any
+ * further use of malloc/realloc for purposes like generating JSON-escaped
+ * strings. */
+void allocError(void);
 
-/* clear the error list for a new compilation job */
-void resetErrors(void);
+/* a generic error message */
+void basicError(char* id, char *msg);
 
-/* add an error to the list of errors */
-void appendError(char instr, char *error_msg, char *err_id);
+/* an error message related to a specific instruction */
+void instructionError(char *id, char *msg, char instr);
+
+/* an error message related to a specific instruction at a specific location */
+void positionError(char *id, char *msg, char instr, uint line, uint col);
+
+/* replaces first instance of "{}" within proto with arg, then passes it as msg
+ * to basicError */
+void parameterError(char *id, char *proto, char *arg);
 
 #endif /* EAM_ERR_H */

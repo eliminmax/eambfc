@@ -13,12 +13,29 @@ CC = c99
 POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
 # Compile-time configuration values
-MAX_ERROR = 32
 TAPE_BLOCKS = 8
 MAX_NESTING_LEVEL = 64
 
 EAM_COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o
-EAMBFC_DEPS = json_escape.o eam_compile.o $(EAM_COMPILE_DEPS) main.o
+EAMBFC_DEPS = eam_compile.o $(EAM_COMPILE_DEPS) main.o
+
+
+# flags for some of the more specialized, non-portable builds
+GCC_STRICT_FLAGS = -Wall -Wextra -Werror -Wpedantic -Winit-self -Winline       \
+		-Wno-error=inline -Wundef -Wunused-macros -Wlogical-op         \
+		-Wshadow -Wtrampolines -Wformat-signedness -Wcast-qual         \
+		-Wnull-dereference -Wduplicated-cond -Wredundant-decls         \
+		-Wduplicated-branches -Wbad-function-cast -std=c99 -fanalyzer  \
+		$(POSIX_CFLAG) $(CFLAGS)
+
+GCC_UBSAN_FLAGS = -std=c99 -fanalyzer -fsanitize=address,undefined \
+		-fno-sanitize-recover=all $(POSIX_CFLAG) $(CFLAGS)
+
+GCC_INT_TORTURE_FLAGS = -D INT_TORTURE_TEST=1 $(GCC_STRICT_FLAGS) -Wno-format \
+			-Wno-pedantic -fsanitize=address,undefined
+
+UNIBUILD_FILES = serialize.c eam_compile.c optimize.c err.c \
+			x86_64_encoders.c main.c
 
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
 # overridden if CFLAGS are passed as an argument to make.
@@ -26,12 +43,18 @@ EAMBFC_DEPS = json_escape.o eam_compile.o $(EAM_COMPILE_DEPS) main.o
 .c.o:
 	$(CC) $(CFLAGS) $(POSIX_CFLAG) -c -o $@ $<
 
+all: eambfc optimize man
+
+man: eambfc.1
+
 eambfc: $(EAMBFC_DEPS)
 	$(CC) $(POSIX_CFLAG) $(LDFLAGS) -o eambfc $(EAMBFC_DEPS) $(LDLIBS)
 
 install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp -f eambfc $(DESTDIR)$(PREFIX)/bin
+	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
+	cp -f eambfc.1 $(DESTDIR)$(PREFIX)/share/man/man1/eambfc.1
 
 config.h: config.template.h version
 	if command -v git >/dev/null && [ -e .git ]; then \
@@ -42,8 +65,7 @@ config.h: config.template.h version
 	else \
 		git_str='Not built from git repo'; \
 	fi; \
-	sed -e '/MAX_ERROR/s/@@/$(MAX_ERROR)/' \
-		-e '/TAPE_BLOCKS/s/@@/$(TAPE_BLOCKS)/' \
+	sed -e '/TAPE_BLOCKS/s/@@/$(TAPE_BLOCKS)/' \
 		-e '/MAX_NESTING_LEVEL/s/@@/$(MAX_NESTING_LEVEL)/' \
 		-e "/EAMBFC_VERSION/s/@@/\"$$(cat version)\"/" \
 		-e "/EAMBFC_COMMIT/s/@@/\"$$git_str\"/" \
@@ -51,7 +73,6 @@ config.h: config.template.h version
 
 serialize.o: serialize.c
 eam_compile.o: config.h x86_64_encoders.o eam_compile.c
-json_escape.o: json_escape.c
 main.o: config.h main.c
 optimize.o: err.o optimize.c
 x86_64_encoders.o: x86_64_encoders.c
@@ -83,35 +104,38 @@ multibuild_test: can_run_linux_amd64 config.h
 
 optimize: optimize.c err.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) \
-		-D OPTIMIZE_STANDALONE -o optimize optimize.c err.o
+		-D OPTIMIZE_STANDALONE -o $@ optimize.c err.o
+
+eambfc.1: eambfc.template.1
+	sed -e 's/@MAX_NESTING_LEVEL@/$(MAX_NESTING_LEVEL)/' \
+		-e 's/@TAPE_BLOCKS@/$(TAPE_BLOCKS)/' \
+		<eambfc.template.1 >eambfc.1
 
 strict: can_run_linux_amd64 config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE!\n' >&2
-	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) -std=c99 -fanalyzer       \
-		-Wall -Wextra -Wpedantic -Werror -Winit-self -Winline       \
-		-Wno-error=inline -Wundef -Wunused-macros -Wshadow          \
-		-Wlogical-op -Wtrampolines -Wformat-signedness -Wlogical-op \
-		-Wnull-dereference -Wduplicated-cond -Wduplicated-branches  \
-		-Wbad-function-cast -Wredundant-decls -Wcast-qual           \
-		serialize.c eam_compile.c json_escape.c optimize.c err.c    \
-		x86_64_encoders.c main.c -o alt-builds/eambfc-$@
+	gcc $(GCC_STRICT_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
+		-o alt-builds/eambfc-$@
 	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
 
 ubsan: can_run_linux_amd64 config.h
 	mkdir -p alt-builds
-	@printf 'WARNING: `make $@` IS PORTABLE AT ALL!\n' >&2
-	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) -std=c99 -fanalyzer      \
-		-fsanitize=address -fsanitize=undefined	                   \
-		-fno-sanitize-recover=all                                  \
-		serialize.c eam_compile.c json_escape.c optimize.c err.c   \
-		x86_64_encoders.c main.c -o alt-builds/eambfc-$@
+	@printf 'WARNING: `make $@` IS NOT PORTABLE AT ALL!\n' >&2
+	gcc $(GCC_UBSAN_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
+		-o alt-builds/eambfc-$@
 	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
 
-all_tests: test multibuild_test strict ubsan
+int_torture_test: can_run_linux_amd64 config.h
+	mkdir -p alt-builds
+	@printf 'WARNING: `make $@` IS NOT PORTABLE AT ALL!\n' >&2
+	gcc $(GCC_INT_TORTURE_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
+		-o alt-builds/eambfc-$@
+	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
+
+all_tests: test multibuild_test strict ubsan int_torture_test
 
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
 	rm -rf *.o eambfc alt-builds *mini_elf optimize can_run_linux_amd64
-	if [ -e .git ]; then rm -f config.h; fi
+	if [ -e .git ]; then rm -f config.h eambfc.1; fi
 	(cd tests; make clean)

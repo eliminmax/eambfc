@@ -6,39 +6,197 @@
 
 /* C99 */
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+/* POSIX */
+#include <unistd.h>
 /* internal */
-#include "eambfc_types.h"
+#include "compat/eambfc_inttypes.h"
+#include "config.h"
+#include "uint.h"
 
-/* index of the current error in the error list */
-err_index err_ind;
+static bool _quiet;
+static bool _json;
 
-/* location the error was triggered at */
-unsigned int instr_line, instr_col;
+/* the only external access to the variables is through these functions. */
+void quietMode(void) { _quiet = true; }
+void jsonMode(void) { _json = true; }
 
-BFCompilerError err_list[MAX_ERROR];
-
-void resetErrors(void) {
-    /* reset error list */
-    for(err_index i = 0; i < MAX_ERROR; i++) {
-        err_list[i].line = 1;
-        err_list[i].col = 0;
-        err_list[i].err_id = "";
-        err_list[i].err_msg = "";
-        err_list[i].instr = '\0';
-        err_list[i].active = false;
+/* avoid using jsonStr for this special case, as malloc may fail again,
+ * causing a loop of failures to generate json error messages properly. */
+void allocError(void) {
+    if (_json) {
+        puts(
+            "{\"errorId:\":\"ALLOC_FAILED\","
+            "\"message\":\"A call to malloc or realloc returned NULL.\"}"
+        );
+    } else if (!_quiet) {
+        fputs(
+            "Error ALLOC_FAILED: A call to malloc or realloc returned NULL.\n",
+            stderr
+        );
     }
-    err_ind = 0;
 }
 
-void appendError(char instr, char *error_msg, char *err_id) {
-    uint8_t i = err_ind++;
-    /* Ensure i is in bounds; discard errors after MAX_ERROR */
-    if (i < MAX_ERROR) {
-        err_list[i].err_msg = error_msg;
-        err_list[i].err_id = err_id;
-        err_list[i].instr = instr;
-        err_list[i].line = instr_line;
-        err_list[i].col = instr_col;
-        err_list[i].active = true;
+/* macro specifically for use inside jsonStr, to avoid ugly, repeated code. */
+#define BS_ESCAPE_APPEND(c) *(outp++) = '\\'; *(outp++) = c; used += 2
+/* return a pointer to a JSON-escaped version of the input string
+ * calling function is responsible for freeing it */
+static char *jsonStr(char* str) {
+    size_t bufsz = strlen(str) + 16; /* 16 for padding, more added as needed */
+    size_t used = 0;
+    char *p = str;
+    char *json_escaped = malloc(bufsz);
+    char *reallocator;
+    char *outp = json_escaped;
+    if (json_escaped == NULL) return NULL;
+    p = str;
+    while (*p) {
+        switch(*p) {
+          case '\n': BS_ESCAPE_APPEND('n'); break;
+          case '\r': BS_ESCAPE_APPEND('r'); break;
+          case '\f': BS_ESCAPE_APPEND('f'); break;
+          case '\t': BS_ESCAPE_APPEND('t'); break;
+          case '\b': BS_ESCAPE_APPEND('b'); break;
+          case '\\': BS_ESCAPE_APPEND('\\'); break;
+          case '\"': BS_ESCAPE_APPEND('\"'); break;
+          default:
+            /* would prefer a pure switch statement, but `case a ... d` is
+             * a non-standard (though common) extension to C, and is not
+             * Using this `if`-within-a-`switch` instead. */
+            if ((unsigned char)(*p) < 040) { /* control chars are 000 to 037 */
+                sprintf(outp, "\\u%04hhx", *p);
+                used += 6;
+                outp += 6;
+            } else {
+                /* the true default case. Character needs no escaping. */
+                used++;
+                *(outp++) = *p;
+            }
+            break;
+        }
+        /* If less than 8 chars are left before overflow, allocate more space */
+        if (used > (bufsz - 8)) {
+            bufsz += 16;
+            if (((reallocator = realloc(json_escaped, bufsz)) == NULL)) {
+                free(json_escaped);
+                return NULL;
+            }
+            json_escaped = reallocator;
+        }
+        p++;
     }
+    *outp = 0;
+    return json_escaped;
+}
+#undef BS_ESCAPED
+
+
+/* simple enough to inline this one, I think. */
+static inline void basicErrJSON(char* id, char *msg) {
+    /* assume error id is json-safe, but don't assume that for msg. */
+    if ((msg = jsonStr(msg)) == NULL) {
+        allocError();
+    } else {
+        printf("{\"errorId\":\"%s\",\"message\":\"%s\"}\n", id, msg);
+        free(msg);
+    }
+}
+
+void basicError(char* id, char *msg) {
+    if (_json) basicErrJSON(id, msg);
+    else if (!_quiet) fprintf(stderr, "Error %s: %s\n", id, msg);
+}
+
+/* with up to 2 frees needed, and 2 early exits if they fail, don't inline */
+static void posErrJSON(char *id, char *msg, char instr, uint line, uint col) {
+    /* Assume id needs no escaping, but msg and instr might. */
+    /* First, convert instr into a string, then serialize that string. */
+    char instr_str[2] = { instr, '\0' };
+    char *instr_json;
+    if ((instr_json = jsonStr(instr_str)) == NULL) {
+        allocError();
+        return;
+    }
+    if ((msg = jsonStr(msg)) == NULL) {
+        free(instr_json);
+        allocError();
+        return;
+    }
+    printf(
+        "{\"errorId\":\"%s\",\"message\":\"%s\",\"instruction\":\"%s\","
+        "\"line\":%u,\"column\":%u}\n", id, msg, instr_json, line, col
+    );
+    free(msg);
+    free(instr_json);
+}
+
+void positionError(char *id, char *msg, char instr, uint line, uint col) {
+    if (_json) posErrJSON(id, msg, instr, line, col);
+    else if (!_quiet) {
+        fprintf(
+            stderr,
+            "Error %s when compiling '%c' at line %u, column %u: %s\n",
+            id, instr, line, col, msg
+        );
+    }
+}
+
+static void instrErrJSON(char *id, char *msg, char instr) {
+    /* Assume id needs no escaping, but msg and instr might. */
+    /* First, convert instr into a string, then serialize that string. */
+    char instr_str[2] = { instr, '\0' };
+    char *instr_json;
+    if ((instr_json = jsonStr(instr_str)) == NULL) {
+        allocError();
+        return;
+    }
+    if ((msg = jsonStr(msg)) == NULL) {
+        allocError();
+        free(instr_json);
+        return;
+    }
+    printf(
+        "{\"errorId\":\"%s\",\"message\":\"%s\",\"instruction\":\"%s\"}\n",
+        id, msg, instr_json
+    );
+    free(msg);
+    free(instr_json);
+}
+
+void instructionError(char *id, char *msg, char instr) {
+    if (_json) instrErrJSON(id, msg, instr);
+    else if (!_quiet) {
+        fprintf(stderr, "Error %s when compiling '%c: %s'.\n", id, instr, msg);
+    }
+}
+
+void parameterError(char *id, char *proto, char *arg) {
+    char *inj_point;
+    size_t proto_sz = strlen(proto);
+    size_t arg_sz = strlen(arg);
+    /* add 1 for the null byte, but sub 2 as the first "{}" is removed.
+     * simplifies to -1 total, but must be at least as large as proto_sz, so
+     * don't subtract it. */
+    char *msg = malloc(proto_sz + arg_sz);
+    if (msg == NULL) {
+        allocError();
+        return;
+    }
+    strcpy(msg, proto);
+    inj_point = strstr(msg, "{}");
+    if (inj_point == NULL) {
+        parameterError(
+            "PARAMETER_ERROR_ERROR",
+            "Prototype \"{}\" does not contain substring \"{}\".",
+            proto
+        );
+        free(msg);
+        return;
+    }
+    memmove(inj_point + arg_sz, inj_point + 2, strlen(inj_point + 2) + 1);
+    memcpy(inj_point, arg, arg_sz);
+    basicError(id, msg);
+    free(msg);
 }
