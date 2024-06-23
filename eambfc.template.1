@@ -99,14 +99,14 @@ Any characters that are not brainfuck instructions are removed.
 This stage repeatedly alternates between two steps. First, any sequences
 of consecutive instructions that would cancel out are removed - that's any
 of the following:
-.I \(bu <>
-.I \(bu ><
-.I \(bu +-
-.I \(bu -+
+.BR <> ,
+.BR >< ,
+.BR +- ,\ and
+.BR -+ .
 Additionally, 256 consecutive
-.I +
+.B +
 or
-.I -
+.B -
 instructions are removed, as they would just wrap around.
 
 Next, any conditional loops that are trivially able to be determined never

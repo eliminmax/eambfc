@@ -64,10 +64,9 @@ make clean
 # first, some linting
 # Catch typos in the code.
 # Learned about this one from Lasse Colin's writeup of the xz backdoor. Really.
-codespell --skip=.git,eambfc.template.1
+codespell --skip=.git
 # 'bu' is part of the roff code for bullet points used in the man page, but
 # codespell detects it as a false positive, so handle it separately
-codespell --ignore-regex '\\\(bu' eambfc.template.1
 
 # run shellcheck and checkbashisms on all shell files
 find . -name '*.sh' -type f \
