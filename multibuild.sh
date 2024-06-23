@@ -58,13 +58,13 @@ gcc_clang_args='-Wall -Werror -Wextra -pedantic -std=c99'
 # test at different optimization levels
 for op_lv in 0 1 2 3; do
     # shellcheck disable=2086 # word splitting is intentional here
-    build_with gcc $gcc_clang_args -O$op_lv
+    build_with gcc $gcc_clang_args -O"$op_lv"
     # shellcheck disable=2086 # word splitting is intentional here
-    build_with musl-gcc $gcc_clang_args -O$op_lv
+    build_with musl-gcc $gcc_clang_args -O"$op_lv"
     # shellcheck disable=2086 # word splitting is intentional here
-    build_with clang $gcc_clang_args -O$op_lv
+    build_with clang $gcc_clang_args -O"$op_lv"
     # shellcheck disable=2086 # word splitting is intentional here
-    build_with zig cc $gcc_clang_args -O$op_lv # zig's built-in C compiler
+    build_with zig cc $gcc_clang_args -O"$op_lv" # zig's built-in C compiler
 
     # a bunch of prerequisites for testing on non-s390x systems - qemu-user must
     # be installed, and binfmt support must be enabled and provided for s390x
