@@ -45,7 +45,7 @@
 # Ron Yorston's Public Domain POSIX make implementation - installed as pdpmake
 #       https://frippery.org/make/
 #   I downloaded source, built by running GNU make, then copied into PATH
-#       
+#
 # reuse helper ool >= 3.0.0 (newer than Debian package in bookworm/main)
 #       https://git.fsfe.org/reuse/tool
 #   I installed with pipx, and installed pipx with apt
@@ -70,7 +70,7 @@ codespell --skip=.git
 
 # run shellcheck and checkbashisms on all shell files
 find . -name '*.sh' -type f \
-    -exec shellcheck --norc {} +\
+    -exec shellcheck {} +\
     -exec checkbashisms {} +
 
 # ensure licensing information is structured in a manner that complies with the
