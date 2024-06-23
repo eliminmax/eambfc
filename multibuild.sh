@@ -20,7 +20,7 @@ src_files='serialize.c eam_compile.c x86_64_encoders.c err.c optimize.c main.c'
 posix_flag='-D _POSIX_C_SOURCE=200809L'
 
 build_with () {
-    build_id="$(printf '%s\0' "$@" | cksum | cut -d ' ' -f 1)"
+    build_id="$(printf '%s' "$@" | tr -cd 'A-Za-z0-9_+-')"
     cc="$1"
     shift
     build_name="alt-builds/eambfc-$build_id"
