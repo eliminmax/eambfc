@@ -59,10 +59,15 @@ if [ -z "$FORCE_RELEASE" ] && [ -n "$(git status --short)" ]; then
     exit 1
 fi
 
+make clean
+
 # first, some linting
 # Catch typos in the code.
 # Learned about this one from Lasse Colin's writeup of the xz backdoor. Really.
-codespell --skip=.git
+codespell --skip=.git,eambfc.template.1
+# 'bu' is part of the roff code for bullet points used in the man page, but
+# codespell detects it as a false positive, so handle it separately
+codespell --ignore-regex '\\\(bu' eambfc.template.1
 
 # run shellcheck and checkbashisms on all shell files
 find . -name '*.sh' -type f \
@@ -83,7 +88,7 @@ mkdir -p releases/
 rm -rf releases/"$build_name"*
 
 # generate config.h
-make -s clean config.h
+make -s clean config.h eambfc.1
 
 # change the git commit in config.h to reflect that it's a source tarball build
 sed '/git commit: /s/"/"source tarball from /' -i config.h
