@@ -31,7 +31,7 @@ static char *filterNonBFChars(int in_fd) {
         return NULL;
     }
     char instr;
-    while (read(in_fd, &instr, sizeof(char))) {
+    while (read(in_fd, &instr, 1)) {
         switch(instr) {
           case '[':
           case '-':
@@ -219,7 +219,7 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
       case ',':
       case ']':
       case '[':
-        memset(dest, instr, sizeof(char) * consec_ct);
+        memset(dest, instr, consec_ct);
         return (size_t)consec_ct;
       case '>':
         if      (consec_ct <= INT8_MAX)  opcode = '}';
