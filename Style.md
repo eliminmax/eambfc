@@ -4,7 +4,6 @@ The following are the formatting I follow for source code:
 
 * C: C89-style comments (i.e. `/* comment */`, not `// comment`)
 * 80 character maximum per line, regardless of language.
-  * tabs are 4 wide when they appear.
 * Indentation:
   * General: 4 spaces for indentation, except in the following cases:
     * C: `case`s within `switch` statements are half indented
@@ -12,6 +11,7 @@ The following are the formatting I follow for source code:
     * Markdown files use 2 spaces due to the constraints of the format
 * C: Open braces are on the same line as the function signature/conditional/etc.
 * C: Multi-line comments should have an asterisk at the start of each line
+  * exception: license heading in `compat/elf.h` should be left as-is.
 * Names:
   * function names are `camelCase`.
   * struct names are `PascalCase`.
