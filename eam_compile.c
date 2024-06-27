@@ -50,8 +50,10 @@ static bool writeEhdr(int fd) {
 
     /* the first 4 bytes are "magic values" that are pre-defined and used to
      * identify the format. */
-    header.e_ident[EI_MAG0] = ELFMAG0; header.e_ident[EI_MAG1] = ELFMAG1;
-    header.e_ident[EI_MAG2] = ELFMAG2; header.e_ident[EI_MAG3] = ELFMAG3;
+    header.e_ident[EI_MAG0] = ELFMAG0;
+    header.e_ident[EI_MAG1] = ELFMAG1;
+    header.e_ident[EI_MAG2] = ELFMAG2;
+    header.e_ident[EI_MAG3] = ELFMAG3;
 
     /* x86_64 is a 64-bit architecture. it uses 2's complement, little endian
      * for byte ordering. */
@@ -72,12 +74,11 @@ static bool writeEhdr(int fd) {
      * EI_PAD is the index of the first padding byte.
      * EI_NIDENT is the size of the e_ident byte array.
      * Padding bytes are supposed to be zeroed out. */
-    for (int i = EI_PAD; i < EI_NIDENT; i++) {
-        header.e_ident[i] = 0;
-    }
+    for (int i = EI_PAD; i < EI_NIDENT; i++) header.e_ident[i] = 0;
 
     /* this is a basic executable for the AMD x86_64 architecture. */
-    header.e_type = ET_EXEC; header.e_machine = EM_X86_64;
+    header.e_type = ET_EXEC;
+    header.e_machine = EM_X86_64;
     /* e_version, like e_ident[EI_VERSION], must be set to EV_CURRENT */
     header.e_version = EV_CURRENT;
 
