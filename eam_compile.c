@@ -18,7 +18,7 @@
 #include "err.h"
 #include "optimize.h"
 #include "serialize.h"
-#include "uint.h"
+#include "types.h"
 #include "x86_64_encoders.h"
 
 /* the most common error message to pass, because of all of the places writes

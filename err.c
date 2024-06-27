@@ -14,7 +14,7 @@
 /* internal */
 #include "compat/eambfc_inttypes.h"
 #include "config.h"
-#include "uint.h"
+#include "types.h"
 
 static bool _quiet;
 static bool _json;
