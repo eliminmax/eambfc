@@ -6,8 +6,8 @@
 
 #ifndef EAM_COMPILE_H
 #define EAM_COMPILE_H 1
-/* C99 */
-#include <stdbool.h>
+/* internal */
+#include "types.h"
 
 /* Takes 2 open file descriptors - in_fd and out_fd.
  * in_fd is a brainfuck source file, open for reading.

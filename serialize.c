@@ -7,8 +7,8 @@
 /* C99 */
 #include <stddef.h>
 /* internal */
-#include "compat/eambfc_inttypes.h"
 #include "compat/elf.h"
+#include "types.h"
 
 /* serialize a 16-bit value pointed to by v16 into 2 bytes in dest, in LSB order
  * return value is the number of bytes written. */

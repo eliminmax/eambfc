@@ -8,8 +8,8 @@
 #ifndef EAMBFC_SERIALIZE_H
 #define EAMBFC_SERIALIZE_H 1
 /* internal */
-#include "compat/eambfc_inttypes.h"
 #include "compat/elf.h"
+#include "types.h"
 
 /* given an unsigned integer of a given size and a char array, these write the
  * value to the char array, in LSB order, returning the number of bytes written.

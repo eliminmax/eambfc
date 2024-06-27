@@ -5,14 +5,12 @@
  * Handle error messages */
 
 /* C99 */
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 /* POSIX */
 #include <unistd.h>
 /* internal */
-#include "compat/eambfc_inttypes.h"
 #include "config.h"
 #include "types.h"
 

@@ -8,12 +8,10 @@
  * to which they add the number of bytes written. */
 #ifndef EAM_INSTRUCTION_ENCODERS_H
 #define EAM_INSTRUCTION_ENCODERS_H 1
-/* C99 */
-#include <stdbool.h>
 /* POSIX */
 #include <unistd.h>
 /* internal */
-#include "compat/eambfc_inttypes.h"
+#include "types.h"
 
 /* used for making system calls, setup, and other miscellaneous things */
 bool eamAsmSetReg(uint8_t reg, int32_t imm, int fd, off_t *sz);

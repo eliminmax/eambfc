@@ -5,7 +5,6 @@
  * A Brainfuck to x86_64 Linux ELF compiler. */
 
 /* C99 */
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,9 +15,9 @@
 #include <unistd.h>
 /* internal */
 #include "config.h"
-#include "compat/eambfc_inttypes.h"
 #include "eam_compile.h"
 #include "err.h"
+#include "types.h"
 
 /* Return the permission mask to use for the output file */
 mode_t getPerms(void) {

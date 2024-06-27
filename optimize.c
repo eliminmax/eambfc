@@ -7,7 +7,6 @@
  * OPTIMIZE_STANDALONE macro is defined at compile time. */
 
 /* C99 */
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,8 +15,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 /* internal */
-#include "compat/eambfc_inttypes.h"
 #include "err.h"
+#include "types.h"
 #define MALLOC_CHUNK_SIZE 0x100
 
 static size_t optim_sz;

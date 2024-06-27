@@ -6,13 +6,11 @@
  * write them to open file descriptors. Each returns a boolean value indicating
  * whether or not the write was successful. */
 
-/* C99 */
-#include <stdbool.h>
 /* POSIX */
 #include <unistd.h>
 /* internal */
-#include "compat/eambfc_inttypes.h"
 #include "serialize.h"
+#include "types.h"
 
 /* if there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
  * eamAsm functions, the common lines dealing with writing machine code should

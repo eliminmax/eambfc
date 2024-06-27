@@ -11,8 +11,8 @@
 #include <sys/types.h>
 /* internal */
 #include "config.h"
-#include "compat/eambfc_inttypes.h"
 #include "compat/elf.h"
+#include "types.h"
 
 /* the Linux kernel reads system call numbers from RAX on x86_64 systems,
  * and reads arguments from RDI, RSI, RDX, R10, R8, and R9.
