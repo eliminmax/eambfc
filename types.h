@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * Types used throughout the eambfc codebase. */
-#ifndef EAMBFC_UINT
-#define EAMBFC_UINT 1
+#ifndef EAMBFC_TYPES
+#define EAMBFC_TYPES 1
 /* C99 */
 #include <stdbool.h>
 /* internal */
@@ -15,4 +15,4 @@
 #include "compat/eambfc_inttypes.h"
 
 typedef unsigned int uint;
-#endif /* EAMBFC_UINT */
+#endif /* EAMBFC_TYPES */
