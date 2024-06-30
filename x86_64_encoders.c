@@ -29,7 +29,7 @@ bool eamAsmSyscall(int fd, off_t *sz) {
 }
 
 /* TEST byte [reg], 0xff; Jcc|tttn off */
-static inline bool x86_test_jcc(char tttn, uint8_t reg, int32_t off, int fd) {
+static inline bool test_jcc(char tttn, uint8_t reg, int32_t off, int fd) {
     uint8_t i_bytes[9] = {
         /* TEST byte [reg], 0xff */
         0xf6, reg, 0xff,
@@ -46,14 +46,14 @@ static inline bool x86_test_jcc(char tttn, uint8_t reg, int32_t off, int fd) {
 bool eamAsmJumpNotZero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
     *sz += 9;
     /* Jcc with tttn=0b0101 is JNZ or JNE */
-    return x86_test_jcc(0x5, reg, offset, fd);
+    return test_jcc(0x5, reg, offset, fd);
 }
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
 bool eamAsmJumpZero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
     *sz += 9;
     /* Jcc with tttn=0b0100 is JZ or JE */
-    return x86_test_jcc(0x4, reg, offset, fd);
+    return test_jcc(0x4, reg, offset, fd);
 }
 
 /* INC and DEC are encoded very similarly with very few differences between
@@ -102,7 +102,7 @@ bool eamAsmDecByte(uint8_t reg, int fd, off_t *sz) {
 }
 
 /* MOV reg, imm32 */
-static inline bool x86_set_reg_dword(uint8_t reg, int32_t imm32, int fd) {
+static inline bool set_reg_dword(uint8_t reg, int32_t imm32, int fd) {
     uint8_t i_bytes[5] = { 0xb8 + reg, 0x00, 0x00, 0x00, 0x00 };
     /* need to cast to uint32_t for serialize32.
      * Acceptable as POSIX requires 2's complement for signed types. */
@@ -126,7 +126,7 @@ bool eamAsmSetReg(uint8_t reg, int32_t imm, int fd, off_t *sz) {
 
     /* fall back to using the full 32-bit value */
     *sz += 5;
-    return x86_set_reg_dword(reg, imm, fd);
+    return set_reg_dword(reg, imm, fd);
 }
 
 /* } */
@@ -175,7 +175,7 @@ bool eamAsmSubRegDoubWord(uint8_t reg, int32_t imm32, int fd, off_t *sz) {
     return write(fd, &i_bytes, 6) == 6;
 }
 
-static inline bool x64_add_sub_qw(uint8_t reg, int64_t imm64, int fd, uint8_t op) {
+static inline bool add_sub_qw(uint8_t reg, int64_t imm64, int fd, uint8_t op) {
     /* There are no instructions to add or subtract a 64-bit immediate. Instead,
      * the approach  to use is first PUSH the value of a different register, MOV
      * the 64-bit immediate to that register, ADD/SUB that register to the
@@ -203,14 +203,14 @@ static inline bool x64_add_sub_qw(uint8_t reg, int64_t imm64, int fd, uint8_t op
 bool eamAsmAddRegQuadWord(uint8_t reg, int64_t imm64, int fd, off_t *sz) {
     *sz += 15;
     /* 0x00 is the opcode for register-to-register ADD */
-    return x64_add_sub_qw(reg, imm64, fd, 0x00);
+    return add_sub_qw(reg, imm64, fd, 0x00);
 }
 
 /* N */
 bool eamAsmSubRegQuadWord(uint8_t reg, int64_t imm64, int fd, off_t *sz) {
     *sz += 15;
     /* 0x28 is the opcode for register-to-register SUB */
-    return x64_add_sub_qw(reg, imm64, fd, 0x28);
+    return add_sub_qw(reg, imm64, fd, 0x28);
 }
 
 /* # */
