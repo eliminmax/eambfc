@@ -21,7 +21,7 @@ static bool _json;
 void quietMode(void) { _quiet = true; }
 void jsonMode(void) { _json = true; }
 
-/* avoid using jsonStr for this special case, as malloc may fail again,
+/* avoid using json_str for this special case, as malloc may fail again,
  * causing a loop of failures to generate json error messages properly. */
 void allocError(void) {
     if (_json) {
@@ -37,11 +37,11 @@ void allocError(void) {
     }
 }
 
-/* macro specifically for use inside jsonStr, to avoid ugly, repeated code. */
+/* macro specifically for use inside json_str, to avoid ugly, repeated code. */
 #define BS_ESCAPE_APPEND(c) *(outp++) = '\\'; *(outp++) = c; used += 2
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
-static char *jsonStr(char* str) {
+static char *json_str(char* str) {
     size_t bufsz = strlen(str) + 16; /* 16 for padding, more added as needed */
     size_t used = 0;
     char *p = str;
@@ -92,9 +92,9 @@ static char *jsonStr(char* str) {
 
 
 /* simple enough to inline this one, I think. */
-static inline void basicErrJSON(char* id, char *msg) {
+static inline void basic_jerr(char* id, char *msg) {
     /* assume error id is json-safe, but don't assume that for msg. */
-    if ((msg = jsonStr(msg)) == NULL) {
+    if ((msg = json_str(msg)) == NULL) {
         allocError();
     } else {
         printf("{\"errorId\":\"%s\",\"message\":\"%s\"}\n", id, msg);
@@ -103,21 +103,21 @@ static inline void basicErrJSON(char* id, char *msg) {
 }
 
 void basicError(char* id, char *msg) {
-    if (_json) basicErrJSON(id, msg);
+    if (_json) basic_jerr(id, msg);
     else if (!_quiet) fprintf(stderr, "Error %s: %s\n", id, msg);
 }
 
 /* with up to 2 frees needed, and 2 early exits if they fail, don't inline */
-static void posErrJSON(char *id, char *msg, char instr, uint line, uint col) {
+static void pos_jerr(char *id, char *msg, char instr, uint line, uint col) {
     /* Assume id needs no escaping, but msg and instr might. */
     /* First, convert instr into a string, then serialize that string. */
     char instr_str[2] = { instr, '\0' };
     char *instr_json;
-    if ((instr_json = jsonStr(instr_str)) == NULL) {
+    if ((instr_json = json_str(instr_str)) == NULL) {
         allocError();
         return;
     }
-    if ((msg = jsonStr(msg)) == NULL) {
+    if ((msg = json_str(msg)) == NULL) {
         free(instr_json);
         allocError();
         return;
@@ -131,7 +131,7 @@ static void posErrJSON(char *id, char *msg, char instr, uint line, uint col) {
 }
 
 void positionError(char *id, char *msg, char instr, uint line, uint col) {
-    if (_json) posErrJSON(id, msg, instr, line, col);
+    if (_json) pos_jerr(id, msg, instr, line, col);
     else if (!_quiet) {
         fprintf(
             stderr,
@@ -141,16 +141,16 @@ void positionError(char *id, char *msg, char instr, uint line, uint col) {
     }
 }
 
-static void instrErrJSON(char *id, char *msg, char instr) {
+static void instr_jerr(char *id, char *msg, char instr) {
     /* Assume id needs no escaping, but msg and instr might. */
     /* First, convert instr into a string, then serialize that string. */
     char instr_str[2] = { instr, '\0' };
     char *instr_json;
-    if ((instr_json = jsonStr(instr_str)) == NULL) {
+    if ((instr_json = json_str(instr_str)) == NULL) {
         allocError();
         return;
     }
-    if ((msg = jsonStr(msg)) == NULL) {
+    if ((msg = json_str(msg)) == NULL) {
         allocError();
         free(instr_json);
         return;
@@ -164,7 +164,7 @@ static void instrErrJSON(char *id, char *msg, char instr) {
 }
 
 void instructionError(char *id, char *msg, char instr) {
-    if (_json) instrErrJSON(id, msg, instr);
+    if (_json) instr_jerr(id, msg, instr);
     else if (!_quiet) {
         fprintf(stderr, "Error %s when compiling '%c: %s'.\n", id, instr, msg);
     }

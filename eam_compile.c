@@ -28,7 +28,11 @@ static off_t out_sz;
 static uint _line;
 static uint _col;
 
-static inline bool writeBytes(int fd, const void *bytes, ssize_t sz) {
+/* wrapper around write(3POSIX) that returns a boolean indicating whether the
+ * number of bytes written is the expected number or not. If the write failed,
+ * either because didn't write at all, or didn't write the expected number of
+ * bytes, this function calls the basicError function. */
+static inline bool write_obj(int fd, const void *bytes, ssize_t sz) {
     ssize_t written = write(fd, bytes, sz);
     if (written != sz) {
         basicError("FAILED_WRITE", failed_write_msg);
@@ -38,7 +42,7 @@ static inline bool writeBytes(int fd, const void *bytes, ssize_t sz) {
 }
 
 /* Write the ELF header to the file descriptor fd. */
-static bool writeEhdr(int fd) {
+static bool write_ehdr(int fd) {
 
     /* The format of the ELF header is well-defined and well-documented
      * elsewhere. The struct for it is defined in compat/elf.h, as are most
@@ -118,12 +122,12 @@ static bool writeEhdr(int fd) {
     header.e_flags = 0;
 
     serializeEhdr64(&header, header_bytes);
-    return writeBytes(fd, header_bytes, EHDR_SIZE);
+    return write_obj(fd, header_bytes, EHDR_SIZE);
 }
 
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
-static bool writePhdrTable(int fd) {
+static bool write_phtb(int fd) {
     Elf64_Phdr phdr_table[PHNUM];
     char phdr_table_bytes[PHTB_SIZE];
 
@@ -168,7 +172,7 @@ static bool writePhdrTable(int fd) {
     for (int i = 0; i < PHNUM; i++) {
         serializePhdr64(&phdr_table[i], &(phdr_table_bytes[i * PHDR_SIZE]));
     }
-    return writeBytes(fd, phdr_table_bytes, PHTB_SIZE);
+    return write_obj(fd, phdr_table_bytes, PHTB_SIZE);
 }
 
 /* The brainfuck instructions "." and "," are similar from an implementation
@@ -178,8 +182,8 @@ static bool writePhdrTable(int fd) {
  *  - arg2 is the memory address of the data source (write)/dest (read)
  *  - arg3 is the number of bytes to write/read
  *
- * Due to their similarity, ',' and '.' are both implemented with bfIO. */
-static bool bfIO(int fd, int bf_fd, int sc) {
+ * Due to their similarity, ',' and '.' are both implemented with bf_io. */
+static inline bool bf_io(int fd, int bf_fd, int sc) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
@@ -213,7 +217,7 @@ static struct stack {
 
 /* prepare to compile the brainfuck `[` instruction to file descriptor fd.
  * doesn't actually write to the file yet, as the address of `]` is unknown. */
-static bool bfJumpOpen (int fd) {
+static bool bf_jump_open(int fd) {
     off_t expectedLocation;
     /* calculate the expected locationto seek to */
     expectedLocation = (CURRENT_ADDRESS + JUMP_SIZE);
@@ -233,7 +237,7 @@ static bool bfJumpOpen (int fd) {
 
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
-static bool bfJumpClose(int fd) {
+static bool bf_jump_close(int fd) {
     off_t openAddress, closeAddress;
     int32_t distance;
 
@@ -296,7 +300,7 @@ static bool bfJumpClose(int fd) {
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
-static bool bfCompileInstruction(char c, int fd) {
+static bool comp_instr(char c, int fd) {
     bool ret;
     _col++;
     switch(c) {
@@ -311,24 +315,24 @@ static bool bfCompileInstruction(char c, int fd) {
       case '-': COMPILE_WITH(eamAsmDecByte); break;
       case '.':
         /* write to stdout */
-        ret = bfIO(fd, STDOUT_FILENO, SYSCALL_WRITE);
+        ret = bf_io(fd, STDOUT_FILENO, SYSCALL_WRITE);
         if (!ret) {
             positionError("FAILED_WRITE", failed_write_msg, c, _line, _col);
         }
         break;
       case ',':
         /* read from stdin */
-        ret = bfIO(fd, STDIN_FILENO, SYSCALL_READ);
-        if (!ret) { 
+        ret = bf_io(fd, STDIN_FILENO, SYSCALL_READ);
+        if (!ret) {
             positionError("FAILED_WRITE", failed_write_msg, c, _line, _col);
         }
         break;
       /* `[` and `]` do their own error handling. */
       case '[':
-        ret = bfJumpOpen(fd);
+        ret = bf_jump_open(fd);
         break;
       case ']':
-        ret = bfJumpClose(fd);
+        ret = bf_jump_close(fd);
         break;
       case '\n':
         /* add 1 to the line number and reset the column. */
@@ -345,7 +349,7 @@ static bool bfCompileInstruction(char c, int fd) {
 }
 
 /* write code to perform the exit(0) syscall */
-static bool bfExit(int fd) {
+static bool bf_exit(int fd) {
     bool ret = true;
     /* set system call register to exit system call numbifer */
     if (!eamAsmSetReg(REG_SC_NUM, SYSCALL_EXIT, fd, &out_sz)) {
@@ -373,7 +377,7 @@ static bool bfExit(int fd) {
     basicError("FAILED_WRITE", failed_write_msg); }\
     return ret
 /* compile a condensed instruction */
-static inline bool irCompileComplexInstruction(char *p, int fd, int* skip_p) {
+static inline bool comp_ir_condensed_instr(char *p, int fd, int* skip_p) {
     uint64_t ct;
     bool ret; /* needed for IR_COMPILE_WITH macro */
     if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_p) != 1) {
@@ -398,7 +402,7 @@ static inline bool irCompileComplexInstruction(char *p, int fd, int* skip_p) {
     }
 }
 
-static bool irCompileInstruction(char *p, int fd, int* skip_ct_p) {
+static bool comp_ir_instr(char *p, int fd, int* skip_ct_p) {
     *skip_ct_p = 0;
     switch(*p) {
       case '+':
@@ -409,7 +413,7 @@ static bool irCompileInstruction(char *p, int fd, int* skip_ct_p) {
       case ',':
       case '[':
       case ']':
-        return bfCompileInstruction(*p, fd);
+        return comp_instr(*p, fd);
       case '@':
         if (eamAsmSetMemZero(REG_BF_PTR, fd, &out_sz)) return true;
         else {
@@ -417,30 +421,30 @@ static bool irCompileInstruction(char *p, int fd, int* skip_ct_p) {
             return false;
         }
       default:
-        return irCompileComplexInstruction(p, fd, skip_ct_p);
+        return comp_ir_condensed_instr(p, fd, skip_ct_p);
     }
 }
 
-static bool irCompile(char *ir, int fd) {
+static bool comp_ir(char *ir, int fd) {
     bool ret = true;
     char *p = ir;
     int skip_ct;
     while (*p) {
         _col++;
-        ret &= irCompileInstruction(p++, fd, &skip_ct);
+        ret &= comp_ir_instr(p++, fd, &skip_ct);
         p += skip_ct;
     }
     free(ir);
     return ret;
 }
 
-static bool bfCleanup(int fd) {
-    bool ret = bfExit(fd);
+static bool finalize(int fd) {
+    bool ret = bf_exit(fd);
     /* Ehdr and Phdr table are at the start */
     lseek(fd, 0, SEEK_SET);
     /* a |= b means a = (a | b) */
-    ret |= writeEhdr(fd);
-    ret |= writePhdrTable(fd);
+    ret |= write_ehdr(fd);
+    ret |= write_phtb(fd);
     return ret;
 }
 
@@ -506,17 +510,17 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
             fclose(tmp_file);
             return false;
         }
-        ret &= irCompile(ir, tmp_fd);
+        ret &= comp_ir(ir, tmp_fd);
     } else {
         /* the error message(s) are already appended if issues occur */
         while (read(in_fd, &_instr, 1)) {
-            ret &= bfCompileInstruction(_instr, tmp_fd);
+            ret &= comp_instr(_instr, tmp_fd);
         }
     }
 
     /* now, code size is known, so we can write the headers
      * the appropriate error message(s) are already appended */
-    if (!bfCleanup(tmp_fd)) ret = false;
+    if (!finalize(tmp_fd)) ret = false;
     if(JumpStack.index > 0) {
         basicError(
             "UNMATCHED_OPEN",

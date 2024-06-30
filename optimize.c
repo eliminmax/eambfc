@@ -21,7 +21,7 @@
 
 static size_t optim_sz;
 /* return a pointer to a string containing just the brainfuck characters. */
-static char *filterNonBFChars(int in_fd) {
+static char *filter_non_bf(int in_fd) {
     optim_sz = 0;
     size_t limit = MALLOC_CHUNK_SIZE;
     char *filtered = malloc(limit);
@@ -59,7 +59,7 @@ static char *filterNonBFChars(int in_fd) {
 
 /* A function that skips past a matching ].
  * search_start is a pointer to the character after the [ */
-static char *findLoopEnd(char *search_start) {
+static char *find_loop_end(char *search_start) {
     char *open_p = strchr(search_start, '[');
     /* If no match is found for open_p, set it to the end of the string */
     char *close_p = strchr(search_start, ']');
@@ -74,13 +74,13 @@ static char *findLoopEnd(char *search_start) {
     }
     /* indicates a nested loop begins before the end of the current loop. */
     if ((open_p != NULL) && (close_p > open_p)) {
-        close_p = findLoopEnd(open_p + 1);
+        close_p = find_loop_end(open_p + 1);
     }
     return close_p + 1;
 }
 
 /* recursively ensure that the loops are balanced */
-static bool loopsMatch(char *code) {
+static bool loops_match(char *code) {
     char *open_p = strchr(code, '[');
     char *close_p = strchr(code, ']');
     /* if none are found, it's fine. */
@@ -106,12 +106,12 @@ static bool loopsMatch(char *code) {
     /* ensure that it opens before it closes */
     if (open_p > close_p) return false;
     /* if this point is reached, both are found. Ensure they are balanced. */
-    return (findLoopEnd(open_p + 1) != NULL);
+    return (find_loop_end(open_p + 1) != NULL);
 }
 
 #define SIMPLE_PATTERN_NUM 6
 /* remove redundant instructions like `<>` */
-static char *stripUselessCode(char *str) {
+static char *strip_dead(char *str) {
     /* matches[0] is for nop_pat matches. matches[1] is for dead_loop_pat */
     /* code constructs that do nothing - either 2 adjacent instructions that
      * cancel each other out, or 256 consecutive `+` or `-` instructions that
@@ -138,7 +138,7 @@ static char *stripUselessCode(char *str) {
         /* if str opens with a loop, that loop won't run - remove it */
         if (*str == '[') {
             matched = true;
-            loop_end = findLoopEnd(str + 1);
+            loop_end = find_loop_end(str + 1);
             if (loop_end == NULL) {
                 free(str);
                 return NULL;
@@ -160,7 +160,7 @@ static char *stripUselessCode(char *str) {
         while (((match_start = strstr(str, "][")) != NULL)) {
             matched = true;
             /* skip past the closing `]` */
-            loop_end = findLoopEnd(++match_start + 1);
+            loop_end = find_loop_end(++match_start + 1);
             if (loop_end == NULL) {
                 free(str);
                 return NULL;
@@ -263,7 +263,7 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
     return (size_t)sprintf(dest, "%c%" PRIx64, opcode, consec_ct);
 }
 
-static char *mergeInstructions(char *s) {
+static char *instr_merge(char *s) {
     /* used to check what's between [ and ] if they're 2 apart */
     char current_mode;
     char prev_mode = *s;
@@ -328,26 +328,26 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
     puts("Stage 1:");
-    char *s = filterNonBFChars(fd);
+    char *s = filter_non_bf(fd);
     if (s == NULL) {
         fputs("Stage 1 came back null.\n", stderr);
         return EXIT_FAILURE;
     }
     puts(s);
-    if (!loopsMatch(s)) {
+    if (!loops_match(s)) {
         free(s);
         fputs("Mismatched [ and ]; refusing to continue.\n", stderr);
         return EXIT_FAILURE;
     }
     puts("Stage 2:");
-    s = stripUselessCode(s);
+    s = strip_dead(s);
     if (s == NULL) {
         fputs("Stage 2 came back null.\n", stderr);
         return EXIT_FAILURE;
     }
     puts(s);
     puts("Stage 3:");
-    s = mergeInstructions(s);
+    s = instr_merge(s);
     if (s == NULL) {
         fputs("Stage 3 came back null.\n", stderr);
         return EXIT_FAILURE;
@@ -361,14 +361,14 @@ int main(int argc, char *argv[]) {
  * fd must be open for reading already, no check is performed.
  * Calling function is responsible for `free`ing the returned string. */
 char *toIR(int fd) {
-    char *bf_code = filterNonBFChars(fd);
+    char *bf_code = filter_non_bf(fd);
     if (bf_code == NULL) return NULL;
-    if (!loopsMatch(bf_code)) {
+    if (!loops_match(bf_code)) {
         free(bf_code);
         return NULL;
     }
-    bf_code = stripUselessCode(bf_code);
+    bf_code = strip_dead(bf_code);
     if (bf_code == NULL) return NULL;
-    return mergeInstructions(bf_code);
+    return instr_merge(bf_code);
 }
 #endif /* OPTIMIZE_STANDALONE */
