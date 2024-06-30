@@ -73,7 +73,7 @@ for op_lv in 0 1 2 3; do
         [ "$(cat /proc/sys/fs/binfmt_misc/status)" = 'enabled' ] &&\
         [ "$(head -n1 /proc/sys/fs/binfmt_misc/qemu-s390x)" = 'enabled' ]; then
         # shellcheck disable=2086 # word splitting is intentional here
-        build_with s390x-linux-gnu-gcc $gcc_clang_args -O$op_lv -static
+        build_with s390x-linux-gnu-gcc $gcc_clang_args -O"$op_lv" -static
     else
         skipped=$((skipped+1))
     fi

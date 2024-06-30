@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+
+SPDX-License-Identifier: 0BSD
+-->
+
 # Code style
 
 The following are the formatting I follow for source code:

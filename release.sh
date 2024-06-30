@@ -75,7 +75,9 @@ find . -name '*.sh' -type f \
 
 # ensure licensing information is structured in a manner that complies with the
 # REUSE 3.0 specification
-reuse lint -q
+# if reuse lint -q fails, it is silent, so run it again without passing -q to
+# suppress output if that happens
+reuse lint -q || reuse lint
 
 version="$(cat version)-$(
     git log -n 1 --date=format:'%Y-%m-%d' --pretty=format:'%ad-%h'
