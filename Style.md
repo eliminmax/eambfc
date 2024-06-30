@@ -13,9 +13,8 @@ The following are the formatting I follow for source code:
 * C: Multi-line comments should have an asterisk at the start of each line
   * exception: license heading in `compat/elf.h` should be left as-is.
 * Names:
-  * struct names are `PascalCase`.
   * macros are `SCREAMING_SNAKE_CASE`.
-  * functions, variables, and non-struct `typedef`ed types are `snake_case`.
+  * functions, variables, structs, and `typedef`ed types are `snake_case`.
 * C: `include`s are split into sections starting with one of the following:
   * `/* C99 */`: the header is defined by the C99 standard
     * either the C99 standard or the POSIX.1-2008 must require it to be present

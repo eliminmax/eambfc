@@ -213,7 +213,7 @@ typedef int64_t jump_index;
 static struct stack {
     jump_index index;
     off_t addresses[MAX_NESTING_LEVEL];
-} JumpStack;
+} jump_stack;
 
 /* prepare to compile the brainfuck `[` instruction to file descriptor fd.
  * doesn't actually write to the file yet, as the address of `]` is unknown. */
@@ -222,12 +222,12 @@ static bool bf_jump_open(int fd) {
     /* calculate the expected locationto seek to */
     expectedLocation = (CURRENT_ADDRESS + JUMP_SIZE);
     /* ensure that there are no more than the maximum nesting level */
-    if (JumpStack.index + 1 == MAX_NESTING_LEVEL) {
+    if (jump_stack.index + 1 == MAX_NESTING_LEVEL) {
         position_err("OVERFLOW", "Too many nested loops.", '[', _line, _col);
         return false;
     }
     /* push the current address onto the stack */
-    JumpStack.addresses[JumpStack.index++] = CURRENT_ADDRESS;
+    jump_stack.addresses[jump_stack.index++] = CURRENT_ADDRESS;
     /* skip enough bytes to write the instruction, once we know where the
      * jump should be to. */
     /* still need to increase out_sz for accuracy of the CURRENT_ADDRESS */
@@ -242,7 +242,7 @@ static bool bf_jump_close(int fd) {
     int32_t distance;
 
     /* ensure that the current index is in bounds */
-    if (--JumpStack.index < 0) {
+    if (--jump_stack.index < 0) {
         position_err(
             "UNMATCHED_CLOSE",
             "Found ']' without matching '['.",
@@ -253,7 +253,7 @@ static bool bf_jump_close(int fd) {
         return false;
     }
     /* pop the matching `[` instruction's location */
-    openAddress = JumpStack.addresses[JumpStack.index];
+    openAddress = jump_stack.addresses[jump_stack.index];
     closeAddress = CURRENT_ADDRESS;
 
     distance = closeAddress - openAddress;
@@ -484,7 +484,7 @@ bool bf_compile(int in_fd, int out_fd, bool optimize) {
     /* reset out_sz variable used in several macros in eam_compiler_macros */
     out_sz = 0;
     /* reset the jump stack for the new file */
-    JumpStack.index = 0;
+    jump_stack.index = 0;
     /* reset the current line and column */
     _line = 1;
     _col = 0;
@@ -521,7 +521,7 @@ bool bf_compile(int in_fd, int out_fd, bool optimize) {
     /* now, code size is known, so we can write the headers
      * the appropriate error message(s) are already appended */
     if (!finalize(tmp_fd)) ret = false;
-    if(JumpStack.index > 0) {
+    if(jump_stack.index > 0) {
         basic_err(
             "UNMATCHED_OPEN",
             "Reached the end of the file with an unmatched '['."
