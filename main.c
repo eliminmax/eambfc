@@ -20,7 +20,7 @@
 #include "types.h"
 
 /* Return the permission mask to use for the output file */
-mode_t getPerms(void) {
+mode_t get_perms(void) {
     /* The umask function sets the file mode creation mask to its argument and
      * returns the previous mask.
      *
@@ -44,7 +44,7 @@ mode_t getPerms(void) {
 
 
 /* print the help message to outfile. progname should be argv[0]. */
-void showHelp(FILE *outfile, char *progname) {
+void show_help(FILE *outfile, char *progname) {
     fprintf(outfile,
         "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
         " -h        - display this help text and exit\n"
@@ -73,7 +73,7 @@ void showHelp(FILE *outfile, char *progname) {
 }
 
 /* remove ext from end of str. If ext is not in str, return false. */
-bool rmExt(char *str, const char *ext) {
+bool rm_ext(char *str, const char *ext) {
     size_t strsz = strlen(str);
     size_t extsz = strlen(ext);
     /* strsz must be at least 1 character longer than extsz to continue. */
@@ -91,7 +91,7 @@ bool rmExt(char *str, const char *ext) {
 /* macro for use in main function only.
  * SHOW_HINT:
  *  * unless -q or -j was passed, write the help text to stderr. */
-#define SHOW_HINT() if (!(quiet || json)) showHelp(stderr, argv[0])
+#define SHOW_HINT() if (!(quiet || json)) show_help(stderr, argv[0])
 
 int main(int argc, char* argv[]) {
     int src_fd, dst_fd;
@@ -104,13 +104,13 @@ int main(int argc, char* argv[]) {
     /* default to false, set to true if relevant argument was passed. */
     bool quiet = false, keep = false, moveahead = false, json = false;
     bool optimize = false;
-    mode_t perms = getPerms();
+    mode_t perms = get_perms();
     char char_str_buf[2] = { '\0', '\0' };
 
     while ((opt = getopt(argc, argv, ":hVqjOkme:")) != -1) {
         switch(opt) {
           case 'h':
-            showHelp(stdout, argv[0]);
+            show_help(stdout, argv[0]);
             return EXIT_SUCCESS;
           case 'V':
             printf(
@@ -134,11 +134,11 @@ int main(int argc, char* argv[]) {
             return EXIT_SUCCESS;
           case 'q':
             quiet = true;
-            quietMode();
+            quiet_mode();
             break;
           case 'j':
             json = true;
-            jsonMode();
+            json_mode();
             break;
           case 'O':
             optimize = true;
@@ -152,7 +152,7 @@ int main(int argc, char* argv[]) {
           case 'e':
             /* Print an error if ext was already set. */
             if (strlen(ext) > 0) {
-                basicError("MULTIPLE_EXTENSIONS", "passed -e multiple times.");
+                basic_err("MULTIPLE_EXTENSIONS", "passed -e multiple times.");
                 SHOW_HINT();
                 return EXIT_FAILURE;
             }
@@ -160,7 +160,7 @@ int main(int argc, char* argv[]) {
             break;
           case ':': /* -e without an argument */
             char_str_buf[0] = (char) optopt;
-            parameterError(
+            param_err(
                 "MISSING_OPERAND",
                 "{} requires an additional argument",
                 char_str_buf
@@ -168,7 +168,7 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
           case '?': /* unknown argument */
             char_str_buf[0] = (char) optopt;
-            parameterError(
+            param_err(
                 "UNKNOWN_ARG",
                 "Unknown argument: {}.",
                 char_str_buf
@@ -177,7 +177,7 @@ int main(int argc, char* argv[]) {
         }
     }
     if (optind == argc) {
-        basicError("NO_SOURCE_FILES", "No source files provided.");
+        basic_err("NO_SOURCE_FILES", "No source files provided.");
         SHOW_HINT();
         return EXIT_FAILURE;
     }
@@ -188,13 +188,13 @@ int main(int argc, char* argv[]) {
     for (/* reusing optind here */; optind < argc; optind++) {
         outname = malloc(strlen(argv[optind]) + 1);
         if (outname == NULL) {
-            allocError();
+            alloc_err();
             ret = EXIT_FAILURE;
             if (moveahead) continue; else break;
         }
         strcpy(outname, argv[optind]);
-        if (!rmExt(outname, ext)) {
-            parameterError(
+        if (!rm_ext(outname, ext)) {
+            param_err(
                 "BAD_EXTENSION",
                 "File {} does not end with expected extension.",
                 argv[optind]
@@ -205,7 +205,7 @@ int main(int argc, char* argv[]) {
         }
         src_fd = open(argv[optind], O_RDONLY);
         if (src_fd < 0) {
-            parameterError(
+            param_err(
                 "OPEN_R_FAILED",
                 "Failed to open {} for reading.",
                 argv[optind]
@@ -216,7 +216,7 @@ int main(int argc, char* argv[]) {
         }
         dst_fd = open(outname, O_WRONLY+O_CREAT+O_TRUNC, perms);
         if (dst_fd < 0) {
-            parameterError(
+            param_err(
                 "OPEN_W_FAILED",
                 "Failed to open {} for writing.",
                 outname
@@ -226,7 +226,7 @@ int main(int argc, char* argv[]) {
             free(outname);
             if (moveahead) continue; else break;
         }
-        result = bfCompile(src_fd, dst_fd, optimize);
+        result = bf_compile(src_fd, dst_fd, optimize);
         close(src_fd);
         close(dst_fd);
         if (!result) {

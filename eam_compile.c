@@ -31,11 +31,11 @@ static uint _col;
 /* wrapper around write(3POSIX) that returns a boolean indicating whether the
  * number of bytes written is the expected number or not. If the write failed,
  * either because didn't write at all, or didn't write the expected number of
- * bytes, this function calls the basicError function. */
+ * bytes, this function calls the basic_err function. */
 static inline bool write_obj(int fd, const void *bytes, ssize_t sz) {
     ssize_t written = write(fd, bytes, sz);
     if (written != sz) {
-        basicError("FAILED_WRITE", failed_write_msg);
+        basic_err("FAILED_WRITE", failed_write_msg);
         return false;
     }
     return true;
@@ -121,7 +121,7 @@ static bool write_ehdr(int fd) {
      * defined, and it should be set to 0. */
     header.e_flags = 0;
 
-    serializeEhdr64(&header, header_bytes);
+    serialize_ehdr64(&header, header_bytes);
     return write_obj(fd, header_bytes, EHDR_SIZE);
 }
 
@@ -170,7 +170,7 @@ static bool write_phtb(int fd) {
     phdr_table[1].p_align = 1;
 
     for (int i = 0; i < PHNUM; i++) {
-        serializePhdr64(&phdr_table[i], &(phdr_table_bytes[i * PHDR_SIZE]));
+        serialize_phdr64(&phdr_table[i], &(phdr_table_bytes[i * PHDR_SIZE]));
     }
     return write_obj(fd, phdr_table_bytes, PHTB_SIZE);
 }
@@ -188,14 +188,14 @@ static inline bool bf_io(int fd, int bf_fd, int sc) {
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
     /* load the number for the write system call into REG_SC_NUM */
-    bool ret = eamAsmSetReg(REG_SC_NUM, sc, fd, &out_sz);
+    bool ret = bfc_set_reg(REG_SC_NUM, sc, fd, &out_sz);
     /* load the number for the stdout file descriptor into REG_ARG1 */
-    ret &= eamAsmSetReg(REG_ARG1, bf_fd, fd, &out_sz);
+    ret &= bfc_set_reg(REG_ARG1, bf_fd, fd, &out_sz);
     /* copy the address in REG_BF_PTR to REG_ARG2 */
-    ret &= eamAsmRegCopy(REG_ARG2, REG_BF_PTR, fd, &out_sz);
+    ret &= bfc_reg_copy(REG_ARG2, REG_BF_PTR, fd, &out_sz);
     /* load number of bytes to read/write (1, specifically) into REG_ARG3 */
-    ret &= eamAsmSetReg(REG_ARG3, 1, fd, &out_sz);
-    ret &= eamAsmSyscall(fd, &out_sz);
+    ret &= bfc_set_reg(REG_ARG3, 1, fd, &out_sz);
+    ret &= bfc_syscall(fd, &out_sz);
     return ret;
 }
 
@@ -223,7 +223,7 @@ static bool bf_jump_open(int fd) {
     expectedLocation = (CURRENT_ADDRESS + JUMP_SIZE);
     /* ensure that there are no more than the maximum nesting level */
     if (JumpStack.index + 1 == MAX_NESTING_LEVEL) {
-        positionError("OVERFLOW", "Too many nested loops.", '[', _line, _col);
+        position_err("OVERFLOW", "Too many nested loops.", '[', _line, _col);
         return false;
     }
     /* push the current address onto the stack */
@@ -243,7 +243,7 @@ static bool bf_jump_close(int fd) {
 
     /* ensure that the current index is in bounds */
     if (--JumpStack.index < 0) {
-        positionError(
+        position_err(
             "UNMATCHED_CLOSE",
             "Found ']' without matching '['.",
             ']',
@@ -260,28 +260,28 @@ static bool bf_jump_close(int fd) {
 
     /* jump to the skipped `[` instruction, write it, and jump back */
     if (lseek(fd, openAddress, SEEK_SET) != openAddress) {
-        instructionError(
+        instr_err(
             "FAILED_SEEK", "Failed to return to '[' instruction.", '['
         );
         return false;
     }
     off_t phony = 0; /* already added to code size for this one */
-    if (!eamAsmJumpZero(REG_BF_PTR, distance, fd, &phony)) {
-        instructionError(
+    if (!bfc_jump_zero(REG_BF_PTR, distance, fd, &phony)) {
+        instr_err(
             "FAILED_WRITE", failed_write_msg, '['
         );
         return false;
     }
 
     if (lseek(fd, closeAddress, SEEK_SET) != closeAddress) {
-        positionError(
+        position_err(
             "FAILED_SEEK", "Failed to return to ']'.", ']', _line, _col
         );
         return false;
     }
     /* jump to right after the `[` instruction, to skip a redundant check */
-    if (!eamAsmJumpNotZero(REG_BF_PTR, -distance, fd, &out_sz)) {
-        positionError(
+    if (!bfc_jump_not_zero(REG_BF_PTR, -distance, fd, &out_sz)) {
+        position_err(
             "FAILED_WRITE", failed_write_msg, ']', _line, _col
         );
         return false;
@@ -294,7 +294,7 @@ static bool bf_jump_close(int fd) {
 /* 4 of the 8 brainfuck instructions can be compiled with the same code flow,
  * swapping out which specific function is used.*/
 #define COMPILE_WITH(f) if (!((ret = f(REG_BF_PTR, fd, &out_sz)))) \
-    positionError("FAILED_WRITE", failed_write_msg, c, _line, _col)
+    position_err("FAILED_WRITE", failed_write_msg, c, _line, _col)
 
 
 /* compile an individual instruction (c), to the file descriptor fd.
@@ -306,25 +306,25 @@ static bool comp_instr(char c, int fd) {
     switch(c) {
       /* start with the simple cases handled with COMPILE_WITH */
       /* decrement the tape pointer register */
-      case '<': COMPILE_WITH(eamAsmDecReg); break;
+      case '<': COMPILE_WITH(bfc_dec_reg); break;
       /* increment the tape pointer register */
-      case '>': COMPILE_WITH(eamAsmIncReg); break;
+      case '>': COMPILE_WITH(bfc_inc_reg); break;
       /* increment the current tape value */
-      case '+': COMPILE_WITH(eamAsmIncByte); break;
+      case '+': COMPILE_WITH(bfc_inc_byte); break;
       /* decrement the current tape value */
-      case '-': COMPILE_WITH(eamAsmDecByte); break;
+      case '-': COMPILE_WITH(bfc_dec_byte); break;
       case '.':
         /* write to stdout */
         ret = bf_io(fd, STDOUT_FILENO, SYSCALL_WRITE);
         if (!ret) {
-            positionError("FAILED_WRITE", failed_write_msg, c, _line, _col);
+            position_err("FAILED_WRITE", failed_write_msg, c, _line, _col);
         }
         break;
       case ',':
         /* read from stdin */
         ret = bf_io(fd, STDIN_FILENO, SYSCALL_READ);
         if (!ret) {
-            positionError("FAILED_WRITE", failed_write_msg, c, _line, _col);
+            position_err("FAILED_WRITE", failed_write_msg, c, _line, _col);
         }
         break;
       /* `[` and `]` do their own error handling. */
@@ -352,18 +352,18 @@ static bool comp_instr(char c, int fd) {
 static bool bf_exit(int fd) {
     bool ret = true;
     /* set system call register to exit system call numbifer */
-    if (!eamAsmSetReg(REG_SC_NUM, SYSCALL_EXIT, fd, &out_sz)) {
-        basicError("FAILED_WRITE", failed_write_msg);
+    if (!bfc_set_reg(REG_SC_NUM, SYSCALL_EXIT, fd, &out_sz)) {
+        basic_err("FAILED_WRITE", failed_write_msg);
         ret = false;
     }
     /* set system call register to the desired exit code (0) */
-    if (!eamAsmSetReg(REG_ARG1, 0, fd, &out_sz)) {
-        basicError("FAILED_WRITE", failed_write_msg);
+    if (!bfc_set_reg(REG_ARG1, 0, fd, &out_sz)) {
+        basic_err("FAILED_WRITE", failed_write_msg);
         ret = false;
     }
     /* perform a system call */
-    if (!eamAsmSyscall(fd, &out_sz)) {
-        basicError("FAILED_WRITE", failed_write_msg);
+    if (!bfc_syscall(fd, &out_sz)) {
+        basic_err("FAILED_WRITE", failed_write_msg);
         ret = false;
     }
 
@@ -374,29 +374,29 @@ static bool bf_exit(int fd) {
  * function, and aa return statement added o right after the conditional.
  * immediately returns, whether or not an error message is printed. */
 #define IR_COMPILE_WITH(f) if (!((ret = f(REG_BF_PTR, ct, fd, &out_sz)))) { \
-    basicError("FAILED_WRITE", failed_write_msg); }\
+    basic_err("FAILED_WRITE", failed_write_msg); }\
     return ret
 /* compile a condensed instruction */
 static inline bool comp_ir_condensed_instr(char *p, int fd, int* skip_p) {
     uint64_t ct;
     bool ret; /* needed for IR_COMPILE_WITH macro */
     if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_p) != 1) {
-        basicError("IR_FAILED_SCAN", "Failed to get count for EAMBFC-IR op.");
+        basic_err("IR_FAILED_SCAN", "Failed to get count for EAMBFC-IR op.");
         return false;
     } else {
         switch (*p) {
-          case '#': IR_COMPILE_WITH(eamAsmAddMem);
-          case '=': IR_COMPILE_WITH(eamAsmSubMem);
-          case '}': IR_COMPILE_WITH(eamAsmAddRegByte);
-          case '{': IR_COMPILE_WITH(eamAsmSubRegByte);
-          case ')': IR_COMPILE_WITH(eamAsmAddRegWord);
-          case '(': IR_COMPILE_WITH(eamAsmSubRegWord);
-          case '$': IR_COMPILE_WITH(eamAsmAddRegDoubWord);
-          case '^': IR_COMPILE_WITH(eamAsmSubRegDoubWord);
-          case 'n': IR_COMPILE_WITH(eamAsmAddRegQuadWord);
-          case 'N': IR_COMPILE_WITH(eamAsmSubRegQuadWord);
+          case '#': IR_COMPILE_WITH(bfc_add_mem);
+          case '=': IR_COMPILE_WITH(bfc_sub_mem);
+          case '}': IR_COMPILE_WITH(bfc_add_reg_imm8);
+          case '{': IR_COMPILE_WITH(bfc_sub_reg_imm8);
+          case ')': IR_COMPILE_WITH(bfc_add_reg_imm16);
+          case '(': IR_COMPILE_WITH(bfc_sub_reg_imm16);
+          case '$': IR_COMPILE_WITH(bfc_add_reg_imm32);
+          case '^': IR_COMPILE_WITH(bfc_sub_reg_imm32);
+          case 'n': IR_COMPILE_WITH(bfc_add_reg_imm64);
+          case 'N': IR_COMPILE_WITH(bfc_sub_reg_imm64);
           default:
-            basicError("INVALID_IR", "Invalid IR Opcode");
+            basic_err("INVALID_IR", "Invalid IR Opcode");
             return false;
         }
     }
@@ -415,9 +415,9 @@ static bool comp_ir_instr(char *p, int fd, int* skip_ct_p) {
       case ']':
         return comp_instr(*p, fd);
       case '@':
-        if (eamAsmSetMemZero(REG_BF_PTR, fd, &out_sz)) return true;
+        if (bfc_zero_mem(REG_BF_PTR, fd, &out_sz)) return true;
         else {
-            basicError("FAILED_WRITE", failed_write_msg);
+            basic_err("FAILED_WRITE", failed_write_msg);
             return false;
         }
       default:
@@ -465,16 +465,16 @@ static bool finalize(int fd) {
  * them return false it returns false as well.
  *
  * If all of the other functions succeeded, it returns true. */
-bool bfCompile(int in_fd, int out_fd, bool optimize) {
+bool bf_compile(int in_fd, int out_fd, bool optimize) {
     int ret = true;
     FILE *tmp_file = tmpfile();
     if (tmp_file == NULL) {
-        basicError("FAILED_TMPFILE", "Could not open a tmpfile.");
+        basic_err("FAILED_TMPFILE", "Could not open a tmpfile.");
         return false;
     }
     int tmp_fd = fileno(tmp_file);
     if (tmp_fd == -1) {
-        basicError(
+        basic_err(
             "FAILED_TMPFILE",
             "Could not get file descriptor for tmpfile"
         );
@@ -492,20 +492,20 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
 
     /* skip the headers until we know the code size */
     if (fseek(tmp_file, START_PADDR, SEEK_SET) != 0) {
-        basicError("FAILED_SEEK", "Failed to seek to start of code.");
+        basic_err("FAILED_SEEK", "Failed to seek to start of code.");
         fclose(tmp_file);
         return false;
     }
 
-    if (!eamAsmSetReg(REG_BF_PTR, TAPE_ADDRESS, tmp_fd, &out_sz)) {
-        basicError(
+    if (!bfc_set_reg(REG_BF_PTR, TAPE_ADDRESS, tmp_fd, &out_sz)) {
+        basic_err(
             "FAILED_WRITE",
             failed_write_msg
         );
         ret = false;
     }
     if (optimize) {
-        char *ir = toIR(in_fd);
+        char *ir = to_ir(in_fd);
         if (ir == NULL) {
             fclose(tmp_file);
             return false;
@@ -522,7 +522,7 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
      * the appropriate error message(s) are already appended */
     if (!finalize(tmp_fd)) ret = false;
     if(JumpStack.index > 0) {
-        basicError(
+        basic_err(
             "UNMATCHED_OPEN",
             "Reached the end of the file with an unmatched '['."
         );
@@ -530,7 +530,7 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
     }
 
     if (fseek(tmp_file, 0, SEEK_SET) != 0) {
-        basicError("FAILED_SEEK", "Failed to seek to start of tmpfile");
+        basic_err("FAILED_SEEK", "Failed to seek to start of tmpfile");
         ret = false;
     }
 
@@ -541,10 +541,10 @@ bool bfCompile(int in_fd, int out_fd, bool optimize) {
 
     while ((trans_sz = read(tmp_fd, &trans, MAX_TRANS_SZ))) {
         if (trans_sz == -1) {
-            basicError("FAILED_TMPFILE", "Failed to read bytes from tmpfile");
+            basic_err("FAILED_TMPFILE", "Failed to read bytes from tmpfile");
             ret = false;
         } else if ((write(out_fd, &trans, trans_sz) != trans_sz)) {
-            basicError("FAILED_TMPFILE", failed_write_msg);
+            basic_err("FAILED_TMPFILE", failed_write_msg);
             ret = false;
         }
     }

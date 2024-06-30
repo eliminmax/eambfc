@@ -13,5 +13,5 @@
  * Calling function is responsible for `free`ing the returned string.
  *
  * If it fails to allocate space for the string, it returns NULL. */
-char *toIR(int fd);
+char *to_ir(int fd);
 #endif /* EAM_OPTIMIZE_H */

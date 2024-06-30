@@ -13,17 +13,17 @@
 #include "types.h"
 
 /* if there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
- * eamAsm functions, the common lines dealing with writing machine code should
+ * bfc_ functions, the common lines dealing with writing machine code should
  * be moved into a static inline function. */
 
 /* MOV rs, rd */
-bool eamAsmRegCopy(uint8_t dst, uint8_t src, int fd, off_t *sz) {
+bool bfc_reg_copy(uint8_t dst, uint8_t src, int fd, off_t *sz) {
     *sz += 2;
     return write(fd, (uint8_t[]){ 0x89, 0xc0 + (src << 3) + dst}, 2) == 2;
 }
 
 /* SYSCALL */
-bool eamAsmSyscall(int fd, off_t *sz) {
+bool bfc_syscall(int fd, off_t *sz) {
     *sz += 2;
     return write(fd, (uint8_t[]){ 0x0f, 0x05 }, 2) == 2;
 }
@@ -43,14 +43,14 @@ static inline bool test_jcc(char tttn, uint8_t reg, int32_t off, int fd) {
 }
 
 /* TEST byte [reg], 0xff; JNZ jmp_offset */
-bool eamAsmJumpNotZero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
+bool bfc_jump_not_zero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
     *sz += 9;
     /* Jcc with tttn=0b0101 is JNZ or JNE */
     return test_jcc(0x5, reg, offset, fd);
 }
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
-bool eamAsmJumpZero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
+bool bfc_jump_zero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
     *sz += 9;
     /* Jcc with tttn=0b0100 is JZ or JE */
     return test_jcc(0x4, reg, offset, fd);
@@ -74,28 +74,28 @@ static inline bool x86_offset(char op, uint8_t adm, uint8_t reg, int fd) {
 }
 
 /* INC reg */
-bool eamAsmIncReg(uint8_t reg, int fd, off_t *sz) {
+bool bfc_inc_reg(uint8_t reg, int fd, off_t *sz) {
     *sz += 2;
     /* 0 is INC, 3 is register mode */
     return x86_offset(0x0, 0x3, reg, fd);
 }
 
 /* DEC reg */
-bool eamAsmDecReg(uint8_t reg, int fd, off_t *sz) {
+bool bfc_dec_reg(uint8_t reg, int fd, off_t *sz) {
     *sz += 2;
     /* 8 is DEC, 3 is register mode */
     return x86_offset(0x8, 0x3, reg, fd);
 }
 
 /* INC byte [reg] */
-bool eamAsmIncByte(uint8_t reg, int fd, off_t *sz) {
+bool bfc_inc_byte(uint8_t reg, int fd, off_t *sz) {
     *sz += 2;
     /* 0 is INC, 0 is memory pointer mode */
     return x86_offset(0x0, 0x0, reg, fd);
 }
 
 /* DEC byte [reg] */
-bool eamAsmDecByte(uint8_t reg, int fd, off_t *sz) {
+bool bfc_dec_byte(uint8_t reg, int fd, off_t *sz) {
     *sz += 2;
     /* 8 is DEC, 0 is memory pointer mode */
     return x86_offset(0x8, 0x0, reg, fd);
@@ -111,7 +111,7 @@ static inline bool set_reg_dword(uint8_t reg, int32_t imm32, int fd) {
 }
 
 /* use the most efficient way to set a register to imm */
-bool eamAsmSetReg(uint8_t reg, int32_t imm, int fd, off_t *sz) {
+bool bfc_set_reg(uint8_t reg, int32_t imm, int fd, off_t *sz) {
     if (imm == 0) {
         *sz += 2;
         /* XOR reg, reg */
@@ -130,19 +130,19 @@ bool eamAsmSetReg(uint8_t reg, int32_t imm, int fd, off_t *sz) {
 }
 
 /* } */
-bool eamAsmAddRegByte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
+bool bfc_add_reg_imm8(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
     *sz += 3;
     return write(fd, (uint8_t[]){ 0x83, 0xc0 + reg, imm8 }, 3) == 3;
 }
 
 /* { */
-bool eamAsmSubRegByte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
+bool bfc_sub_reg_imm8(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
     *sz += 3;
     return write(fd, (uint8_t[]){ 0x83, 0xe8 + reg, imm8 }, 3) == 3;
 }
 
 /* ) */
-bool eamAsmAddRegWord(uint8_t reg, int16_t imm16, int fd, off_t *sz) {
+bool bfc_add_reg_imm16(uint8_t reg, int16_t imm16, int fd, off_t *sz) {
     /* use the 32-bit immediate instruction, as there's no 16-bit equivalent. */
     *sz += 6;
     uint8_t i_bytes[6] = { 0x81, 0xc0 + reg, 0x00, 0x00, 0x00, 0x00 };
@@ -151,7 +151,7 @@ bool eamAsmAddRegWord(uint8_t reg, int16_t imm16, int fd, off_t *sz) {
 }
 
 /* ( */
-bool eamAsmSubRegWord(uint8_t reg, int16_t imm16, int fd, off_t *sz) {
+bool bfc_sub_reg_imm16(uint8_t reg, int16_t imm16, int fd, off_t *sz) {
     /* use the 32-bit immediate instruction, as there's no 16-bit equivalent. */
     *sz += 6;
     uint8_t i_bytes[6] = { 0x81, 0xe8 + reg, 0x00, 0x00, 0x00, 0x00 };
@@ -160,7 +160,7 @@ bool eamAsmSubRegWord(uint8_t reg, int16_t imm16, int fd, off_t *sz) {
 }
 
 /* $ */
-bool eamAsmAddRegDoubWord(uint8_t reg, int32_t imm32, int fd, off_t *sz) {
+bool bfc_add_reg_imm32(uint8_t reg, int32_t imm32, int fd, off_t *sz) {
     *sz += 6;
     uint8_t i_bytes[6] = { 0x81, 0xc0 + reg, 0x00, 0x00, 0x00, 0x00 };
     if (serialize32(imm32, (char *)&i_bytes[2]) != 4) return false;
@@ -168,7 +168,7 @@ bool eamAsmAddRegDoubWord(uint8_t reg, int32_t imm32, int fd, off_t *sz) {
 }
 
 /* ^ */
-bool eamAsmSubRegDoubWord(uint8_t reg, int32_t imm32, int fd, off_t *sz) {
+bool bfc_sub_reg_imm32(uint8_t reg, int32_t imm32, int fd, off_t *sz) {
     *sz += 6;
     uint8_t i_bytes[6] = { 0x81, 0xe8 + reg, 0x00, 0x00, 0x00, 0x00 };
     if (serialize32(imm32, (char *)&i_bytes[2]) != 4) return false;
@@ -200,35 +200,35 @@ static inline bool add_sub_qw(uint8_t reg, int64_t imm64, int fd, uint8_t op) {
 }
 
 /* n */
-bool eamAsmAddRegQuadWord(uint8_t reg, int64_t imm64, int fd, off_t *sz) {
+bool bfc_add_reg_imm64(uint8_t reg, int64_t imm64, int fd, off_t *sz) {
     *sz += 15;
     /* 0x00 is the opcode for register-to-register ADD */
     return add_sub_qw(reg, imm64, fd, 0x00);
 }
 
 /* N */
-bool eamAsmSubRegQuadWord(uint8_t reg, int64_t imm64, int fd, off_t *sz) {
+bool bfc_sub_reg_imm64(uint8_t reg, int64_t imm64, int fd, off_t *sz) {
     *sz += 15;
     /* 0x28 is the opcode for register-to-register SUB */
     return add_sub_qw(reg, imm64, fd, 0x28);
 }
 
 /* # */
-bool eamAsmAddMem(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
+bool bfc_add_mem(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
     *sz += 3;
     /* ADD byte [reg], imm8 */
     return write(fd, (uint8_t[]){ 0x80, reg, imm8}, 3) == 3;
 }
 
 /* = */
-bool eamAsmSubMem(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
+bool bfc_sub_mem(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
     *sz += 3;
     /* SUB byte [reg], imm8 */
     return write(fd, (uint8_t[]){ 0x80, 0x28 + reg, imm8}, 3) == 3;
 }
 
 /* @ */
-bool eamAsmSetMemZero(uint8_t reg, int fd, off_t *sz) {
+bool bfc_zero_mem(uint8_t reg, int fd, off_t *sz) {
     *sz += 4;
     /* MOV byte [reg], 0 */
     return write(fd, (uint8_t[]){ 0x67, 0xc6, reg, 0x00 }, 4) == 4;

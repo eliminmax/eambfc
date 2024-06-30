@@ -33,7 +33,7 @@ size_t serialize64(uint64_t u64, char *dest) {
     return size;
 }
 
-size_t serializeEhdr64(Elf64_Ehdr* ehdr, char* dest) {
+size_t serialize_ehdr64(Elf64_Ehdr* ehdr, char* dest) {
     size_t i;
     /* first 16 bytes are easy - it's a series of literal byte values */
     for (i = 0; i < EI_NIDENT; i++) {
@@ -55,7 +55,7 @@ size_t serializeEhdr64(Elf64_Ehdr* ehdr, char* dest) {
     return i;
 }
 
-size_t serializePhdr64(Elf64_Phdr* phdr, char* dest) {
+size_t serialize_phdr64(Elf64_Phdr* phdr, char* dest) {
     size_t i = 0;
     i += serialize32(phdr->p_type,      dest + i);
     i += serialize32(phdr->p_flags,     dest + i);

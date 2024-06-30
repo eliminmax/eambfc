@@ -18,12 +18,12 @@ static bool _quiet;
 static bool _json;
 
 /* the only external access to the variables is through these functions. */
-void quietMode(void) { _quiet = true; }
-void jsonMode(void) { _json = true; }
+void quiet_mode(void) { _quiet = true; }
+void json_mode(void) { _json = true; }
 
 /* avoid using json_str for this special case, as malloc may fail again,
  * causing a loop of failures to generate json error messages properly. */
-void allocError(void) {
+void alloc_err(void) {
     if (_json) {
         puts(
             "{\"errorId:\":\"ALLOC_FAILED\","
@@ -95,14 +95,14 @@ static char *json_str(char* str) {
 static inline void basic_jerr(char* id, char *msg) {
     /* assume error id is json-safe, but don't assume that for msg. */
     if ((msg = json_str(msg)) == NULL) {
-        allocError();
+        alloc_err();
     } else {
         printf("{\"errorId\":\"%s\",\"message\":\"%s\"}\n", id, msg);
         free(msg);
     }
 }
 
-void basicError(char* id, char *msg) {
+void basic_err(char* id, char *msg) {
     if (_json) basic_jerr(id, msg);
     else if (!_quiet) fprintf(stderr, "Error %s: %s\n", id, msg);
 }
@@ -114,12 +114,12 @@ static void pos_jerr(char *id, char *msg, char instr, uint line, uint col) {
     char instr_str[2] = { instr, '\0' };
     char *instr_json;
     if ((instr_json = json_str(instr_str)) == NULL) {
-        allocError();
+        alloc_err();
         return;
     }
     if ((msg = json_str(msg)) == NULL) {
         free(instr_json);
-        allocError();
+        alloc_err();
         return;
     }
     printf(
@@ -130,7 +130,7 @@ static void pos_jerr(char *id, char *msg, char instr, uint line, uint col) {
     free(instr_json);
 }
 
-void positionError(char *id, char *msg, char instr, uint line, uint col) {
+void position_err(char *id, char *msg, char instr, uint line, uint col) {
     if (_json) pos_jerr(id, msg, instr, line, col);
     else if (!_quiet) {
         fprintf(
@@ -147,11 +147,11 @@ static void instr_jerr(char *id, char *msg, char instr) {
     char instr_str[2] = { instr, '\0' };
     char *instr_json;
     if ((instr_json = json_str(instr_str)) == NULL) {
-        allocError();
+        alloc_err();
         return;
     }
     if ((msg = json_str(msg)) == NULL) {
-        allocError();
+        alloc_err();
         free(instr_json);
         return;
     }
@@ -163,14 +163,14 @@ static void instr_jerr(char *id, char *msg, char instr) {
     free(instr_json);
 }
 
-void instructionError(char *id, char *msg, char instr) {
+void instr_err(char *id, char *msg, char instr) {
     if (_json) instr_jerr(id, msg, instr);
     else if (!_quiet) {
         fprintf(stderr, "Error %s when compiling '%c: %s'.\n", id, instr, msg);
     }
 }
 
-void parameterError(char *id, char *proto, char *arg) {
+void param_err(char *id, char *proto, char *arg) {
     char *inj_point;
     size_t proto_sz = strlen(proto);
     size_t arg_sz = strlen(arg);
@@ -179,13 +179,13 @@ void parameterError(char *id, char *proto, char *arg) {
      * don't subtract it. */
     char *msg = malloc(proto_sz + arg_sz);
     if (msg == NULL) {
-        allocError();
+        alloc_err();
         return;
     }
     strcpy(msg, proto);
     inj_point = strstr(msg, "{}");
     if (inj_point == NULL) {
-        parameterError(
+        param_err(
             "PARAMETER_ERROR_ERROR",
             "Prototype \"{}\" does not contain substring \"{}\".",
             proto
@@ -195,6 +195,6 @@ void parameterError(char *id, char *proto, char *arg) {
     }
     memmove(inj_point + arg_sz, inj_point + 2, strlen(inj_point + 2) + 1);
     memcpy(inj_point, arg, arg_sz);
-    basicError(id, msg);
+    basic_err(id, msg);
     free(msg);
 }

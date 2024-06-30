@@ -14,44 +14,44 @@
 #include "types.h"
 
 /* used for making system calls, setup, and other miscellaneous things */
-bool eamAsmSetReg(uint8_t reg, int32_t imm, int fd, off_t *sz);
-bool eamAsmRegCopy(uint8_t dst, uint8_t src, int fd, off_t *sz);
-bool eamAsmSyscall(int fd, off_t *sz);
+bool bfc_set_reg(uint8_t reg, int32_t imm, int fd, off_t *sz);
+bool bfc_reg_copy(uint8_t dst, uint8_t src, int fd, off_t *sz);
+bool bfc_syscall(int fd, off_t *sz);
 
 /* ] */
-bool eamAsmJumpNotZero(uint8_t reg, int32_t offset, int fd, off_t *sz);
+bool bfc_jump_not_zero(uint8_t reg, int32_t offset, int fd, off_t *sz);
 /* [ */
-bool eamAsmJumpZero(uint8_t reg, int32_t offset, int fd, off_t *sz);
+bool bfc_jump_zero(uint8_t reg, int32_t offset, int fd, off_t *sz);
 /* > */
-bool eamAsmIncReg(uint8_t reg, int fd, off_t *sz);
+bool bfc_inc_reg(uint8_t reg, int fd, off_t *sz);
 /* < */
-bool eamAsmDecReg(uint8_t reg, int fd, off_t *sz);
+bool bfc_dec_reg(uint8_t reg, int fd, off_t *sz);
 /* + */
-bool eamAsmIncByte(uint8_t reg, int fd, off_t *sz);
+bool bfc_inc_byte(uint8_t reg, int fd, off_t *sz);
 /* - */
-bool eamAsmDecByte(uint8_t reg, int fd, off_t *sz);
+bool bfc_dec_byte(uint8_t reg, int fd, off_t *sz);
 
 /* machine code for extra instructions from eambfc-ir */
 /* } */
-bool eamAsmAddRegByte(uint8_t reg, int8_t imm8, int fd, off_t *sz);
+bool bfc_add_reg_imm8(uint8_t reg, int8_t imm8, int fd, off_t *sz);
 /* { */
-bool eamAsmSubRegByte(uint8_t reg, int8_t imm8, int fd, off_t *sz);
+bool bfc_sub_reg_imm8(uint8_t reg, int8_t imm8, int fd, off_t *sz);
 /* ) */
-bool eamAsmAddRegWord(uint8_t reg, int16_t imm16, int fd, off_t *sz);
+bool bfc_add_reg_imm16(uint8_t reg, int16_t imm16, int fd, off_t *sz);
 /* ( */
-bool eamAsmSubRegWord(uint8_t reg, int16_t imm16, int fd, off_t *sz);
+bool bfc_sub_reg_imm16(uint8_t reg, int16_t imm16, int fd, off_t *sz);
 /* $ */
-bool eamAsmAddRegDoubWord(uint8_t reg, int32_t imm32, int fd, off_t *sz);
+bool bfc_add_reg_imm32(uint8_t reg, int32_t imm32, int fd, off_t *sz);
 /* ^ */
-bool eamAsmSubRegDoubWord(uint8_t reg, int32_t imm32, int fd, off_t *sz);
+bool bfc_sub_reg_imm32(uint8_t reg, int32_t imm32, int fd, off_t *sz);
 /* n */
-bool eamAsmAddRegQuadWord(uint8_t reg, int64_t imm64, int fd, off_t *sz);
-/* N */
-bool eamAsmSubRegQuadWord(uint8_t reg, int64_t imm64, int fd, off_t *sz);
+bool bfc_add_reg_imm64(uint8_t reg, int64_t imm64, int fd, off_t *sz);
+/* n */
+bool bfc_sub_reg_imm64(uint8_t reg, int64_t imm64, int fd, off_t *sz);
 /* # */
-bool eamAsmAddMem(uint8_t reg, int8_t imm8, int fd, off_t *sz);
+bool bfc_add_mem(uint8_t reg, int8_t imm8, int fd, off_t *sz);
 /* = */
-bool eamAsmSubMem(uint8_t reg, int8_t imm8, int fd, off_t *sz);
+bool bfc_sub_mem(uint8_t reg, int8_t imm8, int fd, off_t *sz);
 /* @ */
-bool eamAsmSetMemZero(uint8_t reg, int fd, off_t *sz);
-#endif /* EAM_INSTRUCTION_ENCODERS_H */
+bool bfc_zero_mem(uint8_t reg, int fd, off_t *sz);
+#endif /* eam_instruction_encoders_h */

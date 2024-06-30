@@ -21,6 +21,6 @@ size_t serialize64(uint64_t u64, char *dest);
 /* given a pointers to a struct of a given type and a char array, these write
  * the fields of the struct, in little-endian order, to the char array, with no
  * padding bytes. */
-size_t serializeEhdr64(Elf64_Ehdr* ehdr, char* dest); /* Elf64_Ehdr */
-size_t serializePhdr64(Elf64_Phdr* phdr, char* dest); /* Elf64_Phdr */
+size_t serialize_ehdr64(Elf64_Ehdr* ehdr, char* dest); /* Elf64_Ehdr */
+size_t serialize_phdr64(Elf64_Phdr* phdr, char* dest); /* Elf64_Phdr */
 #endif /* EAMBFC_SERIALIZE_H */

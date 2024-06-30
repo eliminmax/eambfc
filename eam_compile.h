@@ -28,6 +28,6 @@
  * then compiles that, typically cutting the size of the output code by a decent
  * amount. In some cases the row orcolumn for error messages will be the
  * location in the internal EAMBFC-IR, rather than the source code. */
-bool bfCompile(int in_fd, int out_fd, bool optimize);
+bool bf_compile(int in_fd, int out_fd, bool optimize);
 
 #endif /* EAM_COMPILE_H */

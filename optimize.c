@@ -26,7 +26,7 @@ static char *filter_non_bf(int in_fd) {
     size_t limit = MALLOC_CHUNK_SIZE;
     char *filtered = malloc(limit);
     if (filtered == NULL) {
-        basicError("FAILED_MALLOC", "Failed to allocate buffer");
+        basic_err("FAILED_MALLOC", "Failed to allocate buffer");
         return NULL;
     }
     char instr;
@@ -45,7 +45,7 @@ static char *filter_non_bf(int in_fd) {
                 limit += MALLOC_CHUNK_SIZE;
                 filtered = realloc(filtered, limit);
                 if (filtered == NULL) {
-                    basicError("FAILED_MALLOC", "Failed to extend buffer");
+                    basic_err("FAILED_MALLOC", "Failed to extend buffer");
                     return NULL;
                 }
             }
@@ -65,7 +65,7 @@ static char *find_loop_end(char *search_start) {
     char *close_p = strchr(search_start, ']');
 
     if (close_p == NULL) {
-        instructionError(
+        instr_err(
             "UNMATCHED_OPEN",
             "Could not optimize due to unmatched '['",
             '['
@@ -87,7 +87,7 @@ static bool loops_match(char *code) {
     if ((open_p == NULL) && (close_p == NULL)) return true;
     /* if only one is found, that's a mismatch */
     if ((open_p == NULL) && !(close_p == NULL)) {
-        instructionError(
+        instr_err(
             "UNMATCHED_CLOSE",
             "Could not optimize due to unmatched ']'",
             ']'
@@ -95,7 +95,7 @@ static bool loops_match(char *code) {
         return false;
     }
     if ((close_p == NULL) && !(open_p == NULL)) {
-        instructionError(
+        instr_err(
             "UNMATCHED_OPEN",
             "Could not optimize due to unmatched '['",
             '['
@@ -202,7 +202,7 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
     char opcode;
 #if SIZE_MAX < UINT64_MAX
     if (consec_t > SIZE_MAX) {
-        instructionError(
+        instr_err(
             "TOO_MANY_INSTRUCTIONS",
             "More than SIZE_MAX consecutive identical instructions. Somehow.",
             instr
@@ -226,7 +226,7 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
         else if (consec_ct <= INT32_MAX) opcode = '$';
         else if (consec_ct <= INT64_MAX) opcode = 'n';
         else {
-            instructionError(
+            instr_err(
                 "TOO_MANY_INSTRUCTIONS",
                 "Over 8192 Pebibytes of '>' in a row.",
                 '>'
@@ -240,7 +240,7 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
         else if (consec_ct <= INT32_MAX) opcode = '^';
         else if (consec_ct <= INT64_MAX) opcode = 'N';
         else {
-            instructionError(
+            instr_err(
                 "TOO_MANY_INSTRUCTIONS",
                 "Over 8192 Pebibytes of '<' in a row.",
                 '<'
@@ -281,7 +281,7 @@ static char *instr_merge(char *s) {
         if (current_mode != prev_mode) {
             if (!((skip = condense(prev_mode, consec_ct, p)))) {
                 free(new_str);
-                instructionError(
+                instr_err(
                     "INTERNAL_ERROR",
                     "Failed to condense consecutive instructions",
                     prev_mode
@@ -360,7 +360,7 @@ int main(int argc, char *argv[]) {
  * internal intermediate representation of that file's code.
  * fd must be open for reading already, no check is performed.
  * Calling function is responsible for `free`ing the returned string. */
-char *toIR(int fd) {
+char *to_ir(int fd) {
     char *bf_code = filter_non_bf(fd);
     if (bf_code == NULL) return NULL;
     if (!loops_match(bf_code)) {
