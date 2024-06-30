@@ -6,8 +6,8 @@
  * write them to open file descriptors. Each returns a boolean value indicating
  * whether or not the write was successful, and take a pointer to an off_t sz,
  * to which they add the number of bytes written. */
-#ifndef EAM_INSTRUCTION_ENCODERS_H
-#define EAM_INSTRUCTION_ENCODERS_H 1
+#ifndef EAM_INSTR_ENCODERS_H
+#define EAM_INSTR_ENCODERS_H 1
 /* POSIX */
 #include <unistd.h>
 /* internal */
@@ -54,4 +54,4 @@ bool bfc_add_mem(uint8_t reg, int8_t imm8, int fd, off_t *sz);
 bool bfc_sub_mem(uint8_t reg, int8_t imm8, int fd, off_t *sz);
 /* @ */
 bool bfc_zero_mem(uint8_t reg, int fd, off_t *sz);
-#endif /* eam_instruction_encoders_h */
+#endif /* EAM_INSTR_ENCODERS_H */
