@@ -18,7 +18,7 @@
 #include "optimize.h"
 #include "serialize.h"
 #include "types.h"
-#include "x86_64_encoders.h"
+#include "instr_encoders.h"
 
 /* the most common error message to pass, because of all of the places writes
  * could theoretically fail. Not likely to see in practice however. */
