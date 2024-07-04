@@ -92,7 +92,8 @@ improperly-formatted files, or other problems. Do not use it.
 Other than some tests, all C code, shell scripts, and Makefiles target the
 POSIX.1-2008 standard and/or the ISO/IEC 9899:1999 standard (i.e. C99).
 
-Source code must also comply with version 3.0 of the REUSE specification.
+Source code must also comply with version 3.2 of the REUSE specification for
+licensing information.
 
 ### Test suite
 
