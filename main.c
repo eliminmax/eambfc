@@ -63,11 +63,11 @@ void show_help(FILE *outfile, char *progname) {
         "\n"
         "* -q and -j will not affect arguments passed before they were.\n"
         "\n"
-        "** Optimization can make error reporting less precise."
+        "** Optimization can make error reporting less precise.\n"
         "\n"
         "Remaining options are treated as source file names. If they don't\n"
         "end with '.bf' (or the extension specified with '-e'), the program\n"
-        "will raise an error.\n\n",
+        "will raise an error.\n",
         progname
     );
 }
