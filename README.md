@@ -4,7 +4,11 @@ SPDX-FileCopyrightText: 2024 Eli Array Minkoff
 SPDX-License-Identifier: 0BSD
 -->
 
-# Eli Array Minkoff's BFC
+# Eli Array Minkoff's BFC (original version)
+
+**Also check out the
+[Blazingly 🔥 fast 🚀 version](https://github.com/eliminmax/eambfc-rs), written
+in Rust 🦀!**
 
 A non-optimizing compiler for brainfuck, written in C for Unix-like systems.
 
