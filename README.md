@@ -10,7 +10,7 @@ SPDX-License-Identifier: 0BSD
 [Blazingly 🔥 fast 🚀 version](https://github.com/eliminmax/eambfc-rs), written
 in Rust 🦀!**
 
-A non-optimizing compiler for brainfuck, written in C for Unix-like systems.
+An optimizing compiler for brainfuck, written in C for Unix-like systems.
 
 Outputs x86\_64 ELF executables that uses Linux system calls for I/O.
 
