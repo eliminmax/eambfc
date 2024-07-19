@@ -95,7 +95,7 @@ test_arg_error MULTIPLE_EXTENSIONS 'multiple file extensions' \
 test_arg_error MISSING_OPERAND '-e missing argument' \
     -e
 test_arg_error UNKNOWN_ARG 'invalid argument provided' \
-    -t
+    -T
 test_arg_error NO_SOURCE_FILES 'no source files provided'
 test_arg_error BAD_EXTENSION 'wrong file extension for source file' \
     'test.sh'
