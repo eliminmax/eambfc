@@ -56,6 +56,8 @@ void show_help(FILE *outfile, char *progname) {
         " -k        - keep files that failed to compile (for debugging)\n"
         " -c        - continue to the next file instead of quitting if a\n"
         "             file fails to compile\n"
+        " -t count  - (only provide once) allocate <count> 4-KiB blocks for\n"
+        "             the tape. (defaults to 8 if not specified)\n"
         " -e ext    - (only provide once) use 'ext' as the extension for\n"
         "             source files instead of '.bf'\n"
         "             (This program will remove this at the end of the input\n"
@@ -106,8 +108,9 @@ int main(int argc, char* argv[]) {
     bool optimize = false;
     mode_t perms = get_perms();
     char char_str_buf[2] = { '\0', '\0' };
+    uint64_t tape_blocks = 0;
 
-    while ((opt = getopt(argc, argv, ":hVqjOkme:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hVqjOkme:t:")) != -1) {
         switch(opt) {
           case 'h':
             show_help(stdout, argv[0]);
@@ -122,12 +125,10 @@ int main(int argc, char* argv[]) {
                 "you are free to change and redistribute it.\n"
                 "There is NO WARRANTY, to the extent permitted by law.\n\n"
                 "Build configuration:\n"
-                " * tape size: %d 4-KiB blocks\n"
                 " * max nesting level: %d\n"
                 " * %s\n", /* git info or message stating git not used. */
                 argv[0],
                 EAMBFC_VERSION,
-                TAPE_BLOCKS,
                 MAX_NESTING_LEVEL,
                 EAMBFC_COMMIT
             );
@@ -158,7 +159,53 @@ int main(int argc, char* argv[]) {
             }
             ext = optarg;
             break;
-          case ':': /* -e without an argument */
+          case 't':
+            /* Print an error if tape_blocks has already been set */
+            if (tape_blocks == 0) {
+                basic_err(
+                    "MULTIPLE_TAPE_BLOCK_COUNTS",
+                    "passed -t multiple times."
+                );
+                SHOW_HINT();
+                return EXIT_FAILURE;
+            }
+            char *endptr;
+            // casting unsigned long long instead of using scanf as scanf can
+            // lead to undefined behavior if input isn't well-crafted, and
+            // unsigned long long is guaranteed to be at least 64 bits.
+            unsigned long long holder = strtoull(optarg, &endptr, 10);
+            // if the full opt_arg wasn't consumed, it's not a numeric value.
+            if (*endptr != '\0') {
+                param_err(
+                    "NOT_NUMERIC",
+                    "{} could not be parsed as a numeric value",
+                    optarg
+                );
+                SHOW_HINT();
+                return EXIT_FAILURE;
+            }
+            if (holder == 0) {
+                basic_err(
+                    "NO_TAPE",
+                    "Tape value for -t must be at least 1"
+                );
+                SHOW_HINT();
+                return EXIT_FAILURE;
+            }
+            /* if it's any larger than this, the tape size would exceed the
+             * 64-bit integer limit. */
+            if (holder == UINT64_MAX >> 12) {
+                param_err(
+                    "TAPE_TOO_LARGE",
+                    "{} * 0x1000 exceeds the 64-bit integer limit.",
+                    optarg
+                );
+                SHOW_HINT();
+                return EXIT_FAILURE;
+            }
+            tape_blocks = (uint64_t) holder;
+            break;
+          case ':': /* -e or -t without an argument */
             char_str_buf[0] = (char) optopt;
             param_err(
                 "MISSING_OPERAND",
@@ -184,6 +231,9 @@ int main(int argc, char* argv[]) {
 
     /* if no extension was provided, use .bf */
     if (strlen(ext) == 0) ext = ".bf";
+
+    /* if no tape size was specified, default to 8. */
+    if (tape_blocks == 0) tape_blocks = 8;
 
     for (/* reusing optind here */; optind < argc; optind++) {
         outname = malloc(strlen(argv[optind]) + 1);
@@ -226,7 +276,7 @@ int main(int argc, char* argv[]) {
             free(outname);
             if (moveahead) continue; else break;
         }
-        result = bf_compile(src_fd, dst_fd, optimize);
+        result = bf_compile(src_fd, dst_fd, optimize, tape_blocks);
         close(src_fd);
         close(dst_fd);
         if (!result) {

@@ -27,7 +27,9 @@
  * intermediate representation (EAMBFC-IR, which is a superset of brainfuck),
  * then compiles that, typically cutting the size of the output code by a decent
  * amount. In some cases the row orcolumn for error messages will be the
- * location in the internal EAMBFC-IR, rather than the source code. */
-bool bf_compile(int in_fd, int out_fd, bool optimize);
+ * location in the internal EAMBFC-IR, rather than the source code.
+ *
+ * tape_blocks is the number of 4-KiB blocks to allocate for the tape. */
+bool bf_compile(int in_fd, int out_fd, bool optimize, uint64_t tape_blocks);
 
 #endif /* EAM_COMPILE_H */

@@ -13,7 +13,6 @@ CC = c99
 POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
 # Compile-time configuration values
-TAPE_BLOCKS = 8
 MAX_NESTING_LEVEL = 64
 
 EAM_COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o
@@ -65,8 +64,7 @@ config.h: config.template.h version
 	else \
 		git_str='Not built from git repo'; \
 	fi; \
-	sed -e '/TAPE_BLOCKS/s/@@/$(TAPE_BLOCKS)/' \
-		-e '/MAX_NESTING_LEVEL/s/@@/$(MAX_NESTING_LEVEL)/' \
+	sed -e '/MAX_NESTING_LEVEL/s/@@/$(MAX_NESTING_LEVEL)/' \
 		-e "/EAMBFC_VERSION/s/@@/\"$$(cat version)\"/" \
 		-e "/EAMBFC_COMMIT/s/@@/\"$$git_str\"/" \
 		<config.template.h >config.h
@@ -107,8 +105,7 @@ optimize: optimize.c err.o
 		-D OPTIMIZE_STANDALONE -o $@ optimize.c err.o
 
 eambfc.1: eambfc.template.1
-	sed -e 's/@MAX_NESTING_LEVEL@/$(MAX_NESTING_LEVEL)/' \
-		-e 's/@TAPE_BLOCKS@/$(TAPE_BLOCKS)/' \
+	sed 's/@MAX_NESTING_LEVEL@/$(MAX_NESTING_LEVEL)/' \
 		<eambfc.template.1 >eambfc.1
 
 strict: can_run_linux_amd64 config.h

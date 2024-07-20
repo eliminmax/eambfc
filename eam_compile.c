@@ -24,6 +24,9 @@
  * could theoretically fail. Not likely to see in practice however. */
 static char *failed_write_msg = "Failed to write to file.";
 
+/* the number of 4-KiB blocks to allocate for the tape */
+static uint64_t tape_blocks;
+
 static off_t out_sz;
 static uint _line;
 static uint _col;
@@ -465,8 +468,9 @@ static bool finalize(int fd) {
  * them return false it returns false as well.
  *
  * If all of the other functions succeeded, it returns true. */
-bool bf_compile(int in_fd, int out_fd, bool optimize) {
+bool bf_compile(int in_fd, int out_fd, bool optimize, uint64_t passed_blocks) {
     int ret = true;
+    tape_blocks = passed_blocks;
     FILE *tmp_file = tmpfile();
     if (tmp_file == NULL) {
         basic_err("FAILED_TMPFILE", "Could not open a tmpfile.");

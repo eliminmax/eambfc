@@ -32,7 +32,7 @@ by default) removed.
 .B eambfc
 takes the following options:
 
-.TP 
+.TP
 .B -h
 show help text
 
@@ -40,7 +40,7 @@ show help text
 .B -V
 show version, build configuration, and copyright information
 
-.TP 
+.TP
 .B -j
 Don't write further error messages to the standard error stream.
 Instead, write them to the standard output stream, formatted as JSON.
@@ -48,7 +48,7 @@ Assumes that filenames are UTF-8-encoded - see
 .B BUGS
 section below for more details.
 
-.TP 
+.TP
 .B -q
 Don't write further error messaages to the standard error stream. Does
 not prevent JSON-formatted messages from being printed if
@@ -158,26 +158,23 @@ Compile it with optimizations enabled:
 .PP
 This build of
 .B eambfc
-cannot handle more than 
+cannot handle more than
 .I @MAX_NESTING_LEVEL@
-nested loops, and only
-.I @TAPE_BLOCKS@
-4-KiB (i.e. 4096-byte) blocks are allocated for the tape.
-These values are set when building eambfc, so other builds may have
+nested loops. That is set when building eambfc, so other builds may have
 different limitations.
 
-When passed the 
+When passed the
 .B -j
 flag,
 .B eambfc
 assumes that file names are UTF-8 encoded. There are no plans to fix this,
-as it's an explicit goal for the 
+as it's an explicit goal for the
 .B eambfc
 source to be portable to any POSIX.1-2008 system, and it's beyond the
 scope of the project to handle different text encoding schemes.
 
 .PP
-During the third optimization pass (see 
+During the third optimization pass (see
 .B OPTIMIZATIONS
 for details), if over 9223372036854775807 consecutive
 .B <
