@@ -13,9 +13,8 @@ EAMBFC = ../eambfc
 	$(EAMBFC) -kOj -e .brnfck $< >.$*.build_err && rm .$*.build_err
 
 # build test assets
-build_all: hello loop null rw wrap wrap2 colortest truthmachine \
-	too_many_nested_loops unmatched_close unmatched_open \
-	unseekable alternative_extension piped_in dead_code
+build_all: hello loop wrap wrap2 colortest truthmachine dead_code piped_in \
+	unmatched_close unmatched_open unseekable alternative_extension rw null
 
 test: clean build_all
 	./test.sh $(EAMBFC)

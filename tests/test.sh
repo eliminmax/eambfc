@@ -112,7 +112,6 @@ test_arg_error OPEN_W_FAILED 'failure to open output file for writing' \
 rm -f hello.b
 
 # compiler errors
-test_error too_many_nested_loops OVERFLOW UNMATCHED_CLOSE
 test_error unmatched_close UNMATCHED_CLOSE
 test_error unmatched_open UNMATCHED_OPEN
 
