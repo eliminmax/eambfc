@@ -7,9 +7,6 @@
 #ifndef EAM_CONFIG_H
 #define EAM_CONFIG_H 1
 
-/* The maximum number of nested loops to support */
-#define MAX_NESTING_LEVEL @@
-
 /* The current version */
 #define EAMBFC_VERSION @@
 

@@ -202,16 +202,8 @@ static inline bool bf_io(int fd, int bf_fd, int sc) {
     return ret;
 }
 
-/* ensure that an appropriate type is used for jump stack index */
-#if MAX_NESTING_LEVEL <= INT8_MAX
-typedef int8_t jump_index;
-#elif MAX_NESTING_LEVEL <= INT16_MAX
-typedef int16_t jump_index;
-#elif MAX_NESTING_LEVEL <= INT32_MAX
-typedef int32_t jump_index;
-#else
-typedef int64_t jump_index;
-#endif /* MAX_NESTING_LEVEL <= INT8_MAX */
+/* number of indexes in the jump stack to allocate for at a time */
+#define JUMP_CHUNK_SZ 64
 
 typedef struct jump_loc {
     uint src_line;
@@ -221,19 +213,40 @@ typedef struct jump_loc {
 
 static struct jump_stack {
     size_t index;
+    size_t loc_sz;
     jump_loc *locations;
 } jump_stack;
 
 /* prepare to compile the brainfuck `[` instruction to file descriptor fd.
- * doesn't actually write to the file yet, as the address of `]` is unknown. */
-static bool bf_jump_open(int fd) {
+ * doesn't actually write to the file yet, as the address of `]` is unknown.
+ *
+ * If too many nested loops are encountered, tries to resize the jump stack.
+ * If that fails, sets alloc_valve to false */
+static bool bf_jump_open(int fd, bool *alloc_valve) {
     off_t expected_location;
     /* calculate the expected location to seek to */
     expected_location = (CURRENT_ADDRESS + JUMP_SIZE);
     /* ensure that there are no more than the maximum nesting level */
-    if (jump_stack.index + 1 == MAX_NESTING_LEVEL) {
-        position_err("OVERFLOW", "Too many nested loops.", '[', _line, _col);
-        return false;
+    if (jump_stack.index + 1 == jump_stack.loc_sz) {
+        if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
+            jump_stack.loc_sz += JUMP_CHUNK_SZ;
+        } else {
+            basic_err(
+                "TOO_MANY_NESTED_LOOPS",
+                "Extending jump stack any more would cause an overflow."
+            );
+            *alloc_valve = false;
+        }
+
+        jump_stack.locations = realloc(
+            jump_stack.locations,
+            (jump_stack.index + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
+        );
+        if (jump_stack.locations == NULL) {
+            alloc_err();
+            *alloc_valve = false;
+            return false;
+        }
     }
     /* push the current address onto the stack */
     jump_stack.locations[jump_stack.index].src_line = _line;
@@ -310,7 +323,7 @@ static bool bf_jump_close(int fd) {
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
-static bool comp_instr(char c, int fd) {
+static bool comp_instr(char c, int fd, bool *alloc_valve) {
     bool ret;
     _col++;
     switch(c) {
@@ -339,7 +352,7 @@ static bool comp_instr(char c, int fd) {
         break;
       /* `[` and `]` do their own error handling. */
       case '[':
-        ret = bf_jump_open(fd);
+        ret = bf_jump_open(fd, alloc_valve);
         break;
       case ']':
         ret = bf_jump_close(fd);
@@ -412,7 +425,7 @@ static inline bool comp_ir_condensed_instr(char *p, int fd, int* skip_p) {
     }
 }
 
-static bool comp_ir_instr(char *p, int fd, int* skip_ct_p) {
+static bool comp_ir_instr(char *p, int fd, int* skip_ct_p, bool *alloc_valve) {
     *skip_ct_p = 0;
     switch(*p) {
       case '+':
@@ -423,7 +436,7 @@ static bool comp_ir_instr(char *p, int fd, int* skip_ct_p) {
       case ',':
       case '[':
       case ']':
-        return comp_instr(*p, fd);
+        return comp_instr(*p, fd, alloc_valve);
       case '@':
         if (bfc_zero_mem(REG_BF_PTR, fd, &out_sz)) return true;
         else {
@@ -439,9 +452,11 @@ static bool comp_ir(char *ir, int fd) {
     bool ret = true;
     char *p = ir;
     int skip_ct;
+    bool alloc_valve = true;
     while (*p) {
         _col++;
-        ret &= comp_ir_instr(p++, fd, &skip_ct);
+        ret &= comp_ir_instr(p++, fd, &skip_ct, &alloc_valve);
+        if (!alloc_valve) return false;
         p += skip_ct;
     }
     free(ir);
@@ -460,8 +475,6 @@ static bool finalize(int fd) {
 
 /* maximum number of bytes to transfer from tmpfile at a time */
 #define MAX_TRANS_SZ 4096
-/* number of indexes in the jump stack to allocate for at a time */
-#define JUMP_CHUNK_SZ 64
 
 /* Takes 2 open file descriptors - in_fd and out_fd, and a boolean - optimize
  * in_fd is a brainfuck source file, open for reading.
@@ -505,6 +518,7 @@ bool bf_compile(int in_fd, int out_fd, bool optimize, uint64_t passed_blocks) {
         fclose(tmp_file);
         return false;
     }
+    jump_stack.loc_sz = JUMP_CHUNK_SZ;
     /* reset the current line and column */
     _line = 1;
     _col = 0;
@@ -534,7 +548,12 @@ bool bf_compile(int in_fd, int out_fd, bool optimize, uint64_t passed_blocks) {
     } else {
         /* the error message(s) are already appended if issues occur */
         while (read(in_fd, &_instr, 1)) {
-            ret &= comp_instr(_instr, tmp_fd);
+            bool alloc_valve = true;
+            ret &= comp_instr(_instr, tmp_fd, &alloc_valve);
+            if (!alloc_valve) {
+                fclose(tmp_file);
+                return false;
+            }
         }
     }
 

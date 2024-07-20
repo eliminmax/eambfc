@@ -125,11 +125,9 @@ int main(int argc, char* argv[]) {
                 "you are free to change and redistribute it.\n"
                 "There is NO WARRANTY, to the extent permitted by law.\n\n"
                 "Build configuration:\n"
-                " * max nesting level: %d\n"
                 " * %s\n", /* git info or message stating git not used. */
                 argv[0],
                 EAMBFC_VERSION,
-                MAX_NESTING_LEVEL,
                 EAMBFC_COMMIT
             );
             return EXIT_SUCCESS;

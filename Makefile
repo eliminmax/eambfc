@@ -12,9 +12,6 @@ CC = c99
 # This flag enables POSIX.1-2008-specific macros and features
 POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
-# Compile-time configuration values
-MAX_NESTING_LEVEL = 64
-
 EAM_COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o
 EAMBFC_DEPS = eam_compile.o $(EAM_COMPILE_DEPS) main.o
 
@@ -42,9 +39,7 @@ UNIBUILD_FILES = serialize.c eam_compile.c optimize.c err.c \
 .c.o:
 	$(CC) $(CFLAGS) $(POSIX_CFLAG) -c -o $@ $<
 
-all: eambfc optimize man
-
-man: eambfc.1
+all: eambfc optimize
 
 eambfc: $(EAMBFC_DEPS)
 	$(CC) $(POSIX_CFLAG) $(LDFLAGS) -o eambfc $(EAMBFC_DEPS) $(LDLIBS)
@@ -64,8 +59,7 @@ config.h: config.template.h version
 	else \
 		git_str='Not built from git repo'; \
 	fi; \
-	sed -e '/MAX_NESTING_LEVEL/s/@@/$(MAX_NESTING_LEVEL)/' \
-		-e "/EAMBFC_VERSION/s/@@/\"$$(cat version)\"/" \
+	sed -e "/EAMBFC_VERSION/s/@@/\"$$(cat version)\"/" \
 		-e "/EAMBFC_COMMIT/s/@@/\"$$git_str\"/" \
 		<config.template.h >config.h
 
@@ -104,10 +98,6 @@ optimize: optimize.c err.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) \
 		-D OPTIMIZE_STANDALONE -o $@ optimize.c err.o
 
-eambfc.1: eambfc.template.1
-	sed 's/@MAX_NESTING_LEVEL@/$(MAX_NESTING_LEVEL)/' \
-		<eambfc.template.1 >eambfc.1
-
 strict: can_run_linux_amd64 config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE!\n' >&2
@@ -134,5 +124,5 @@ all_tests: test multibuild_test strict ubsan int_torture_test
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
 	rm -rf *.o eambfc alt-builds *mini_elf optimize can_run_linux_amd64
-	if [ -e .git ]; then rm -f config.h eambfc.1; fi
+	if [ -e .git ]; then rm -f config.h; fi
 	(cd tests; make clean)
