@@ -58,26 +58,24 @@ static char *filter_non_bf(int in_fd) {
 }
 
 /* A function that skips past a matching ].
- * search_start is a pointer to the [ at the start of the loop */
-static char *find_loop_end(char *search_start) {
-    ++search_start;
-    char *open_p = strchr(search_start, '[');
-    /* If no match is found for open_p, set it to the end of the string */
-    char *close_p = strchr(search_start, ']');
-
-    if (close_p == NULL) {
-        instr_err(
-            "UNMATCHED_OPEN",
-            "Could not optimize due to unmatched '['",
-            '['
-        );
-        return NULL;
+ * loop_start is a pointer to the [ at the start of the loop */
+static char *find_loop_end(char *loop_start) {
+    uint nest_level = 1;
+    char *p = loop_start;
+    while (*(++p)) {
+        if (*p == '[') {
+            nest_level++;
+        } else if (*p == ']') {
+            if (--nest_level == 0) return p + 1;
+        }
     }
-    /* indicates a nested loop begins before the end of the current loop. */
-    if ((open_p != NULL) && (close_p > open_p)) {
-        close_p = find_loop_end(open_p);
-    }
-    return close_p + 1;
+    /* The above loop only terminates if an '[' was unmatched. */
+    instr_err(
+        "UNMATCHED_OPEN",
+        "Could not optimize due to unmatched '['",
+        '['
+    );
+    return NULL;
 }
 
 /* recursively ensure that the loops are balanced */
