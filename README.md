@@ -75,7 +75,7 @@ make clean; make CC=tcc
 make PREFIX="$HOME/.local" install
 ```
 
-## Development process and Standards
+## Development Process and Standards
 
 I have a dev branch and a main branch. When I feel like it, and all of the tests
 pass, I merge the dev branch into the main branch. I work from multiple devices,
