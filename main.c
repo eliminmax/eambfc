@@ -159,7 +159,7 @@ int main(int argc, char* argv[]) {
             break;
           case 't':
             /* Print an error if tape_blocks has already been set */
-            if (tape_blocks == 0) {
+            if (tape_blocks != 0) {
                 basic_err(
                     "MULTIPLE_TAPE_BLOCK_COUNTS",
                     "passed -t multiple times."
