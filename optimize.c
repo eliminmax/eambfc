@@ -58,8 +58,9 @@ static char *filter_non_bf(int in_fd) {
 }
 
 /* A function that skips past a matching ].
- * search_start is a pointer to the character after the [ */
+ * search_start is a pointer to the [ at the start of the loop */
 static char *find_loop_end(char *search_start) {
+    ++search_start;
     char *open_p = strchr(search_start, '[');
     /* If no match is found for open_p, set it to the end of the string */
     char *close_p = strchr(search_start, ']');
@@ -74,7 +75,7 @@ static char *find_loop_end(char *search_start) {
     }
     /* indicates a nested loop begins before the end of the current loop. */
     if ((open_p != NULL) && (close_p > open_p)) {
-        close_p = find_loop_end(open_p + 1);
+        close_p = find_loop_end(open_p);
     }
     return close_p + 1;
 }
@@ -106,7 +107,7 @@ static bool loops_match(char *code) {
     /* ensure that it opens before it closes */
     if (open_p > close_p) return false;
     /* if this point is reached, both are found. Ensure they are balanced. */
-    return (find_loop_end(open_p + 1) != NULL);
+    return (find_loop_end(open_p) != NULL);
 }
 
 #define SIMPLE_PATTERN_NUM 6
@@ -138,7 +139,7 @@ static char *strip_dead(char *str) {
         /* if str opens with a loop, that loop won't run - remove it */
         if (*str == '[') {
             matched = true;
-            loop_end = find_loop_end(str + 1);
+            loop_end = find_loop_end(str);
             if (loop_end == NULL) {
                 free(str);
                 return NULL;
@@ -160,7 +161,7 @@ static char *strip_dead(char *str) {
         while (((match_start = strstr(str, "][")) != NULL)) {
             matched = true;
             /* skip past the closing `]` */
-            loop_end = find_loop_end(++match_start + 1);
+            loop_end = find_loop_end(++match_start);
             if (loop_end == NULL) {
                 free(str);
                 return NULL;
