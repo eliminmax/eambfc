@@ -180,18 +180,10 @@ static char *strip_dead(char *str) {
  *
  * SUBSTITUTIONS:
  *
- * >*N | (1 < N <= INT8_MAX): }N
- * <*N | (1 < N <= INT8_MAX): {N
- * >*N | (INT8_MAX < N <= INT16_MAX): )N
- * <*N | (INT8_MAX < N <= INT16_MAX): (N
- * >*N | (INT16_MAX < N <= INT32_MAX): $N | symbols inspired by regex here
- * <*N | (INT16_MAX < N <= INT32_MAX): ^N | though I doubt it'll ever compile
- *                                        | 32KiB of consecutive < or >
- * >*N | (INT32_MAX < N <= INT64_MAX): nN | (the first n or N is the opcode)
- * <*N | (INT32_MAX < N <= INT64_MAX): NN | inspired by Vim keybindings
- *
- * +*N : #N   | chosen as a "double stroked" version of the
- * -*N : =N   | symbol, not for mathematical meaning.
+ * >*N: }N
+ * <*N: {N
+ * +*N: #N   | chosen as a "double stroked" version of the
+ * -*N: =N   | symbol, not for mathematical meaning.
  *
  * single +, -, <, and > instructions are left as is.
  *
@@ -221,11 +213,9 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
         memset(dest, instr, consec_ct);
         return (size_t)consec_ct;
       case '>':
-        if      (consec_ct <= INT8_MAX)  opcode = '}';
-        else if (consec_ct <= INT16_MAX) opcode = ')';
-        else if (consec_ct <= INT32_MAX) opcode = '$';
-        else if (consec_ct <= INT64_MAX) opcode = 'n';
-        else {
+        if (consec_ct <= INT64_MAX) {
+            opcode = '}';
+        } else {
             instr_err(
                 "TOO_MANY_INSTRUCTIONS",
                 "Over 8192 Pebibytes of '>' in a row.",
@@ -235,11 +225,9 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
         }
         break;
       case '<':
-        if      (consec_ct <= INT8_MAX)  opcode = '{';
-        else if (consec_ct <= INT16_MAX) opcode = '(';
-        else if (consec_ct <= INT32_MAX) opcode = '^';
-        else if (consec_ct <= INT64_MAX) opcode = 'N';
-        else {
+        if (consec_ct <= INT64_MAX) {
+            opcode = '{';
+        } else {
             instr_err(
                 "TOO_MANY_INSTRUCTIONS",
                 "Over 8192 Pebibytes of '<' in a row.",

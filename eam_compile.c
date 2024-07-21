@@ -410,14 +410,8 @@ static inline bool comp_ir_condensed_instr(char *p, int fd, int* skip_p) {
         switch (*p) {
           case '#': IR_COMPILE_WITH(bfc_add_mem);
           case '=': IR_COMPILE_WITH(bfc_sub_mem);
-          case '}': IR_COMPILE_WITH(bfc_add_reg_imm8);
-          case '{': IR_COMPILE_WITH(bfc_sub_reg_imm8);
-          case ')': IR_COMPILE_WITH(bfc_add_reg_imm16);
-          case '(': IR_COMPILE_WITH(bfc_sub_reg_imm16);
-          case '$': IR_COMPILE_WITH(bfc_add_reg_imm32);
-          case '^': IR_COMPILE_WITH(bfc_sub_reg_imm32);
-          case 'n': IR_COMPILE_WITH(bfc_add_reg_imm64);
-          case 'N': IR_COMPILE_WITH(bfc_sub_reg_imm64);
+          case '}': IR_COMPILE_WITH(bfc_add_reg);
+          case '{': IR_COMPILE_WITH(bfc_sub_reg);
           default:
             basic_err("INVALID_IR", "Invalid IR Opcode");
             return false;

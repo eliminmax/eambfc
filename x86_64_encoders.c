@@ -213,6 +213,31 @@ bool bfc_sub_reg_imm64(uint8_t reg, int64_t imm64, int fd, off_t *sz) {
     return add_sub_qw(reg, imm64, fd, 0x28);
 }
 
+bool bfc_add_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
+    if (imm == 0) {
+        return true; /* adding zero is a no-op */
+    } else if (imm >= INT8_MIN && imm < INT8_MAX) {
+        return bfc_add_reg_imm8(reg, imm, fd, sz);
+    } else if (imm >= INT32_MIN && imm < INT32_MAX) {
+        return bfc_add_reg_imm32(reg, imm, fd, sz);
+    } else {
+        return bfc_add_reg_imm64(reg, imm, fd, sz);
+    }
+}
+
+
+bool bfc_sub_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
+    if (imm == 0) {
+        return true; /* subtracting zero is a no-op */
+    } else if (imm >= INT8_MIN && imm < INT8_MAX) {
+        return bfc_sub_reg_imm8(reg, imm, fd, sz);
+    } else if (imm >= INT32_MIN && imm < INT32_MAX) {
+        return bfc_sub_reg_imm32(reg, imm, fd, sz);
+    } else {
+        return bfc_sub_reg_imm64(reg, imm, fd, sz);
+    }
+}
+
 /* # */
 bool bfc_add_mem(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
     *sz += 3;
