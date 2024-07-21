@@ -1,0 +1,179 @@
+.\" SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+.\"
+.\" SPDX-License-Identifier: GPL-3.0-only
+.\"
+.\" The man page for eambfc, handwritten as part of the final preparation
+.\" for the release of eambfc 2.0.0
+
+.TH EAMBFC 1 2024-06-22 EAMBFC
+.SH NAME
+eambfc \- a brainfuck compiler that outputs x86_64 Linux ELF executables
+
+.SH SYNOPSIS
+.B eambfc [-O] [-q] [-j] [-k] [-c] src0.bf [src1.bf ...]
+
+.B eambfc [-O] [-q] [-j] [-k] [-c] -e b src0.b [src1.b ...]
+
+.SH DESCRIPTION
+
+.PP
+.B eambfc
+is a brainfuck compiler that outputs x86_64 Linux ELF executables.
+By default, it's a rather straightforward, direct single-pass compiler,
+which translates each instruction directly to x86_64 machine code, but it
+can optionally be used as an optimizing compiler as well.
+.PP
+It can compile any number of brainfuck source files in sequence, and will
+always write the output to a file with the same name as the source file,
+but with the extension (which is
+.B .bf
+by default) removed.
+
+.B eambfc
+takes the following options:
+
+.TP
+.B -h
+show help text
+
+.TP
+.B -V
+show version, build configuration, and copyright information
+
+.TP
+.B -j
+Don't write further error messages to the standard error stream.
+Instead, write them to the standard output stream, formatted as JSON.
+Assumes that filenames are UTF-8-encoded - see
+.B BUGS
+section below for more details.
+
+.TP
+.B -q
+Don't write further error messaages to the standard error stream. Does
+not prevent JSON-formatted messages from being printed if
+.B -j
+was passed as well.
+
+.TP
+.B -O
+enable optimizations - see
+.B OPTIMIZATIONS
+section below for more details.
+
+.TP
+.B -k
+keep output executables even if they are malformed due to failed
+compilation, for debugging or analysis.
+
+.TP
+.B -c
+If passed multiple source files, and one fails to compile, don't abort
+immediately, and still try to compile the remaining files.
+
+.TP
+.BI -e\  ext
+Use
+.I ext
+instead of
+.I .bf
+as the file extension for brainfuck source files. If passed more than
+once,
+.B eambfc
+will abort without compiling anything.
+
+.SH OPTIMIZATIONS
+
+.PP
+There are 3 stages of optimizations that are performed if
+.B -O
+was passed. Each one is more complex than the last.
+
+.PP
+.B Stage 1
+.PP
+Any characters that are not brainfuck instructions are removed.
+
+.B Stage 2
+.PP
+This stage repeatedly alternates between two steps. First, any sequences
+of consecutive instructions that would cancel out are removed - that's any
+of the following:
+.BR <> ,
+.BR >< ,
+.BR +- ,\ and
+.BR -+ .
+Additionally, 256 consecutive
+.B +
+or
+.B -
+instructions are removed, as they would just wrap around.
+
+Next, any conditional loops that are trivially able to be determined never
+to run, either because they are at the very beginning of the code, or
+right after another loop, are eliminated.
+
+These two steps repeat until neither of them find any code to eliminate.
+It is unlikely to take more than one or two passes, unless compiling a
+program designed to have a lot of dead or useless code.
+
+.B Stage 3
+.PP
+Consecutive
+.BR > ,
+.BR < ,
+.BR + ,\ and
+.B -
+instructions are merged into other, more efficient instructions, and
+.B [-]
+and
+.B [+]
+instruction sequences are both condensed into single instructions. These
+instructions can compile into more efficient machine code, as it takes
+only one instruction, for instance, to add 31 to the value of the current
+cell, rather than 31 individual increment instructions. If there are too
+many
+.B <
+or
+.B >
+instructions in a row, optimized compilation will fail. The maximum is the
+64-bit signed integer limit, so that limitation is unlikely to ever matter
+in any context. See
+.B BUGS
+section below.
+
+.SH EXAMPLES
+
+Download a file to compile:
+
+.B wget https://raw.githubusercontent.com/eliminmax/eambfc/main/tests/\
+hello.bf
+
+Compile it with optimizations enabled:
+
+.B eambfc -O hello.bf
+
+.SH BUGS
+
+When passed the
+.B -j
+flag,
+.B eambfc
+assumes that file names are UTF-8 encoded. There are no plans to fix this,
+as it's an explicit goal for the
+.B eambfc
+source to be portable to any POSIX.1-2008 system, and it's beyond the
+scope of the project to handle different text encoding schemes.
+
+.PP
+During the third optimization pass (see
+.B OPTIMIZATIONS
+for details), if over 9223372036854775807 consecutive
+.B <
+or
+.B >
+instructions are processed, compilation will fail.
+
+.SH AUTHOR
+Eli Array Minkoff <eli@planetminkoff.com>
+.\" vi: cc=75
