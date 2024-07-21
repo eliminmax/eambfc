@@ -31,6 +31,8 @@ Usage: eambfc [options] <program.bf> [<program2.bf> ...]
  -k        - keep files that failed to compile (for debugging)
  -c        - continue to the next file instead of quitting if a
              file fails to compile
+ -t count  - (only provide once) allocate <count> 4-KiB blocks for
+             the tape. (defaults to 8 if not specified)
  -e ext    - (only provide once) use 'ext' as the extension for
              source files instead of '.bf'
              (This program will remove this at the end of the input
@@ -39,10 +41,10 @@ Usage: eambfc [options] <program.bf> [<program2.bf> ...]
 * -q and -j will not affect arguments passed before they were.
 
 ** Optimization can make error reporting less precise.
+
 Remaining options are treated as source file names. If they don't
 end with '.bf' (or the extension specified with '-e'), the program
 will raise an error.
-
 ```
 
 ## Supported platforms
@@ -63,10 +65,6 @@ does not, it's not a bug.
 ```sh
 # Build eambfc
 make
-# rebuild eambfc with a different number of 4096-byte blocks for the tape size
-make TAPE_BLOCKS=16  # default is 8
-# rebuild eambfc so that it only prints 4 compiler errors
-make MAX_ERROR=4  # default is 32
 # Run the test suite
 make test
 # install eambfc to /usr/local with sudo
