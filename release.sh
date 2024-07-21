@@ -89,7 +89,7 @@ mkdir -p releases/
 rm -rf releases/"$build_name"*
 
 # generate config.h
-make -s clean config.h eambfc.1
+make -s clean config.h
 
 # change the git commit in config.h to reflect that it's a source tarball build
 sed '/git commit: /s/"/"source tarball from /' -i config.h
@@ -97,7 +97,6 @@ sed '/git commit: /s/"/"source tarball from /' -i config.h
 git archive HEAD --format=tar      \
     --prefix="$build_name"/        \
     --add-file=config.h            \
-    --add-file=eambfc.1            \
     --output=releases/"$src_tarball_name"
 
 gzip -9 -k "releases/$src_tarball_name"
