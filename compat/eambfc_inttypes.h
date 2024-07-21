@@ -40,7 +40,7 @@
  * it's C I'm ranting about here, I can cheat. I can typedef it myself, and
  * define the macros I use myself, and pretend that a long long that's more than
  * 64 bits is actually only 64 bits.
- * 
+ *
  * It is fragile, and not desirable, but I can do it, as a fall-back if the
  * sane approach that *should* work (i.e. just #include inttypes or stdint)
  * fails.
@@ -55,6 +55,7 @@
 
 #ifndef INT64_MAX /* if not defined, int64_t is not supported. */
 #define INT64_MAX 9223372036854775807LL
+#define INT64_MIN -9223372036854775808LL
 typedef long long int int64_t
 #endif /* INT64_MAX */
 
