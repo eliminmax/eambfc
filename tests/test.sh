@@ -92,13 +92,21 @@ test_simple piped_in '1639980005 14' # input is a FIFO, can't be seeked
 # argument processing error
 test_arg_error MULTIPLE_EXTENSIONS 'multiple file extensions' \
     -e .brf -e .bf hello.bf
+test_arg_error MULTIPLE_TAPE_BLOCK_COUNTS 'multiple tape sizes' \
+    -t 1 -t 32
 test_arg_error MISSING_OPERAND '-e missing argument' \
     -e
+test_arg_error MISSING_OPERAND '-t missing argument' \
+    -t
 test_arg_error UNKNOWN_ARG 'invalid argument provided' \
     -T
 test_arg_error NO_SOURCE_FILES 'no source files provided'
 test_arg_error BAD_EXTENSION 'wrong file extension for source file' \
     'test.sh'
+test_arg_error NO_TAPE 'tape size is set to 0 blocks' \
+    -t0 hello.bf
+test_arg_error TAPE_TOO_LARGE 'tape size large enough to cause an overflow' \
+    -t9223372036854775807
 
 # some permission issues
 chmod 'u-r' 'hello.bf'
