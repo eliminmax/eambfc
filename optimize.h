@@ -12,6 +12,17 @@
  * fd must be open for reading already, no check is performed.
  * Calling function is responsible for `free`ing the returned string.
  *
+ * SUBSTITUTIONS:
+ *
+ * >*N: }N
+ * <*N: {N
+ * +*N: #N   | chosen as a "double stroked" version of the
+ * -*N: =N   | symbol, not for mathematical meaning.
+ *
+ * single +, -, <, and > instructions are left as is.
+ *
+ * [+] and [-] both get replaced with @
+ *
  * If it fails to allocate space for the string, it returns NULL. */
 char *to_ir(int fd);
 #endif /* EAM_OPTIMIZE_H */
