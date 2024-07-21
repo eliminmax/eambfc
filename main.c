@@ -192,7 +192,7 @@ int main(int argc, char* argv[]) {
             }
             /* if it's any larger than this, the tape size would exceed the
              * 64-bit integer limit. */
-            if (holder == UINT64_MAX >> 12) {
+            if (holder >= UINT64_MAX >> 12) {
                 param_err(
                     "TAPE_TOO_LARGE",
                     "{} * 0x1000 exceeds the 64-bit integer limit.",
