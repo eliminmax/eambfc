@@ -62,11 +62,10 @@ fi
 make clean
 
 # first, some linting
+
 # Catch typos in the code.
 # Learned about this one from Lasse Colin's writeup of the xz backdoor. Really.
 codespell --skip=.git
-# 'bu' is part of the roff code for bullet points used in the man page, but
-# codespell detects it as a false positive, so handle it separately
 
 # run shellcheck and checkbashisms on all shell files
 find . -name '*.sh' -type f \
@@ -74,18 +73,18 @@ find . -name '*.sh' -type f \
     -exec checkbashisms {} +
 
 # ensure licensing information is structured in a manner that complies with the
-# REUSE 3.0 specification
+# REUSE 3.2 specification
 # if reuse lint -q fails, it is silent, so run it again without passing -q to
 # suppress output if that happens
 reuse lint -q || reuse lint
 
-version="$(cat version)-$(
-    git log -n 1 --date=format:'%Y-%m-%d' --pretty=format:'%ad-%h'
-)"
+
+version="$(cat version)"
 
 build_name="eambfc-$version"
 src_tarball_name="$build_name-src.tar"
 mkdir -p releases/
+# remove existing
 rm -rf releases/"$build_name"*
 
 # generate config.h
@@ -95,7 +94,7 @@ make -s clean config.h
 sed '/git commit: /s/"/"source tarball from /' -i config.h
 
 git archive HEAD --format=tar      \
-    --prefix="$build_name"/        \
+    --prefix="$build_name-src"/    \
     --add-file=config.h            \
     --output=releases/"$src_tarball_name"
 
