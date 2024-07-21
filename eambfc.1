@@ -5,7 +5,7 @@
 .\" The man page for eambfc, handwritten as part of the final preparation
 .\" for the release of eambfc 2.0.0
 
-.TH EAMBFC 1 2024-06-22 EAMBFC
+.TH EAMBFC 1 2024-06-20 EAMBFC
 .SH NAME
 eambfc \- a brainfuck compiler that outputs x86_64 Linux ELF executables
 
@@ -70,6 +70,15 @@ compilation, for debugging or analysis.
 .B -c
 If passed multiple source files, and one fails to compile, don't abort
 immediately, and still try to compile the remaining files.
+
+.TP
+.BI -t\  count
+Allocate
+.I count
+4-KiB (i.e. 4096-byte) blocks of memory for the tape. If passed more than
+once,
+.B eambfc
+will abort without compiling anything.
 
 .TP
 .BI -e\  ext
@@ -149,9 +158,9 @@ Download a file to compile:
 .B wget https://raw.githubusercontent.com/eliminmax/eambfc/main/tests/\
 hello.bf
 
-Compile it with optimizations enabled:
+Compile it with a 4-KiB tape size and with optimizations enabled:
 
-.B eambfc -O hello.bf
+.B eambfc -Ot1 hello.bf
 
 .SH BUGS
 
@@ -164,15 +173,6 @@ as it's an explicit goal for the
 .B eambfc
 source to be portable to any POSIX.1-2008 system, and it's beyond the
 scope of the project to handle different text encoding schemes.
-
-.PP
-During the third optimization pass (see
-.B OPTIMIZATIONS
-for details), if over 9223372036854775807 consecutive
-.B <
-or
-.B >
-instructions are processed, compilation will fail.
 
 .SH AUTHOR
 Eli Array Minkoff <eli@planetminkoff.com>
