@@ -279,7 +279,16 @@ static char *instr_merge(char *s) {
             consec_ct = 1;
             prev_mode = current_mode;
         } else {
-            consec_ct ++;
+            if (consec_ct == UINT64_MAX) {
+                instr_err(
+                    "TOO_MANY_INSTRUCTIONS",
+                    "More than 16384 PiB of identical instructions in a row.",
+                    prev_mode
+                );
+                return NULL;
+            } else {
+                consec_ct ++;
+            }
         }
     }
     *p = '\0'; /* NULL terminate the new string */
