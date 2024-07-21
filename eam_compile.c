@@ -118,7 +118,7 @@ static bool write_ehdr(int fd) {
 
     /* e_entry is the virtual memory address of the program's entry point -
      * (i.e. the first instruction to execute). */
-    header.e_entry = START_VADDR;
+    header.e_entry = START_VADDR(out_sz);
 
     /* e_flags has a processor-specific meaning. For x86_64, no values are
      * defined, and it should be set to 0. */
@@ -148,7 +148,7 @@ static bool write_phtb(int fd) {
     phdr_table[0].p_filesz = 0;
     /* Size within memory - must be at least p_filesz.
      * In this case, it's the size of the tape itself. */
-    phdr_table[0].p_memsz = TAPE_SIZE;
+    phdr_table[0].p_memsz = TAPE_SIZE(tape_blocks);
     /* supposed to be a power of 2, went with 2^12 */
     phdr_table[0].p_align = 0x1000;
 
@@ -159,16 +159,16 @@ static bool write_phtb(int fd) {
     /* Load initial bytes from this offset within the file */
     phdr_table[1].p_offset = 0;
     /* Start at this memory address */
-    phdr_table[1].p_vaddr = LOAD_VADDR;
+    phdr_table[1].p_vaddr = LOAD_VADDR(out_sz);
     /* Load from this physical address */
     phdr_table[1].p_paddr = 0;
     /* Size within the file on disk - the size of the whole file, as this
      * segment contains the whole thing. */
-    phdr_table[1].p_filesz = FILE_SIZE;
+    phdr_table[1].p_filesz = FILE_SIZE(out_sz);
     /* size within memory - must be at least p_filesz.
      * In this case, it's the size of the whole file, as the whole file is
      * loaded into this segment */
-    phdr_table[1].p_memsz = FILE_SIZE;
+    phdr_table[1].p_memsz = FILE_SIZE(out_sz);
     /* supposed to be a power of 2, went with 2^0 */
     phdr_table[1].p_align = 1;
 
@@ -225,7 +225,7 @@ static struct jump_stack {
 static bool bf_jump_open(int fd, bool *alloc_valve) {
     off_t expected_location;
     /* calculate the expected location to seek to */
-    expected_location = (CURRENT_ADDRESS + JUMP_SIZE);
+    expected_location = (CURRENT_ADDRESS(out_sz) + JUMP_SIZE);
     /* ensure that there are no more than the maximum nesting level */
     if (jump_stack.index + 1 == jump_stack.loc_sz) {
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
@@ -251,7 +251,7 @@ static bool bf_jump_open(int fd, bool *alloc_valve) {
     /* push the current address onto the stack */
     jump_stack.locations[jump_stack.index].src_line = _line;
     jump_stack.locations[jump_stack.index].src_col = _col;
-    jump_stack.locations[jump_stack.index].dst_loc = CURRENT_ADDRESS;
+    jump_stack.locations[jump_stack.index].dst_loc = CURRENT_ADDRESS(out_sz);
     jump_stack.index++;
     /* skip enough bytes to write the instruction, once we know where the
      * jump should be to. */
@@ -279,7 +279,7 @@ static bool bf_jump_close(int fd) {
     }
     /* pop the matching `[` instruction's location */
     open_address = jump_stack.locations[--jump_stack.index].dst_loc;
-    close_address = CURRENT_ADDRESS;
+    close_address = CURRENT_ADDRESS(out_sz);
 
     distance = close_address - open_address;
 

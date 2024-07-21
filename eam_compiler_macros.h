@@ -50,7 +50,7 @@
 
 /* assorted macros for the size/address of different elements in the ELF file */
 
-/* virtual memory address of the tape - cannot overlap with the instructions
+/* virtual memory address of the tape - cannot overlap with the machine code.
  * chosen fairly arbitrarily. */
 #define TAPE_ADDRESS 0x10000
 
@@ -68,7 +68,7 @@
 #define SHTB_SIZE SHNUM * SHDR_SIZE
 
 /* TAPE_BLOCKS is defined at a static level in eam_compile.c */
-# define TAPE_SIZE (tape_blocks * 0x1000)
+# define TAPE_SIZE(tape_blocks) (tape_blocks * 0x1000)
 
 /* virtual address of the section containing the machine code
  * should be after the tape ends to avoid overlapping with the tape.
@@ -76,7 +76,8 @@
  * Zero out the lowest 2 bytes of the end of the tape and add 0x10000 to ensure
  * that there is enough room. */
 
-#define LOAD_VADDR (((TAPE_ADDRESS + TAPE_SIZE) & (~ 0xffff)) + 0x10000)
+#define LOAD_VADDR(tape_blocks) \
+    (((TAPE_ADDRESS + TAPE_SIZE(tape_blocks)) & (~ 0xffff)) + 0x10000)
 
 /* physical address of the starting instruction
  * use the same technique as LOAD_VADDR to ensure that it is at a 256-byte
@@ -84,7 +85,7 @@
 #define START_PADDR (((((EHDR_SIZE + PHTB_SIZE)) & ~ 0xff) + 0x100))
 
 /* virtual address of the starting instruction */
-#define START_VADDR (START_PADDR + LOAD_VADDR)
+#define START_VADDR(ts) (START_PADDR + LOAD_VADDR(ts))
 
 /* The offset within the file for the program and section header tables
  * respectively. If there are no entries, they should be set to 0. */
@@ -97,10 +98,10 @@
 /* out_sz must be defined as the size in bytes of the machine code.
  * FILE_SIZE should not be used until after its final value is known.
  * It is the size (in bytes) of the file. */
-#define FILE_SIZE (START_PADDR + out_sz)
+#define FILE_SIZE(out_sz) (START_PADDR + out_sz)
 
 /* the memory address of the current instruction. */
-#define CURRENT_ADDRESS (START_PADDR + out_sz)
+#define CURRENT_ADDRESS(out_sz) (START_PADDR + out_sz)
 
 /* Linux system call numbers on AMD x86_64 */
 
