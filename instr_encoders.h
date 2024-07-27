@@ -18,6 +18,10 @@ bool bfc_set_reg(uint8_t reg, int32_t imm, int fd, off_t *sz);
 bool bfc_reg_copy(uint8_t dst, uint8_t src, int fd, off_t *sz);
 bool bfc_syscall(int fd, off_t *sz);
 
+/* fill space that will have `[` instruction with nop instructions until the
+ * offset value is known. */
+bool bfc_nop_loop_open(uint8_t reg, int fd, off_t *sz);
+
 /* ] */
 bool bfc_jump_not_zero(uint8_t reg, int32_t offset, int fd, off_t *sz);
 /* [ */
