@@ -11,6 +11,7 @@
 /* internal */
 #include "serialize.h"
 #include "types.h"
+#include "x86_64_constants.h"
 
 /* if there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
  * bfc_ functions, the common lines dealing with writing machine code should
@@ -54,6 +55,15 @@ bool bfc_jump_zero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
     *sz += 9;
     /* Jcc with tttn=0b0100 is JZ or JE */
     return test_jcc(0x4, reg, offset, fd);
+}
+
+/* times JUMP_SIZE NOP */
+bool bfc_nop_loop_open(uint8_t reg, int fd, off_t *sz) {
+    *sz += 9;
+    uint8_t nops[JUMP_SIZE];
+    for (int i = 0; i < JUMP_SIZE; i++) nops[i] = 0x90;
+
+    return write(fd, &nops, JUMP_SIZE) == JUMP_SIZE;
 }
 
 /* INC and DEC are encoded very similarly with very few differences between
