@@ -58,7 +58,7 @@ bool bfc_jump_zero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
 }
 
 /* times JUMP_SIZE NOP */
-bool bfc_nop_loop_open(uint8_t reg, int fd, off_t *sz) {
+bool bfc_nop_loop_open(int fd, off_t *sz) {
     *sz += 9;
     uint8_t nops[JUMP_SIZE];
     for (int i = 0; i < JUMP_SIZE; i++) nops[i] = 0x90;
