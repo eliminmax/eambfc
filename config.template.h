@@ -7,6 +7,13 @@
 #ifndef EAM_CONFIG_H
 #define EAM_CONFIG_H 1
 
+/* internal */
+#include "compat/elf.h"
+
+/* The target architecture - should be the same as the elf e_machine value for
+ * that architecture, to simplify implementation */
+#define TARGET_ARCH EM_X86_64
+
 /* The current version */
 #define EAMBFC_VERSION @@
 

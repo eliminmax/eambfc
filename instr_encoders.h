@@ -11,7 +11,13 @@
 /* POSIX */
 #include <unistd.h>
 /* internal */
+#include "config.h"
 #include "types.h"
+
+#if TARGET_ARCH == EM_X86_64
+/* internal */
+#include "x86_64_constants.h"
+#endif /* TARGET_ARCH */
 
 /* used for making system calls, setup, and other miscellaneous things */
 bool bfc_set_reg(uint8_t reg, int32_t imm, int fd, off_t *sz);
