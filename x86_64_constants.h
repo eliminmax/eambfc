@@ -1,5 +1,7 @@
 #ifndef EAM_X86_64_CONSTANTS
 #define EAM_X86_64_CONSTANTS 1
+/* internal */
+#include "compat/elf.h"
 
 /* the Linux kernel reads system call numbers from RAX on x86_64 systems,
  * and reads arguments from RDI, RSI, RDX, R10, R8, and R9.
@@ -35,5 +37,7 @@
  * bytes to leave room for them. */
 #define JUMP_SIZE 9
 
+#define ARCH_FLAGS 0
+#define ARCH_EI_DATA ELFDATA2LSB
 
 #endif /* EAM_X86_64_CONSTANTS */

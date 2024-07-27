@@ -58,10 +58,9 @@ static bool write_ehdr(int fd) {
     header.e_ident[EI_MAG2] = ELFMAG2;
     header.e_ident[EI_MAG3] = ELFMAG3;
 
-    /* x86_64 is a 64-bit architecture. it uses 2's complement, little endian
-     * for byte ordering. */
+    /* Target is a 64-bit architecture. */
     header.e_ident[EI_CLASS] = ELFCLASS64;
-    header.e_ident[EI_DATA] = ELFDATA2LSB;
+    header.e_ident[EI_DATA] = ARCH_EI_DATA;
 
     /* e_ident[EI_VERSION] must be set to EV_CURRENT. */
     header.e_ident[EI_VERSION] = EV_CURRENT;
@@ -79,9 +78,12 @@ static bool write_ehdr(int fd) {
      * Padding bytes are supposed to be zeroed out. */
     for (int i = EI_PAD; i < EI_NIDENT; i++) header.e_ident[i] = 0;
 
-    /* this is a basic executable for the AMD x86_64 architecture. */
+    /* this is a basic executable */
     header.e_type = ET_EXEC;
-    header.e_machine = EM_X86_64;
+
+    /* TARGET_ARCH is defined in config.h, and values are also the values for
+     * target ELF architectures. */
+    header.e_machine = TARGET_ARCH;
     /* e_version, like e_ident[EI_VERSION], must be set to EV_CURRENT */
     header.e_version = EV_CURRENT;
 
@@ -119,7 +121,7 @@ static bool write_ehdr(int fd) {
 
     /* e_flags has a processor-specific meaning. For x86_64, no values are
      * defined, and it should be set to 0. */
-    header.e_flags = 0;
+    header.e_flags = ARCH_FLAGS;
 
     serialize_ehdr64(&header, header_bytes);
     return write_obj(fd, header_bytes, EHDR_SIZE);
