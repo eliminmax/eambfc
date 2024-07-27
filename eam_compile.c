@@ -220,7 +220,6 @@ static struct jump_stack {
  * If too many nested loops are encountered, tries to resize the jump stack.
  * If that fails, sets alloc_valve to false */
 static bool bf_jump_open(int fd, bool *alloc_valve) {
-    off_t expected_location;
     /* ensure that there are no more than the maximum nesting level */
     if (jump_stack.index + 1 == jump_stack.loc_sz) {
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
