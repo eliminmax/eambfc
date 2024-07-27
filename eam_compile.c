@@ -24,9 +24,6 @@
  * could theoretically fail. Not likely to see in practice however. */
 static char *failed_write_msg = "Failed to write to file.";
 
-/* the number of 4-KiB blocks to allocate for the tape */
-static uint64_t tape_blocks;
-
 static off_t out_sz;
 static uint _line;
 static uint _col;
@@ -130,7 +127,7 @@ static bool write_ehdr(int fd) {
 
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
-static bool write_phtb(int fd) {
+static bool write_phtb(int fd, uint64_t tape_blocks) {
     Elf64_Phdr phdr_table[PHNUM];
     char phdr_table_bytes[PHTB_SIZE];
 
@@ -457,13 +454,13 @@ static bool comp_ir(char *ir, int fd) {
     return ret;
 }
 
-static bool finalize(int fd) {
+static bool finalize(int fd, uint64_t tape_blocks) {
     bool ret = bf_exit(fd);
     /* Ehdr and Phdr table are at the start */
     lseek(fd, 0, SEEK_SET);
     /* a |= b means a = (a | b) */
     ret |= write_ehdr(fd);
-    ret |= write_phtb(fd);
+    ret |= write_phtb(fd, tape_blocks);
     return ret;
 }
 
@@ -485,9 +482,8 @@ static bool finalize(int fd) {
  * them return false it returns false as well.
  *
  * If all of the other functions succeeded, it returns true. */
-bool bf_compile(int in_fd, int out_fd, bool optimize, uint64_t passed_blocks) {
+bool bf_compile(int in_fd, int out_fd, bool optimize, uint64_t tape_blocks) {
     int ret = true;
-    tape_blocks = passed_blocks;
     FILE *tmp_file = tmpfile();
     if (tmp_file == NULL) {
         basic_err("FAILED_TMPFILE", "Could not open a tmpfile.");
@@ -553,7 +549,7 @@ bool bf_compile(int in_fd, int out_fd, bool optimize, uint64_t passed_blocks) {
 
     /* now, code size is known, so we can write the headers
      * the appropriate error message(s) are already appended */
-    if (!finalize(tmp_fd)) ret = false;
+    if (!finalize(tmp_fd, tape_blocks)) ret = false;
     /* check if any unmatched loop openings were left over. */
     if (jump_stack.index-- > 0) {
         position_err(
