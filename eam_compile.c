@@ -221,8 +221,6 @@ static struct jump_stack {
  * If that fails, sets alloc_valve to false */
 static bool bf_jump_open(int fd, bool *alloc_valve) {
     off_t expected_location;
-    /* calculate the expected location to seek to */
-    expected_location = (CURRENT_ADDRESS(out_sz) + JUMP_SIZE);
     /* ensure that there are no more than the maximum nesting level */
     if (jump_stack.index + 1 == jump_stack.loc_sz) {
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
@@ -250,11 +248,9 @@ static bool bf_jump_open(int fd, bool *alloc_valve) {
     jump_stack.locations[jump_stack.index].src_col = _col;
     jump_stack.locations[jump_stack.index].dst_loc = CURRENT_ADDRESS(out_sz);
     jump_stack.index++;
-    /* skip enough bytes to write the instruction, once we know where the
-     * jump should be to. */
-    /* still need to increase out_sz for accuracy of the CURRENT_ADDRESS */
-    out_sz += JUMP_SIZE;
-    return lseek(fd, JUMP_SIZE, SEEK_CUR) == expected_location;
+    /* fill space jump open will take with NOP instructions of the same length,
+     * so that out_sz remains properly sized. */
+    return bfc_nop_loop_open(fd, &out_sz);
 }
 
 /* compile matching `[` and `]` instructions
