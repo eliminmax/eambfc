@@ -69,10 +69,4 @@
 /* the memory address of the current instruction. */
 #define CURRENT_ADDRESS(out_sz) (START_PADDR + out_sz)
 
-/* Linux system call numbers on AMD x86_64 */
-
-#define SYSCALL_READ 0
-#define SYSCALL_WRITE 1
-#define SYSCALL_EXIT 60
-
 #endif /* EAM_COMPILER_MACROS_H */

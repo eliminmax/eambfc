@@ -40,4 +40,10 @@
 #define ARCH_FLAGS 0
 #define ARCH_EI_DATA ELFDATA2LSB
 
+/* Linux system call numbers on AMD x86_64 */
+
+#define SYSCALL_READ 0
+#define SYSCALL_WRITE 1
+#define SYSCALL_EXIT 60
+
 #endif /* EAM_X86_64_CONSTANTS */
