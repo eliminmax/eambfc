@@ -6,13 +6,6 @@
  * readable alternative to just having byte values with no clear meaning. */
 #ifndef EAM_COMPILER_MACROS_H
 #define EAM_COMPILER_MACROS_H 1
-/* C99 */
-/* POSIX */
-#include <sys/types.h>
-/* internal */
-#include "config.h"
-#include "compat/elf.h"
-#include "types.h"
 
 /* assorted macros for the size/address of different elements in the ELF file */
 

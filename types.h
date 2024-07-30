@@ -6,13 +6,9 @@
 #ifndef EAMBFC_TYPES
 #define EAMBFC_TYPES 1
 /* C99 */
-#include <stdbool.h>
+#include <stdbool.h> /* bool, true, false */
 /* internal */
-/* wrapper for inttypes.h that provides handling for missing uint64_t or int64_t
- * types not guaranteed to be available in the POSIX.1-2008 or C99 standards.
- *
- * used in place of stdint.h or inttypes.h */
-#include "compat/eambfc_inttypes.h"
+#include "compat/eambfc_inttypes.h" /* uint*_t, int*_t, PRI*, SCN*, and more */
 
 typedef unsigned int uint;
 #endif /* EAMBFC_TYPES */

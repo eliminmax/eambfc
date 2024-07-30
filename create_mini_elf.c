@@ -5,13 +5,13 @@
  * A simple program that creates a minimal AMD x86_64 Linux ELF binary that
  * simply calls exit(0), to validate that a system can run Linux binaries. */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdio.h> /* fputs, stderr */
+#include <stdlib.h> /* EXIT_FAILURE, EXIT_SUCCESS */
 /* POSIX */
-#include <fcntl.h>
-#include <unistd.h>
+#include <fcntl.h> /* open, O_* */
+#include <unistd.h> /* close */
 /* internal */
-#include "eam_compile.h"
+#include "eam_compile.h" /* bf_compile */
 
 int main(void) {
     int in_fd = open("/dev/null", O_RDONLY);

@@ -38,7 +38,7 @@
 #ifndef _ELF_H
 #define _ELF_H 1
 
-#include "eambfc_inttypes.h"
+#include "eambfc_inttypes.h" /* uint*_t */
 
 /* Standard ELF types.  */
 
@@ -101,7 +101,7 @@ typedef struct {
 
 #define EI_PAD        9    /* Byte index of padding bytes */
 
-/* value used for e_type (object file type).  */
+/* value used for e_type (object file type). */
 #define ET_EXEC       2    /* Executable file */
 /* value used for e_machine (architecture).  */
 #define EM_X86_64     62   /* AMD x86-64 architecture */

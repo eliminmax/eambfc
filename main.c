@@ -5,19 +5,18 @@
  * A Brainfuck to x86_64 Linux ELF compiler. */
 
 /* C99 */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stdio.h> /* FILE, stderr, stdout, printf, fprintf */
+#include <stdlib.h> /* malloc, free, EXIT_*, strtoull */
+#include <string.h> /* strncmp, strlen, strcpy */
 /* POSIX */
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <fcntl.h> /* open, O_*, mode_t */
+#include <sys/stat.h> /* umask, mode_t */
+#include <unistd.h> /* getopt, optopt, close */
 /* internal */
-#include "config.h"
-#include "eam_compile.h"
-#include "err.h"
-#include "types.h"
+#include "config.h" /* EAMBFC_* */
+#include "eam_compile.h" /* bf_compile */
+#include "err.h" /* *_err */
+#include "types.h" /* bool, uint64_t, UINT64_MAX */
 
 /* Return the permission mask to use for the output file */
 mode_t get_perms(void) {

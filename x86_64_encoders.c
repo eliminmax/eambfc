@@ -7,11 +7,11 @@
  * whether or not the write was successful. */
 
 /* POSIX */
-#include <unistd.h>
+#include <unistd.h> /* size_t, off_t, write */
 /* internal */
-#include "serialize.h"
-#include "types.h"
-#include "x86_64_constants.h"
+#include "serialize.h" /* serialize* */
+#include "types.h" /* uint*_t, int*_t, bool */
+#include "x86_64_constants.h" /* JUMP_SIZE */
 
 /* if there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
  * bfc_ functions, the common lines dealing with writing machine code should

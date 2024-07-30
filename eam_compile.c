@@ -6,19 +6,15 @@
  * It is by far the most significant part of the EAMBFC codebase. */
 
 /* C99 */
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-/* POSIX */
-#include <fcntl.h>
-#include <unistd.h>
+#include <stdlib.h> /* malloc, realloc, free */
+#include <stdio.h> /* sscanf, fileno, tmpfile, fclose, fseek, FILE */
 /* internal */
-#include "eam_compiler_macros.h"
-#include "err.h"
-#include "optimize.h"
-#include "serialize.h"
-#include "types.h"
-#include "instr_encoders.h"
+#include "eam_compiler_macros.h" /* various macros */
+#include "err.h" /* *_err */
+#include "optimize.h" /* to_ir */
+#include "serialize.h" /* serialize_*hdr64 */
+#include "types.h" /* bool, int*_t, uint*_t, SCNx64 */
+#include "instr_encoders.h" /* bfc_* , ARCH_*, elf.h types and macros */
 
 /* the most common error message to pass, because of all of the places writes
  * could theoretically fail. Not likely to see in practice however. */

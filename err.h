@@ -6,8 +6,7 @@
 #ifndef EAM_ERR_H
 #define EAM_ERR_H 1
 /* internal */
-#include "config.h"
-#include "types.h"
+#include "types.h" /* uint */
 
 /* enable quiet mode - this does not print error messages to stderr. Does not
  * affect JSON messages printed to stdout. */

@@ -9,14 +9,14 @@
 #ifndef EAM_INSTR_ENCODERS_H
 #define EAM_INSTR_ENCODERS_H 1
 /* POSIX */
-#include <unistd.h>
+#include <unistd.h> /* off_t */
 /* internal */
-#include "config.h"
-#include "types.h"
+#include "config.h" /* TARGET_ARCH, EM_* */
+#include "types.h" /* bool, int*_t, uint8_t */
 
 #if TARGET_ARCH == EM_X86_64
 /* internal */
-#include "x86_64_constants.h"
+#include "x86_64_constants.h" /* REG_*, JUMP_SIZE, ARCH_*, SYSCALL_* */
 #endif /* TARGET_ARCH */
 
 /* used for making system calls, setup, and other miscellaneous things */

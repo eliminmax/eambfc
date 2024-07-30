@@ -7,16 +7,14 @@
  * OPTIMIZE_STANDALONE macro is defined at compile time. */
 
 /* C99 */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stdio.h> /* sprintf */
+#include <stdlib.h> /* free malloc realloc */
+#include <string.h> /* memmove memset strchr strcpy strlen strstr */
 /* POSIX */
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <unistd.h>
+#include <unistd.h> /* read */
 /* internal */
-#include "err.h"
-#include "types.h"
+#include "err.h" /* basic_err, instr_err */
+#include "types.h" /* bool, uint, UINT64_MAX, uint*_t, INT64_MAX */
 #define MALLOC_CHUNK_SIZE 0x100
 
 static size_t optim_sz;

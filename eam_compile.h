@@ -7,7 +7,7 @@
 #ifndef EAM_COMPILE_H
 #define EAM_COMPILE_H 1
 /* internal */
-#include "types.h"
+#include "types.h" /* bool, uint64_t */
 
 /* Takes 2 open file descriptors - in_fd and out_fd.
  * in_fd is a brainfuck source file, open for reading.
