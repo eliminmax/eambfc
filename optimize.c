@@ -7,7 +7,7 @@
  * OPTIMIZE_STANDALONE macro is defined at compile time. */
 
 /* C99 */
-#include <stdio.h> /* sprintf */
+#include <stdio.h> /* sprintf, puts */
 #include <stdlib.h> /* free malloc realloc */
 #include <string.h> /* memmove memset strchr strcpy strlen strstr */
 /* POSIX */
@@ -307,6 +307,7 @@ static char *instr_merge(char *s) {
 }
 
 #ifdef OPTIMIZE_STANDALONE
+#include <fcntl.h> /* open */
 /* used for testing purposes
  * inspired by Python's `if __name__ == "__main__" idiom
  * compile with flag -D OPTIMIZE_STANDALONE to enable this and compile a
