@@ -28,6 +28,7 @@ The following are the formatting I follow for source code:
   * `/* POSIX */`: the header is defined by and required by POSIX.1-2008
     * The C-Language Development extensions are assumed to be present.
   * `/* internal */`: the header is provided within the `eambfc` source tree.
+  * Each `#include` are accompanied by a comment explaining why it's there.
 
 Most of the code in this repository was written specifically for this project,
 and follows the formatting and style rules. Code originally from other projects
