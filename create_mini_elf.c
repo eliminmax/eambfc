@@ -19,7 +19,6 @@ int main(void) {
         fputs("Failed to open /dev/null for reading.\n", stderr);
         return EXIT_FAILURE;
     }
-    /* Don't bother worrying about umask for this. */
     int out_fd = open("mini_elf", O_WRONLY | O_CREAT | O_TRUNC, 0755);
     if (out_fd == -1) {
         close(in_fd);

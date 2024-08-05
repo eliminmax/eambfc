@@ -10,37 +10,12 @@
 #include <string.h> /* strncmp, strlen, strcpy */
 /* POSIX */
 #include <fcntl.h> /* open, O_*, mode_t */
-#include <sys/stat.h> /* umask, mode_t */
 #include <unistd.h> /* getopt, optopt, close */
 /* internal */
 #include "config.h" /* EAMBFC_* */
 #include "eam_compile.h" /* bf_compile */
 #include "err.h" /* *_err */
 #include "types.h" /* bool, uint64_t, UINT64_MAX */
-
-/* Return the permission mask to use for the output file */
-mode_t get_perms(void) {
-    /* The umask function sets the file mode creation mask to its argument and
-     * returns the previous mask.
-     *
-     * The mask is used to set default file mode
-     * the default permission for directories is (0777 & ~mask).
-     * the default permission for normal files is (0666 & ~mask).
-     *
-     * There is no standard way to query the mask without changing it.
-     * Because of this, the proper way to query the mask is to do the following.
-     * Seriously. */
-    mode_t mask = umask(0022); umask(mask);
-    /* default to the default file permissions for group and other, but rwx for
-     * the owner. */
-    mode_t perms = S_IRWXU | (~mask & 0066);
-    /* if the file's group can read it, it should also be allowed to execute it.
-     * the same goes for other users. */
-    if (perms & S_IRGRP) perms |= S_IXGRP;
-    if (perms & S_IROTH) perms |= S_IXOTH;
-    return perms;
-}
-
 
 /* print the help message to outfile. progname should be argv[0]. */
 void show_help(FILE *outfile, char *progname) {
@@ -105,7 +80,6 @@ int main(int argc, char* argv[]) {
     /* default to false, set to true if relevant argument was passed. */
     bool quiet = false, keep = false, moveahead = false, json = false;
     bool optimize = false;
-    mode_t perms = get_perms();
     char char_str_buf[2] = { '\0', '\0' };
     uint64_t tape_blocks = 0;
 
@@ -261,7 +235,7 @@ int main(int argc, char* argv[]) {
             ret = EXIT_FAILURE;
             if (moveahead) continue; else break;
         }
-        dst_fd = open(outname, O_WRONLY+O_CREAT+O_TRUNC, perms);
+        dst_fd = open(outname, O_WRONLY|O_CREAT|O_TRUNC, 0755);
         if (dst_fd < 0) {
             param_err(
                 "OPEN_W_FAILED",
