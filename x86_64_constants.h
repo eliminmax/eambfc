@@ -1,3 +1,9 @@
+/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+ *
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Architecture-specific constants for AMD's x86_64 architecture */
+
 #ifndef EAM_X86_64_CONSTANTS
 #define EAM_X86_64_CONSTANTS 1
 /* internal */
