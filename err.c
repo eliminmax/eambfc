@@ -85,7 +85,7 @@ static char *json_str(char* str) {
     *outp = 0;
     return json_escaped;
 }
-#undef BS_ESCAPED
+#undef BS_ESCAPE_APPEND
 
 
 /* simple enough to inline this one, I think. */
