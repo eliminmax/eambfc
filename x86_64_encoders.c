@@ -2,9 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * This file contains functions that encode x86_64 machine instructions and
- * write them to open file descriptors. Each returns a boolean value indicating
- * whether or not the write was successful. */
+ * This file provides the arch_inter for the x86_64 architecture. */
 
 /* POSIX */
 #include <unistd.h> /* size_t, off_t, write */
