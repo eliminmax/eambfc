@@ -27,7 +27,7 @@ typedef const struct arch_sc_nums {
 
 typedef const struct arch_funcs {
     /* register manipulation functions */
-    bool (*const set_reg)(uint8_t reg, int32_t imm, int fd, off_t *sz);
+    bool (*const set_reg)(uint8_t reg, int64_t imm, int fd, off_t *sz);
     bool (*const reg_copy)(uint8_t dst, uint8_t src, int fd, off_t *sz);
     bool (*const syscall)(int fd, off_t *sz);
     /* functions used to implement brainfuck instructions */

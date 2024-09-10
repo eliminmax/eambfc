@@ -126,7 +126,7 @@ static inline bool set_reg_dword(uint8_t reg, int32_t imm32, int fd) {
 }
 
 /* use the most efficient way to set a register to imm */
-bool x86_64_set_reg(uint8_t reg, int32_t imm, int fd, off_t *sz) {
+bool x86_64_set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
     if (imm == 0) {
         *sz += 2;
         /* XOR reg, reg */
