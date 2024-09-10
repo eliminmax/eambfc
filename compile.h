@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * This file provides an interface to eam_compile.c. */
+ * This file provides an interface to compile.c. */
 
 #ifndef EAMBFC_COMPILE_H
 #define EAMBFC_COMPILE_H 1

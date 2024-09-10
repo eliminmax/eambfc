@@ -13,8 +13,8 @@
 #include <unistd.h> /* getopt, optopt, close */
 /* internal */
 #include "arch_inter.h" /* arch_inter, X86_64_INTER */
+#include "compile.h" /* bf_compile */
 #include "config.h" /* EAMBFC_* */
-#include "eam_compile.h" /* bf_compile */
 #include "err.h" /* *_err */
 #include "types.h" /* bool, uint64_t, UINT64_MAX */
 

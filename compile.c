@@ -13,7 +13,7 @@
 /* internal */
 #include "arch_inter.h" /* arch_registers, arch_sc_nums, arch_inter */
 #include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr */
-#include "eam_compiler_macros.h" /* various macros */
+#include "compiler_macros.h" /* various macros */
 #include "err.h" /* *_err */
 #include "optimize.h" /* to_ir */
 #include "serialize.h" /* serialize_*hdr64 */
@@ -95,7 +95,7 @@ static bool write_ehdr(int fd, const arch_inter *inter) {
     header.e_shnum = SHNUM;
 
     /* The offset within the file for the program and section header tables
-     * respectively. Defined in macros earlier in eam_compiler_macros.h. */
+     * respectively. Defined in macros earlier in compiler_macros.h. */
     header.e_phoff = PHOFF;
     header.e_shoff = SHOFF;
 
@@ -534,7 +534,7 @@ bool bf_compile(
         fclose(tmp_file);
         return false;
     }
-    /* reset out_sz variable used in several macros in eam_compiler_macros */
+    /* reset out_sz variable used in several macros in compiler_macros */
     out_sz = 0;
     /* reset the jump stack for the new file */
     jump_stack.index = 0;

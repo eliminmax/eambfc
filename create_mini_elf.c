@@ -12,7 +12,7 @@
 #include <unistd.h> /* close */
 /* internal */
 #include "arch_inter.h" /* X86_64_INTER */
-#include "eam_compile.h" /* bf_compile */
+#include "compile.h" /* bf_compile */
 
 int main(void) {
     int in_fd = open("/dev/null", O_RDONLY);

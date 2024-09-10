@@ -13,7 +13,7 @@ CC = c99
 POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
 COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o
-EAMBFC_DEPS = eam_compile.o $(COMPILE_DEPS) main.o
+EAMBFC_DEPS = compile.o $(COMPILE_DEPS) main.o
 
 
 # flags for some of the more specialized, non-portable builds
@@ -30,7 +30,7 @@ GCC_UBSAN_FLAGS = -std=c99 -fanalyzer -fsanitize=address,undefined \
 GCC_INT_TORTURE_FLAGS = -D INT_TORTURE_TEST=1 $(GCC_STRICT_FLAGS) -Wno-format \
 			-Wno-pedantic -fsanitize=address,undefined
 
-UNIBUILD_FILES = serialize.c eam_compile.c optimize.c err.c \
+UNIBUILD_FILES = serialize.c compile.c optimize.c err.c \
 			x86_64_encoders.c main.c
 
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
@@ -64,7 +64,7 @@ config.h: config.template.h version
 		<config.template.h >config.h
 
 serialize.o: serialize.c
-eam_compile.o: config.h x86_64_encoders.o eam_compile.c
+compile.o: config.h x86_64_encoders.o compile.c
 main.o: config.h main.c
 optimize.o: err.o optimize.c
 x86_64_encoders.o: x86_64_encoders.c
@@ -79,9 +79,9 @@ err.o: config.h err.c
 # For an example of the latter, see FreeBSD's Linux syscall emulation.
 # `make test` works in both of those example cases
 create_mini_elf.o: config.h create_mini_elf.c
-create_mini_elf: create_mini_elf.o eam_compile.o $(COMPILE_DEPS)
+create_mini_elf: create_mini_elf.o compile.o $(COMPILE_DEPS)
 	$(CC) $(LDFLAGS) -o $@ $(POSIX_CFLAG)\
-		$(COMPILE_DEPS) eam_compile.o $@.o $(LDLIBS)
+		$(COMPILE_DEPS) compile.o $@.o $(LDLIBS)
 mini_elf: create_mini_elf
 	./create_mini_elf
 can_run_linux_amd64: mini_elf
