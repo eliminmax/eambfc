@@ -12,6 +12,7 @@
 #include <fcntl.h> /* open, O_*, mode_t */
 #include <unistd.h> /* getopt, optopt, close */
 /* internal */
+#include "arch_inter.h" /* arch_inter, X86_64_INTER */
 #include "config.h" /* EAMBFC_* */
 #include "eam_compile.h" /* bf_compile */
 #include "err.h" /* *_err */
@@ -247,7 +248,7 @@ int main(int argc, char* argv[]) {
             free(outname);
             if (moveahead) continue; else break;
         }
-        result = bf_compile(src_fd, dst_fd, optimize, tape_blocks);
+        result = bf_compile(X86_64_INTER, src_fd, dst_fd, optimize, tape_blocks);
         close(src_fd);
         close(dst_fd);
         if (!result) {

@@ -9,12 +9,13 @@
 #include <stdlib.h> /* malloc, realloc, free */
 #include <stdio.h> /* sscanf, fileno, tmpfile, fclose, fseek, FILE */
 /* internal */
+#include "arch_inter.h" /* arch_registers, arch_sc_nums, arch_inter */
 #include "eam_compiler_macros.h" /* various macros */
 #include "err.h" /* *_err */
 #include "optimize.h" /* to_ir */
 #include "serialize.h" /* serialize_*hdr64 */
 #include "types.h" /* bool, int*_t, uint*_t, SCNx64 */
-#include "instr_encoders.h" /* bfc_* , ARCH_*, elf.h types and macros */
+#include "instr_encoders.h" /*  ARCH_*, elf.h types and macros */
 
 /* the most common error message to pass, because of all of the places writes
  * could theoretically fail. Not likely to see in practice however. */
@@ -38,7 +39,7 @@ static inline bool write_obj(int fd, const void *bytes, ssize_t sz) {
 }
 
 /* Write the ELF header to the file descriptor fd. */
-static bool write_ehdr(int fd) {
+static bool write_ehdr(int fd, const arch_inter *inter) {
 
     /* The format of the ELF header is well-defined and well-documented
      * elsewhere. The struct for it is defined in compat/elf.h, as are most
@@ -56,7 +57,7 @@ static bool write_ehdr(int fd) {
 
     /* Target is a 64-bit architecture. */
     header.e_ident[EI_CLASS] = ELFCLASS64;
-    header.e_ident[EI_DATA] = ARCH_EI_DATA;
+    header.e_ident[EI_DATA] = inter->ELF_DATA;
 
     /* e_ident[EI_VERSION] must be set to EV_CURRENT. */
     header.e_ident[EI_VERSION] = EV_CURRENT;
@@ -79,7 +80,7 @@ static bool write_ehdr(int fd) {
 
     /* TARGET_ARCH is defined in config.h, and values are also the values for
      * target ELF architectures. */
-    header.e_machine = TARGET_ARCH;
+    header.e_machine = inter->ELF_ARCH;
     /* e_version, like e_ident[EI_VERSION], must be set to EV_CURRENT */
     header.e_version = EV_CURRENT;
 
@@ -181,19 +182,19 @@ static bool write_phtb(int fd, uint64_t tape_blocks) {
  *  - arg3 is the number of bytes to write/read
  *
  * Due to their similarity, ',' and '.' are both implemented with bf_io. */
-static inline bool bf_io(int fd, int bf_fd, int sc) {
+static inline bool bf_io(int fd, int bf_fd, int sc, const arch_inter *inter) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
     /* load the number for the write system call into REG_SC_NUM */
-    bool ret = bfc_set_reg(REG_SC_NUM, sc, fd, &out_sz);
+    bool ret = inter->FUNCS.set_reg(REG_SC_NUM, sc, fd, &out_sz);
     /* load the number for the stdout file descriptor into REG_ARG1 */
-    ret &= bfc_set_reg(REG_ARG1, bf_fd, fd, &out_sz);
+    ret &= inter->FUNCS.set_reg(REG_ARG1, bf_fd, fd, &out_sz);
     /* copy the address in REG_BF_PTR to REG_ARG2 */
-    ret &= bfc_reg_copy(REG_ARG2, REG_BF_PTR, fd, &out_sz);
+    ret &= inter->FUNCS.reg_copy(REG_ARG2, REG_BF_PTR, fd, &out_sz);
     /* load number of bytes to read/write (1, specifically) into REG_ARG3 */
-    ret &= bfc_set_reg(REG_ARG3, 1, fd, &out_sz);
-    ret &= bfc_syscall(fd, &out_sz);
+    ret &= inter->FUNCS.set_reg(REG_ARG3, 1, fd, &out_sz);
+    ret &= inter->FUNCS.syscall(fd, &out_sz);
     return ret;
 }
 
@@ -217,7 +218,7 @@ static struct jump_stack {
  *
  * If too many nested loops are encountered, tries to resize the jump stack.
  * If that fails, sets alloc_valve to false */
-static bool bf_jump_open(int fd, bool *alloc_valve) {
+static bool bf_jump_open(int fd, bool *alloc_valve, const arch_inter *inter) {
     /* ensure that there are no more than the maximum nesting level */
     if (jump_stack.index + 1 == jump_stack.loc_sz) {
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
@@ -247,12 +248,12 @@ static bool bf_jump_open(int fd, bool *alloc_valve) {
     jump_stack.index++;
     /* fill space jump open will take with NOP instructions of the same length,
      * so that out_sz remains properly sized. */
-    return bfc_nop_loop_open(fd, &out_sz);
+    return inter->FUNCS.nop_loop_open(fd, &out_sz);
 }
 
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
-static bool bf_jump_close(int fd) {
+static bool bf_jump_close(int fd, const arch_inter *inter) {
     off_t open_address, close_address;
     int32_t distance;
 
@@ -279,7 +280,7 @@ static bool bf_jump_close(int fd) {
         return false;
     }
     off_t phony = 0; /* already added to code size for this one */
-    if (!bfc_jump_zero(REG_BF_PTR, distance, fd, &phony)) {
+    if (!inter->FUNCS.jump_zero(REG_BF_PTR, distance, fd, &phony)) {
         instr_err(
             "FAILED_WRITE", failed_write_msg, '['
         );
@@ -293,7 +294,7 @@ static bool bf_jump_close(int fd) {
         return false;
     }
     /* jump to right after the `[` instruction, to skip a redundant check */
-    if (!bfc_jump_not_zero(REG_BF_PTR, -distance, fd, &out_sz)) {
+    if (!inter->FUNCS.jump_not_zero(REG_BF_PTR, -distance, fd, &out_sz)) {
         position_err(
             "FAILED_WRITE", failed_write_msg, ']', _line, _col
         );
@@ -313,39 +314,44 @@ static bool bf_jump_close(int fd) {
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
-static bool comp_instr(char c, int fd, bool *alloc_valve) {
+static bool comp_instr(
+    char c,
+    int fd,
+    bool *alloc_valve,
+    const arch_inter *inter
+) {
     bool ret;
     _col++;
     switch(c) {
       /* start with the simple cases handled with COMPILE_WITH */
       /* decrement the tape pointer register */
-      case '<': COMPILE_WITH(bfc_dec_reg); break;
+      case '<': COMPILE_WITH(inter->FUNCS.dec_reg); break;
       /* increment the tape pointer register */
-      case '>': COMPILE_WITH(bfc_inc_reg); break;
+      case '>': COMPILE_WITH(inter->FUNCS.inc_reg); break;
       /* increment the current tape value */
-      case '+': COMPILE_WITH(bfc_inc_byte); break;
+      case '+': COMPILE_WITH(inter->FUNCS.inc_byte); break;
       /* decrement the current tape value */
-      case '-': COMPILE_WITH(bfc_dec_byte); break;
+      case '-': COMPILE_WITH(inter->FUNCS.dec_byte); break;
       case '.':
         /* write to stdout */
-        ret = bf_io(fd, STDOUT_FILENO, SYSCALL_WRITE);
+        ret = bf_io(fd, STDOUT_FILENO, SYSCALL_WRITE, inter);
         if (!ret) {
             position_err("FAILED_WRITE", failed_write_msg, c, _line, _col);
         }
         break;
       case ',':
         /* read from stdin */
-        ret = bf_io(fd, STDIN_FILENO, SYSCALL_READ);
+        ret = bf_io(fd, STDIN_FILENO, SYSCALL_READ, inter);
         if (!ret) {
             position_err("FAILED_WRITE", failed_write_msg, c, _line, _col);
         }
         break;
       /* `[` and `]` do their own error handling. */
       case '[':
-        ret = bf_jump_open(fd, alloc_valve);
+        ret = bf_jump_open(fd, alloc_valve, inter);
         break;
       case ']':
-        ret = bf_jump_close(fd);
+        ret = bf_jump_close(fd, inter);
         break;
       case '\n':
         /* add 1 to the line number and reset the column. */
@@ -362,20 +368,20 @@ static bool comp_instr(char c, int fd, bool *alloc_valve) {
 }
 
 /* write code to perform the exit(0) syscall */
-static bool bf_exit(int fd) {
+static bool bf_exit(int fd, const arch_inter *inter) {
     bool ret = true;
     /* set system call register to exit system call numbifer */
-    if (!bfc_set_reg(REG_SC_NUM, SYSCALL_EXIT, fd, &out_sz)) {
+    if (!inter->FUNCS.set_reg(REG_SC_NUM, SYSCALL_EXIT, fd, &out_sz)) {
         basic_err("FAILED_WRITE", failed_write_msg);
         ret = false;
     }
     /* set system call register to the desired exit code (0) */
-    if (!bfc_set_reg(REG_ARG1, 0, fd, &out_sz)) {
+    if (!inter->FUNCS.set_reg(REG_ARG1, 0, fd, &out_sz)) {
         basic_err("FAILED_WRITE", failed_write_msg);
         ret = false;
     }
     /* perform a system call */
-    if (!bfc_syscall(fd, &out_sz)) {
+    if (!inter->FUNCS.syscall(fd, &out_sz)) {
         basic_err("FAILED_WRITE", failed_write_msg);
         ret = false;
     }
@@ -390,7 +396,12 @@ static bool bf_exit(int fd) {
     basic_err("FAILED_WRITE", failed_write_msg); }\
     return ret
 /* compile a condensed instruction */
-static inline bool comp_ir_condensed_instr(char *p, int fd, int* skip_p) {
+static inline bool comp_ir_condensed_instr(
+    char *p,
+    int fd,
+    int *skip_p,
+    const arch_inter *inter
+) {
     uint64_t ct;
     bool ret; /* needed for IR_COMPILE_WITH macro */
     if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_p) != 1) {
@@ -398,10 +409,10 @@ static inline bool comp_ir_condensed_instr(char *p, int fd, int* skip_p) {
         return false;
     } else {
         switch (*p) {
-          case '#': IR_COMPILE_WITH(bfc_add_mem);
-          case '=': IR_COMPILE_WITH(bfc_sub_mem);
-          case '}': IR_COMPILE_WITH(bfc_add_reg);
-          case '{': IR_COMPILE_WITH(bfc_sub_reg);
+          case '#': IR_COMPILE_WITH(inter->FUNCS.add_mem);
+          case '=': IR_COMPILE_WITH(inter->FUNCS.sub_mem);
+          case '}': IR_COMPILE_WITH(inter->FUNCS.add_reg);
+          case '{': IR_COMPILE_WITH(inter->FUNCS.sub_reg);
           default:
             basic_err("INVALID_IR", "Invalid IR Opcode");
             return false;
@@ -409,7 +420,13 @@ static inline bool comp_ir_condensed_instr(char *p, int fd, int* skip_p) {
     }
 }
 
-static bool comp_ir_instr(char *p, int fd, int* skip_ct_p, bool *alloc_valve) {
+static bool comp_ir_instr(
+    char *p,
+    int fd,
+    int *skip_ct_p,
+    bool *alloc_valve,
+    const arch_inter *inter
+) {
     *skip_ct_p = 0;
     switch(*p) {
       case '+':
@@ -420,26 +437,26 @@ static bool comp_ir_instr(char *p, int fd, int* skip_ct_p, bool *alloc_valve) {
       case ',':
       case '[':
       case ']':
-        return comp_instr(*p, fd, alloc_valve);
+        return comp_instr(*p, fd, alloc_valve, inter);
       case '@':
-        if (bfc_zero_mem(REG_BF_PTR, fd, &out_sz)) return true;
+        if (inter->FUNCS.zero_mem(REG_BF_PTR, fd, &out_sz)) return true;
         else {
             basic_err("FAILED_WRITE", failed_write_msg);
             return false;
         }
       default:
-        return comp_ir_condensed_instr(p, fd, skip_ct_p);
+        return comp_ir_condensed_instr(p, fd, skip_ct_p, inter);
     }
 }
 
-static bool comp_ir(char *ir, int fd) {
+static bool comp_ir(char *ir, int fd, const arch_inter *inter) {
     bool ret = true;
     char *p = ir;
     int skip_ct;
     bool alloc_valve = true;
     while (*p) {
         _col++;
-        ret &= comp_ir_instr(p++, fd, &skip_ct, &alloc_valve);
+        ret &= comp_ir_instr(p++, fd, &skip_ct, &alloc_valve, inter);
         if (!alloc_valve) return false;
         p += skip_ct;
     }
@@ -447,12 +464,12 @@ static bool comp_ir(char *ir, int fd) {
     return ret;
 }
 
-static bool finalize(int fd, uint64_t tape_blocks) {
-    bool ret = bf_exit(fd);
+static bool finalize(int fd, uint64_t tape_blocks, const arch_inter *inter) {
+    bool ret = bf_exit(fd, inter);
     /* Ehdr and Phdr table are at the start */
     lseek(fd, 0, SEEK_SET);
     /* a |= b means a = (a | b) */
-    ret |= write_ehdr(fd);
+    ret |= write_ehdr(fd, inter);
     ret |= write_phtb(fd, tape_blocks);
     return ret;
 }
@@ -475,7 +492,13 @@ static bool finalize(int fd, uint64_t tape_blocks) {
  * them return false it returns false as well.
  *
  * If all of the other functions succeeded, it returns true. */
-bool bf_compile(int in_fd, int out_fd, bool optimize, uint64_t tape_blocks) {
+bool bf_compile(
+    const arch_inter inter,
+    int in_fd,
+    int out_fd,
+    bool optimize,
+    uint64_t tape_blocks
+) {
     int ret = true;
     FILE *tmp_file = tmpfile();
     if (tmp_file == NULL) {
@@ -514,7 +537,7 @@ bool bf_compile(int in_fd, int out_fd, bool optimize, uint64_t tape_blocks) {
         return false;
     }
 
-    if (!bfc_set_reg(REG_BF_PTR, TAPE_ADDRESS, tmp_fd, &out_sz)) {
+    if (!inter.FUNCS.set_reg(REG_BF_PTR, TAPE_ADDRESS, tmp_fd, &out_sz)) {
         basic_err(
             "FAILED_WRITE",
             failed_write_msg
@@ -527,12 +550,12 @@ bool bf_compile(int in_fd, int out_fd, bool optimize, uint64_t tape_blocks) {
             fclose(tmp_file);
             return false;
         }
-        ret &= comp_ir(ir, tmp_fd);
+        ret &= comp_ir(ir, tmp_fd, &inter);
     } else {
         /* the error message(s) are already appended if issues occur */
         while (read(in_fd, &_instr, 1)) {
             bool alloc_valve = true;
-            ret &= comp_instr(_instr, tmp_fd, &alloc_valve);
+            ret &= comp_instr(_instr, tmp_fd, &alloc_valve, &inter);
             if (!alloc_valve) {
                 fclose(tmp_file);
                 return false;
@@ -542,7 +565,7 @@ bool bf_compile(int in_fd, int out_fd, bool optimize, uint64_t tape_blocks) {
 
     /* now, code size is known, so we can write the headers
      * the appropriate error message(s) are already appended */
-    if (!finalize(tmp_fd, tape_blocks)) ret = false;
+    if (!finalize(tmp_fd, tape_blocks, &inter)) ret = false;
     /* check if any unmatched loop openings were left over. */
     if (jump_stack.index-- > 0) {
         position_err(

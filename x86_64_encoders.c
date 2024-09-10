@@ -9,6 +9,8 @@
 /* POSIX */
 #include <unistd.h> /* size_t, off_t, write */
 /* internal */
+#include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
+#include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
 #include "serialize.h" /* serialize* */
 #include "types.h" /* uint*_t, int*_t, bool */
 #include "x86_64_constants.h" /* JUMP_SIZE */
@@ -268,3 +270,37 @@ bool bfc_zero_mem(uint8_t reg, int fd, off_t *sz) {
     /* MOV byte [reg], 0 */
     return write(fd, (uint8_t[]){ 0x67, 0xc6, reg, 0x00 }, 4) == 4;
 }
+
+const arch_inter X86_64_INTER = {
+    (arch_funcs) {
+        bfc_set_reg,
+        bfc_reg_copy,
+        bfc_syscall,
+        bfc_nop_loop_open,
+        bfc_jump_zero,
+        bfc_jump_not_zero,
+        bfc_inc_reg,
+        bfc_dec_reg,
+        bfc_inc_byte,
+        bfc_dec_byte,
+        bfc_add_reg,
+        bfc_sub_reg,
+        bfc_add_mem,
+        bfc_sub_mem,
+        bfc_zero_mem
+    },
+    (arch_sc_nums) {
+        /* read */ 0,
+        /* write */ 1,
+        /* exit */ 60
+    },
+    (arch_registers) {
+        00 /* sc_num = RAX */,
+        07 /* arg1 = RDI */,
+        06 /* arg2 = RSI */,
+        02 /* arg3 = RDX */,
+        03 /* bf_ptr = RBX */
+    },
+    EM_X86_64,
+    ELFDATA2LSB
+};

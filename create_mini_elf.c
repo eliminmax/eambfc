@@ -11,6 +11,7 @@
 #include <fcntl.h> /* open, O_* */
 #include <unistd.h> /* close */
 /* internal */
+#include "arch_inter.h" /* X86_64_INTER */
 #include "eam_compile.h" /* bf_compile */
 
 int main(void) {
@@ -25,7 +26,8 @@ int main(void) {
         fputs("Failed to open mini_elf for writing.\n", stderr);
         return EXIT_FAILURE;
     }
-    int ret = bf_compile(in_fd, out_fd, false, 1) ? EXIT_SUCCESS : EXIT_FAILURE;
+    int ret = bf_compile(X86_64_INTER, in_fd, out_fd, false, 1) ?
+        EXIT_SUCCESS : EXIT_FAILURE;
     close(in_fd);
     close(out_fd);
     return ret;

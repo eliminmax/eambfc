@@ -7,6 +7,7 @@
 #ifndef EAM_COMPILE_H
 #define EAM_COMPILE_H 1
 /* internal */
+#include "arch_inter.h" /* arch_inter */
 #include "types.h" /* bool, uint64_t */
 
 /* Takes 2 open file descriptors - in_fd and out_fd.
@@ -30,6 +31,12 @@
  * location in the internal EAMBFC-IR, rather than the source code.
  *
  * tape_blocks is the number of 4-KiB blocks to allocate for the tape. */
-bool bf_compile(int in_fd, int out_fd, bool optimize, uint64_t tape_blocks);
+bool bf_compile(
+    arch_inter inter,
+    int in_fd,
+    int out_fd,
+    bool optimize,
+    uint64_t tape_blocks
+);
 
 #endif /* EAM_COMPILE_H */
