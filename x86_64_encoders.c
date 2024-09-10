@@ -271,36 +271,42 @@ bool bfc_zero_mem(uint8_t reg, int fd, off_t *sz) {
     return write(fd, (uint8_t[]){ 0x67, 0xc6, reg, 0x00 }, 4) == 4;
 }
 
+const arch_funcs X86_64_FUNCS = {
+    bfc_set_reg,
+    bfc_reg_copy,
+    bfc_syscall,
+    bfc_nop_loop_open,
+    bfc_jump_zero,
+    bfc_jump_not_zero,
+    bfc_inc_reg,
+    bfc_dec_reg,
+    bfc_inc_byte,
+    bfc_dec_byte,
+    bfc_add_reg,
+    bfc_sub_reg,
+    bfc_add_mem,
+    bfc_sub_mem,
+    bfc_zero_mem
+};
+
+const arch_sc_nums X86_64_SC_NUMS = {
+    0 /* read */,
+    1 /* write */,
+    60 /* exit */
+};
+
+const arch_registers X86_64_REGS = {
+    00 /* sc_num = RAX */,
+    07 /* arg1 = RDI */,
+    06 /* arg2 = RSI */,
+    02 /* arg3 = RDX */,
+    03 /* bf_ptr = RBX */
+};
+
 const arch_inter X86_64_INTER = {
-    (arch_funcs) {
-        bfc_set_reg,
-        bfc_reg_copy,
-        bfc_syscall,
-        bfc_nop_loop_open,
-        bfc_jump_zero,
-        bfc_jump_not_zero,
-        bfc_inc_reg,
-        bfc_dec_reg,
-        bfc_inc_byte,
-        bfc_dec_byte,
-        bfc_add_reg,
-        bfc_sub_reg,
-        bfc_add_mem,
-        bfc_sub_mem,
-        bfc_zero_mem
-    },
-    (arch_sc_nums) {
-        /* read */ 0,
-        /* write */ 1,
-        /* exit */ 60
-    },
-    (arch_registers) {
-        00 /* sc_num = RAX */,
-        07 /* arg1 = RDI */,
-        06 /* arg2 = RSI */,
-        02 /* arg3 = RDX */,
-        03 /* bf_ptr = RBX */
-    },
+    &X86_64_FUNCS,
+    &X86_64_SC_NUMS,
+    &X86_64_REGS,
     EM_X86_64,
     ELFDATA2LSB
 };
