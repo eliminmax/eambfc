@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
     char char_str_buf[2] = { '\0', '\0' };
     uint64_t tape_blocks = 0;
 
-    while ((opt = getopt(argc, argv, ":hVqjOkme:t:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hVqjOkmAe:t:")) != -1) {
         switch(opt) {
           case 'h':
             show_help(stdout, argv[0]);
@@ -105,6 +105,18 @@ int main(int argc, char* argv[]) {
                 EAMBFC_COMMIT
             );
             return EXIT_SUCCESS;
+          case 'A':
+            printf(
+                "This build of %s supports the following architectures:\n\n"
+                "- x86_64 (aliases: x64, amd64, x86-64)\n"
+#ifdef EAM_TARGET_ARM64
+                "- arm64 (aliases: aarch64)\n"
+#endif /* EAM_TARGET_ARM64 */
+                "\nIf no architecture is specified, it defaults to x86_64.\n",
+                argv[0]
+            );
+            return EXIT_SUCCESS;
+
           case 'q':
             quiet = true;
             quiet_mode();
