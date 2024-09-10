@@ -513,7 +513,7 @@ static bool finalize(int fd, uint64_t tape_blocks, const arch_inter *inter) {
  *
  * If all of the other functions succeeded, it returns true. */
 bool bf_compile(
-    const arch_inter inter,
+    const arch_inter *inter,
     int in_fd,
     int out_fd,
     bool optimize,
@@ -557,8 +557,8 @@ bool bf_compile(
         return false;
     }
 
-    if (!inter.FUNCS->set_reg(
-            inter.REGS->bf_ptr, TAPE_ADDRESS, tmp_fd, &out_sz)) {
+    if (!inter->FUNCS->set_reg(
+            inter->REGS->bf_ptr, TAPE_ADDRESS, tmp_fd, &out_sz)) {
         basic_err(
             "FAILED_WRITE",
             failed_write_msg
@@ -571,12 +571,12 @@ bool bf_compile(
             fclose(tmp_file);
             return false;
         }
-        ret &= comp_ir(ir, tmp_fd, &inter);
+        ret &= comp_ir(ir, tmp_fd, inter);
     } else {
         /* the error message(s) are already appended if issues occur */
         while (read(in_fd, &_instr, 1)) {
             bool alloc_valve = true;
-            ret &= comp_instr(_instr, tmp_fd, &alloc_valve, &inter);
+            ret &= comp_instr(_instr, tmp_fd, &alloc_valve, inter);
             if (!alloc_valve) {
                 fclose(tmp_file);
                 return false;
@@ -586,7 +586,7 @@ bool bf_compile(
 
     /* now, code size is known, so we can write the headers
      * the appropriate error message(s) are already appended */
-    if (!finalize(tmp_fd, tape_blocks, &inter)) ret = false;
+    if (!finalize(tmp_fd, tape_blocks, inter)) ret = false;
     /* check if any unmatched loop openings were left over. */
     if (jump_stack.index-- > 0) {
         position_err(
