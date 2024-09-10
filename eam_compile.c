@@ -186,14 +186,24 @@ static inline bool bf_io(int fd, int bf_fd, int sc, const arch_inter *inter) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
-    /* load the number for the write system call into REG_SC_NUM */
-    bool ret = inter->FUNCS.set_reg(REG_SC_NUM, sc, fd, &out_sz);
-    /* load the number for the stdout file descriptor into REG_ARG1 */
-    ret &= inter->FUNCS.set_reg(REG_ARG1, bf_fd, fd, &out_sz);
-    /* copy the address in REG_BF_PTR to REG_ARG2 */
-    ret &= inter->FUNCS.reg_copy(REG_ARG2, REG_BF_PTR, fd, &out_sz);
-    /* load number of bytes to read/write (1, specifically) into REG_ARG3 */
-    ret &= inter->FUNCS.set_reg(REG_ARG3, 1, fd, &out_sz);
+    /* load the number for the write system call into REGS.sc_num */
+    bool ret = inter->FUNCS.set_reg(
+        inter->REGS.sc_num,
+        sc,
+        fd,
+        &out_sz
+    );
+    /* load the number for the stdout file descriptor into REGS.arg1 */
+    ret &= inter->FUNCS.set_reg(inter->REGS.arg1, bf_fd, fd, &out_sz);
+    /* copy the address in REGS.bf_ptr to REGS.arg2 */
+    ret &= inter->FUNCS.reg_copy(
+        inter->REGS.arg2,
+        inter->REGS.bf_ptr,
+        fd,
+        &out_sz
+    );
+    /* load # of bytes to read/write (1, specifically) into REGS.arg3 */
+    ret &= inter->FUNCS.set_reg(inter->REGS.arg3, 1, fd, &out_sz);
     ret &= inter->FUNCS.syscall(fd, &out_sz);
     return ret;
 }
@@ -280,7 +290,7 @@ static bool bf_jump_close(int fd, const arch_inter *inter) {
         return false;
     }
     off_t phony = 0; /* already added to code size for this one */
-    if (!inter->FUNCS.jump_zero(REG_BF_PTR, distance, fd, &phony)) {
+    if (!inter->FUNCS.jump_zero(inter->REGS.bf_ptr, distance, fd, &phony)) {
         instr_err(
             "FAILED_WRITE", failed_write_msg, '['
         );
@@ -294,7 +304,9 @@ static bool bf_jump_close(int fd, const arch_inter *inter) {
         return false;
     }
     /* jump to right after the `[` instruction, to skip a redundant check */
-    if (!inter->FUNCS.jump_not_zero(REG_BF_PTR, -distance, fd, &out_sz)) {
+    if (!inter->FUNCS.jump_not_zero(
+            inter->REGS.bf_ptr, -distance, fd, &out_sz)
+       ) {
         position_err(
             "FAILED_WRITE", failed_write_msg, ']', _line, _col
         );
@@ -307,7 +319,7 @@ static bool bf_jump_close(int fd, const arch_inter *inter) {
 
 /* 4 of the 8 brainfuck instructions can be compiled with the same code flow,
  * swapping out which specific function is used.*/
-#define COMPILE_WITH(f) if (!((ret = f(REG_BF_PTR, fd, &out_sz)))) \
+#define COMPILE_WITH(f) if (!((ret = f(inter->REGS.bf_ptr, fd, &out_sz)))) \
     position_err("FAILED_WRITE", failed_write_msg, c, _line, _col)
 
 
@@ -334,14 +346,14 @@ static bool comp_instr(
       case '-': COMPILE_WITH(inter->FUNCS.dec_byte); break;
       case '.':
         /* write to stdout */
-        ret = bf_io(fd, STDOUT_FILENO, SYSCALL_WRITE, inter);
+        ret = bf_io(fd, STDOUT_FILENO, inter->SC_NUMS.write, inter);
         if (!ret) {
             position_err("FAILED_WRITE", failed_write_msg, c, _line, _col);
         }
         break;
       case ',':
         /* read from stdin */
-        ret = bf_io(fd, STDIN_FILENO, SYSCALL_READ, inter);
+        ret = bf_io(fd, STDIN_FILENO, inter->SC_NUMS.read, inter);
         if (!ret) {
             position_err("FAILED_WRITE", failed_write_msg, c, _line, _col);
         }
@@ -370,13 +382,18 @@ static bool comp_instr(
 /* write code to perform the exit(0) syscall */
 static bool bf_exit(int fd, const arch_inter *inter) {
     bool ret = true;
-    /* set system call register to exit system call numbifer */
-    if (!inter->FUNCS.set_reg(REG_SC_NUM, SYSCALL_EXIT, fd, &out_sz)) {
+    /* set system call register to exit system call number */
+    if (!inter->FUNCS.set_reg(
+            inter->REGS.sc_num,
+            inter->SC_NUMS.exit,
+            fd,
+            &out_sz
+    )) {
         basic_err("FAILED_WRITE", failed_write_msg);
         ret = false;
     }
     /* set system call register to the desired exit code (0) */
-    if (!inter->FUNCS.set_reg(REG_ARG1, 0, fd, &out_sz)) {
+    if (!inter->FUNCS.set_reg(inter->REGS.arg1, 0, fd, &out_sz)) {
         basic_err("FAILED_WRITE", failed_write_msg);
         ret = false;
     }
@@ -392,7 +409,8 @@ static bool bf_exit(int fd, const arch_inter *inter) {
 /* similar to the above COMPILE_WITH, but with an extra parameter passed to the
  * function, and aa return statement added o right after the conditional.
  * immediately returns, whether or not an error message is printed. */
-#define IR_COMPILE_WITH(f) if (!((ret = f(REG_BF_PTR, ct, fd, &out_sz)))) { \
+#define IR_COMPILE_WITH(f) \
+    if (!((ret = f(inter->REGS.bf_ptr, ct, fd, &out_sz)))) { \
     basic_err("FAILED_WRITE", failed_write_msg); }\
     return ret
 /* compile a condensed instruction */
@@ -439,7 +457,7 @@ static bool comp_ir_instr(
       case ']':
         return comp_instr(*p, fd, alloc_valve, inter);
       case '@':
-        if (inter->FUNCS.zero_mem(REG_BF_PTR, fd, &out_sz)) return true;
+        if (inter->FUNCS.zero_mem(inter->REGS.bf_ptr, fd, &out_sz)) return true;
         else {
             basic_err("FAILED_WRITE", failed_write_msg);
             return false;
@@ -537,7 +555,8 @@ bool bf_compile(
         return false;
     }
 
-    if (!inter.FUNCS.set_reg(REG_BF_PTR, TAPE_ADDRESS, tmp_fd, &out_sz)) {
+    if (!inter.FUNCS.set_reg(
+            inter.REGS.bf_ptr, TAPE_ADDRESS, tmp_fd, &out_sz)) {
         basic_err(
             "FAILED_WRITE",
             failed_write_msg
