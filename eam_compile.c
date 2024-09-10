@@ -8,14 +8,16 @@
 /* C99 */
 #include <stdlib.h> /* malloc, realloc, free */
 #include <stdio.h> /* sscanf, fileno, tmpfile, fclose, fseek, FILE */
+/* POSIX */
+#include <unistd.h> /* off_t, read, write, seek. STD*_FILENO*/
 /* internal */
 #include "arch_inter.h" /* arch_registers, arch_sc_nums, arch_inter */
+#include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr */
 #include "eam_compiler_macros.h" /* various macros */
 #include "err.h" /* *_err */
 #include "optimize.h" /* to_ir */
 #include "serialize.h" /* serialize_*hdr64 */
 #include "types.h" /* bool, int*_t, uint*_t, SCNx64 */
-#include "instr_encoders.h" /*  ARCH_*, elf.h types and macros */
 
 /* the most common error message to pass, because of all of the places writes
  * could theoretically fail. Not likely to see in practice however. */
@@ -118,7 +120,7 @@ static bool write_ehdr(int fd, const arch_inter *inter) {
 
     /* e_flags has a processor-specific meaning. For x86_64, no values are
      * defined, and it should be set to 0. */
-    header.e_flags = ARCH_FLAGS;
+    header.e_flags = inter->FLAGS;
 
     serialize_ehdr64(&header, header_bytes);
     return write_obj(fd, header_bytes, EHDR_SIZE);

@@ -58,6 +58,7 @@ typedef const struct arch_inter {
     arch_funcs *FUNCS;
     arch_sc_nums *SC_NUMS;
     arch_registers *REGS;
+    uint32_t FLAGS;
     uint16_t ELF_ARCH;
     unsigned char ELF_DATA;
 } arch_inter;

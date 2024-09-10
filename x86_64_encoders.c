@@ -13,7 +13,12 @@
 #include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
 #include "serialize.h" /* serialize* */
 #include "types.h" /* uint*_t, int*_t, bool */
-#include "x86_64_constants.h" /* JUMP_SIZE */
+
+/* in eambfc, `[` and `]` are both compiled to TEST (3 bytes), followed by a Jcc
+ * instruction (6 bytes). When encountering a `[` instruction, skip this many
+ * bytes to leave room for them. */
+#define JUMP_SIZE 9
+
 
 /* if there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
  * bfc_ functions, the common lines dealing with writing machine code should
@@ -307,6 +312,7 @@ const arch_inter X86_64_INTER = {
     &X86_64_FUNCS,
     &X86_64_SC_NUMS,
     &X86_64_REGS,
+    0 /* no flags are defined for this architecture */,
     EM_X86_64,
     ELFDATA2LSB
 };
