@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
     char char_str_buf[2] = { '\0', '\0' };
     uint64_t tape_blocks = 0;
     arch_inter *inter = NULL;
-    while ((opt = getopt(argc, argv, ":hVqjOkmAe:t:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hVqjOkmAa:e:t:")) != -1) {
         switch(opt) {
           case 'h':
             show_help(stdout, argv[0]);
