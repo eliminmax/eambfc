@@ -12,8 +12,8 @@ CC = c99
 # This flag enables POSIX.1-2008-specific macros and features
 POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
-EAM_COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o
-EAMBFC_DEPS = eam_compile.o $(EAM_COMPILE_DEPS) main.o
+COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o
+EAMBFC_DEPS = eam_compile.o $(COMPILE_DEPS) main.o
 
 
 # flags for some of the more specialized, non-portable builds
@@ -79,9 +79,9 @@ err.o: config.h err.c
 # For an example of the latter, see FreeBSD's Linux syscall emulation.
 # `make test` works in both of those example cases
 create_mini_elf.o: config.h create_mini_elf.c
-create_mini_elf: create_mini_elf.o eam_compile.o $(EAM_COMPILE_DEPS)
+create_mini_elf: create_mini_elf.o eam_compile.o $(COMPILE_DEPS)
 	$(CC) $(LDFLAGS) -o $@ $(POSIX_CFLAG)\
-		$(EAM_COMPILE_DEPS) eam_compile.o $@.o $(LDLIBS)
+		$(COMPILE_DEPS) eam_compile.o $@.o $(LDLIBS)
 mini_elf: create_mini_elf
 	./create_mini_elf
 can_run_linux_amd64: mini_elf
