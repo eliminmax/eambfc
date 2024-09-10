@@ -32,7 +32,7 @@
  *
  * tape_blocks is the number of 4-KiB blocks to allocate for the tape. */
 bool bf_compile(
-    arch_inter inter,
+    const arch_inter *inter,
     int in_fd,
     int out_fd,
     bool optimize,
