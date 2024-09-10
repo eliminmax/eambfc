@@ -13,10 +13,12 @@
 #include <unistd.h> /* getopt, optopt, close */
 /* internal */
 #include "arch_inter.h" /* arch_inter, X86_64_INTER */
+#include "compat/elf.h" /* EM_* */
 #include "compile.h" /* bf_compile */
 #include "config.h" /* EAMBFC_* */
 #include "err.h" /* *_err */
 #include "types.h" /* bool, uint64_t, UINT64_MAX */
+
 
 /* print the help message to outfile. progname should be argv[0]. */
 void show_help(FILE *outfile, char *progname) {
@@ -47,6 +49,11 @@ void show_help(FILE *outfile, char *progname) {
         "will raise an error.\n",
         progname
     );
+}
+
+bool any_strcmp(const char *s, int c, const char** strs) {
+    for (int i = 0; i < c; i++) if (strcmp(s, strs[i]) == 0) return true;
+    return false;
 }
 
 /* remove ext from end of str. If ext is not in str, return false. */
@@ -83,7 +90,7 @@ int main(int argc, char* argv[]) {
     bool optimize = false;
     char char_str_buf[2] = { '\0', '\0' };
     uint64_t tape_blocks = 0;
-
+    arch_inter *inter = NULL;
     while ((opt = getopt(argc, argv, ":hVqjOkmAe:t:")) != -1) {
         switch(opt) {
           case 'h':
@@ -109,9 +116,9 @@ int main(int argc, char* argv[]) {
             printf(
                 "This build of %s supports the following architectures:\n\n"
                 "- x86_64 (aliases: x64, amd64, x86-64)\n"
-#ifdef EAM_TARGET_ARM64
+#ifdef EAMBFC_TARGET_ARM64
                 "- arm64 (aliases: aarch64)\n"
-#endif /* EAM_TARGET_ARM64 */
+#endif /* EAMBFC_TARGET_ARM64 */
                 "\nIf no architecture is specified, it defaults to x86_64.\n",
                 argv[0]
             );
@@ -189,7 +196,39 @@ int main(int argc, char* argv[]) {
             }
             tape_blocks = (uint64_t) holder;
             break;
-          case ':': /* -e or -t without an argument */
+          case 'a':
+            if (inter != NULL) {
+                basic_err(
+                    "MULTIPLE_ARCHES",
+                    "passed -a multiple times."
+                );
+                SHOW_HINT();
+                return EXIT_FAILURE;
+            }
+
+            if (any_strcmp(
+                optarg, 4, (const char*[]){"x86_64", "x64", "amd64", "x86-64"}
+            )) {
+                inter = &X86_64_INTER;
+            }
+#ifdef EAMBFC_TARGET_ARM64
+            else if (
+                any_strcmp(optarg, 2, (const char*[]){"arm64", "aarch64"})
+            ) {
+                inter = &ARM64_INTER;
+            }
+#endif /* EAMBFC_TARGET_ARM64 */
+            else {
+                param_err(
+                    "UNKNOWN_ARCH",
+                    "{} is not a recognized architecture",
+                    optarg
+                );
+                SHOW_HINT();
+                return EXIT_FAILURE;
+            }
+            break;
+          case ':': /* one of -a, -e, or -t is missing an argument */
             char_str_buf[0] = (char) optopt;
             param_err(
                 "MISSING_OPERAND",
@@ -218,6 +257,9 @@ int main(int argc, char* argv[]) {
 
     /* if no tape size was specified, default to 8. */
     if (tape_blocks == 0) tape_blocks = 8;
+
+    /* if no architeture was specified, default to x86_64 */
+    if (inter == NULL) inter = &X86_64_INTER;
 
     for (/* reusing optind here */; optind < argc; optind++) {
         outname = malloc(strlen(argv[optind]) + 1);
@@ -260,7 +302,7 @@ int main(int argc, char* argv[]) {
             free(outname);
             if (moveahead) continue; else break;
         }
-        result = bf_compile(X86_64_INTER, src_fd, dst_fd, optimize, tape_blocks);
+        result = bf_compile(inter, src_fd, dst_fd, optimize, tape_blocks);
         close(src_fd);
         close(dst_fd);
         if (!result) {
