@@ -57,7 +57,7 @@ typedef const struct arch_funcs {
 typedef const struct arch_inter {
     arch_funcs FUNCS;
     arch_sc_nums SC_NUMS;
-    arch_registers REGISTERS;
+    arch_registers REGS;
     uint16_t ELF_ARCH;
     unsigned char ELF_DATA;
 } arch_inter;
