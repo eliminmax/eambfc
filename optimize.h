@@ -4,8 +4,8 @@
  *
  * Provides a function that returns EAMBFC IR from an open FD */
 
-#ifndef EAM_OPTIMIZE_H
-#define EAM_OPTIMIZE_H 1
+#ifndef EAMBFC_OPTIMIZE_H
+#define EAMBFC_OPTIMIZE_H 1
 
 /* Reads the content of the file fd, and returns a string containing optimized
  * internal intermediate representation of that file's code.
@@ -25,4 +25,4 @@
  *
  * If it fails to allocate space for the string, it returns NULL. */
 char *to_ir(int fd);
-#endif /* EAM_OPTIMIZE_H */
+#endif /* EAMBFC_OPTIMIZE_H */

@@ -4,8 +4,8 @@
  *
  * This file defines macros for use in the compilation process, as a more
  * readable alternative to just having byte values with no clear meaning. */
-#ifndef EAM_COMPILER_MACROS_H
-#define EAM_COMPILER_MACROS_H 1
+#ifndef EAMBFC_COMPILER_MACROS_H
+#define EAMBFC_COMPILER_MACROS_H 1
 
 /* assorted macros for the size/address of different elements in the ELF file */
 
@@ -62,4 +62,4 @@
 /* the memory address of the current instruction. */
 #define CURRENT_ADDRESS(out_sz) (START_PADDR + out_sz)
 
-#endif /* EAM_COMPILER_MACROS_H */
+#endif /* EAMBFC_COMPILER_MACROS_H */

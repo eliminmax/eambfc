@@ -4,8 +4,8 @@
  *
  * A header file containing values that are intended to be configurable */
 
-#ifndef EAM_CONFIG_H
-#define EAM_CONFIG_H 1
+#ifndef EAMBFC_CONFIG_H
+#define EAMBFC_CONFIG_H 1
 
 /* internal */
 #include "compat/elf.h"
@@ -20,4 +20,4 @@
 /* The current git commit */
 #define EAMBFC_COMMIT @@
 
-#endif /* EAM_CONFIG_H */
+#endif /* EAMBFC_CONFIG_H */

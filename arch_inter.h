@@ -6,8 +6,8 @@
  * architectures. */
 
 
-#ifndef EAM_ARCH_INTER_H
-#define EAM_ARCH_INTER_H 1
+#ifndef EAMBFC_ARCH_INTER_H
+#define EAMBFC_ARCH_INTER_H 1
 /* internal */
 #include "types.h"
 
@@ -64,8 +64,8 @@ typedef const struct arch_inter {
 } arch_inter;
 
 extern const arch_inter X86_64_INTER;
-#ifdef EAM_TARGET_ARM64
+#ifdef EAMBFC_TARGET_ARM64
 extern const arch_inter ARM64_INTER;
-#endif /* EAM_TARGET_ARM64 */
+#endif /* EAMBFC_TARGET_ARM64 */
 
-# endif /* EAM_ARCH_INTER_H */
+# endif /* EAMBFC_ARCH_INTER_H */

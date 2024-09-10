@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * Functions and data storage to handle error messages */
-#ifndef EAM_ERR_H
-#define EAM_ERR_H 1
+#ifndef EAMBFC_ERR_H
+#define EAMBFC_ERR_H 1
 /* internal */
 #include "types.h" /* uint */
 
@@ -35,4 +35,4 @@ void position_err(char *id, char *msg, char instr, uint line, uint col);
  * to basic_err */
 void param_err(char *id, char *proto, char *arg);
 
-#endif /* EAM_ERR_H */
+#endif /* EAMBFC_ERR_H */

@@ -4,8 +4,8 @@
  *
  * This file provides an interface to eam_compile.c. */
 
-#ifndef EAM_COMPILE_H
-#define EAM_COMPILE_H 1
+#ifndef EAMBFC_COMPILE_H
+#define EAMBFC_COMPILE_H 1
 /* internal */
 #include "arch_inter.h" /* arch_inter */
 #include "types.h" /* bool, uint64_t */
@@ -39,4 +39,4 @@ bool bf_compile(
     uint64_t tape_blocks
 );
 
-#endif /* EAM_COMPILE_H */
+#endif /* EAMBFC_COMPILE_H */
