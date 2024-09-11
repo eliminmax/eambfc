@@ -24,7 +24,7 @@ static char *filter_non_bf(int in_fd) {
     size_t limit = MALLOC_CHUNK_SIZE;
     char *filtered = malloc(limit);
     if (filtered == NULL) {
-        basic_err("FAILED_MALLOC", "Failed to allocate buffer");
+        alloc_err();
         return NULL;
     }
     char instr;
@@ -43,7 +43,7 @@ static char *filter_non_bf(int in_fd) {
                 limit += MALLOC_CHUNK_SIZE;
                 filtered = realloc(filtered, limit);
                 if (filtered == NULL) {
-                    basic_err("FAILED_MALLOC", "Failed to extend buffer");
+                    alloc_err();
                     return NULL;
                 }
             }
