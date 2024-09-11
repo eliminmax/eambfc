@@ -7,8 +7,9 @@
 /* POSIX */
 #include <unistd.h> /* size_t, off_t, write */
 /* internal */
-#include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
 #include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
+#include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
+#include "err.h" /* basic_err */
 #include "serialize.h" /* serialize* */
 #include "types.h" /* uint*_t, int*_t, bool */
 
@@ -49,14 +50,28 @@ static inline bool test_jcc(char tttn, uint8_t reg, int32_t off, int fd) {
 }
 
 /* TEST byte [reg], 0xff; JNZ jmp_offset */
-bool x86_64_jump_not_zero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
+bool x86_64_jump_not_zero(uint8_t reg, int64_t offset, int fd, off_t *sz) {
+    if (offset > INT32_MAX || offset << INT32_MAX) {
+        basic_err(
+            "JUMP_TOO_LONG",
+            "offset is outside the range of possible 32-bit signed values"
+        );
+        return false;
+    }
     *sz += 9;
     /* Jcc with tttn=0b0101 is JNZ or JNE */
     return test_jcc(0x5, reg, offset, fd);
 }
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
-bool x86_64_jump_zero(uint8_t reg, int32_t offset, int fd, off_t *sz) {
+bool x86_64_jump_zero(uint8_t reg, int64_t offset, int fd, off_t *sz) {
+    if (offset > INT32_MAX || offset << INT32_MAX) {
+        basic_err(
+            "JUMP_TOO_LONG",
+            "offset is outside the range of possible 32-bit signed values"
+        );
+        return false;
+    }
     *sz += 9;
     /* Jcc with tttn=0b0100 is JZ or JE */
     return test_jcc(0x4, reg, offset, fd);

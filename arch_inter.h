@@ -35,9 +35,9 @@ typedef const struct arch_funcs {
     /* gets replaced once location of ] is known */
     bool (*const nop_loop_open)(int fd, off_t *sz);
     /* replaces nop_loop_open. */
-    bool (*const jump_zero)(uint8_t reg, int32_t offset, int fd, off_t *sz);
+    bool (*const jump_zero)(uint8_t reg, int64_t offset, int fd, off_t *sz);
     /* ] */
-    bool (*const jump_not_zero)(uint8_t reg, int32_t offset, int fd, off_t *sz);
+    bool (*const jump_not_zero)(uint8_t reg, int64_t offset, int fd, off_t *sz);
     /* > */
     bool (*const inc_reg)(uint8_t reg, int fd, off_t *sz);
     /* < */
