@@ -51,7 +51,7 @@ static inline bool test_jcc(char tttn, uint8_t reg, int32_t off, int fd) {
 
 /* TEST byte [reg], 0xff; JNZ jmp_offset */
 bool x86_64_jump_not_zero(uint8_t reg, int64_t offset, int fd, off_t *sz) {
-    if (offset > INT32_MAX || offset << INT32_MAX) {
+    if (offset > INT32_MAX || offset < INT32_MAX) {
         basic_err(
             "JUMP_TOO_LONG",
             "offset is outside the range of possible 32-bit signed values"
@@ -65,7 +65,7 @@ bool x86_64_jump_not_zero(uint8_t reg, int64_t offset, int fd, off_t *sz) {
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
 bool x86_64_jump_zero(uint8_t reg, int64_t offset, int fd, off_t *sz) {
-    if (offset > INT32_MAX || offset << INT32_MAX) {
+    if (offset > INT32_MAX || offset < INT32_MAX) {
         basic_err(
             "JUMP_TOO_LONG",
             "offset is outside the range of possible 32-bit signed values"
