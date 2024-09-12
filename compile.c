@@ -201,8 +201,8 @@ static inline bool bf_io(int fd, int bf_fd, int sc, const arch_inter *inter) {
 #define JUMP_CHUNK_SZ 64
 
 typedef struct jump_loc {
-    uint src_line;
-    uint src_col;
+    uint src_line; /* saved for error reporting. */
+    uint src_col; /* saved for error reporting. */
     off_t dst_loc;
 } jump_loc;
 
@@ -216,7 +216,7 @@ static struct jump_stack {
  * doesn't actually write to the file yet, as the address of `]` is unknown.
  *
  * If too many nested loops are encountered, tries to resize the jump stack.
- * If that fails, sets alloc_valve to false */
+ * If that fails, sets alloc_valve to false and aborts. */
 static bool bf_jump_open(int fd, bool *alloc_valve, const arch_inter *inter) {
     /* ensure that there are no more than the maximum nesting level */
     if (jump_stack.index + 1 == jump_stack.loc_sz) {
@@ -280,9 +280,6 @@ static bool bf_jump_close(int fd, const arch_inter *inter) {
     }
     off_t phony = 0; /* already added to code size for this one */
     if (!inter->FUNCS->jump_zero(inter->REGS->bf_ptr, distance, fd, &phony)) {
-        instr_err(
-            "FAILED_WRITE", FAILED_WRITE_MSG, '['
-        );
         return false;
     }
 
@@ -292,25 +289,16 @@ static bool bf_jump_close(int fd, const arch_inter *inter) {
         );
         return false;
     }
-    /* jump to right after the `[` instruction, to skip a redundant check */
-    if (!inter->FUNCS->jump_not_zero(
-            inter->REGS->bf_ptr, -distance, fd, &out_sz)
-       ) {
-        position_err(
-            "FAILED_WRITE", FAILED_WRITE_MSG, ']', _line, _col
-        );
-        return false;
-    }
-
-    return true;
+    /* jumps to right after the `[` instruction, to skip a redundant check */
+    return inter->FUNCS->jump_not_zero(
+        inter->REGS->bf_ptr, -distance, fd, &out_sz
+    );
 }
 
-
-/* 4 of the 8 brainfuck instructions can be compiled with the same code flow,
- * swapping out which specific function is used.*/
-#define COMPILE_WITH(f) if (!((ret = f(inter->REGS->bf_ptr, fd, &out_sz)))) \
-    position_err("FAILED_WRITE", FAILED_WRITE_MSG, c, _line, _col)
-
+/* 4 of the 8 brainfuck instructions can be compiled with instructions that take
+ * the same set of parameters, so this expands to a call to the appropriate
+ * function. */
+#define COMPILE_WITH(f) f(inter->REGS->bf_ptr, fd, &out_sz)
 
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
@@ -321,51 +309,33 @@ static bool comp_instr(
     bool *alloc_valve,
     const arch_inter *inter
 ) {
-    bool ret;
     _col++;
     switch(c) {
       /* start with the simple cases handled with COMPILE_WITH */
       /* decrement the tape pointer register */
-      case '<': COMPILE_WITH(inter->FUNCS->dec_reg); break;
+      case '<': return COMPILE_WITH(inter->FUNCS->dec_reg);
       /* increment the tape pointer register */
-      case '>': COMPILE_WITH(inter->FUNCS->inc_reg); break;
+      case '>': return COMPILE_WITH(inter->FUNCS->inc_reg);
       /* increment the current tape value */
-      case '+': COMPILE_WITH(inter->FUNCS->inc_byte); break;
+      case '+': return COMPILE_WITH(inter->FUNCS->inc_byte);
       /* decrement the current tape value */
-      case '-': COMPILE_WITH(inter->FUNCS->dec_byte); break;
-      case '.':
-        /* write to stdout */
-        ret = bf_io(fd, STDOUT_FILENO, inter->SC_NUMS->write, inter);
-        if (!ret) {
-            position_err("FAILED_WRITE", FAILED_WRITE_MSG, c, _line, _col);
-        }
-        break;
-      case ',':
-        /* read from stdin */
-        ret = bf_io(fd, STDIN_FILENO, inter->SC_NUMS->read, inter);
-        if (!ret) {
-            position_err("FAILED_WRITE", FAILED_WRITE_MSG, c, _line, _col);
-        }
-        break;
+      case '-': return COMPILE_WITH(inter->FUNCS->dec_byte);
+      /* write to stdout */
+      case '.': return bf_io(fd, STDOUT_FILENO, inter->SC_NUMS->write, inter);
+      /* read from stdin */
+      case ',': return bf_io(fd, STDIN_FILENO, inter->SC_NUMS->read, inter);
       /* `[` and `]` do their own error handling. */
-      case '[':
-        ret = bf_jump_open(fd, alloc_valve, inter);
-        break;
-      case ']':
-        ret = bf_jump_close(fd, inter);
-        break;
+      case '[': return bf_jump_open(fd, alloc_valve, inter);
+      case ']': return bf_jump_close(fd, inter);
       case '\n':
         /* add 1 to the line number and reset the column. */
         _line++;
         _col = 0;
-        ret = true;
-        break;
+        return true;
       default:
         /* any other characters are comments, silently continue. */
-        ret = true;
-        break;
+        return true;
     }
-    return ret;
 }
 
 /* write code to perform the exit(0) syscall */
@@ -378,31 +348,24 @@ static bool bf_exit(int fd, const arch_inter *inter) {
             fd,
             &out_sz
     )) {
-        basic_err("FAILED_WRITE", FAILED_WRITE_MSG);
-        ret = false;
+        return false;
     }
     /* set system call register to the desired exit code (0) */
     if (!inter->FUNCS->set_reg(inter->REGS->arg1, 0, fd, &out_sz)) {
-        basic_err("FAILED_WRITE", FAILED_WRITE_MSG);
-        ret = false;
+        return false;
     }
     /* perform a system call */
     if (!inter->FUNCS->syscall(fd, &out_sz)) {
-        basic_err("FAILED_WRITE", FAILED_WRITE_MSG);
-        ret = false;
+        return false;
     }
 
     return ret;
 }
 
 /* similar to the above COMPILE_WITH, but with an extra parameter passed to the
- * function, and aa return statement added o right after the conditional.
- * immediately returns, whether or not an error message is printed. */
-#define IR_COMPILE_WITH(f) \
-    if (!((ret = f(inter->REGS->bf_ptr, ct, fd, &out_sz)))) { \
-    basic_err("FAILED_WRITE", FAILED_WRITE_MSG); }\
-    return ret
-/* compile a condensed instruction */
+ * function, so that can't be reused. */
+#define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, ct, fd, &out_sz)
+/* compile a condensed instruction sequence */
 static inline bool comp_ir_condensed_instr(
     char *p,
     int fd,
@@ -410,16 +373,15 @@ static inline bool comp_ir_condensed_instr(
     const arch_inter *inter
 ) {
     uint64_t ct;
-    bool ret; /* needed for IR_COMPILE_WITH macro */
     if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_p) != 1) {
         basic_err("IR_FAILED_SCAN", "Failed to get count for EAMBFC-IR op.");
         return false;
     } else {
         switch (*p) {
-          case '#': IR_COMPILE_WITH(inter->FUNCS->add_mem);
-          case '=': IR_COMPILE_WITH(inter->FUNCS->sub_mem);
-          case '}': IR_COMPILE_WITH(inter->FUNCS->add_reg);
-          case '{': IR_COMPILE_WITH(inter->FUNCS->sub_reg);
+          case '#': return IR_COMPILE_WITH(inter->FUNCS->add_mem);
+          case '=': return IR_COMPILE_WITH(inter->FUNCS->sub_mem);
+          case '}': return IR_COMPILE_WITH(inter->FUNCS->add_reg);
+          case '{': return IR_COMPILE_WITH(inter->FUNCS->sub_reg);
           default:
             basic_err("INVALID_IR", "Invalid IR Opcode");
             return false;
@@ -446,11 +408,7 @@ static bool comp_ir_instr(
       case ']':
         return comp_instr(*p, fd, alloc_valve, inter);
       case '@':
-        if (inter->FUNCS->zero_mem(inter->REGS->bf_ptr, fd, &out_sz)) return true;
-        else {
-            basic_err("FAILED_WRITE", FAILED_WRITE_MSG);
-            return false;
-        }
+        return inter->FUNCS->zero_mem(inter->REGS->bf_ptr, fd, &out_sz);
       default:
         return comp_ir_condensed_instr(p, fd, skip_ct_p, inter);
     }
@@ -544,14 +502,13 @@ bool bf_compile(
         return false;
     }
 
-    if (!inter->FUNCS->set_reg(
-            inter->REGS->bf_ptr, TAPE_ADDRESS, tmp_fd, &out_sz)) {
-        basic_err(
-            "FAILED_WRITE",
-            FAILED_WRITE_MSG
-        );
-        ret = false;
-    }
+    ret &= inter->FUNCS->set_reg(
+        inter->REGS->bf_ptr,
+        TAPE_ADDRESS,
+        tmp_fd,
+        &out_sz
+    );
+
     if (optimize) {
         char *ir = to_ir(in_fd);
         if (ir == NULL) {
@@ -592,13 +549,12 @@ bool bf_compile(
     }
 
     /* copy tmpfile over to the output file. */
-
     char trans[MAX_TRANS_SZ];
     ssize_t trans_sz;
 
     while ((trans_sz = read(tmp_fd, &trans, MAX_TRANS_SZ))) {
         if (trans_sz == -1) {
-            basic_err("FAILED_TMPFILE", "Failed to read bytes from tmpfile");
+            basic_err("FAILED_TMPFILE", "Failed to read from tmpfile");
             ret = false;
         } else if ((write(out_fd, &trans, trans_sz) != trans_sz)) {
             basic_err("FAILED_TMPFILE", FAILED_WRITE_MSG);
