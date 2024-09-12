@@ -18,27 +18,14 @@
 #include "optimize.h" /* to_ir */
 #include "serialize.h" /* serialize_*hdr64 */
 #include "types.h" /* bool, int*_t, uint*_t, SCNx64 */
+#include "util.h" /* write_obj */
 
 /* the most common error message to pass, because of all of the places writes
  * could theoretically fail. Not likely to see in practice however. */
-static char *failed_write_msg = "Failed to write to file.";
 
 static off_t out_sz;
 static uint _line;
 static uint _col;
-
-/* wrapper around write(3POSIX) that returns a boolean indicating whether the
- * number of bytes written is the expected number or not. If the write failed,
- * either because didn't write at all, or didn't write the expected number of
- * bytes, this function calls the basic_err function. */
-static inline bool write_obj(int fd, const void *bytes, ssize_t sz) {
-    ssize_t written = write(fd, bytes, sz);
-    if (written != sz) {
-        basic_err("FAILED_WRITE", failed_write_msg);
-        return false;
-    }
-    return true;
-}
 
 /* Write the ELF header to the file descriptor fd. */
 static bool write_ehdr(int fd, const arch_inter *inter) {
@@ -294,7 +281,7 @@ static bool bf_jump_close(int fd, const arch_inter *inter) {
     off_t phony = 0; /* already added to code size for this one */
     if (!inter->FUNCS->jump_zero(inter->REGS->bf_ptr, distance, fd, &phony)) {
         instr_err(
-            "FAILED_WRITE", failed_write_msg, '['
+            "FAILED_WRITE", FAILED_WRITE_MSG, '['
         );
         return false;
     }
@@ -310,7 +297,7 @@ static bool bf_jump_close(int fd, const arch_inter *inter) {
             inter->REGS->bf_ptr, -distance, fd, &out_sz)
        ) {
         position_err(
-            "FAILED_WRITE", failed_write_msg, ']', _line, _col
+            "FAILED_WRITE", FAILED_WRITE_MSG, ']', _line, _col
         );
         return false;
     }
@@ -322,7 +309,7 @@ static bool bf_jump_close(int fd, const arch_inter *inter) {
 /* 4 of the 8 brainfuck instructions can be compiled with the same code flow,
  * swapping out which specific function is used.*/
 #define COMPILE_WITH(f) if (!((ret = f(inter->REGS->bf_ptr, fd, &out_sz)))) \
-    position_err("FAILED_WRITE", failed_write_msg, c, _line, _col)
+    position_err("FAILED_WRITE", FAILED_WRITE_MSG, c, _line, _col)
 
 
 /* compile an individual instruction (c), to the file descriptor fd.
@@ -350,14 +337,14 @@ static bool comp_instr(
         /* write to stdout */
         ret = bf_io(fd, STDOUT_FILENO, inter->SC_NUMS->write, inter);
         if (!ret) {
-            position_err("FAILED_WRITE", failed_write_msg, c, _line, _col);
+            position_err("FAILED_WRITE", FAILED_WRITE_MSG, c, _line, _col);
         }
         break;
       case ',':
         /* read from stdin */
         ret = bf_io(fd, STDIN_FILENO, inter->SC_NUMS->read, inter);
         if (!ret) {
-            position_err("FAILED_WRITE", failed_write_msg, c, _line, _col);
+            position_err("FAILED_WRITE", FAILED_WRITE_MSG, c, _line, _col);
         }
         break;
       /* `[` and `]` do their own error handling. */
@@ -391,17 +378,17 @@ static bool bf_exit(int fd, const arch_inter *inter) {
             fd,
             &out_sz
     )) {
-        basic_err("FAILED_WRITE", failed_write_msg);
+        basic_err("FAILED_WRITE", FAILED_WRITE_MSG);
         ret = false;
     }
     /* set system call register to the desired exit code (0) */
     if (!inter->FUNCS->set_reg(inter->REGS->arg1, 0, fd, &out_sz)) {
-        basic_err("FAILED_WRITE", failed_write_msg);
+        basic_err("FAILED_WRITE", FAILED_WRITE_MSG);
         ret = false;
     }
     /* perform a system call */
     if (!inter->FUNCS->syscall(fd, &out_sz)) {
-        basic_err("FAILED_WRITE", failed_write_msg);
+        basic_err("FAILED_WRITE", FAILED_WRITE_MSG);
         ret = false;
     }
 
@@ -413,7 +400,7 @@ static bool bf_exit(int fd, const arch_inter *inter) {
  * immediately returns, whether or not an error message is printed. */
 #define IR_COMPILE_WITH(f) \
     if (!((ret = f(inter->REGS->bf_ptr, ct, fd, &out_sz)))) { \
-    basic_err("FAILED_WRITE", failed_write_msg); }\
+    basic_err("FAILED_WRITE", FAILED_WRITE_MSG); }\
     return ret
 /* compile a condensed instruction */
 static inline bool comp_ir_condensed_instr(
@@ -461,7 +448,7 @@ static bool comp_ir_instr(
       case '@':
         if (inter->FUNCS->zero_mem(inter->REGS->bf_ptr, fd, &out_sz)) return true;
         else {
-            basic_err("FAILED_WRITE", failed_write_msg);
+            basic_err("FAILED_WRITE", FAILED_WRITE_MSG);
             return false;
         }
       default:
@@ -561,7 +548,7 @@ bool bf_compile(
             inter->REGS->bf_ptr, TAPE_ADDRESS, tmp_fd, &out_sz)) {
         basic_err(
             "FAILED_WRITE",
-            failed_write_msg
+            FAILED_WRITE_MSG
         );
         ret = false;
     }
@@ -614,7 +601,7 @@ bool bf_compile(
             basic_err("FAILED_TMPFILE", "Failed to read bytes from tmpfile");
             ret = false;
         } else if ((write(out_fd, &trans, trans_sz) != trans_sz)) {
-            basic_err("FAILED_TMPFILE", failed_write_msg);
+            basic_err("FAILED_TMPFILE", FAILED_WRITE_MSG);
             ret = false;
         }
     }
