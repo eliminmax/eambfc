@@ -6,18 +6,20 @@
 .POSIX:
 
 EAMBFC = ../eambfc
+EAMBFC_ARGS = -Ok
 .SUFFIXES: .bf .brnfck
 .bf:
-	$(EAMBFC) -kOj $< >.$*.build_err && rm .$*.build_err
+	$(EAMBFC) -j $(EAMBFC_ARGS) $< >.$*.build_err && rm .$*.build_err
 .brnfck:
-	$(EAMBFC) -kOj -e .brnfck $< >.$*.build_err && rm .$*.build_err
+	$(EAMBFC) -j $(EAMBFC_ARGS) -e .brnfck \
+		$< >.$*.build_err && rm .$*.build_err
 
 # build test assets
 build_all: hello loop wrap wrap2 colortest truthmachine dead_code piped_in \
 	unmatched_close unmatched_open unseekable alternative_extension rw null
 
 test: clean build_all
-	./test.sh $(EAMBFC)
+	./test.sh $(EAMBFC) $(EAMBFC_ARGS)
 
 dead_code: dead_code.bf
 hello: hello.bf
@@ -35,7 +37,7 @@ unseekable:
 	# make a fifo (named pipe) that will be written to
 	mkfifo $@
 	# compile, writing to the fifo
-	($(EAMBFC) -kOj $@.bf & cat $@ >$@_f; wait) \
+	($(EAMBFC) -j $(EAMBFC_ARGS) $@.bf & cat $@ >$@_f; wait) \
 		>.$@.build_err
 	rm $@
 	mv $@_f $@
@@ -46,7 +48,7 @@ unseekable:
 
 piped_in:
 	mkfifo $@.bf
-	(cat hello.bf > $@.bf & $(EAMBFC) -kOj $@.bf; wait) \
+	(cat hello.bf > $@.bf & $(EAMBFC) -j $(EAMBFC_ARGS) $@.bf; wait) \
 		>.$@.build_err
 	if [ "$$(wc -c .$@.build_err | awk '{print $$1}')" -eq 0 ]; then\
 		rm .$@.build_err; else false; fi

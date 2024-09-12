@@ -1,5 +1,4 @@
 #!/bin/sh
-
 # SPDX-FileCopyrightText: 2024 Eli Array Minkoff
 #
 # SPDX-License-Identifier: GPL-3.0-only
@@ -9,8 +8,13 @@ set -eu
 
 cd "$(dirname "$0")"
 
-# default to normal eambfc build
-EAMBFC="${1:-../eambfc}"
+if [ $# -ge 1 ]; then
+    EAMBFC="${1}"
+    shift
+else
+    EAMBFC=../eambfc
+fi
+
 
 # now we should be properly set up, and can run tests properly
 # don't exit on error anymore
@@ -61,9 +65,10 @@ test_error () {
 # errors thrown when processing arguments
 test_arg_error () {
     total=$((total+1))
-    err_codes="$1"; shift
+    expecded_codes="$1"; shift
     cond="$1"; shift
-    if [ "$("$EAMBFC" -j "$@" | sed "$errid_pat")" = "$err_codes" ]; then
+    err_codes="$("$EAMBFC" -j "$@" | sed "$errid_pat")"
+    if [ "$err_codes" = "$expecded_codes" ]; then
         printf 'SUCCESS - proper error id when %s.\n' "$cond"
         successes=$((successes+1))
     else
@@ -91,32 +96,32 @@ test_simple piped_in '1639980005 14' # input is a FIFO, can't be seeked
 
 # argument processing error
 test_arg_error MULTIPLE_EXTENSIONS 'multiple file extensions' \
-    -e .brf -e .bf hello.bf
+    "$@" -e .brf -e .bf hello.bf
 test_arg_error MULTIPLE_TAPE_BLOCK_COUNTS 'multiple tape sizes' \
-    -t 1 -t 32
+    "$@" -t 1 -t 32
 test_arg_error MISSING_OPERAND '-e missing argument' \
-    -e
+    "$@" -e
 test_arg_error MISSING_OPERAND '-t missing argument' \
-    -t
+    "$@" -t
 test_arg_error UNKNOWN_ARG 'invalid argument provided' \
-    -T
-test_arg_error NO_SOURCE_FILES 'no source files provided'
+    "$@" -T
+test_arg_error NO_SOURCE_FILES 'no source files provided' "$@"
 test_arg_error BAD_EXTENSION 'wrong file extension for source file' \
-    'test.sh'
+    "$@" 'test.sh'
 test_arg_error NO_TAPE 'tape size is set to 0 blocks' \
-    -t0 hello.bf
+    "$@" -t0 hello.bf
 test_arg_error TAPE_TOO_LARGE 'tape size large enough to cause an overflow' \
-    -t9223372036854775807
+    "$@" -t9223372036854775807
 
 # some permission issues
 chmod 'u-r' 'hello.bf'
 test_arg_error OPEN_R_FAILED 'failure to open input file for reading' \
-    'hello.bf'
+    "$@" 'hello.bf'
 chmod 'u+r' 'hello.bf'
 touch hello.b
 chmod -w hello.b
 test_arg_error OPEN_W_FAILED 'failure to open output file for writing' \
-    -e f hello.bf
+    "$@" -e f hello.bf
 rm -f hello.b
 
 # compiler errors
