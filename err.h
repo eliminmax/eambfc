@@ -8,7 +8,7 @@
 /* internal */
 #include "types.h" /* uint */
 
-/* Common error messages */
+/* Common error message */
 #define FAILED_WRITE_MSG "Failed to write to file."
 
 /* enable quiet mode - this does not print error messages to stderr. Does not
