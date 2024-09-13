@@ -8,7 +8,6 @@
 #include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
 #include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
 #include "err.h" /* basic_err */
-#include "serialize.h" /* serialize* */
 #include "types.h" /* uint*_t, int*_t, bool, off_t, size_t UINT64_C */
 #include "util.h" /* write_obj */
 
