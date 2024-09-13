@@ -34,6 +34,7 @@
 # libubsan1
 # libasan6
 # tcc
+# qemu-user-binfmt | qemu-user-static
 #
 # Lastly, a few tools not packaged for Debian are required - here's a list, with
 # URLS and info on how I installed them.
@@ -46,9 +47,9 @@
 #       https://frippery.org/make/
 #   I downloaded source, built by running GNU make, then copied into PATH
 #
-# reuse helper tool >= 3.2.0 (newer than Debian package in bookworm/main)
+# reuse helper tool >= 4.0.0 (newer than Debian package in bookworm/main)
 #       https://git.fsfe.org/reuse/tool
-#   I installed with pipx, and installed pipx with apt
+#   I installed with pipx, which was in turn installed with apt
 
 cd "$(dirname "$(realpath "$0")")"
 
@@ -112,8 +113,25 @@ tar --strip-components=1 -xf "eambfc-$version-src.tar"
 # multibuild.sh fails if any compilers are skipped and env var is non-empty
 NO_SKIP_MULTIBUILD=yep make CC=gcc all_tests
 
-# ensure strict and ubsan builds work at all optimization levels
-for o_lvl in 0 1 2 3; do make -s CFLAGS="-O$o_lvl" clean ubsan strict; done
+# ensure strict and ubsan builds work at all gcc optimization levels
+for o_lvl in 0 1 2 3 s fast g z; do
+    make -s CFLAGS="-O$o_lvl" clean ubsan strict;
+    cd tests
+    make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-kO" clean test
+    SKIP_DEAD_CODE=1 \
+        make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-k" clean test
+    #shellcheck disable=SC2043 # loop runs once as one architecture exists.
+    for arch in arm64; do
+        # run test suite with and without EAMBFC optimization mode with ubsan
+        # to try to catch undefined behavior
+        make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-kO -a $arch" \
+            clean test
+        SKIP_DEAD_CODE=1 \
+            make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-k -a $arch" \
+            clean test
+    done
+    cd ..
+done
 
 # portability test - can a minimal, public domain POSIX make implementation
 # complete the clean, eambfc, and test targets?
