@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 # exit on error during initial setup
-set -eu
+set -e
 
 cd "$(dirname "$0")"
 
@@ -21,6 +21,7 @@ fi
 set +e
 
 successes=0
+skipped=0
 fails=0
 total=0
 
@@ -181,7 +182,11 @@ else
 fi
 
 total=$((total+1))
-if diff null dead_code >/dev/null 2>&1; then
+if [ -n "$SKIP_DEAD_CODE" ]; then
+    skipped=$((skipped+1))
+    printf 'SKIPPED - did not compare dead_code.bf to null.bf as '
+    printf 'SKIP_DEAD_CODE was set.\n'
+elif diff null dead_code >/dev/null 2>&1; then
     successes=$((successes+1))
     printf 'SUCCESS - dead_code.bf optimized down to be identical to null.bf\n'
 else
@@ -190,7 +195,8 @@ else
 fi
 
 printf '########################\n'
-printf 'SUCCESSES: %d\nFAILS: %d\nTOTAL: %d\n' "$successes" "$fails" "$total"
+printf 'SUCCESSES: %d\nFAILS: %d\nSKIPPED: %d\nTOTAL: %d\n' \
+    "$successes" "$fails" "$skipped" "$total"
 
 # as the last command, this sets the exit code for the script
 [ "$fails" -eq 0 ]
