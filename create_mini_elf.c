@@ -5,7 +5,7 @@
  * A simple program that creates a minimal AMD x86_64 Linux ELF binary that
  * simply calls exit(0), to validate that a system can run Linux binaries. */
 
-#include <stdio.h> /* fputs, stderr */
+#include <stdio.h> /* fputs, stderr, tmpfile, fileno, fclose */
 #include <stdlib.h> /* EXIT_FAILURE, EXIT_SUCCESS */
 /* POSIX */
 #include <fcntl.h> /* open, O_* */
@@ -15,9 +15,16 @@
 #include "compile.h" /* bf_compile */
 
 int main(void) {
-    int in_fd = open("/dev/null", O_RDONLY);
+    FILE* tmp_file = tmpfile();
+    if (tmp_file == NULL) {
+        fputs("Failed to open tmpfile.\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    int in_fd = fileno(tmp_file);
     if (in_fd == -1) {
-        fputs("Failed to open /dev/null for reading.\n", stderr);
+        fputs("Failed to get file descriptor for tmp_file.\n", stderr);
+        fclose(tmp_file);
         return EXIT_FAILURE;
     }
     int out_fd = open("mini_elf", O_WRONLY | O_CREAT | O_TRUNC, 0755);
