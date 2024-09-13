@@ -7,6 +7,8 @@
 #define EAMBFC_TYPES_H 1
 /* C99 */
 #include <stdbool.h> /* bool, true, false */
+/* POSIX */
+#include <sys/types.h> /* size_t, ssize_t, off_t */
 /* internal */
 #include "compat/eambfc_inttypes.h" /* uint*_t, int*_t, PRI*, SCN*, and more */
 
