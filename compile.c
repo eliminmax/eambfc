@@ -121,7 +121,9 @@ static bool write_ehdr(int fd, const arch_inter *inter) {
 
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
-static bool write_phtb(int fd, uint64_t tape_blocks, const arch_inter *inter) {
+static inline bool write_phtb(
+    int fd, uint64_t tape_blocks, const arch_inter *inter
+) {
     Elf64_Phdr phdr_table[PHNUM];
     char phdr_table_bytes[PHTB_SIZE];
 
@@ -229,7 +231,9 @@ static struct jump_stack {
  *
  * If too many nested loops are encountered, tries to resize the jump stack.
  * If that fails, sets alloc_valve to false and aborts. */
-static bool bf_jump_open(int fd, bool *alloc_valve, const arch_inter *inter) {
+static inline bool bf_jump_open(
+    int fd, bool *alloc_valve, const arch_inter *inter
+) {
     /* ensure that there are no more than the maximum nesting level */
     if (jump_stack.index + 1 == jump_stack.loc_sz) {
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
@@ -264,7 +268,7 @@ static bool bf_jump_open(int fd, bool *alloc_valve, const arch_inter *inter) {
 
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
-static bool bf_jump_close(int fd, const arch_inter *inter) {
+static inline bool bf_jump_close(int fd, const arch_inter *inter) {
     off_t open_address, close_address;
     int32_t distance;
 
@@ -350,30 +354,6 @@ static bool comp_instr(
     }
 }
 
-/* write code to perform the exit(0) syscall */
-static bool bf_exit(int fd, const arch_inter *inter) {
-    bool ret = true;
-    /* set system call register to exit system call number */
-    if (!inter->FUNCS->set_reg(
-            inter->REGS->sc_num,
-            inter->SC_NUMS->exit,
-            fd,
-            &out_sz
-    )) {
-        return false;
-    }
-    /* set system call register to the desired exit code (0) */
-    if (!inter->FUNCS->set_reg(inter->REGS->arg1, 0, fd, &out_sz)) {
-        return false;
-    }
-    /* perform a system call */
-    if (!inter->FUNCS->syscall(fd, &out_sz)) {
-        return false;
-    }
-
-    return ret;
-}
-
 /* similar to the above COMPILE_WITH, but with an extra parameter passed to the
  * function, so that can't be reused. */
 #define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, ct, fd, &out_sz)
@@ -401,7 +381,7 @@ static inline bool comp_ir_condensed_instr(
     }
 }
 
-static bool comp_ir_instr(
+static inline bool comp_ir_instr(
     char *p,
     int fd,
     int *skip_ct_p,
@@ -426,7 +406,7 @@ static bool comp_ir_instr(
     }
 }
 
-static bool comp_ir(char *ir, int fd, const arch_inter *inter) {
+static inline bool comp_ir(char *ir, int fd, const arch_inter *inter) {
     bool ret = true;
     char *p = ir;
     int skip_ct;
@@ -441,14 +421,29 @@ static bool comp_ir(char *ir, int fd, const arch_inter *inter) {
     return ret;
 }
 
-static bool finalize(int fd, uint64_t tape_blocks, const arch_inter *inter) {
-    bool ret = bf_exit(fd, inter);
+static inline bool finalize(int fd, uint64_t tb, const arch_inter *inter) {
+    /* write code to perform the exit(0) syscall */
+    bool ret = (
+        /* set system call register to exit system call number */
+        inter->FUNCS->set_reg(
+            inter->REGS->sc_num,
+            inter->SC_NUMS->exit,
+            fd,
+            &out_sz
+        ) &&
+        /* set system call register to the desired exit code (0) */
+        inter->FUNCS->set_reg(inter->REGS->arg1, 0, fd, &out_sz) &&
+        /* perform a system call */
+        inter->FUNCS->syscall(fd, &out_sz)
+    );
+
     /* Ehdr and Phdr table are at the start */
-    lseek(fd, 0, SEEK_SET);
-    /* a |= b means a = (a | b) */
-    ret |= write_ehdr(fd, inter);
-    ret |= write_phtb(fd, tape_blocks, inter);
-    return ret;
+    if (lseek(fd, 0, SEEK_SET) != 0) {
+        basic_err("FAILED_SEEK", "Failed to seek to start of code.");
+        return false;
+    }
+
+    return ret && write_ehdr(fd, inter) && write_phtb(fd, tb, inter);
 }
 
 /* maximum number of bytes to transfer from tmpfile at a time */
