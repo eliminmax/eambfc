@@ -126,15 +126,6 @@ bool x86_64_dec_byte(uint8_t reg, int fd, off_t *sz) {
     return x86_offset(0x8, 0x0, reg, fd, sz);
 }
 
-/* MOV reg, imm32 */
-static inline bool set_reg_imm32(
-    uint8_t reg, int32_t imm32, int fd, off_t *sz
-) {
-    uint8_t instr_bytes[5] = { 0xb8 | reg, 0x00, 0x00, 0x00, 0x00 };
-    if (serialize32(imm32, (char *)&(instr_bytes[1])) != 4) return false;
-    return write_obj(fd, &instr_bytes, 5, sz);
-}
-
 /* use the most efficient way to set a register to imm */
 bool x86_64_set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
     if (imm == 0) {
@@ -143,9 +134,18 @@ bool x86_64_set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
     } else if (imm >= INT8_MIN && imm <= INT8_MAX) {
         /* PUSH imm8; POP reg */
         return write_obj(fd, (uint8_t[]){ 0x6a, imm, 0x58 + reg}, 3, sz);
+    } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
+        /* MOV reg, imm32 */
+        uint8_t instr_bytes[5] = { 0xb8 | reg, 0x00, 0x00, 0x00, 0x00 };
+        if (serialize32(imm32, (char *)&(instr_bytes[1])) != 4) return false;
+        return write_obj(fd, &instr_bytes, 5, sz);
     } else {
-        /* fall back to using the full 32-bit value */
-        return set_reg_imm32(reg, imm, fd, sz);
+        /* MOV reg, imm64 */
+        uint8_t instr_bytes[10] = {
+            0x48, 0xb8 | reg, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        };
+        if (serialize64(imm64, (char *)&(instr_bytes[2])) != 8) return false;
+        return write_obj(fd, &instr_bytes, 10, sz);
     }
 }
 
