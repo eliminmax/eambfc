@@ -46,7 +46,7 @@
 #       https://frippery.org/make/
 #   I downloaded source, built by running GNU make, then copied into PATH
 #
-# reuse helper ool >= 3.0.0 (newer than Debian package in bookworm/main)
+# reuse helper tool >= 3.2.0 (newer than Debian package in bookworm/main)
 #       https://git.fsfe.org/reuse/tool
 #   I installed with pipx, and installed pipx with apt
 
