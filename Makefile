@@ -106,14 +106,14 @@ optimize: optimize.c err.o
 strict: can_run_linux_amd64 config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE!\n' >&2
-	gcc $(GCC_STRICT_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
+	gcc $(CFLAGS) $(GCC_STRICT_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
 		-o alt-builds/eambfc-$@
 	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
 
 ubsan: can_run_linux_amd64 config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE AT ALL!\n' >&2
-	gcc $(GCC_UBSAN_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
+	gcc $(CFLAGS) $(GCC_UBSAN_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
 		-o alt-builds/eambfc-$@
 	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
 
