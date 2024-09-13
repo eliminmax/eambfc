@@ -127,7 +127,7 @@ bool x86_64_dec_byte(uint8_t reg, int fd, off_t *sz) {
 }
 
 /* MOV reg, imm32 */
-static inline bool set_reg_dword(
+static inline bool set_reg_imm32(
     uint8_t reg, int32_t imm32, int fd, off_t *sz
 ) {
     uint8_t instr_bytes[5] = { 0xb8 | reg, 0x00, 0x00, 0x00, 0x00 };
@@ -145,7 +145,7 @@ bool x86_64_set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
         return write_obj(fd, (uint8_t[]){ 0x6a, imm, 0x58 + reg}, 3, sz);
     } else {
         /* fall back to using the full 32-bit value */
-        return set_reg_dword(reg, imm, fd, sz);
+        return set_reg_imm32(reg, imm, fd, sz);
     }
 }
 
@@ -189,7 +189,7 @@ bool x86_64_sub_reg_imm32(uint8_t reg, int32_t imm32, int fd, off_t *sz) {
     return write_obj(fd, &i_bytes, 6, sz);
 }
 
-static inline bool add_sub_qw(
+static inline bool add_sub_imm64(
     uint8_t reg, int64_t imm64, int fd, uint8_t op, off_t *sz
 ) {
     /* There are no instructions to add or subtract a 64-bit immediate. Instead,
@@ -218,14 +218,14 @@ static inline bool add_sub_qw(
 /* n */
 bool x86_64_add_reg_imm64(uint8_t reg, int64_t imm64, int fd, off_t *sz) {
     /* 0x00 is the opcode for register-to-register ADD */
-    return add_sub_qw(reg, imm64, fd, 0x00, sz);
+    return add_sub_imm64(reg, imm64, fd, 0x00, sz);
 }
 
 /* N */
 bool x86_64_sub_reg_imm64(
     uint8_t reg, int64_t imm64, int fd, off_t *sz) {
     /* 0x28 is the opcode for register-to-register SUB */
-    return add_sub_qw(reg, imm64, fd, 0x28, sz);
+    return add_sub_imm64(reg, imm64, fd, 0x28, sz);
 }
 
 bool x86_64_add_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
