@@ -221,15 +221,13 @@ int main(int argc, char* argv[]) {
                 optarg, 4, (const char*[]){"x86_64", "x64", "amd64", "x86-64"}
             )) {
                 inter = &X86_64_INTER;
-            }
 #if EAMBFC_TARGET_ARM64
-            else if (
+            } else if (
                 any_strcmp(optarg, 2, (const char*[]){"arm64", "aarch64"})
             ) {
                 inter = &ARM64_INTER;
-            }
 #endif /* EAMBFC_TARGET_ARM64 */
-            else {
+            } else {
                 param_err(
                     "UNKNOWN_ARCH",
                     "{} is not a recognized architecture",
@@ -278,10 +276,8 @@ int main(int argc, char* argv[]) {
 # else /* EAMBFC_TARGET_ARM64 */
 #  error EAMBFC_TARGET set to EM_AARCH64, but EAMBFC_TARGET_ARM64 not enabled.
 # endif /* EAMBFC_TARGET_ARM64 */
-
 #else /* EAMBFC_TARGET */
 # error Unrecognized target used as default.
-
 #endif /* EAMBFC_TARGET */
 
     for (/* reusing optind here */; optind < argc; optind++) {
