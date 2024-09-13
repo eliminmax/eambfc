@@ -110,7 +110,8 @@ static bool write_ehdr(int fd, const arch_inter *inter) {
     header.e_flags = inter->FLAGS;
 
     serialize_ehdr64(&header, header_bytes);
-    return write_obj(fd, header_bytes, EHDR_SIZE);
+    off_t dummy = 0;
+    return write_obj(fd, header_bytes, EHDR_SIZE, &dummy);
 }
 
 /* Write the Program Header Table to the file descriptor fd
@@ -160,7 +161,9 @@ static bool write_phtb(int fd, uint64_t tape_blocks) {
     for (int i = 0; i < PHNUM; i++) {
         serialize_phdr64(&phdr_table[i], &(phdr_table_bytes[i * PHDR_SIZE]));
     }
-    return write_obj(fd, phdr_table_bytes, PHTB_SIZE);
+
+    off_t dummy = 0;
+    return write_obj(fd, phdr_table_bytes, PHTB_SIZE, &dummy);
 }
 
 /* The brainfuck instructions "." and "," are similar from an implementation

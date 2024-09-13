@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: GPL-3.0-only
  * This file provides the arch_inter for the ARM64 architecture. */
 /* POSIX */
-#include <unistd.h> /* size_t, off_t, write */
+#include <unistd.h> /* write */
 /* internal */
 #include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
 #include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
 #include "err.h" /* basic_err */
 #include "serialize.h" /* serialize* */
-#include "types.h" /* uint*_t, int*_t, bool, UINT64_C */
+#include "types.h" /* uint*_t, int*_t, bool, off_t, size_t UINT64_C */
 #include "util.h" /* write_obj */
 
 typedef enum {
@@ -111,14 +111,12 @@ bool arm64_set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
         /* all are the default value, so use this fallback instruction */
         /* (MOVZ or MOVN) reg, default_val */
         arm64_mov(lead_mt, default_val, A64_SL_NO_SHIFT, reg, instr_bytes);
-        *sz += 4;
-        if (!write_obj(fd, &instr_bytes, 4)) return false;
+        if (!write_obj(fd, &instr_bytes, 4, sz)) return false;
     } else {
         /* at least one needs to be set */
         /* (MOVZ or MOVN) reg, lead_imm << lead_shift */
         arm64_mov(lead_mt, parts[i].imm, parts[i].shift, reg, instr_bytes);
-        *sz += 4;
-        if (!write_obj(fd, &instr_bytes, 4)) return false;
+        if (!write_obj(fd, &instr_bytes, 4, sz)) return false;
         for(++i; i < 4; i++) if (parts[i].imm != default_val) {
             /*  MOVK reg, imm16 << shift */
             arm64_mov(
@@ -128,33 +126,29 @@ bool arm64_set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
                 reg,
                 instr_bytes
             );
-            *sz += 4;
-            if (!write_obj(fd, &instr_bytes, 4)) return false;
+            if (!write_obj(fd, &instr_bytes, 4, sz)) return false;
         }
     }
     return true;
 }
 
 bool arm64_reg_copy(uint8_t dst, uint8_t src, int fd, off_t *sz) {
-    *sz += 4;
     /* MOV dst, src
      * technically an allias for ORR dst, XZR, src */
-    return write_obj(fd, (uint8_t[]){0xe0 | dst, 0x01, src, 0xaa}, 4);
+    return write_obj(fd, (uint8_t[]){0xe0 | dst, 0x01, src, 0xaa}, 4, sz);
 }
 
 bool arm64_syscall(int fd, off_t *sz) {
-    *sz += 4;
-    return write_obj(fd, (uint8_t[]){0x01, 0x00, 0x00, 0xd4}, 4);
+    return write_obj(fd, (uint8_t[]){0x01, 0x00, 0x00, 0xd4}, 4, sz);
 }
 
 bool arm64_nop_loop_open(int fd, off_t *sz) {
-    *sz += 12;
     uint8_t to_write[12] = {
         0x1f, 0x20, 0x03, 0xd5, /* NOP */
         0x1f, 0x20, 0x03, 0xd5, /* NOP */
         0x1f, 0x20, 0x03, 0xd5 /* NOP */
     };
-    return write_obj(fd, to_write, 12);
+    return write_obj(fd, to_write, 12, sz);
 }
 
 static bool arm64_branch_cond(
@@ -186,8 +180,7 @@ static bool arm64_branch_cond(
         cond | (offset_value << 5), offset_value >> 3, offset_value >> 11, 0x54
     };
     arm64_inject_reg_operands(aux, reg, test_and_branch);
-    *sz += 12;
-    return write_obj(fd, test_and_branch, 12);
+    return write_obj(fd, test_and_branch, 12, sz);
 }
 
 bool arm64_jump_not_zero(uint8_t reg, int64_t offset, int fd, off_t *sz) {
@@ -214,8 +207,7 @@ static bool arm64_add_sub_imm(
         (imm_bits >> 6) | (shift ? 0x40 : 0x0),
         op
     };
-    *sz += 4;
-    return write_obj(fd, &instr_bytes, 4);
+    return write_obj(fd, &instr_bytes, 4, sz);
 }
 
 static bool arm64_add_sub(
@@ -238,7 +230,7 @@ static bool arm64_add_sub(
         /* either ADD reg, reg, aux or SUB reg, reg, aux */
         uint8_t instr_bytes[4] = { 0, 0, aux, op_byte };
         arm64_inject_reg_operands(reg, reg, instr_bytes);
-        return write_obj(fd, &instr_bytes, 4);
+        return write_obj(fd, &instr_bytes, 4, sz);
     }
     /* over the 64-bit signed int limit, so print an error and return false. */
     char err_char_str[2] = {
@@ -277,12 +269,10 @@ static bool arm64_inc_dec_byte(
     uint8_t instr_bytes[4] = {0x00, 0x00, 0x00, 0x00};
     uint8_t aux = aux_reg(reg);
     arm64_load_from_byte(reg, aux, instr_bytes);
-    *sz += 4;
-    if (!write_obj(fd, &instr_bytes, 4)) return false;
+    if (!write_obj(fd, &instr_bytes, 4, sz)) return false;
     if (!inner_fn(aux, fd, sz)) return false;
     arm64_store_to_byte(reg, aux, instr_bytes);
-    *sz += 4;
-    return write_obj(fd, &instr_bytes, 4);
+    return write_obj(fd, &instr_bytes, 4, sz);
 }
 
 bool arm64_inc_byte(uint8_t reg, int fd, off_t *sz) {
@@ -307,8 +297,7 @@ static bool arm64_add_sub_byte(
     arm64_load_from_byte(reg, aux, instr_bytes);
     /* write the lowest byte in aux back to the address stored in reg */
     arm64_store_to_byte(reg, aux, &(instr_bytes[8]));
-    *sz += 12;
-    return write_obj(fd, &instr_bytes, 12);
+    return write_obj(fd, &instr_bytes, 12, sz);
 }
 
 bool arm64_add_byte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
@@ -322,10 +311,9 @@ bool arm64_sub_byte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
 bool arm64_zero_byte(uint8_t reg, int fd, off_t *sz) {
     uint8_t aux = aux_reg(reg);
     if (!arm64_set_reg(aux, 0, fd, sz)) return false;
-    *sz += 4;
     uint8_t instr_bytes[4];
     arm64_store_to_byte(reg, aux, instr_bytes);
-    return write_obj(fd, &instr_bytes, 4);
+    return write_obj(fd, &instr_bytes, 4, sz);
 }
 
 const arch_funcs ARM64_FUNCS = {

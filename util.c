@@ -7,19 +7,22 @@
 /* C99 */
 #include <limits.h> /* SSIZE_MAX */
 /* POSIX */
-#include <unistd.h> /* write, ssize_t */
+#include <unistd.h> /* write */
 /* internal */
 #include "err.h" /* basic_err */
+#include "types.h" /* ssize_t, size_t, off_t */
 
 
-bool write_obj(int fd, const void *buf, size_t sz) {
-    if (sz > SSIZE_MAX) {
+bool write_obj(int fd, const void *buf, size_t ct, off_t *sz) {
+    if (ct > SSIZE_MAX) {
         basic_err(
             "WRITE_TOO_LARGE",
             "Didn't write because write is too large to properly validate."
         );
     }
-    if (write(fd, buf, sz) != (ssize_t)sz) {
+    ssize_t written = write(fd, buf, ct);
+    if (written > 0) *sz += written;
+    if (written != (ssize_t)ct) {
         basic_err("FAILED_WRITE", "Failed to write to file");
         return false;
     }
