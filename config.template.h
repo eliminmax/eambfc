@@ -8,11 +8,12 @@
 #define EAMBFC_CONFIG_H 1
 
 /* internal */
-#include "compat/elf.h"
+#include "compat/elf.h" /* EM_* */
 
+#define EAMBFC_TARGET_ARM64 1
 /* The target architecture - should be the same as the elf e_machine value for
  * that architecture, to simplify implementation */
-#define TARGET_ARCH EM_X86_64
+#define EAMBFC_TARGET EM_X86_64
 
 /* The current version */
 #define EAMBFC_VERSION @@
