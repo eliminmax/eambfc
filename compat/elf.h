@@ -103,11 +103,14 @@ typedef struct {
 
 /* value used for e_type (object file type). */
 #define ET_EXEC       2    /* Executable file */
+
 /* values used for e_machine (architecture).  */
 #define EM_X86_64     62   /* AMD x86-64 architecture */
-#define EM_AARCH64	183	/* ARM AARCH64 */
+#define EM_AARCH64   183   /* ARM AARCH64 */
+
 /* value used for e_version (version).  */
 #define EV_CURRENT    1    /* Current version */
+
 /* value used for e_shstrndx (SHDR table index of name string table section) */
 #define SHN_UNDEF     0   /* there is no name string table */
 
