@@ -142,12 +142,12 @@ bool arm64_syscall(int fd, off_t *sz) {
 }
 
 bool arm64_nop_loop_open(int fd, off_t *sz) {
-    uint8_t to_write[12] = {
+    uint8_t instr_bytes[12] = {
         0x1f, 0x20, 0x03, 0xd5, /* NOP */
         0x1f, 0x20, 0x03, 0xd5, /* NOP */
         0x1f, 0x20, 0x03, 0xd5 /* NOP */
     };
-    return write_obj(fd, to_write, 12, sz);
+    return write_obj(fd, instr_bytes, 12, sz);
 }
 
 static bool arm64_branch_cond(
