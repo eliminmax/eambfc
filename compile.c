@@ -12,11 +12,11 @@
 #include <unistd.h> /* off_t, read, write, seek. STD*_FILENO*/
 /* internal */
 #include "arch_inter.h" /* arch_registers, arch_sc_nums, arch_inter */
-#include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr */
+#include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr, ELFDATA2[LM]SB */
 #include "compiler_macros.h" /* various macros */
 #include "err.h" /* *_err */
 #include "optimize.h" /* to_ir */
-#include "serialize.h" /* serialize_*hdr64 */
+#include "serialize.h" /* serialize_*hdr64_[bl]e */
 #include "types.h" /* bool, int*_t, uint*_t, SCNx64 */
 #include "util.h" /* write_obj */
 
@@ -109,14 +109,19 @@ static bool write_ehdr(int fd, const arch_inter *inter) {
      * defined, and it should be set to 0. */
     header.e_flags = inter->FLAGS;
 
-    serialize_ehdr64(&header, header_bytes);
+    if (inter->ELF_DATA == ELFDATA2LSB) {
+        serialize_ehdr64_le(&header, header_bytes);
+    } else {
+        serialize_ehdr64_be(&header, header_bytes);
+    }
+
     off_t dummy = 0;
     return write_obj(fd, header_bytes, EHDR_SIZE, &dummy);
 }
 
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
-static bool write_phtb(int fd, uint64_t tape_blocks) {
+static bool write_phtb(int fd, uint64_t tape_blocks, const arch_inter *inter) {
     Elf64_Phdr phdr_table[PHNUM];
     char phdr_table_bytes[PHTB_SIZE];
 
@@ -159,7 +164,17 @@ static bool write_phtb(int fd, uint64_t tape_blocks) {
     phdr_table[1].p_align = 1;
 
     for (int i = 0; i < PHNUM; i++) {
-        serialize_phdr64(&phdr_table[i], &(phdr_table_bytes[i * PHDR_SIZE]));
+        if (inter->ELF_DATA == ELFDATA2LSB) {
+            serialize_phdr64_le(
+                &(phdr_table[i]),
+                &(phdr_table_bytes[i * PHDR_SIZE])
+            );
+        } else {
+            serialize_phdr64_be(
+                &(phdr_table[i]),
+                &(phdr_table_bytes[i * PHDR_SIZE])
+            );
+        }
     }
 
     off_t dummy = 0;
@@ -432,7 +447,7 @@ static bool finalize(int fd, uint64_t tape_blocks, const arch_inter *inter) {
     lseek(fd, 0, SEEK_SET);
     /* a |= b means a = (a | b) */
     ret |= write_ehdr(fd, inter);
-    ret |= write_phtb(fd, tape_blocks);
+    ret |= write_phtb(fd, tape_blocks, inter);
     return ret;
 }
 
