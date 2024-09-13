@@ -178,26 +178,20 @@ static inline bool bf_io(int fd, int bf_fd, int sc, const arch_inter *inter) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
-    /* load the number for the write system call into sc_num */
-    bool ret = inter->FUNCS->set_reg(
-        inter->REGS->sc_num,
-        sc,
-        fd,
-        &out_sz
+    return (
+        /* load the number for the write system call into sc_num */
+        inter->FUNCS->set_reg(inter->REGS->sc_num, sc, fd, &out_sz) &&
+        /* load the number for the stdout file descriptor into arg1 */
+        inter->FUNCS->set_reg(inter->REGS->arg1, bf_fd, fd, &out_sz) &&
+        /* copy the address in bf_ptr to arg2 */
+        inter->FUNCS->reg_copy(
+            inter->REGS->arg2, inter->REGS->bf_ptr, fd, &out_sz
+        ) &&
+        /* load # of bytes to read/write (1, specifically) into arg3 */
+        inter->FUNCS->set_reg(inter->REGS->arg3, 1, fd, &out_sz) &&
+        /* finally, call the syscall instruction */
+        inter->FUNCS->syscall(fd, &out_sz)
     );
-    /* load the number for the stdout file descriptor into arg1 */
-    ret &= inter->FUNCS->set_reg(inter->REGS->arg1, bf_fd, fd, &out_sz);
-    /* copy the address in bf_ptr to arg2 */
-    ret &= inter->FUNCS->reg_copy(
-        inter->REGS->arg2,
-        inter->REGS->bf_ptr,
-        fd,
-        &out_sz
-    );
-    /* load # of bytes to read/write (1, specifically) into arg3 */
-    ret &= inter->FUNCS->set_reg(inter->REGS->arg3, 1, fd, &out_sz);
-    ret &= inter->FUNCS->syscall(fd, &out_sz);
-    return ret;
 }
 
 /* number of indexes in the jump stack to allocate for at a time */
