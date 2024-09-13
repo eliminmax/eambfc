@@ -42,9 +42,7 @@ static bool test_jcc(
         /* Jcc|tttn 0x00000000 (will replace with jump offset) */
         0x0f, 0x80 | tttn, 0x00, 0x00, 0x00, 0x00
     };
-    /* need to cast to uint32_t for serialize32.
-     * Acceptable as POSIX requires 2's complement for signed types. */
-    if (serialize32(offset, (char *)&(i_bytes[5])) != 4) return false;
+    if (serialize32(offset, &(i_bytes[5])) != 4) return false;
     return write_obj(fd, &i_bytes, 9, sz);
 }
 
@@ -59,7 +57,7 @@ static bool x86_64_reg_arith (
     } else if (imm >= INT32_MIN && imm <= INT32_MAX ) {
         /* ADD/SUB reg, imm */
         uint8_t i_bytes[6] = { 0x81, op + reg, 0x00, 0x00, 0x00, 0x00 };
-        if (serialize32(imm, (char *)&i_bytes[2]) != 4) return false;
+        if (serialize32(imm, &(i_bytes[2])) != 4) return false;
         return write_obj(fd, &i_bytes, 6, sz);
     } else {
         /* There are no instructions to add or subtract a 64-bit immediate.
@@ -69,7 +67,7 @@ static bool x86_64_reg_arith (
          * restore its original value. */
         /* the temporary register shouldn't be the target register */
         uint8_t tmp_reg = (reg != 0) ? 0 : 1;
-        uint8_t i_bytes[] = {
+        uint8_t instr_bytes[] = {
             /* PUSH tmp_reg */
             0x50 + tmp_reg,
             /* MOV tmp_reg, 0x0000000000000000 (will replace with imm64) */
@@ -81,8 +79,8 @@ static bool x86_64_reg_arith (
             0x58 + tmp_reg
         };
         /* replace 0x0000000000000000 with imm64 */
-        if (serialize64(imm, (char *)&i_bytes[3]) != 8) return false;
-        return write_obj(fd, &i_bytes, 15, sz);
+        if (serialize64(imm, &(instr_bytes[3])) != 8) return false;
+        return write_obj(fd, &instr_bytes, 15, sz);
     }
 }
 
@@ -118,14 +116,14 @@ bool x86_64_set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
     } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
         /* MOV reg, imm32 */
         uint8_t instr_bytes[5] = { 0xb8 | reg, 0x00, 0x00, 0x00, 0x00 };
-        if (serialize32(imm, (char *)&(instr_bytes[1])) != 4) return false;
+        if (serialize32(imm, &(instr_bytes[1])) != 4) return false;
         return write_obj(fd, &instr_bytes, 5, sz);
     } else {
         /* MOV reg, imm64 */
         uint8_t instr_bytes[10] = {
             0x48, 0xb8 | reg, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         };
-        if (serialize64(imm, (char *)&(instr_bytes[2])) != 8) return false;
+        if (serialize64(imm, &(instr_bytes[2])) != 8) return false;
         return write_obj(fd, &instr_bytes, 10, sz);
     }
 }
