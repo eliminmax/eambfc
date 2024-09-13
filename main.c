@@ -12,7 +12,7 @@
 #include <fcntl.h> /* open, O_*, mode_t */
 #include <unistd.h> /* getopt, optopt, close */
 /* internal */
-#include "arch_inter.h" /* arch_inter, X86_64_INTER */
+#include "arch_inter.h" /* arch_inter, *_INTER */
 #include "compat/elf.h" /* EM_* */
 #include "compile.h" /* bf_compile */
 #include "config.h" /* EAMBFC_* */
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
             printf(
                 "This build of %s supports the following architectures:\n\n"
                 "- x86_64 (aliases: x64, amd64, x86-64)\n"
-#ifdef EAMBFC_TARGET_ARM64
+#if EAMBFC_TARGET_ARM64
                 "- arm64 (aliases: aarch64)\n"
 #endif /* EAMBFC_TARGET_ARM64 */
                 "\nIf no architecture is specified, it defaults to x86_64.\n",
@@ -211,7 +211,7 @@ int main(int argc, char* argv[]) {
             )) {
                 inter = &X86_64_INTER;
             }
-#ifdef EAMBFC_TARGET_ARM64
+#if EAMBFC_TARGET_ARM64
             else if (
                 any_strcmp(optarg, 2, (const char*[]){"arm64", "aarch64"})
             ) {
@@ -258,8 +258,20 @@ int main(int argc, char* argv[]) {
     /* if no tape size was specified, default to 8. */
     if (tape_blocks == 0) tape_blocks = 8;
 
-    /* if no architeture was specified, default to x86_64 */
+    /* if no architeture was specified, default to value set in config.h */
+#if EAMBFC_TARGET == EM_X86_64
     if (inter == NULL) inter = &X86_64_INTER;
+#elif EAMBFC_TARGET == EM_AARCH64
+# if EAMBFC_TARGET_ARM64
+    if (inter == NULL) inter = &ARM64_INTER;
+# else /* EAMBFC_TARGET_ARM64 */
+#  error EAMBFC_TARGET set to EM_AARCH64, but EAMBFC_TARGET_ARM64 not enabled.
+# endif /* EAMBFC_TARGET_ARM64 */
+
+#else /* EAMBFC_TARGET */
+# error Unrecognized target used as default.
+
+#endif /* EAMBFC_TARGET */
 
     for (/* reusing optind here */; optind < argc; optind++) {
         outname = malloc(strlen(argv[optind]) + 1);
