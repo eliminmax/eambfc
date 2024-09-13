@@ -8,8 +8,11 @@
 
 #ifndef EAMBFC_ARCH_INTER_H
 #define EAMBFC_ARCH_INTER_H 1
+/* POSIX */
+#include "unistd.h" /* off_t */
 /* internal */
-#include "types.h"
+#include "config.h" /* EAMBFC_TARGET* */
+#include "types.h" /* uint*_t, int*_t, bool */
 
 typedef const struct arch_registers {
     uint8_t sc_num;
@@ -64,7 +67,7 @@ typedef const struct arch_inter {
 } arch_inter;
 
 extern const arch_inter X86_64_INTER;
-#ifdef EAMBFC_TARGET_ARM64
+#if EAMBFC_TARGET_ARM64
 extern const arch_inter ARM64_INTER;
 #endif /* EAMBFC_TARGET_ARM64 */
 
