@@ -15,8 +15,10 @@ success=0
 failed=0
 skipped=0
 
-src_files='serialize.c compile.c x86_64_encoders.c err.c util.c optimize.c'
-src_files="$src_files main.c"
+interface_files='arm64_encoders.c x86_64_encoders.c'
+misc_src_files='serialize.c compile.c err.c util.c optimize.c'
+src_files="$interface_files $misc_src_files main.c"
+unset interface_files misc_src_files
 
 posix_flag='-D _POSIX_C_SOURCE=200809L'
 

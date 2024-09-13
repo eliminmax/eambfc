@@ -12,7 +12,9 @@ CC = c99
 # This flag enables POSIX.1-2008-specific macros and features
 POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
-COMPILE_DEPS = serialize.o x86_64_encoders.o optimize.o err.o util.o
+
+INTERFACE_DEPS = arm64_encoders.o x86_64_encoders.o
+COMPILE_DEPS = serialize.o $(INTERFACE_DEPS) optimize.o err.o util.o
 EAMBFC_DEPS = compile.o $(COMPILE_DEPS) main.o
 
 
@@ -30,8 +32,8 @@ GCC_UBSAN_FLAGS = -std=c99 -fanalyzer -fsanitize=address,undefined \
 GCC_INT_TORTURE_FLAGS = -D INT_TORTURE_TEST=1 $(GCC_STRICT_FLAGS) -Wno-format \
 			-Wno-pedantic -fsanitize=address,undefined
 
-UNIBUILD_FILES = serialize.c compile.c optimize.c err.c \
-			x86_64_encoders.c util.c main.c
+UNIBUILD_FILES = serialize.c compile.c optimize.c err.c util.c \
+			arm64_encoders.c x86_64_encoders.c main.c
 
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
 # overridden if CFLAGS are passed as an argument to make.
@@ -67,9 +69,12 @@ serialize.o: serialize.c
 compile.o: config.h x86_64_encoders.o compile.c
 main.o: config.h main.c
 optimize.o: err.o optimize.c
-x86_64_encoders.o: x86_64_encoders.c
 err.o: config.h err.c
 util.o: util.c
+# INTERFACE_DEPS
+arm64_encoders.o: arm64_encoders.c
+x86_64_encoders.o: x86_64_encoders.c
+
 # for testing
 #
 # can we run x86-64 Linux binaries properly?
