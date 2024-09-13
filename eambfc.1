@@ -3,9 +3,9 @@
 .\" SPDX-License-Identifier: GPL-3.0-only
 .\"
 .\" The man page for eambfc, handwritten as part of the final preparation
-.\" for the release of eambfc 2.0.0
+.\" for the release of eambfc 2.0.0, and has been updated since.
 
-.TH EAMBFC 1 2024-07-20 EAMBFC
+.TH EAMBFC 1 2024-09-12 EAMBFC
 .SH NAME
 eambfc \- a brainfuck compiler that outputs x86_64 Linux ELF executables
 
@@ -90,6 +90,27 @@ as the file extension for brainfuck source files. If passed more than
 once,
 .B eambfc
 will abort without compiling anything.
+
+.TP
+.BI -a\  arch
+Compile for
+.I arch
+instead of the default, which is
+.I x86_64
+in standard
+.B eambfc
+builds, but can be customized when compiling
+.B eambfc
+itself. If passed more than once,
+.B eambfc
+will abort without compiling anything.
+
+.TP
+.B -A
+List available architectures that this build of
+.B eambfc
+includes. Standard builds include all architectures that have been fully
+implemented and passed the full test suite.
 
 .SH OPTIMIZATIONS
 
