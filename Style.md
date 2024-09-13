@@ -13,14 +13,14 @@ The following are the formatting I follow for source code:
 * Indentation:
   * General: 4 spaces for indentation, except in the following cases:
     * C: `case`s within `switch` statements are half indented
-    * Makefiles use 8-wide tabs due to the constraints of the format
+    * Makefiles use 8-wide tab characters due to the constraints of the format
     * Markdown files use 2 spaces due to the constraints of the format
 * C: Open braces are on the same line as the function signature/conditional/etc.
-* C: Multi-line comments should have an asterisk at the start of each line
-  * exception: license heading in `compat/elf.h` should be left as-is.
+* C: Multi-line comments have an asterisk at the start of each line.
+  * Exception: license heading in `compat/elf.h` is left as-is.
 * Names:
-  * macros are `SCREAMING_SNAKE_CASE`.
-  * functions, variables, structs, and `typedef`ed types are `snake_case`.
+  * macros, enum variants, and const struct members are `SCREAMING_SNAKE_CASE`.
+  * everything else is `snake_case` or `abrevnames`, depending on what fits.
 * C: `include`s are split into sections starting with one of the following:
   * `/* C99 */`: the header is defined by the C99 standard
     * either the C99 standard or the POSIX.1-2008 must require it to be present
