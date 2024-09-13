@@ -39,6 +39,17 @@ void show_help(FILE *outfile, char *progname) {
         "             source files instead of '.bf'\n"
         "             (This program will remove this at the end of the input\n"
         "             file to create the output file name)\n"
+        " -a arch   - compile for the specified architecture\n"
+        "             (defaults to "
+#if EAMBFC_TARGET == EM_X86_64
+                                   "x86_64"
+#elif (EAMBFC_TARGET == EM_AARCH64) && EAMBFC_TARGET_ARM64
+                                   "arm64"
+#else
+# error Unknown default target
+#endif /* EAMBFC_TARGET */
+                                          " if not specified)**\n"
+        " -A        - list supported architectures and exit\n"
         "\n"
         "* -q and -j will not affect arguments passed before they were.\n"
         "\n"
