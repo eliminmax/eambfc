@@ -378,8 +378,8 @@ static inline bool comp_ir_condensed_instr(
         return false;
     } else {
         switch (*p) {
-          case '#': return IR_COMPILE_WITH(inter->FUNCS->add_mem);
-          case '=': return IR_COMPILE_WITH(inter->FUNCS->sub_mem);
+          case '#': return IR_COMPILE_WITH(inter->FUNCS->add_byte);
+          case '=': return IR_COMPILE_WITH(inter->FUNCS->sub_byte);
           case '}': return IR_COMPILE_WITH(inter->FUNCS->add_reg);
           case '{': return IR_COMPILE_WITH(inter->FUNCS->sub_reg);
           default:
@@ -408,7 +408,7 @@ static bool comp_ir_instr(
       case ']':
         return comp_instr(*p, fd, alloc_valve, inter);
       case '@':
-        return inter->FUNCS->zero_mem(inter->REGS->bf_ptr, fd, &out_sz);
+        return inter->FUNCS->zero_byte(inter->REGS->bf_ptr, fd, &out_sz);
       default:
         return comp_ir_condensed_instr(p, fd, skip_ct_p, inter);
     }

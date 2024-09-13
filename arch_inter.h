@@ -52,9 +52,9 @@ typedef const struct arch_funcs {
     /* functions used for optimized instructions */
     bool (*const add_reg)(uint8_t reg, int64_t imm, int fd, off_t *sz);
     bool (*const sub_reg)(uint8_t reg, int64_t imm, int fd, off_t *sz);
-    bool (*const add_mem)(uint8_t reg, int8_t imm8, int fd, off_t *sz);
-    bool (*const sub_mem)(uint8_t reg, int8_t imm8, int fd, off_t *sz);
-    bool (*const zero_mem)(uint8_t reg, int fd, off_t *sz);
+    bool (*const add_byte)(uint8_t reg, int8_t imm8, int fd, off_t *sz);
+    bool (*const sub_byte)(uint8_t reg, int8_t imm8, int fd, off_t *sz);
+    bool (*const zero_byte)(uint8_t reg, int fd, off_t *sz);
 } arch_funcs;
 
 typedef const struct arch_inter {

@@ -270,21 +270,21 @@ bool x86_64_sub_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
 }
 
 /* # */
-bool x86_64_add_mem(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
+bool x86_64_add_byte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
     *sz += 3;
     /* ADD byte [reg], imm8 */
     return write_obj(fd, (uint8_t[]){ 0x80, reg, imm8}, 3);
 }
 
 /* = */
-bool x86_64_sub_mem(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
+bool x86_64_sub_byte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
     *sz += 3;
     /* SUB byte [reg], imm8 */
     return write_obj(fd, (uint8_t[]){ 0x80, 0x28 + reg, imm8}, 3);
 }
 
 /* @ */
-bool x86_64_zero_mem(uint8_t reg, int fd, off_t *sz) {
+bool x86_64_zero_byte(uint8_t reg, int fd, off_t *sz) {
     *sz += 4;
     /* MOV byte [reg], 0 */
     return write_obj(fd, (uint8_t[]){ 0x67, 0xc6, reg, 0x00 }, 4);
@@ -303,9 +303,9 @@ const arch_funcs X86_64_FUNCS = {
     x86_64_dec_byte,
     x86_64_add_reg,
     x86_64_sub_reg,
-    x86_64_add_mem,
-    x86_64_sub_mem,
-    x86_64_zero_mem
+    x86_64_add_byte,
+    x86_64_sub_byte,
+    x86_64_zero_byte
 };
 
 const arch_sc_nums X86_64_SC_NUMS = {
