@@ -269,7 +269,7 @@ int main(int argc, char* argv[]) {
     /* if no tape size was specified, default to 8. */
     if (tape_blocks == 0) tape_blocks = 8;
 
-    /* if no architeture was specified, default to value set in config.h */
+    /* if no architecture was specified, default to value set in config.h */
 #if EAMBFC_TARGET == EM_X86_64
     if (inter == NULL) inter = &X86_64_INTER;
 #elif EAMBFC_TARGET == EM_AARCH64

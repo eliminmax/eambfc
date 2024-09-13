@@ -68,7 +68,7 @@ static void arm64_load_from_byte(uint8_t reg, uint8_t aux, uint8_t dst[4]) {
 }
 
 static inline uint8_t aux_reg(uint8_t reg) {
-    /* return an auxilary scratch register that isn't the same as reg to use */
+    /* return an auxiliary scratch register that isn't the same as reg to use */
     return (reg == 17) ? 16 : 17;
 }
 
@@ -108,7 +108,7 @@ bool arm64_set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
     }
     uint8_t instr_bytes[4] = {0, 0, 0, 0};
     if (i == 4) {
-        /* all of them had the default value, so use this fallback instrucion */
+        /* all are the default value, so use this fallback instruction */
         /* (MOVZ or MOVN) reg, default_val */
         arm64_mov(lead_mt, default_val, A64_SL_NO_SHIFT, reg, instr_bytes);
         *sz += 4;
@@ -230,10 +230,10 @@ static bool arm64_add_sub(
         }
         return ret;
     } else if (imm < UINT64_C(0x7fffffffffffffff)) {
-        /* different byte valuse are needed than normal here */
+        /* different byte values are needed than normal here */
         uint8_t op_byte = (op == A64_OP_ADD) ? 0x8b : 0xcb;
         uint8_t aux = aux_reg(reg);
-        /* set the auxilary register to the target value */
+        /* set the auxiliary register to the target value */
         if (!arm64_set_reg(aux, (int64_t)imm, fd, sz)) return false;
         /* either ADD reg, reg, aux or SUB reg, reg, aux */
         uint8_t instr_bytes[4] = { 0, 0, aux, op_byte };
