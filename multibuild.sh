@@ -15,7 +15,7 @@ success=0
 failed=0
 skipped=0
 
-interface_files='arm64_encoders.c x86_64_encoders.c'
+interface_files='backend_arm64.c backend_x86_64.c'
 misc_src_files='serialize.c compile.c err.c util.c optimize.c'
 src_files="$interface_files $misc_src_files main.c"
 unset interface_files misc_src_files
