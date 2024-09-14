@@ -89,7 +89,9 @@ typedef struct {
 #define ELFCLASS64    2    /* 64-bit objects */
 
 #define EI_DATA       5    /* Data encoding byte index */
+#define ELFDATANONE   0    /* Invalid data encoding */
 #define ELFDATA2LSB   1    /* 2's complement, little endian */
+#define ELFDATA2MSB   1    /* 2's complement, big endian */
 
 #define EI_VERSION    6    /* File version byte index */
                            /* Value must be EV_CURRENT */
@@ -105,6 +107,7 @@ typedef struct {
 #define ET_EXEC       2    /* Executable file */
 
 /* values used for e_machine (architecture).  */
+#define EM_NONE        0   /* No machine */
 #define EM_X86_64     62   /* AMD x86-64 architecture */
 #define EM_AARCH64   183   /* ARM AARCH64 */
 
