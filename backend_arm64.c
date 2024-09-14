@@ -66,7 +66,7 @@ static void arm64_load_from_byte(uint8_t reg, uint8_t aux, uint8_t dst[4]) {
     arm64_inject_reg_operands(aux, reg, dst);
 }
 
-static inline uint8_t aux_reg(uint8_t reg) {
+static inline uint8_t arm64_aux_reg(uint8_t reg) {
     /* return an auxiliary scratch register that isn't the same as reg to use */
     return (reg == 17) ? 16 : 17;
 }
@@ -169,7 +169,7 @@ static bool arm64_branch_cond(
         return false;
     }
     uint32_t offset_value = 1 + ((((uint32_t) offset) >> 2) & 0x7fffff);
-    uint8_t aux = aux_reg(reg);
+    uint8_t aux = arm64_aux_reg(reg);
     uint8_t test_and_branch[12] = {
         /* after arm64_inject_reg_operands, will be LDRB aux, [reg] */
         0x00, 0x04, 0x40, 0x38,
@@ -223,7 +223,7 @@ static bool arm64_add_sub(
     } else if (imm < UINT64_C(0x7fffffffffffffff)) {
         /* different byte values are needed than normal here */
         uint8_t op_byte = (op == A64_OP_ADD) ? 0x8b : 0xcb;
-        uint8_t aux = aux_reg(reg);
+        uint8_t aux = arm64_aux_reg(reg);
         /* set the auxiliary register to the target value */
         if (!arm64_set_reg(aux, (int64_t)imm, fd, sz)) return false;
         /* either ADD reg, reg, aux or SUB reg, reg, aux */
@@ -266,7 +266,7 @@ static bool arm64_inc_dec_byte(
 ) {
 
     uint8_t instr_bytes[4] = {0x00, 0x00, 0x00, 0x00};
-    uint8_t aux = aux_reg(reg);
+    uint8_t aux = arm64_aux_reg(reg);
     arm64_load_from_byte(reg, aux, instr_bytes);
     if (!write_obj(fd, &instr_bytes, 4, sz)) return false;
     if (!inner_fn(aux, fd, sz)) return false;
@@ -286,7 +286,7 @@ static bool arm64_add_sub_byte(
     uint8_t reg, int8_t imm8, arith_op op, int fd, off_t *sz
 ) {
     uint8_t imm = imm8;
-    uint8_t aux = aux_reg(reg);
+    uint8_t aux = arm64_aux_reg(reg);
     uint8_t instr_bytes[12] = {
         0x00, 0x00, 0x00, 0x00,
         /* set middle instruction to ADD aux, aux, imm or SUB aux, aux, imm */
@@ -308,7 +308,7 @@ bool arm64_sub_byte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
 }
 
 bool arm64_zero_byte(uint8_t reg, int fd, off_t *sz) {
-    uint8_t aux = aux_reg(reg);
+    uint8_t aux = arm64_aux_reg(reg);
     if (!arm64_set_reg(aux, 0, fd, sz)) return false;
     uint8_t instr_bytes[4];
     arm64_store_to_byte(reg, aux, instr_bytes);
