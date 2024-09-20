@@ -3,9 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * This file contains typedefs of structs used to provide the interface to
- * architectures, and declares all supported backends at the end.
- *
- * For information about adding backends, see dev-docs/backends.md */
+ * architectures, and declares all supported backends at the end. */
 
 #ifndef EAMBFC_ARCH_INTER_H
 #define EAMBFC_ARCH_INTER_H 1
@@ -15,20 +13,30 @@
 #include "config.h" /* EAMBFC_TARGET* */
 #include "types.h" /* uint*_t, int*_t, bool */
 
+/* This defines the interface for the architecture. It is written around
+ * assumptions that are true about Linux, namely that the system call number and
+ * system call arguments are stored in registers.
+ *
+ * It also assumes that there is either at least one register that is not
+ * clobbered during system calls, or that there is a stack that registers can be
+ * pushed to or popped from without needing any extra setup. */
+
 typedef const struct arch_registers {
-    /* Linux system call number */
+    /* register Linux checks for system call number */
     uint8_t sc_num;
-    /* first 3 Linux argument registers */
+    /* registers for first 3 Linux argument registers */
     uint8_t arg1;
     uint8_t arg2;
     uint8_t arg3;
     /* ideally, a register not clobbered during syscalls in the ABI for the
-     * architecture, to use to store address of current tape cell */
+     * architecture, to use to store address of current tape cell. If no such
+     * register exists, the arch_funcs->syscall function must push this register
+     * to a stack, then pop it once syscall is complete. */
     uint8_t bf_ptr;
 } arch_registers;
 
 typedef const struct arch_sc_nums {
-    /* system call numbers target uses for each of these. */
+    /* system call numbers target platform uses for each of these. */
     int64_t read;
     int64_t write;
     int64_t exit;
@@ -151,6 +159,8 @@ typedef const struct arch_inter {
     unsigned char ELF_DATA;
 } arch_inter;
 
+/* this is where the actual interfaces defined in the backend_* files are made
+ * available in other files. */
 extern const arch_inter X86_64_INTER;
 #if EAMBFC_TARGET_ARM64
 extern const arch_inter ARM64_INTER;
