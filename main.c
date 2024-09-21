@@ -37,7 +37,7 @@
 #endif /* EAMBFC_TARGET */
 
 /* print the help message to outfile. progname should be argv[0]. */
-void show_help(FILE *outfile, char *progname) {
+static void show_help(FILE *outfile, char *progname) {
     fprintf(outfile,
         "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
         " -h        - display this help text and exit\n"
@@ -73,13 +73,13 @@ void show_help(FILE *outfile, char *progname) {
 /* returns true if strcmp matches s to any strings in strs, and false otherwise.
  * strs is an array of strings, and count is the number of elements.
  * normal safety concerns around strcmp apply. */
-bool any_strcmp(const char *s, int count, const char** strs) {
+static bool any_strcmp(const char *s, int count, const char** strs) {
     for (int i = 0; i < count; i++) if (strcmp(s, strs[i]) == 0) return true;
     return false;
 }
 
 /* remove ext from end of str. If ext is not in str, return false. */
-bool rm_ext(char *str, const char *ext) {
+static bool rm_ext(char *str, const char *ext) {
     size_t strsz = strlen(str);
     size_t extsz = strlen(ext);
     /* strsz must be at least 1 character longer than extsz to continue. */
