@@ -11,7 +11,7 @@
 #include "types.h" /* bool, uint64_t */
 
 /* Compile code in source file to destination file.
- * Paramters:
+ * Parameters:
  * - inter is a pointer to the arch_inter backend used to provide the functions
  *   that compile brainfuck and EAMBFC-IR into machine code.
  * - in_fd is a brainfuck source file, open for reading.
@@ -19,7 +19,7 @@
  * - optimize is a boolean indicating whether to optimize code before compiling.
  * - tape_blocks is the number of 4-KiB blocks to allocate for the tape.
  *
- * Returns true if compilation was successful, and false if any issues occured.
+ * Returns true if compilation was successful, and false if any issues occurred.
  *
  * It does not verify that in_fd and out_fd are valid file descriptors,
  * nor that they are open properly.
