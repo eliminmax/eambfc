@@ -7,8 +7,6 @@
 
 #ifndef EAMBFC_ARCH_INTER_H
 #define EAMBFC_ARCH_INTER_H 1
-/* POSIX */
-#include "unistd.h" /* off_t */
 /* internal */
 #include "config.h" /* EAMBFC_TARGET* */
 #include "types.h" /* uint*_t, int*_t, bool */
