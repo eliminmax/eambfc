@@ -12,8 +12,9 @@ CC = c99
 # This flag enables POSIX.1-2008-specific macros and features
 POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
-
+# __BACKENDS__
 BACKENDS = backend_arm64.o backend_x86_64.o
+
 COMPILE_DEPS = serialize.o $(BACKENDS) optimize.o err.o util.o
 EAMBFC_DEPS = compile.o $(COMPILE_DEPS) main.o
 
@@ -71,7 +72,7 @@ main.o: config.h main.c
 optimize.o: err.o optimize.c
 err.o: config.h err.c
 util.o: util.c
-# BACKENDS
+# __BACKENDS__
 backend_arm64.o: backend_arm64.c
 backend_x86_64.o: backend_x86_64.c
 

@@ -19,6 +19,7 @@
 #include "err.h" /* *_err */
 #include "types.h" /* bool, uint64_t, UINT64_MAX */
 
+/* __BACKENDS__ */
 /* Before anything else, validate default target, and define DEFAULT_* macros
  * based on default target. */
 #if EAMBFC_TARGET == EM_X86_64
@@ -138,6 +139,7 @@ int main(int argc, char* argv[]) {
             printf(
                 "This build of %s supports the following architectures:\n\n"
                 "- x86_64 (aliases: x64, amd64, x86-64)\n"
+/* __BACKENDS__ */
 #if EAMBFC_TARGET_ARM64
                 "- arm64 (aliases: aarch64)\n"
 #endif /* EAMBFC_TARGET_ARM64 */
@@ -232,6 +234,7 @@ int main(int argc, char* argv[]) {
                 optarg, 4, (const char*[]){"x86_64", "x64", "amd64", "x86-64"}
             )) {
                 inter = &X86_64_INTER;
+/* __BACKENDS__ */
 #if EAMBFC_TARGET_ARM64
             } else if (
                 any_strcmp(optarg, 2, (const char*[]){"arm64", "aarch64"})

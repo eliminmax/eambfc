@@ -9,6 +9,7 @@
 /* internal */
 #include "compat/elf.h" /* EM_* */
 
+/* __BACKENDS__ */
 /* for each optional target, set to 0 if you don't want it included in the
  * eambfc binary. */
 #define EAMBFC_TARGET_ARM64 1
@@ -16,10 +17,10 @@
  * that architecture for consistency's sake. */
 #define EAMBFC_TARGET EM_X86_64
 
-/* The current version - set with make */
+/* The current version - this is set in the config.h make target */
 #define EAMBFC_VERSION @@
 
-/* The current git commit - set with make */
+/* The current git commit - this is set in the config.h make target */
 #define EAMBFC_COMMIT @@
 
 #endif /* EAMBFC_CONFIG_H */

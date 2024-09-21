@@ -115,23 +115,22 @@ tar --strip-components=1 -xf "eambfc-$version-src.tar"
 # multibuild.sh fails if any compilers are skipped and env var is non-empty
 NO_SKIP_MULTIBUILD=yep make CC=gcc all_tests
 
+
+test_for_arch() {
+    # run test suite with and without EAMBFC optimization mode with ubsan
+    # to try to catch undefined behavior
+    make EAMBFC=../alt_builds/eambfc_ubsan EAMBFC_ARGS="-kOa$1" clean test
+    SKIP_DEAD_CODE=1 \
+        make EAMBFC=../alt_builds/eambfc_ubsan EAMBFC_ARGS="-kOa$1" clean test
+}
+
 # ensure strict and ubsan builds work at all gcc optimization levels
 for o_lvl in 0 1 2 3 s fast g z; do
     make -s CFLAGS="-O$o_lvl" clean ubsan strict;
     cd tests
-    make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-kO" clean test
-    SKIP_DEAD_CODE=1 \
-        make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-k" clean test
-    #shellcheck disable=SC2043 # loop runs once as one architecture exists.
-    for arch in arm64; do
-        # run test suite with and without EAMBFC optimization mode with ubsan
-        # to try to catch undefined behavior
-        make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-kO -a $arch" \
-            clean test
-        SKIP_DEAD_CODE=1 \
-            make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-k -a $arch" \
-            clean test
-    done
+    # __BACKENDS__
+    test_for_arch x86_64
+    test_for_arch arm64
     cd ..
 done
 
