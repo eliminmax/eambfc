@@ -19,6 +19,22 @@
 #include "err.h" /* *_err */
 #include "types.h" /* bool, uint64_t, UINT64_MAX */
 
+/* Before anything else, validate default target, and define DEFAULT_* macros
+ * based on default target. */
+#if EAMBFC_TARGET == EM_X86_64
+    /* if it's set to EM_X86_64, it's valid, as thats always enabled. */
+#  define DEFAULT_ARCH_STR "x86_64"
+#  define DEFAULT_INTER X86_64_INTER
+#elif EAMBFC_TARGET == EM_AARCH64
+    /* for arm64, make sure that the backend is enabled before anything else. */
+#  if EAMBFC_TARGET_ARM64 == 0
+#    error EAMBFC_TARGET is EM_AARCH64, but EAMBFC_TARGET_ARM64 is disabled.
+#  endif /* EAMBFC_TARGET_ARM64 == 0 */
+#  define DEFAULT_ARCH_STR "arm64"
+#  define DEFAULT_INTER ARM64_INTER
+#else
+#  error EAMBFC_TARGET is not recognized.
+#endif /* EAMBFC_TARGET */
 
 /* print the help message to outfile. progname should be argv[0]. */
 void show_help(FILE *outfile, char *progname) {
@@ -40,15 +56,7 @@ void show_help(FILE *outfile, char *progname) {
         "             (This program will remove this at the end of the input\n"
         "             file to create the output file name)\n"
         " -a arch   - compile for the specified architecture\n"
-        "             (defaults to "
-#if EAMBFC_TARGET == EM_X86_64
-                                   "x86_64"
-#elif (EAMBFC_TARGET == EM_AARCH64) && EAMBFC_TARGET_ARM64
-                                   "arm64"
-#else
-# error Unknown default target
-#endif /* EAMBFC_TARGET */
-                                          " if not specified)**\n"
+        "             (defaults to " DEFAULT_ARCH_STR " if not specified)**\n"
         " -A        - list supported architectures and exit\n"
         "\n"
         "* -q and -j will not affect arguments passed before they were.\n"
@@ -62,8 +70,11 @@ void show_help(FILE *outfile, char *progname) {
     );
 }
 
-bool any_strcmp(const char *s, int c, const char** strs) {
-    for (int i = 0; i < c; i++) if (strcmp(s, strs[i]) == 0) return true;
+/* returns true if strcmp matches s to any strings in strs, and false otherwise.
+ * strs is an array of strings, and count is the number of elements.
+ * normal safety concerns around strcmp apply. */
+bool any_strcmp(const char *s, int count, const char** strs) {
+    for (int i = 0; i < count; i++) if (strcmp(s, strs[i]) == 0) return true;
     return false;
 }
 
@@ -267,18 +278,8 @@ int main(int argc, char* argv[]) {
     /* if no tape size was specified, default to 8. */
     if (tape_blocks == 0) tape_blocks = 8;
 
-    /* if no architecture was specified, default to value set in config.h */
-#if EAMBFC_TARGET == EM_X86_64
-    if (inter == NULL) inter = &X86_64_INTER;
-#elif EAMBFC_TARGET == EM_AARCH64
-# if EAMBFC_TARGET_ARM64
-    if (inter == NULL) inter = &ARM64_INTER;
-# else /* EAMBFC_TARGET_ARM64 */
-#  error EAMBFC_TARGET set to EM_AARCH64, but EAMBFC_TARGET_ARM64 not enabled.
-# endif /* EAMBFC_TARGET_ARM64 */
-#else /* EAMBFC_TARGET */
-# error Unrecognized target used as default.
-#endif /* EAMBFC_TARGET */
+    /* if no architecture was specified, default to default value set above */
+    if (inter == NULL) inter = &DEFAULT_INTER;
 
     for (/* reusing optind here */; optind < argc; optind++) {
         outname = malloc(strlen(argv[optind]) + 1);
