@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/sh
 
 # SPDX-FileCopyrightText: 2024 Eli Array Minkoff
 #
@@ -50,6 +50,8 @@
 # reuse helper tool >= 4.0.0 (newer than Debian package in bookworm/main)
 #       https://git.fsfe.org/reuse/tool
 #   I installed with pipx, which was in turn installed with apt
+
+set -e
 
 cd "$(dirname "$(realpath "$0")")"
 
