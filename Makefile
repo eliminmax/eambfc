@@ -115,14 +115,14 @@ ubsan: can_run_linux_amd64 config.h
 	@printf 'WARNING: `make $@` IS NOT PORTABLE AT ALL!\n' >&2
 	gcc $(CFLAGS) $(GCC_UBSAN_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
 		-o alt-builds/eambfc-$@
-	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
+	(cd tests; make EAMBFC=../alt-builds/eambfc-$@ clean test)
 
 int_torture_test: can_run_linux_amd64 config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE AT ALL!\n' >&2
 	gcc $(GCC_INT_TORTURE_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
 		-o alt-builds/eambfc-$@
-	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
+	(cd tests; make EAMBFC=../alt-builds/eambfc-$@ clean test)
 
 all_tests: test multibuild_test strict ubsan int_torture_test
 
