@@ -1,7 +1,7 @@
 <!--
 SPDX-FileCopyrightText: 2024 Eli Array Minkoff
 
-SPDX-License-Identifier: 0BSD
+SPDX-License-Identifier: GPL-3.0-only
 -->
 
 # Eli Array Minkoff's BFC (original version)
@@ -12,10 +12,13 @@ in Rust 🦀!**
 
 An optimizing compiler for brainfuck, written in C for Unix-like systems.
 
-Outputs x86\_64 ELF executables that uses Linux system calls for I/O.
+Output 64-bit ELF executables that uses Linux system calls for I/O.
+Currrently, it has x64_64 and arm64 backends.
 
 I started this as an inexperienced C programmer, and this was originally an
 attempt to gain practice by writing something somewhat simple yet not trivial.
+As it went on, I added more and more features, created a Rust rewrite, and have
+maintained feature parity between them.
 
 ## Usage
 
@@ -37,6 +40,9 @@ Usage: eambfc [options] <program.bf> [<program2.bf> ...]
              source files instead of '.bf'
              (This program will remove this at the end of the input
              file to create the output file name)
+ -a arch   - compile for the specified architecture
+             (defaults to x86_64 if not specified)**
+ -A        - list supported architectures and exit
 
 * -q and -j will not affect arguments passed before they were.
 
@@ -49,16 +55,18 @@ will raise an error.
 
 ## Supported platforms
 
-Portability to other *target* platforms is outside of the scope of this project,
-but it should be possible to compile and run `eambfc` itself on any POSIX\*
-system with a C99 compiler. If that is not the case, it's a bug.
+It should be possible to compile and run `eambfc` itself on any POSIX\* system
+with a C99 compiler. If that is not the case, it's a bug.
+
+When building `eambfc`, the backend targeting x86_64 systems is always
+included. A backend for arm64 systems is also included, but the test suite
+defaults to only testing the x86_64 backend.
 
 \* *Specifically POSIX.1-2008. Compilation requires the optional C-Language
-Development Utilities, or at least something similar enough.*
-
-It probably works on systems that comply with any version of the POSIX standard
-from POSIX.1-2001 on, and with any newer version of ISO standard C, but if it
-does not, it's not a bug.
+Development Utilities, or at least something similar enough. It probably works
+on systems that comply with any version of the POSIX standard from POSIX.1-2001
+on, and with any newer version of ISO standard C, but if it does not, it's not
+considered a bug.*
 
 ## Building and Installing
 
@@ -91,11 +99,18 @@ improperly-formatted files, or other problems. Do not use it.
 
 ### Standards compliance
 
-Other than some tests, all C code, shell scripts, and Makefiles target the
-POSIX.1-2008 standard and/or the ISO/IEC 9899:1999 standard (i.e. C99).
+All C code and Makefiles, and most shell scripts, target the POSIX.1-2008
+standard and/or the ISO/IEC 9899:1999 standard (i.e. C99).
 
-Source code must also comply with version 3.2 of the REUSE specification for
-licensing information.
+Some Makefile targets are not portable - they use `gcc`-specific flags and
+features, and are hard-coded to call `gcc` rather than the user-specified C
+compiler.
+
+The `release.sh` script has a large number of extra dependencies which it
+documents, used for extra testing and linting, and for building source tarballs.
+
+All files in the main branch comply with version 3.2 of the REUSE specification
+for licensing information.
 
 ### Test suite
 
@@ -122,7 +137,7 @@ esolangs.org pages
 available under the CC0 public-domain-equivalent license.
 
 Other than the macros and `typedefs` in `compat/elf.h` and the sample code
-from esolangs.org, all content in this repository is my original work.
+from esolangs.org, all content in this repository is my own original work.
 
 All licenses used in any part of this repository are in the LICENSES/ directory,
 and every file has an SPDX License header identifying the license(s) it's under,
