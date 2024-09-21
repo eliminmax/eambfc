@@ -6,19 +6,20 @@
 
 #ifndef EAMBFC_CONFIG_H
 #define EAMBFC_CONFIG_H 1
-
 /* internal */
 #include "compat/elf.h" /* EM_* */
 
+/* for each optional target, set to 0 if you don't want it included in the
+ * eambfc binary. */
 #define EAMBFC_TARGET_ARM64 1
-/* The target architecture - should be the same as the elf e_machine value for
- * that architecture, to simplify implementation */
+/* The target architecture - should be the same as the ELF e_machine value for
+ * that architecture for consistency's sake. */
 #define EAMBFC_TARGET EM_X86_64
 
-/* The current version */
+/* The current version - set with make */
 #define EAMBFC_VERSION @@
 
-/* The current git commit */
+/* The current git commit - set with make */
 #define EAMBFC_COMMIT @@
 
 #endif /* EAMBFC_CONFIG_H */
