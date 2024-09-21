@@ -20,11 +20,11 @@
 #define JUMP_SIZE 9
 
 /* most common values for opcodes in add/sub instructions */
-typedef enum { X86_64_OP_ADD = 0xc0, X86_64_OP_SUB = 0xe8 } arith_op;
+typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
 
 /* if there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
- * x86_64_ functions, the common lines dealing with writing machine code should
- * be moved into a static function. */
+ * functions, the common lines dealing with writing machine code should
+ * be moved into a separate function. */
 /* TEST byte [reg], 0xff; Jcc|tttn offset */
 static bool test_jcc(
     char tttn, uint8_t reg, int32_t offset, int fd, off_t *sz
@@ -46,7 +46,7 @@ static bool test_jcc(
     return write_obj(fd, &i_bytes, 9, sz);
 }
 
-static bool x86_64_reg_arith (
+static bool reg_arith (
     uint8_t reg, int64_t imm, arith_op op, int fd, off_t *sz
 ) {
     if (imm == 0) {
@@ -106,7 +106,7 @@ static inline bool x86_offset(
 
 /* now, the functions exposed through X86_64_INTER */
 /* use the most efficient way to set a register to imm */
-bool x86_64_set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
+static bool set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
     if (imm == 0) {
         /* XOR reg, reg */
         return write_obj(fd, (uint8_t[]){ 0x31, 0xc0|(reg<<3)|reg }, 2, sz);
@@ -129,106 +129,106 @@ bool x86_64_set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
 }
 
 /* MOV rs, rd */
-bool x86_64_reg_copy(uint8_t dst, uint8_t src, int fd, off_t *sz) {
+static bool reg_copy(uint8_t dst, uint8_t src, int fd, off_t *sz) {
     return write_obj(fd, (uint8_t[]){ 0x89, 0xc0 + (src << 3) + dst}, 2, sz);
 }
 
 /* SYSCALL */
-bool x86_64_syscall(int fd, off_t *sz) {
+static bool syscall(int fd, off_t *sz) {
     return write_obj(fd, (uint8_t[]){ 0x0f, 0x05 }, 2, sz);
 }
 
 /* times JUMP_SIZE NOP */
-bool x86_64_nop_loop_open(int fd, off_t *sz) {
+static bool nop_loop_open(int fd, off_t *sz) {
     uint8_t nops[JUMP_SIZE];
     for (int i = 0; i < JUMP_SIZE; i++) nops[i] = 0x90;
     return write_obj(fd, &nops, JUMP_SIZE, sz);
 }
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
-bool x86_64_jump_zero(uint8_t reg, int64_t offset, int fd, off_t *sz) {
+static bool jump_zero(uint8_t reg, int64_t offset, int fd, off_t *sz) {
     /* Jcc with tttn=0b0100 is JZ or JE */
     return test_jcc(0x4, reg, offset, fd, sz);
 }
 
 /* TEST byte [reg], 0xff; JNZ jmp_offset */
-bool x86_64_jump_not_zero(uint8_t reg, int64_t offset, int fd, off_t *sz) {
+static bool jump_not_zero(uint8_t reg, int64_t offset, int fd, off_t *sz) {
     /* Jcc with tttn=0b0101 is JNZ or JNE */
     return test_jcc(0x5, reg, offset, fd, sz);
 }
 
 /* INC reg */
-bool x86_64_inc_reg(uint8_t reg, int fd, off_t *sz) {
+static bool inc_reg(uint8_t reg, int fd, off_t *sz) {
     /* 0 is INC, 3 is register mode */
     return x86_offset(0x0, 0x3, reg, fd, sz);
 }
 
 /* DEC reg */
-bool x86_64_dec_reg(uint8_t reg, int fd, off_t *sz) {
+static bool dec_reg(uint8_t reg, int fd, off_t *sz) {
     /* 8 is DEC, 3 is register mode */
     return x86_offset(0x8, 0x3, reg, fd, sz);
 }
 
 /* INC byte [reg] */
-bool x86_64_inc_byte(uint8_t reg, int fd, off_t *sz) {
+static bool inc_byte(uint8_t reg, int fd, off_t *sz) {
     /* 0 is INC, 0 is memory pointer mode */
     return x86_offset(0x0, 0x0, reg, fd, sz);
 }
 
 /* DEC byte [reg] */
-bool x86_64_dec_byte(uint8_t reg, int fd, off_t *sz) {
+static bool dec_byte(uint8_t reg, int fd, off_t *sz) {
     /* 8 is DEC, 0 is memory pointer mode */
     return x86_offset(0x8, 0x0, reg, fd, sz);
 }
 
-bool x86_64_add_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
-    return x86_64_reg_arith(reg, imm, X86_64_OP_ADD, fd, sz);
+static bool add_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
+    return reg_arith(reg, imm, X64_OP_ADD, fd, sz);
 }
 
-bool x86_64_sub_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
-    return x86_64_reg_arith(reg, imm, X86_64_OP_SUB, fd, sz);
+static bool sub_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
+    return reg_arith(reg, imm, X64_OP_SUB, fd, sz);
 }
 
-bool x86_64_add_byte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
+static bool add_byte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
     /* ADD byte [reg], imm8 */
     return write_obj(fd, (uint8_t[]){ 0x80, reg, imm8}, 3, sz);
 }
 
-bool x86_64_sub_byte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
+static bool sub_byte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
     /* SUB byte [reg], imm8 */
     return write_obj(fd, (uint8_t[]){ 0x80, 0x28 + reg, imm8}, 3, sz);
 }
 
-bool x86_64_zero_byte(uint8_t reg, int fd, off_t *sz) {
+static bool zero_byte(uint8_t reg, int fd, off_t *sz) {
     /* MOV byte [reg], 0 */
     return write_obj(fd, (uint8_t[]){ 0x67, 0xc6, reg, 0x00 }, 4, sz);
 }
 
-const arch_funcs X86_64_FUNCS = {
-    x86_64_set_reg,
-    x86_64_reg_copy,
-    x86_64_syscall,
-    x86_64_nop_loop_open,
-    x86_64_jump_zero,
-    x86_64_jump_not_zero,
-    x86_64_inc_reg,
-    x86_64_dec_reg,
-    x86_64_inc_byte,
-    x86_64_dec_byte,
-    x86_64_add_reg,
-    x86_64_sub_reg,
-    x86_64_add_byte,
-    x86_64_sub_byte,
-    x86_64_zero_byte
+static const arch_funcs FUNCS = {
+    set_reg,
+    reg_copy,
+    syscall,
+    nop_loop_open,
+    jump_zero,
+    jump_not_zero,
+    inc_reg,
+    dec_reg,
+    inc_byte,
+    dec_byte,
+    add_reg,
+    sub_reg,
+    add_byte,
+    sub_byte,
+    zero_byte
 };
 
-const arch_sc_nums X86_64_SC_NUMS = {
+static const arch_sc_nums SC_NUMS = {
     0 /* read */,
     1 /* write */,
     60 /* exit */
 };
 
-const arch_registers X86_64_REGS = {
+static const arch_registers REGS = {
     00 /* sc_num = RAX */,
     07 /* arg1 = RDI */,
     06 /* arg2 = RSI */,
@@ -237,9 +237,9 @@ const arch_registers X86_64_REGS = {
 };
 
 const arch_inter X86_64_INTER = {
-    &X86_64_FUNCS,
-    &X86_64_SC_NUMS,
-    &X86_64_REGS,
+    &FUNCS,
+    &SC_NUMS,
+    &REGS,
     0 /* no flags are defined for this architecture */,
     EM_X86_64,
     ELFDATA2LSB
