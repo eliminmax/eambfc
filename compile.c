@@ -13,15 +13,46 @@
 /* internal */
 #include "arch_inter.h" /* arch_registers, arch_sc_nums, arch_inter */
 #include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr, ELFDATA2[LM]SB */
-#include "compiler_macros.h" /* various macros */
 #include "err.h" /* *_err */
 #include "optimize.h" /* to_ir */
 #include "serialize.h" /* serialize_*hdr64_[bl]e */
 #include "types.h" /* bool, int*_t, uint*_t, SCNx64 */
 #include "util.h" /* write_obj */
 
-/* the most common error message to pass, because of all of the places writes
- * could theoretically fail. Not likely to see in practice however. */
+/* virtual memory address of the tape - cannot overlap with the machine code.
+ * 0 is invalid as it's the null address, so this is an arbitrarily-chosen
+ * starting point that's easy to reason about. */
+#define TAPE_ADDRESS 0x10000
+
+/* number of entries in program and section header tables respectively */
+#define PHNUM 2 /* one for the tape, and one for the code. */
+
+/* size of the Ehdr struct, once serialized. */
+#define EHDR_SIZE 64
+
+/* Sizes of a single PHDR table entry */
+#define PHDR_SIZE 56
+/* sizes of the full program header table */
+#define PHTB_SIZE (PHNUM * PHDR_SIZE)
+
+#define TAPE_SIZE(tb) (tb * 0x1000)
+/* virtual address of the section containing the machine code
+ * should be after the tape ends to avoid overlapping with the tape.
+ *
+ * Zero out the lowest 2 bytes of the end of the tape and add 0x10000 to ensure
+ * that there is enough room. */
+#define LOAD_VADDR(tb) (((TAPE_ADDRESS + TAPE_SIZE(tb)) & (~ 0xffff)) + 0x10000)
+
+/* physical address of the starting instruction
+ * use the same technique as LOAD_VADDR to ensure that it is at a 256-byte
+ * boundary. */
+#define START_PADDR (((((EHDR_SIZE + PHTB_SIZE)) & ~ 0xff) + 0x100))
+
+/* the current size of the file
+ * - if called mid-compilation, it will be the size as of the most
+ *   recently-compiled machine code instruction.
+ * - if called at the end, it will be the final file size. */
+#define CURRENT_SIZE(sz) (START_PADDR + sz)
 
 static off_t out_sz;
 static uint _line;
@@ -79,12 +110,12 @@ static bool write_ehdr(int fd, const arch_inter *inter) {
 
     /* the number of program and section table entries, respectively */
     header.e_phnum = PHNUM;
-    header.e_shnum = SHNUM;
+    header.e_shnum = 0;
 
     /* The offset within the file for the program and section header tables
-     * respectively. Defined in macros earlier in compiler_macros.h. */
-    header.e_phoff = PHOFF;
-    header.e_shoff = SHOFF;
+     * respectively. */
+    header.e_phoff = EHDR_SIZE; /* start right after the EHDR ends */
+    header.e_shoff = 0;
 
     /* the size of the ELF header as a value within the ELF header, for some
      * reason. I don't make the rules about the format. */
@@ -103,7 +134,7 @@ static bool write_ehdr(int fd, const arch_inter *inter) {
 
     /* e_entry is the virtual memory address of the program's entry point -
      * (i.e. the first instruction to execute). */
-    header.e_entry = START_VADDR(out_sz);
+    header.e_entry = LOAD_VADDR(out_sz) + START_PADDR;
 
     /* e_flags has a processor-specific meaning. For x86_64, no values are
      * defined, and it should be set to 0. */
@@ -157,11 +188,11 @@ static inline bool write_phtb(
     phdr_table[1].p_paddr = 0;
     /* Size within the file on disk - the size of the whole file, as this
      * segment contains the whole thing. */
-    phdr_table[1].p_filesz = FILE_SIZE(out_sz);
+    phdr_table[1].p_filesz = CURRENT_SIZE(out_sz);
     /* size within memory - must be at least p_filesz.
      * In this case, it's the size of the whole file, as the whole file is
      * loaded into this segment */
-    phdr_table[1].p_memsz = FILE_SIZE(out_sz);
+    phdr_table[1].p_memsz = CURRENT_SIZE(out_sz);
     /* supposed to be a power of 2, went with 2^0 */
     phdr_table[1].p_align = 1;
 
@@ -259,7 +290,7 @@ static inline bool bf_jump_open(
     /* push the current address onto the stack */
     jump_stack.locations[jump_stack.index].src_line = _line;
     jump_stack.locations[jump_stack.index].src_col = _col;
-    jump_stack.locations[jump_stack.index].dst_loc = CURRENT_ADDRESS(out_sz);
+    jump_stack.locations[jump_stack.index].dst_loc = CURRENT_SIZE(out_sz);
     jump_stack.index++;
     /* fill space jump open will take with NOP instructions of the same length,
      * so that out_sz remains properly sized. */
@@ -285,7 +316,7 @@ static inline bool bf_jump_close(int fd, const arch_inter *inter) {
     }
     /* pop the matching `[` instruction's location */
     open_address = jump_stack.locations[--jump_stack.index].dst_loc;
-    close_address = CURRENT_ADDRESS(out_sz);
+    close_address = CURRENT_SIZE(out_sz);
 
     distance = close_address - open_address;
 
