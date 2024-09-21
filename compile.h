@@ -10,27 +10,29 @@
 #include "arch_inter.h" /* arch_inter */
 #include "types.h" /* bool, uint64_t */
 
-/* Takes 2 open file descriptors - in_fd and out_fd.
- * in_fd is a brainfuck source file, open for reading.
- * out_fd is the destination file, open for writing.
- * It compiles the source code in in_fd, writing the output to out_fd.
+/* Compile code in source file to destination file.
+ * Paramters:
+ * - inter is a pointer to the arch_inter backend used to provide the functions
+ *   that compile brainfuck and EAMBFC-IR into machine code.
+ * - in_fd is a brainfuck source file, open for reading.
+ * - out_fd is the destination file, open for writing.
+ * - optimize is a boolean indicating whether to optimize code before compiling.
+ * - tape_blocks is the number of 4-KiB blocks to allocate for the tape.
+ *
+ * Returns true if compilation was successful, and false if any issues occured.
  *
  * It does not verify that in_fd and out_fd are valid file descriptors,
  * nor that they are open properly.
  *
- * returns true if compilation succeeded.
- * if it runs into any problems, it appends errors to the error_list, and it
- * returns false. It will try to continue after hitting certain errors, so that
- * the resulting (corrupt) binary can still be examined and debugged. If that is
- * not needed, delete the output file if eambfc returns false.
+ * if it runs into any problems, it prints an appropriate error message.
+ * It will try to continue after hitting certain errors, so that the resulting
+ * binary can still be examined and debugged. If that is not needed, the output
+ * file can be deleted, as it is in main.c if bf_compile returns false.
  *
- * If optimize is set to true, it first converts the contents of in_fd to a tiny
- * intermediate representation (EAMBFC-IR, which is a superset of brainfuck),
+ * If optimize is set to true, it first converts the contents of in_fd to a
+ * simple internal representation (EAMBFC-IR, which is a superset of brainfuck),
  * then compiles that, typically cutting the size of the output code by a decent
- * amount. In some cases the row orcolumn for error messages will be the
- * location in the internal EAMBFC-IR, rather than the source code.
- *
- * tape_blocks is the number of 4-KiB blocks to allocate for the tape. */
+ * amount. */
 bool bf_compile(
     const arch_inter *inter,
     int in_fd,
