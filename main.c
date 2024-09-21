@@ -22,7 +22,7 @@
 /* Before anything else, validate default target, and define DEFAULT_* macros
  * based on default target. */
 #if EAMBFC_TARGET == EM_X86_64
-    /* if it's set to EM_X86_64, it's valid, as thats always enabled. */
+    /* if it's set to EM_X86_64, it's valid, as that's always enabled. */
 #  define DEFAULT_ARCH_STR "x86_64"
 #  define DEFAULT_INTER X86_64_INTER
 #elif EAMBFC_TARGET == EM_AARCH64
