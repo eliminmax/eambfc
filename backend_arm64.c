@@ -178,6 +178,7 @@ static bool branch_cond(
         );
         return false;
     }
+    /* use some bit shifts to check if the value is in range */
     if ((offset > 0 && (offset >> 44) != 0) ||
         (offset < 0 && (offset >> 44) != -1)) {
         basic_err(
