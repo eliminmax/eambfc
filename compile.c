@@ -224,7 +224,7 @@ static inline bool write_phtb(
  *
  * Due to their similarity, ',' and '.' are both implemented with bf_io. */
 static inline bool bf_io(
-    sized_buf *code_buf,
+    sized_buf *code,
     int bf_fd,
     int sc,
     const arch_inter *inter
@@ -234,17 +234,17 @@ static inline bool bf_io(
      * sc is the system call number for the system call to use */
     return (
         /* load the number for the write system call into sc_num */
-        inter->FUNCS->set_reg(inter->REGS->sc_num, sc, code_buf) &&
+        inter->FUNCS->set_reg(inter->REGS->sc_num, sc, code) &&
         /* load the number for the stdout file descriptor into arg1 */
-        inter->FUNCS->set_reg(inter->REGS->arg1, bf_fd, code_buf) &&
+        inter->FUNCS->set_reg(inter->REGS->arg1, bf_fd, code) &&
         /* copy the address in bf_ptr to arg2 */
         inter->FUNCS->reg_copy(
-            inter->REGS->arg2, inter->REGS->bf_ptr, code_buf
+            inter->REGS->arg2, inter->REGS->bf_ptr, code
         ) &&
         /* load # of bytes to read/write (1, specifically) into arg3 */
-        inter->FUNCS->set_reg(inter->REGS->arg3, 1, code_buf) &&
+        inter->FUNCS->set_reg(inter->REGS->arg3, 1, code) &&
         /* finally, call the syscall instruction */
-        inter->FUNCS->syscall(code_buf)
+        inter->FUNCS->syscall(code)
     );
 }
 
@@ -269,7 +269,7 @@ static struct jump_stack {
  * If too many nested loops are encountered, tries to resize the jump stack.
  * If that fails, sets alloc_valve to false and aborts. */
 static inline bool bf_jump_open(
-    sized_buf *code_buf, bool *alloc_valve, const arch_inter *inter
+    sized_buf *code, bool *alloc_valve, const arch_inter *inter
 ) {
     /* ensure that there are no more than the maximum nesting level */
     if (jump_stack.index + 1 == jump_stack.loc_sz) {
@@ -297,17 +297,17 @@ static inline bool bf_jump_open(
     /* push the current address onto the stack */
     jump_stack.locations[jump_stack.index].src_line = _line;
     jump_stack.locations[jump_stack.index].src_col = _col;
-    jump_stack.locations[jump_stack.index].dst_loc = code_buf->sz;
+    jump_stack.locations[jump_stack.index].dst_loc = code->sz;
     jump_stack.index++;
     /* fill space jump open will take with NOP instructions of the same length,
-     * so that code_buf->sz remains properly sized. */
-    return inter->FUNCS->nop_loop_open(code_buf);
+     * so that code->sz remains properly sized. */
+    return inter->FUNCS->nop_loop_open(code);
 }
 
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
 static inline bool bf_jump_close(
-    sized_buf *code_buf, bool *alloc_valve, const arch_inter *inter
+    sized_buf *code, bool *alloc_valve, const arch_inter *inter
 ) {
     off_t open_addr;
     int32_t distance;
@@ -325,7 +325,7 @@ static inline bool bf_jump_close(
     }
     /* pop the matching `[` instruction's location */
     open_addr = jump_stack.locations[--jump_stack.index].dst_loc;
-    distance = code_buf->sz - open_addr;
+    distance = code->sz - open_addr;
 
     /* create a second buffer for the `[` instruction, then copy it into the
      * actual code buffer, replacing the padding NOP instructions */
@@ -340,27 +340,27 @@ static inline bool bf_jump_close(
         return false;
     }
 
-    char* start_addr = code_buf->buf;
+    char* start_addr = code->buf;
     memcpy(start_addr + open_addr, tmp_buf.buf, tmp_buf.sz);
     free(tmp_buf.buf);
 
     /* jumps to right after the `[` instruction, to skip a redundant check */
     return inter->FUNCS->jump_not_zero(
-        inter->REGS->bf_ptr, -distance, code_buf
+        inter->REGS->bf_ptr, -distance, code
     );
 }
 
 /* 4 of the 8 brainfuck instructions can be compiled with instructions that take
  * the same set of parameters, so this expands to a call to the appropriate
  * function. */
-#define COMPILE_WITH(f) f(inter->REGS->bf_ptr, code_buf)
+#define COMPILE_WITH(f) f(inter->REGS->bf_ptr, code)
 
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
 static bool comp_instr(
     char c,
-    sized_buf *code_buf,
+    sized_buf *code,
     bool *alloc_valve,
     const arch_inter *inter
 ) {
@@ -377,13 +377,13 @@ static bool comp_instr(
       case '-': return COMPILE_WITH(inter->FUNCS->dec_byte);
       /* write to stdout */
       case '.':
-        return bf_io(code_buf, STDOUT_FILENO, inter->SC_NUMS->write, inter);
+        return bf_io(code, STDOUT_FILENO, inter->SC_NUMS->write, inter);
       /* read from stdin */
       case ',':
-        return bf_io(code_buf, STDIN_FILENO, inter->SC_NUMS->read, inter);
+        return bf_io(code, STDIN_FILENO, inter->SC_NUMS->read, inter);
       /* `[` and `]` do their own error handling. */
-      case '[': return bf_jump_open(code_buf, alloc_valve, inter);
-      case ']': return bf_jump_close(code_buf, alloc_valve, inter);
+      case '[': return bf_jump_open(code, alloc_valve, inter);
+      case ']': return bf_jump_close(code, alloc_valve, inter);
       case '\n':
         /* add 1 to the line number and reset the column. */
         _line++;
@@ -397,11 +397,11 @@ static bool comp_instr(
 
 /* similar to the above COMPILE_WITH, but with an extra parameter passed to the
  * function, so that can't be reused. */
-#define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, ct, code_buf)
+#define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, ct, code)
 /* compile a condensed instruction sequence */
 static inline bool comp_ir_condensed_instr(
     char *p,
-    sized_buf *code_buf,
+    sized_buf *code,
     int *skip_p,
     const arch_inter *inter
 ) {
@@ -424,7 +424,7 @@ static inline bool comp_ir_condensed_instr(
 
 static inline bool comp_ir_instr(
     char *p,
-    sized_buf *code_buf,
+    sized_buf *code,
     int *skip_ct_p,
     bool *alloc_valve,
     const arch_inter *inter
@@ -439,16 +439,16 @@ static inline bool comp_ir_instr(
       case ',':
       case '[':
       case ']':
-        return comp_instr(*p, code_buf, alloc_valve, inter);
+        return comp_instr(*p, code, alloc_valve, inter);
       case '@':
-        return inter->FUNCS->zero_byte(inter->REGS->bf_ptr, code_buf);
+        return inter->FUNCS->zero_byte(inter->REGS->bf_ptr, code);
       default:
-        return comp_ir_condensed_instr(p, code_buf, skip_ct_p, inter);
+        return comp_ir_condensed_instr(p, code, skip_ct_p, inter);
     }
 }
 
 static inline bool comp_ir(
-    char *ir, sized_buf *code_buf, const arch_inter *inter
+    char *ir, sized_buf *code, const arch_inter *inter
 ) {
     bool ret = true;
     char *p = ir;
@@ -456,7 +456,7 @@ static inline bool comp_ir(
     bool alloc_valve = true;
     while (*p) {
         _col++;
-        ret &= comp_ir_instr(p++, code_buf, &skip_ct, &alloc_valve, inter);
+        ret &= comp_ir_instr(p++, code, &skip_ct, &alloc_valve, inter);
         if (!alloc_valve) {
             alloc_err();
             return false;
@@ -468,25 +468,25 @@ static inline bool comp_ir(
 }
 
 static bool finalize(
-    int fd, sized_buf *code_buf, uint64_t tb, const arch_inter *inter
+    int fd, sized_buf *code, uint64_t tb, const arch_inter *inter
 ) {
     /* write code to perform the exit(0) syscall */
     /* set system call register to exit system call number */
     bool ret = inter->FUNCS->set_reg(
         inter->REGS->sc_num,
         inter->SC_NUMS->exit,
-        code_buf
+        code
     );
     /* set system call register to the desired exit code (0) */
-    ret &= inter->FUNCS->set_reg(inter->REGS->arg1, 0, code_buf);
+    ret &= inter->FUNCS->set_reg(inter->REGS->arg1, 0, code);
     /* perform a system call */
-    ret &= inter->FUNCS->syscall(code_buf);
-    ret &= write_ehdr(fd, code_buf->sz, inter);
-    ret &= write_phtb(fd, code_buf->sz, tb, inter);
+    ret &= inter->FUNCS->syscall(code);
+    ret &= write_ehdr(fd, code->sz, inter);
+    ret &= write_phtb(fd, code->sz, tb, inter);
 
     char padding[PAD_SZ] = {0};
     ret &= write_obj(fd, padding, PAD_SZ);
-    ret &= write_obj(fd, code_buf->buf, code_buf->sz);
+    ret &= write_obj(fd, code->buf, code->sz);
     return ret;
 }
 
@@ -513,8 +513,8 @@ bool bf_compile(
     uint64_t tape_blocks
 ) {
     int ret = true;
-    sized_buf code_buf = {0, 4096, malloc(4096)};
-    if (code_buf.buf == NULL) {
+    sized_buf code = {0, 4096, malloc(4096)};
+    if (code.buf == NULL) {
         alloc_err();
         return false;
     }
@@ -523,7 +523,7 @@ bool bf_compile(
     jump_stack.index = 0;
     jump_stack.locations = malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
     if (jump_stack.locations == NULL) {
-        free(code_buf.buf);
+        free(code.buf);
         alloc_err();
         return false;
     }
@@ -537,23 +537,23 @@ bool bf_compile(
     ret &= inter->FUNCS->set_reg(
         inter->REGS->bf_ptr,
         TAPE_ADDRESS,
-        &code_buf
+        &code
     );
 
     if (optimize) {
         char *ir = to_ir(in_fd);
         if (ir == NULL) {
-            free(code_buf.buf);
+            free(code.buf);
             return false;
         }
-        ret &= comp_ir(ir, &code_buf, inter);
+        ret &= comp_ir(ir, &code, inter);
     } else {
         /* the error message(s) are already appended if issues occur */
         while (read(in_fd, &_instr, 1)) {
             bool alloc_valve = true;
-            ret &= comp_instr(_instr, &code_buf, &alloc_valve, inter);
+            ret &= comp_instr(_instr, &code, &alloc_valve, inter);
             if (!alloc_valve) {
-                free(code_buf.buf);
+                free(code.buf);
                 alloc_err();
                 return false;
             }
@@ -562,7 +562,7 @@ bool bf_compile(
 
     /* now, code size is known, so we can write the headers
      * the appropriate error message(s) are already appended */
-    if (!finalize(out_fd, &code_buf, tape_blocks, inter)) ret = false;
+    if (!finalize(out_fd, &code, tape_blocks, inter)) ret = false;
     /* check if any unmatched loop openings were left over. */
     if (jump_stack.index-- > 0) {
         position_err(
@@ -575,7 +575,7 @@ bool bf_compile(
         ret = false;
     }
 
-    free(code_buf.buf);
+    free(code.buf);
     free(jump_stack.locations);
 
     return ret;
