@@ -76,7 +76,7 @@ static void load_from_byte(uint8_t reg, uint8_t aux, uint8_t dst[4]) {
     inject_reg_operands(aux, reg, dst);
 }
 
-        /* return an scratch register that isn't the same as x.reg to use */
+/* return an scratch register that isn't the same as x.reg to use */
 static inline uint8_t aux_reg(uint8_t reg) {
     return (reg == 17) ? 16 : 17;
 }
