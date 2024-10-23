@@ -8,9 +8,6 @@
 /* internal */
 #include "types.h" /* uint */
 
-/* Common error message */
-#define FAILED_WRITE_MSG "Failed to write to file."
-
 /* enable quiet mode - this does not print error messages to stderr. Does not
  * affect JSON messages printed to stdout. */
 void quiet_mode(void);
