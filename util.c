@@ -9,7 +9,7 @@
 #include <stdlib.h> /* realloc */
 #include <string.h> /* memcpy */
 /* POSIX */
-#include <unistd.h> /* write */
+#include <unistd.h> /* read, write */
 /* internal */
 #include "err.h" /* basic_err, alloc_err */
 #include "types.h" /* ssize_t, size_t, off_t */
@@ -47,4 +47,32 @@ bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
     memcpy(start_addr + dst->sz, bytes, bytes_sz);
     dst->sz += bytes_sz;
     return true;
+}
+
+void read_to_sized_buf(sized_buf *sb, int fd) {
+    sb->sz = 0;
+    sb->alloc_sz = 4096;
+    sb->buf = malloc(4096);
+    if (sb->buf == NULL) {
+        alloc_err();
+        return false;
+    }
+
+    char chunk[4096];
+    ssize_t count;
+    while (count = read(fd, &chunk, 4096)) {
+        if (count < 0) {
+            basic_err("FAILED_READ", "Failed to read from file");
+            free(sb->buf);
+            sb->sz = 0;
+            sb->alloc_sz = 0;
+            sb->buf = NULL;
+            return;
+        }
+        if (!append_obj(sb, &chunk, count)) {
+            sb->sz = 0;
+            sb->alloc_sz = 0;
+            return;
+        }
+    }
 }

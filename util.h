@@ -13,4 +13,10 @@ bool write_obj(int fd, const void *buf, size_t ct);
 
 /* appends bytes to dst, handling reallocs and alloc failures as needed */
 bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz);
+
+/* Reads the contents of fd into sb. If a read error occurs, frees what's
+ * already been read, and sets sb to {0, 0, NULL}.
+ * WARNING: assumes that sb is uninitialized, and if it isn't, can cause memory
+ * leaks. */
+void read_to_sized_buf(sized_buf *sb, int fd);
 #endif /* EAMBFC_UTIL_H */
