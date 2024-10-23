@@ -149,8 +149,7 @@ static bool write_ehdr(int fd, size_t code_sz, const arch_inter *inter) {
         serialize_ehdr64_be(&header, header_bytes);
     }
 
-    off_t dummy = 0;
-    return write_obj(fd, header_bytes, EHDR_SIZE, &dummy);
+    return write_obj(fd, header_bytes, EHDR_SIZE);
 }
 
 /* Write the Program Header Table to the file descriptor fd
@@ -213,8 +212,7 @@ static inline bool write_phtb(
         }
     }
 
-    off_t dummy = 0;
-    return write_obj(fd, phdr_table_bytes, PHTB_SIZE, &dummy);
+    return write_obj(fd, phdr_table_bytes, PHTB_SIZE);
 }
 
 /* The brainfuck instructions "." and "," are similar from an implementation

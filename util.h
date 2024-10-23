@@ -9,7 +9,7 @@
 /* passes arguments to write, and checks if bytes written is equal to sz.
  * if it is, returns true. otherwise, outputs a FAILED_WRITE error and
  * returns false. See write.3POSIX for more information. */
-bool write_obj(int fd, const void *buf, size_t ct, off_t *sz);
+bool write_obj(int fd, const void *buf, size_t ct);
 
 /* appends bytes to dst, handling reallocs and alloc failures as needed */
 bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz);

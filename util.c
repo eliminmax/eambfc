@@ -15,7 +15,7 @@
 #include "types.h" /* ssize_t, size_t, off_t */
 
 
-bool write_obj(int fd, const void *buf, size_t ct, off_t *sz) {
+bool write_obj(int fd, const void *buf, size_t ct) {
     if (ct > SSIZE_MAX) {
         basic_err(
             "WRITE_TOO_LARGE",
@@ -23,7 +23,6 @@ bool write_obj(int fd, const void *buf, size_t ct, off_t *sz) {
         );
     }
     ssize_t written = write(fd, buf, ct);
-    if (written > 0) *sz += written;
     if (written != (ssize_t)ct) {
         basic_err("FAILED_WRITE", "Failed to write to file");
         return false;
