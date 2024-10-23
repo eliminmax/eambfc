@@ -292,7 +292,6 @@ static inline bool bf_jump_open(
             (jump_stack.index + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
         );
         if (loc == NULL) {
-            alloc_err();
             *alloc_valve = false;
             return false;
         } else {
@@ -465,7 +464,10 @@ static inline bool comp_ir(
     while (*p) {
         _col++;
         ret &= comp_ir_instr(p++, code_buf, &skip_ct, &alloc_valve, inter);
-        if (!alloc_valve) return false;
+        if (!alloc_valve) {
+            alloc_err();
+            return false;
+        }
         p += skip_ct;
     }
     free(ir);
@@ -559,6 +561,7 @@ bool bf_compile(
             ret &= comp_instr(_instr, &code_buf, &alloc_valve, inter);
             if (!alloc_valve) {
                 free(code_buf.buf);
+                alloc_err();
                 return false;
             }
         }
