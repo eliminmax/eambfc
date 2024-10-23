@@ -274,17 +274,19 @@ static inline bool bf_jump_open(
                 "TOO_MANY_NESTED_LOOPS",
                 "Extending jump stack any more would cause an overflow."
             );
-            *alloc_valve = false;
+            return false;
         }
 
-        jump_stack.locations = realloc(
+        void *loc = realloc(
             jump_stack.locations,
             (jump_stack.index + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
         );
-        if (jump_stack.locations == NULL) {
+        if (loc == NULL) {
             alloc_err();
             *alloc_valve = false;
             return false;
+        } else {
+            jump_stack.locations = loc;
         }
     }
     /* push the current address onto the stack */
