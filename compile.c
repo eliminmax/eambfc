@@ -7,16 +7,17 @@
 
 /* C99 */
 #include <stdlib.h> /* malloc, realloc, free */
-#include <stdio.h> /* sscanf, fileno, tmpfile, fclose, fseek, FILE */
+#include <stdio.h> /* sscanf */
+#include <string.h> /* memcpy */
 /* POSIX */
-#include <unistd.h> /* off_t, read, write, seek. STD*_FILENO*/
+#include <unistd.h> /* off_t, read, write, STD*_FILENO*/
 /* internal */
 #include "arch_inter.h" /* arch_registers, arch_sc_nums, arch_inter */
 #include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr, ELFDATA2[LM]SB */
 #include "err.h" /* *_err */
 #include "optimize.h" /* to_ir */
 #include "serialize.h" /* serialize_*hdr64_[bl]e */
-#include "types.h" /* bool, int*_t, uint*_t, SCNx64 */
+#include "types.h" /* bool, int*_t, uint*_t, SCNx64, sized_buf */
 #include "util.h" /* write_obj */
 
 /* virtual memory address of the tape - cannot overlap with the machine code.
@@ -54,12 +55,16 @@
  * - if called at the end, it will be the final file size. */
 #define CURRENT_SIZE(sz) (START_PADDR + sz)
 
+/* number of padding bytes between the end of the Program Header Table and the
+ * beginning of the machine code. */
+#define PAD_SZ (START_PADDR - (PHTB_SIZE + EHDR_SIZE))
+
 static off_t out_sz;
 static uint _line;
 static uint _col;
 
 /* Write the ELF header to the file descriptor fd. */
-static bool write_ehdr(int fd, const arch_inter *inter) {
+static bool write_ehdr(int fd, size_t code_sz, const arch_inter *inter) {
 
     /* The format of the ELF header is well-defined and well-documented
      * elsewhere. The struct for it is defined in compat/elf.h, as are most
@@ -134,7 +139,7 @@ static bool write_ehdr(int fd, const arch_inter *inter) {
 
     /* e_entry is the virtual memory address of the program's entry point -
      * (i.e. the first instruction to execute). */
-    header.e_entry = LOAD_VADDR(out_sz) + START_PADDR;
+    header.e_entry = LOAD_VADDR(code_sz) + START_PADDR;
 
     /* e_flags has a processor-specific meaning. For x86_64, no values are
      * defined, and it should be set to 0. */
@@ -153,7 +158,7 @@ static bool write_ehdr(int fd, const arch_inter *inter) {
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
 static inline bool write_phtb(
-    int fd, uint64_t tape_blocks, const arch_inter *inter
+    int fd, size_t code_sz, uint64_t tape_blocks, const arch_inter *inter
 ) {
     Elf64_Phdr phdr_table[PHNUM];
     char phdr_table_bytes[PHTB_SIZE];
@@ -183,16 +188,16 @@ static inline bool write_phtb(
     /* Load initial bytes from this offset within the file */
     phdr_table[1].p_offset = 0;
     /* Start at this memory address */
-    phdr_table[1].p_vaddr = LOAD_VADDR(out_sz);
+    phdr_table[1].p_vaddr = LOAD_VADDR(code_sz);
     /* Load from this physical address */
     phdr_table[1].p_paddr = 0;
     /* Size within the file on disk - the size of the whole file, as this
      * segment contains the whole thing. */
-    phdr_table[1].p_filesz = CURRENT_SIZE(out_sz);
+    phdr_table[1].p_filesz = CURRENT_SIZE(code_sz);
     /* size within memory - must be at least p_filesz.
      * In this case, it's the size of the whole file, as the whole file is
      * loaded into this segment */
-    phdr_table[1].p_memsz = CURRENT_SIZE(out_sz);
+    phdr_table[1].p_memsz = CURRENT_SIZE(code_sz);
     /* supposed to be a power of 2, went with 2^0 */
     phdr_table[1].p_align = 1;
 
@@ -222,23 +227,28 @@ static inline bool write_phtb(
  *  - arg3 is the number of bytes to write/read
  *
  * Due to their similarity, ',' and '.' are both implemented with bf_io. */
-static inline bool bf_io(int fd, int bf_fd, int sc, const arch_inter *inter) {
+static inline bool bf_io(
+    sized_buf *code_buf,
+    int bf_fd,
+    int sc,
+    const arch_inter *inter
+) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
     return (
         /* load the number for the write system call into sc_num */
-        inter->FUNCS->set_reg(inter->REGS->sc_num, sc, fd, &out_sz) &&
+        inter->FUNCS->set_reg(inter->REGS->sc_num, sc, code_buf) &&
         /* load the number for the stdout file descriptor into arg1 */
-        inter->FUNCS->set_reg(inter->REGS->arg1, bf_fd, fd, &out_sz) &&
+        inter->FUNCS->set_reg(inter->REGS->arg1, bf_fd, code_buf) &&
         /* copy the address in bf_ptr to arg2 */
         inter->FUNCS->reg_copy(
-            inter->REGS->arg2, inter->REGS->bf_ptr, fd, &out_sz
+            inter->REGS->arg2, inter->REGS->bf_ptr, code_buf
         ) &&
         /* load # of bytes to read/write (1, specifically) into arg3 */
-        inter->FUNCS->set_reg(inter->REGS->arg3, 1, fd, &out_sz) &&
+        inter->FUNCS->set_reg(inter->REGS->arg3, 1, code_buf) &&
         /* finally, call the syscall instruction */
-        inter->FUNCS->syscall(fd, &out_sz)
+        inter->FUNCS->syscall(code_buf)
     );
 }
 
@@ -263,7 +273,7 @@ static struct jump_stack {
  * If too many nested loops are encountered, tries to resize the jump stack.
  * If that fails, sets alloc_valve to false and aborts. */
 static inline bool bf_jump_open(
-    int fd, bool *alloc_valve, const arch_inter *inter
+    sized_buf *code_buf, bool *alloc_valve, const arch_inter *inter
 ) {
     /* ensure that there are no more than the maximum nesting level */
     if (jump_stack.index + 1 == jump_stack.loc_sz) {
@@ -292,16 +302,18 @@ static inline bool bf_jump_open(
     /* push the current address onto the stack */
     jump_stack.locations[jump_stack.index].src_line = _line;
     jump_stack.locations[jump_stack.index].src_col = _col;
-    jump_stack.locations[jump_stack.index].dst_loc = out_sz;
+    jump_stack.locations[jump_stack.index].dst_loc = code_buf->sz;
     jump_stack.index++;
     /* fill space jump open will take with NOP instructions of the same length,
-     * so that out_sz remains properly sized. */
-    return inter->FUNCS->nop_loop_open(fd, &out_sz);
+     * so that code_buf->sz remains properly sized. */
+    return inter->FUNCS->nop_loop_open(code_buf);
 }
 
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
-static inline bool bf_jump_close(int fd, const arch_inter *inter) {
+static inline bool bf_jump_close(
+    sized_buf *code_buf, bool *alloc_valve, const arch_inter *inter
+) {
     off_t open_address, close_address;
     int32_t distance;
 
@@ -318,43 +330,45 @@ static inline bool bf_jump_close(int fd, const arch_inter *inter) {
     }
     /* pop the matching `[` instruction's location */
     open_address = jump_stack.locations[--jump_stack.index].dst_loc;
-    close_address = out_sz;
+    close_address = code_buf->sz;
 
     distance = close_address - open_address;
 
-    /* jump to the skipped `[` instruction, write it, and jump back */
-    if (lseek(fd, open_address, SEEK_SET) != open_address) {
-        instr_err("FAILED_SEEK", "Failed to return to '[' instruction.", '[');
-        return false;
-    }
-    off_t phony = 0; /* already added to code size for this one */
-    if (!inter->FUNCS->jump_zero(inter->REGS->bf_ptr, distance, fd, &phony)) {
+
+    /* create a second buffer for the `[` instruction, then copy it into the
+     * actual code buffer, replacing the padding NOP instructions */
+    sized_buf tmp_buf = {0, 4096, malloc(4096)};
+    if (tmp_buf.buf == NULL) {
+        *alloc_valve = false;
         return false;
     }
 
-    if (lseek(fd, close_address, SEEK_SET) != close_address) {
-        position_err(
-            "FAILED_SEEK", "Failed to return to ']'.", ']', _line, _col
-        );
+    if (!inter->FUNCS->jump_zero(inter->REGS->bf_ptr, distance, &tmp_buf)) {
+        free(tmp_buf.buf);
         return false;
     }
+
+    char* start_addr = code_buf->buf;
+    memcpy(start_addr + open_addr, tmp_buf.buf, tmp_buf.sz);
+    free(tmp_buf.buf);
+
     /* jumps to right after the `[` instruction, to skip a redundant check */
     return inter->FUNCS->jump_not_zero(
-        inter->REGS->bf_ptr, -distance, fd, &out_sz
+        inter->REGS->bf_ptr, -distance, code_buf
     );
 }
 
 /* 4 of the 8 brainfuck instructions can be compiled with instructions that take
  * the same set of parameters, so this expands to a call to the appropriate
  * function. */
-#define COMPILE_WITH(f) f(inter->REGS->bf_ptr, fd, &out_sz)
+#define COMPILE_WITH(f) f(inter->REGS->bf_ptr, code_buf)
 
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
 static bool comp_instr(
     char c,
-    int fd,
+    sized_buf *code_buf,
     bool *alloc_valve,
     const arch_inter *inter
 ) {
@@ -370,12 +384,14 @@ static bool comp_instr(
       /* decrement the current tape value */
       case '-': return COMPILE_WITH(inter->FUNCS->dec_byte);
       /* write to stdout */
-      case '.': return bf_io(fd, STDOUT_FILENO, inter->SC_NUMS->write, inter);
+      case '.':
+        return bf_io(code_buf, STDOUT_FILENO, inter->SC_NUMS->write, inter);
       /* read from stdin */
-      case ',': return bf_io(fd, STDIN_FILENO, inter->SC_NUMS->read, inter);
+      case ',':
+        return bf_io(code_buf, STDIN_FILENO, inter->SC_NUMS->read, inter);
       /* `[` and `]` do their own error handling. */
-      case '[': return bf_jump_open(fd, alloc_valve, inter);
-      case ']': return bf_jump_close(fd, inter);
+      case '[': return bf_jump_open(code_buf, alloc_valve, inter);
+      case ']': return bf_jump_close(code_buf, alloc_valve, inter);
       case '\n':
         /* add 1 to the line number and reset the column. */
         _line++;
@@ -389,11 +405,11 @@ static bool comp_instr(
 
 /* similar to the above COMPILE_WITH, but with an extra parameter passed to the
  * function, so that can't be reused. */
-#define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, ct, fd, &out_sz)
+#define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, ct, code_buf)
 /* compile a condensed instruction sequence */
 static inline bool comp_ir_condensed_instr(
     char *p,
-    int fd,
+    sized_buf *code_buf,
     int *skip_p,
     const arch_inter *inter
 ) {
@@ -416,7 +432,7 @@ static inline bool comp_ir_condensed_instr(
 
 static inline bool comp_ir_instr(
     char *p,
-    int fd,
+    sized_buf *code_buf,
     int *skip_ct_p,
     bool *alloc_valve,
     const arch_inter *inter
@@ -431,22 +447,24 @@ static inline bool comp_ir_instr(
       case ',':
       case '[':
       case ']':
-        return comp_instr(*p, fd, alloc_valve, inter);
+        return comp_instr(*p, code_buf, alloc_valve, inter);
       case '@':
-        return inter->FUNCS->zero_byte(inter->REGS->bf_ptr, fd, &out_sz);
+        return inter->FUNCS->zero_byte(inter->REGS->bf_ptr, code_buf);
       default:
-        return comp_ir_condensed_instr(p, fd, skip_ct_p, inter);
+        return comp_ir_condensed_instr(p, code_buf, skip_ct_p, inter);
     }
 }
 
-static inline bool comp_ir(char *ir, int fd, const arch_inter *inter) {
+static inline bool comp_ir(
+    char *ir, sized_buf *code_buf, const arch_inter *inter
+) {
     bool ret = true;
     char *p = ir;
     int skip_ct;
     bool alloc_valve = true;
     while (*p) {
         _col++;
-        ret &= comp_ir_instr(p++, fd, &skip_ct, &alloc_valve, inter);
+        ret &= comp_ir_instr(p++, code_buf, &skip_ct, &alloc_valve, inter);
         if (!alloc_valve) return false;
         p += skip_ct;
     }
@@ -454,34 +472,28 @@ static inline bool comp_ir(char *ir, int fd, const arch_inter *inter) {
     return ret;
 }
 
-static inline bool finalize(int fd, uint64_t tb, const arch_inter *inter) {
+static bool finalize(
+    int fd, sized_buf *code_buf, uint64_t tb, const arch_inter *inter
+) {
     /* write code to perform the exit(0) syscall */
-    bool ret = (
-        /* set system call register to exit system call number */
-        inter->FUNCS->set_reg(
-            inter->REGS->sc_num,
-            inter->SC_NUMS->exit,
-            fd,
-            &out_sz
+    /* set system call register to exit system call number */
+    bool ret = inter->FUNCS->set_reg(
+        inter->REGS->sc_num,
+        inter->SC_NUMS->exit,
+        code_buf
     );
     /* set system call register to the desired exit code (0) */
-    ret &= inter->FUNCS->set_reg(inter->REGS->arg1, 0, fd, &out_sz);
+    ret &= inter->FUNCS->set_reg(inter->REGS->arg1, 0, code_buf);
     /* perform a system call */
-    ret &= inter->FUNCS->syscall(fd, &out_sz);
+    ret &= inter->FUNCS->syscall(code_buf);
+    ret &= write_ehdr(fd, code_buf->sz, inter);
+    ret &= write_phtb(fd, code_buf->sz, tb, inter);
 
-    /* Ehdr and Phdr table are at the start */
-    if (lseek(fd, 0, SEEK_SET) != 0) {
-        basic_err("FAILED_SEEK", "Failed to seek to start of code.");
-        return false;
-    }
-
-    ret &= write_ehdr(fd, inter);
-    ret &= write_phtb(fd, tb, inter);
+    char padding[PAD_SZ] = {0};
+    ret &= write_obj(fd, padding, PAD_SZ);
+    ret &= write_obj(fd, code_buf->buf, code_buf->sz);
     return ret;
 }
-
-/* maximum number of bytes to transfer from tmpfile at a time */
-#define MAX_TRANS_SZ 4096
 
 /* Takes 2 open file descriptors - in_fd and out_fd, and a boolean - optimize
  * in_fd is a brainfuck source file, open for reading.
@@ -506,64 +518,47 @@ bool bf_compile(
     uint64_t tape_blocks
 ) {
     int ret = true;
-    FILE *tmp_file = tmpfile();
-    if (tmp_file == NULL) {
-        basic_err("FAILED_TMPFILE", "Could not open a tmpfile.");
+    sized_buf code_buf = {0, 4096, malloc(4096)};
+    if (code_buf.buf == NULL) {
+        alloc_err();
         return false;
     }
-    int tmp_fd = fileno(tmp_file);
-    if (tmp_fd == -1) {
-        basic_err(
-            "FAILED_TMPFILE",
-            "Could not get file descriptor for tmpfile"
-        );
-        fclose(tmp_file);
-        return false;
-    }
-    /* reset out_sz variable used in several macros in compiler_macros */
-    out_sz = 0;
+
     /* reset the jump stack for the new file */
     jump_stack.index = 0;
     jump_stack.locations = malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
     if (jump_stack.locations == NULL) {
+        free(code_buf.buf);
         alloc_err();
-        fclose(tmp_file);
         return false;
     }
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
-    /* reset the current line and column */
+
+    /* reset the current line, column, and instruction character */
     _line = 1;
     _col = 0;
     char _instr = '\0';
 
-    /* skip the headers until we know the code size */
-    if (fseek(tmp_file, START_PADDR, SEEK_SET) != 0) {
-        basic_err("FAILED_SEEK", "Failed to seek to start of code.");
-        fclose(tmp_file);
-        return false;
-    }
-
     ret &= inter->FUNCS->set_reg(
         inter->REGS->bf_ptr,
         TAPE_ADDRESS,
-        tmp_fd,
-        &out_sz
+        &code_buf
     );
 
     if (optimize) {
         char *ir = to_ir(in_fd);
         if (ir == NULL) {
-            fclose(tmp_file);
+            free(code_buf.buf);
             return false;
         }
-        ret &= comp_ir(ir, tmp_fd, inter);
+        ret &= comp_ir(ir, &code_buf, inter);
     } else {
         /* the error message(s) are already appended if issues occur */
         while (read(in_fd, &_instr, 1)) {
             bool alloc_valve = true;
-            ret &= comp_instr(_instr, tmp_fd, &alloc_valve, inter);
+            ret &= comp_instr(_instr, &code_buf, &alloc_valve, inter);
             if (!alloc_valve) {
-                fclose(tmp_file);
+                free(code_buf.buf);
                 return false;
             }
         }
@@ -571,7 +566,7 @@ bool bf_compile(
 
     /* now, code size is known, so we can write the headers
      * the appropriate error message(s) are already appended */
-    if (!finalize(tmp_fd, tape_blocks, inter)) ret = false;
+    if (!finalize(out_fd, &code_buf, tape_blocks, inter)) ret = false;
     /* check if any unmatched loop openings were left over. */
     if (jump_stack.index-- > 0) {
         position_err(
@@ -584,26 +579,7 @@ bool bf_compile(
         ret = false;
     }
 
-    if (fseek(tmp_file, 0, SEEK_SET) != 0) {
-        basic_err("FAILED_SEEK", "Failed to seek to start of tmpfile");
-        ret = false;
-    }
-
-    /* copy tmpfile over to the output file. */
-    char trans[MAX_TRANS_SZ];
-    ssize_t trans_sz;
-
-    while ((trans_sz = read(tmp_fd, &trans, MAX_TRANS_SZ))) {
-        if (trans_sz == -1) {
-            basic_err("FAILED_TMPFILE", "Failed to read from tmpfile");
-            ret = false;
-        } else if ((write(out_fd, &trans, trans_sz) != trans_sz)) {
-            basic_err("FAILED_TMPFILE", FAILED_WRITE_MSG);
-            ret = false;
-        }
-    }
-
-    fclose(tmp_file);
+    free(code_buf.buf);
     free(jump_stack.locations);
 
     return ret;
