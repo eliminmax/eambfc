@@ -108,7 +108,9 @@ typedef const struct arch_funcs {
      * address in register reg is not set to zero.
      *
      * Used to implement the `]` brainfuck instruction. */
-    bool (*const jump_not_zero)(uint8_t reg, int64_t offset, sized_buf *dst_buf);
+    bool (*const jump_not_zero)(
+        uint8_t reg, int64_t offset, sized_buf *dst_buf
+    );
 
     /* Write instruction/s to fd to increment register reg by one.
      *
