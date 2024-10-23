@@ -86,7 +86,7 @@ backend_x86_64.o: backend_x86_64.c
 # `make test` works in both of those example cases
 create_mini_elf.o: config.h create_mini_elf.c
 create_mini_elf: create_mini_elf.o compile.o $(COMPILE_DEPS)
-	$(CC) $(LDFLAGS) -o $@ $(POSIX_CFLAG)\
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(POSIX_CFLAG)\
 		$(COMPILE_DEPS) compile.o $@.o $(LDLIBS)
 mini_elf: create_mini_elf
 	./create_mini_elf
@@ -107,14 +107,14 @@ optimize: optimize.c err.o
 strict: can_run_linux_amd64 config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE!\n' >&2
-	gcc $(CFLAGS) $(GCC_STRICT_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
+	gcc $(GCC_STRICT_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
 		-o alt-builds/eambfc-$@
 	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
 
 ubsan: can_run_linux_amd64 config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE AT ALL!\n' >&2
-	gcc $(CFLAGS) $(GCC_UBSAN_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
+	gcc $(GCC_UBSAN_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
 		-o alt-builds/eambfc-$@
 	(cd tests; make EAMBFC=../alt-builds/eambfc-$@ clean test)
 
