@@ -69,9 +69,9 @@ config.h: config.template.h version
 serialize.o: serialize.c
 compile.o: config.h backend_x86_64.o compile.c
 main.o: config.h main.c
-optimize.o: err.o optimize.c
 err.o: config.h err.c
 util.o: util.c
+optimize.o: err.o util.o optimize.c
 # __BACKENDS__
 backend_arm64.o: backend_arm64.c
 backend_x86_64.o: backend_x86_64.c
@@ -100,9 +100,9 @@ multibuild: config.h
 multibuild_test: can_run_linux_amd64 config.h
 	./multibuild.sh
 
-optimize: optimize.c err.o
+optimize: optimize.c err.o util.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) \
-		-D OPTIMIZE_STANDALONE -o $@ optimize.c err.o
+		-D OPTIMIZE_STANDALONE -o $@ optimize.c err.o util.o
 
 strict: can_run_linux_amd64 config.h
 	mkdir -p alt-builds

@@ -14,19 +14,11 @@
 #include <unistd.h> /* read */
 /* internal */
 #include "err.h" /* basic_err, instr_err */
-#include "types.h" /* bool, uint, UINT64_MAX, uint*_t, INT64_MAX */
-#define MALLOC_CHUNK_SIZE 0x100
+#include "types.h" /* bool, uint, UINT64_MAX, uint*_t, INT64_MAX, sized_buf */
+#include "util.h" /* append_obj */
 
-static size_t optim_sz;
 /* return a pointer to a string containing just the brainfuck characters. */
-static char *filter_non_bf(int in_fd) {
-    optim_sz = 0;
-    size_t limit = MALLOC_CHUNK_SIZE;
-    char *filtered = malloc(limit);
-    if (filtered == NULL) {
-        alloc_err();
-        return NULL;
-    }
+static void filter_non_bf(int in_fd, sized_buf* ir) {
     char instr;
     while (read(in_fd, &instr, 1)) {
         switch(instr) {
@@ -38,28 +30,20 @@ static char *filter_non_bf(int in_fd) {
           case ',':
           case '+':
           case ']':
-            *(filtered + optim_sz++) = instr;
-            if (optim_sz == limit) {
-                limit += MALLOC_CHUNK_SIZE;
-                filtered = realloc(filtered, limit);
-                if (filtered == NULL) {
-                    alloc_err();
-                    return NULL;
-                }
-            }
+            append_obj(ir, &instr, 1);
             break;
         }
     }
+    instr = '\0';
     /* null terminate it */
-    *(filtered + optim_sz++) = '\0';
-    return filtered;
+    append_obj(ir, &instr, 1);
 }
 
 /* A function that skips past a matching ].
  * loop_start is a pointer to the [ at the start of the loop */
-static char *find_loop_end(char *loop_start) {
+static const char *find_loop_end(const char *loop_start) {
     uint nest_level = 1;
-    char *p = loop_start;
+    const char *p = loop_start;
     while (*(++p)) {
         if (*p == '[') {
             nest_level++;
@@ -76,10 +60,10 @@ static char *find_loop_end(char *loop_start) {
     return NULL;
 }
 
-/* recursively ensure that the loops are balanced */
-static bool loops_match(char *code) {
-    char *open_p = strchr(code, '[');
-    char *close_p = strchr(code, ']');
+/* ensure that the loops are balanced */
+static bool loops_match(const char *code) {
+    const char *open_p = strchr(code, '[');
+    const char *close_p = strchr(code, ']');
     /* if none are found, it's fine. */
     if ((open_p == NULL) && (close_p == NULL)) return true;
     /* if only one is found, that's a mismatch */
@@ -108,11 +92,11 @@ static bool loops_match(char *code) {
 
 #define SIMPLE_PATTERN_NUM 6
 /* remove redundant instructions like `<>` */
-static char *strip_dead(char *str) {
-    /* matches[0] is for nop_pat matches. matches[1] is for dead_loop_pat */
+static void strip_dead(sized_buf *ir) {
     /* code constructs that do nothing - either 2 adjacent instructions that
      * cancel each other out, or 256 consecutive `+` or `-` instructions that
      * loop the current cell back to its current value */
+    char *str = ir->buf;
     char *simple_patterns[] = {
         "<>", "><", "-+", "+-",
         "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"\
@@ -129,7 +113,7 @@ static char *strip_dead(char *str) {
     size_t simple_pattern_sizes[] = { 2, 2, 2, 2, 256, 256 };
     bool matched = false;
     char *match_start;
-    char *loop_end;
+    const char *loop_end;
     do {
         matched = false;
         /* if str opens with a loop, that loop won't run - remove it */
@@ -137,8 +121,9 @@ static char *strip_dead(char *str) {
             matched = true;
             loop_end = find_loop_end(str);
             if (loop_end == NULL) {
-                free(str);
-                return NULL;
+                free(ir->buf);
+                ir->buf = NULL;
+                return;
             }
             memmove(str, loop_end, strlen(loop_end) + 1);
         }
@@ -159,14 +144,14 @@ static char *strip_dead(char *str) {
             /* skip past the closing `]` */
             loop_end = find_loop_end(++match_start);
             if (loop_end == NULL) {
-                free(str);
-                return NULL;
+                free(ir->buf);
+                ir->buf = NULL;
+                return;
             }
             memmove(match_start, loop_end, strlen(loop_end) + 1);
         }
     } while (matched);
-    optim_sz = strlen(str) + 1;
-    return str;
+    ir->sz = strlen(str) + 1;
 }
 
 
@@ -248,21 +233,23 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
     return (size_t)sprintf(dest, "%c%" PRIx64, opcode, consec_ct);
 }
 
-static char *instr_merge(char *s) {
+static void instr_merge(sized_buf *ir) {
+    char *str = ir->buf;
     /* used to check what's between [ and ] if they're 2 apart */
     char current_mode;
-    char prev_mode = *s;
-    char *new_str = malloc(optim_sz);
+    char prev_mode = *str;
+    char *new_str = malloc(ir->sz);
     if (new_str == NULL) {
-        return NULL;
+        alloc_err();
+        return;
     }
     char *p = new_str;
     uint64_t consec_ct = 1;
     size_t i;
     size_t skip;
     /* condese consecutive identical instructions */
-    for (i = 1; i < optim_sz; i++) {
-        current_mode = *(s+i);
+    for (i = 1; i < ir->sz; i++) {
+        current_mode = *(str+i);
         if (current_mode != prev_mode) {
             if (!((skip = condense(prev_mode, consec_ct, p)))) {
                 free(new_str);
@@ -271,7 +258,7 @@ static char *instr_merge(char *s) {
                     "Failed to condense consecutive instructions",
                     prev_mode
                 );
-                return NULL;
+                return;
             }
             p += skip;
             consec_ct = 1;
@@ -283,7 +270,7 @@ static char *instr_merge(char *s) {
                     "More than 16384 PiB of identical instructions in a row.",
                     prev_mode
                 );
-                return NULL;
+                return;
             } else {
                 consec_ct ++;
             }
@@ -301,9 +288,9 @@ static char *instr_merge(char *s) {
         *p = '@';
         memmove(p + 1, p + 3, strlen(p + 3) + 1);
     }
-    strcpy(s, new_str);
+    strcpy(str, new_str);
+    ir->sz = strlen(str);
     free(new_str);
-    return s;
 }
 
 #ifdef OPTIMIZE_STANDALONE
@@ -322,33 +309,45 @@ int main(int argc, char *argv[]) {
         fputs("Failed to open file.\n", stderr);
         return EXIT_FAILURE;
     }
+
+    sized_buf ir = {0, 4096, malloc(4096)};
+    if (ir.buf == NULL) {
+        alloc_err();
+        close(fd);
+        return 1;
+    }
+
     puts("Stage 1:");
-    char *s = filter_non_bf(fd);
-    if (s == NULL) {
+    filter_non_bf(fd, &ir);
+    if (ir.buf == NULL) {
         fputs("Stage 1 came back null.\n", stderr);
         return EXIT_FAILURE;
     }
-    puts(s);
-    if (!loops_match(s)) {
-        free(s);
+    puts(ir.buf);
+
+    puts("Stage 2:");
+    if (!loops_match(ir.buf)) {
+        free(ir.buf);
         fputs("Mismatched [ and ]; refusing to continue.\n", stderr);
         return EXIT_FAILURE;
     }
-    puts("Stage 2:");
-    s = strip_dead(s);
-    if (s == NULL) {
+
+    strip_dead(&ir);
+    if (ir.buf == NULL) {
         fputs("Stage 2 came back null.\n", stderr);
         return EXIT_FAILURE;
     }
-    puts(s);
+    puts(ir.buf);
+
     puts("Stage 3:");
-    s = instr_merge(s);
-    if (s == NULL) {
+    instr_merge(&ir);
+    if (ir.buf == NULL) {
         fputs("Stage 3 came back null.\n", stderr);
         return EXIT_FAILURE;
     }
-    puts(s);
-    free(s);
+    puts(ir.buf);
+
+    free(ir.buf);
 }
 #else /* OPTIMIZE_STANDALONE */
 /* Reads the content of the file fd, and returns a string containing optimized
@@ -356,14 +355,21 @@ int main(int argc, char *argv[]) {
  * fd must be open for reading already, no check is performed.
  * Calling function is responsible for `free`ing the returned string. */
 char *to_ir(int fd) {
-    char *bf_code = filter_non_bf(fd);
-    if (bf_code == NULL) return NULL;
-    if (!loops_match(bf_code)) {
-        free(bf_code);
+    sized_buf ir = {0, 4096, malloc(4096)};
+    if (ir.buf == NULL) {
+        alloc_err();
         return NULL;
     }
-    bf_code = strip_dead(bf_code);
-    if (bf_code == NULL) return NULL;
-    return instr_merge(bf_code);
+
+    filter_non_bf(fd, &ir);
+    if (ir.buf == NULL) return NULL;
+    if (!loops_match(ir.buf)) {
+        free(ir.buf);
+        return NULL;
+    }
+    strip_dead(&ir);
+    if (ir.buf == NULL) return NULL;
+    instr_merge(&ir);
+    return ir.buf;
 }
 #endif /* OPTIMIZE_STANDALONE */
