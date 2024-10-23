@@ -121,7 +121,7 @@ test_for_arch() {
     # to try to catch undefined behavior
     make EAMBFC=../alt_builds/eambfc_ubsan EAMBFC_ARGS="-kOa$1" clean test
     SKIP_DEAD_CODE=1 \
-        make EAMBFC=../alt_builds/eambfc_ubsan EAMBFC_ARGS="-kOa$1" clean test
+        make EAMBFC=../alt_builds/eambfc_ubsan EAMBFC_ARGS="-ka$1" clean test
 }
 
 # ensure strict and ubsan builds work at all gcc optimization levels
