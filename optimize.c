@@ -8,20 +8,25 @@
 
 /* C99 */
 #include <stdio.h> /* sprintf, puts */
-#include <stdlib.h> /* free malloc realloc */
-#include <string.h> /* memmove memset strchr strcpy strlen strstr */
-/* POSIX */
-#include <unistd.h> /* read */
+#include <stdlib.h> /* free, malloc, realloc */
+#include <string.h> /* memmove, memset, strchr, strcpy, strlen, strstr */
 /* internal */
 #include "err.h" /* basic_err, instr_err */
 #include "types.h" /* bool, uint, UINT64_MAX, uint*_t, INT64_MAX, sized_buf */
 #include "util.h" /* append_obj */
 
 /* return a pointer to a string containing just the brainfuck characters. */
-static void filter_non_bf(int in_fd, sized_buf* ir) {
+static void filter_non_bf(sized_buf *code) {
+    sized_buf tmp = {0, 4096, malloc(4096)};
+    char *str = code->buf;
+    if (tmp.buf == NULL) {
+        free(code->buf);
+        code->buf = NULL;
+        code->sz = 0;
+    }
     char instr;
-    while (read(in_fd, &instr, 1)) {
-        switch(instr) {
+    for (size_t i = 0; i < code->sz; i++) {
+        switch(instr = str[i]) {
           case '[':
           case '-':
           case '.':
@@ -30,13 +35,17 @@ static void filter_non_bf(int in_fd, sized_buf* ir) {
           case ',':
           case '+':
           case ']':
-            append_obj(ir, &instr, 1);
+            append_obj(&tmp, &instr, 1);
             break;
         }
     }
     instr = '\0';
     /* null terminate it */
-    append_obj(ir, &instr, 1);
+    append_obj(&tmp, &instr, 1);
+    free(code->buf);
+    code->sz = tmp.sz;
+    code->alloc_sz = tmp.alloc_sz;
+    code->buf = tmp.buf;
 }
 
 /* A function that skips past a matching ].
@@ -294,7 +303,9 @@ static void instr_merge(sized_buf *ir) {
 }
 
 #ifdef OPTIMIZE_STANDALONE
+/* POSIX */
 #include <fcntl.h> /* open */
+#include <unistd.h> /* close */
 /* used for testing purposes
  * inspired by Python's `if __name__ == "__main__" idiom
  * compile with flag -D OPTIMIZE_STANDALONE to enable this and compile a
@@ -316,9 +327,10 @@ int main(int argc, char *argv[]) {
         close(fd);
         return 1;
     }
+    read_to_sized_buf(&ir, fd);
 
     puts("Stage 1:");
-    filter_non_bf(fd, &ir);
+    filter_non_bf(&ir);
     if (ir.buf == NULL) {
         fputs("Stage 1 came back null.\n", stderr);
         return EXIT_FAILURE;
@@ -354,22 +366,16 @@ int main(int argc, char *argv[]) {
  * internal intermediate representation of that file's code.
  * fd must be open for reading already, no check is performed.
  * Calling function is responsible for `free`ing the returned string. */
-char *to_ir(int fd) {
-    sized_buf ir = {0, 4096, malloc(4096)};
-    if (ir.buf == NULL) {
-        alloc_err();
+char *to_ir(sized_buf *src) {
+    filter_non_bf(src);
+    if (src->buf == NULL) return NULL;
+    if (!loops_match(src->buf)) {
+        free(src->buf);
         return NULL;
     }
-
-    filter_non_bf(fd, &ir);
-    if (ir.buf == NULL) return NULL;
-    if (!loops_match(ir.buf)) {
-        free(ir.buf);
-        return NULL;
-    }
-    strip_dead(&ir);
-    if (ir.buf == NULL) return NULL;
-    instr_merge(&ir);
-    return ir.buf;
+    strip_dead(src);
+    if (src->buf == NULL) return NULL;
+    instr_merge(src);
+    return src->buf;
 }
 #endif /* OPTIMIZE_STANDALONE */
