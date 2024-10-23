@@ -98,6 +98,8 @@ static void mov(
 /* Choose a combination of MOVZ, MOVK, and MOVN that sets register x.reg to
  * the immediate imm */
 static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
+    uint16_t default_val;
+    mov_type lead_mt;
     /* split the immediate into 4 16-bit parts - high, medium-high, medium-low,
      * and low. */
     struct shifted_imm { uint16_t imm16; shift_lvl shift; };
@@ -107,8 +109,6 @@ static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
         {(uint16_t)(imm >> 32), A64_SL_SHIFT32},
         {(uint16_t)(imm >> 48), A64_SL_SHIFT48}
     };
-    uint16_t default_val;
-    mov_type lead_mt;
     if (imm < 0) {
         default_val = 0xffff;
         lead_mt = A64_MT_INVERT;
