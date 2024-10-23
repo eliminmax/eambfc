@@ -119,9 +119,9 @@ NO_SKIP_MULTIBUILD=yep make CC=gcc all_tests
 test_for_arch() {
     # run test suite with and without EAMBFC optimization mode with ubsan
     # to try to catch undefined behavior
-    make EAMBFC=../alt_builds/eambfc_ubsan EAMBFC_ARGS="-kOa$1" clean test
+    make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-kOa$1" clean test
     SKIP_DEAD_CODE=1 \
-        make EAMBFC=../alt_builds/eambfc_ubsan EAMBFC_ARGS="-ka$1" clean test
+        make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-ka$1" clean test
 }
 
 # ensure strict and ubsan builds work at all gcc optimization levels
