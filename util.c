@@ -55,12 +55,12 @@ void read_to_sized_buf(sized_buf *sb, int fd) {
     sb->buf = malloc(4096);
     if (sb->buf == NULL) {
         alloc_err();
-        return false;
+        return;
     }
 
     char chunk[4096];
     ssize_t count;
-    while (count = read(fd, &chunk, 4096)) {
+    while ((count = read(fd, &chunk, 4096))) {
         if (count < 0) {
             basic_err("FAILED_READ", "Failed to read from file");
             free(sb->buf);
