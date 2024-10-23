@@ -463,12 +463,11 @@ static inline bool finalize(int fd, uint64_t tb, const arch_inter *inter) {
             inter->SC_NUMS->exit,
             fd,
             &out_sz
-        ) &&
-        /* set system call register to the desired exit code (0) */
-        inter->FUNCS->set_reg(inter->REGS->arg1, 0, fd, &out_sz) &&
-        /* perform a system call */
-        inter->FUNCS->syscall(fd, &out_sz)
     );
+    /* set system call register to the desired exit code (0) */
+    ret &= inter->FUNCS->set_reg(inter->REGS->arg1, 0, fd, &out_sz);
+    /* perform a system call */
+    ret &= inter->FUNCS->syscall(fd, &out_sz);
 
     /* Ehdr and Phdr table are at the start */
     if (lseek(fd, 0, SEEK_SET) != 0) {
@@ -476,7 +475,9 @@ static inline bool finalize(int fd, uint64_t tb, const arch_inter *inter) {
         return false;
     }
 
-    return ret && write_ehdr(fd, inter) && write_phtb(fd, tb, inter);
+    ret &= write_ehdr(fd, inter);
+    ret &= write_phtb(fd, tb, inter);
+    return ret;
 }
 
 /* maximum number of bytes to transfer from tmpfile at a time */
