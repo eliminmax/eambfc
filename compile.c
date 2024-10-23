@@ -290,7 +290,7 @@ static inline bool bf_jump_open(
     /* push the current address onto the stack */
     jump_stack.locations[jump_stack.index].src_line = _line;
     jump_stack.locations[jump_stack.index].src_col = _col;
-    jump_stack.locations[jump_stack.index].dst_loc = CURRENT_SIZE(out_sz);
+    jump_stack.locations[jump_stack.index].dst_loc = out_sz;
     jump_stack.index++;
     /* fill space jump open will take with NOP instructions of the same length,
      * so that out_sz remains properly sized. */
@@ -316,7 +316,7 @@ static inline bool bf_jump_close(int fd, const arch_inter *inter) {
     }
     /* pop the matching `[` instruction's location */
     open_address = jump_stack.locations[--jump_stack.index].dst_loc;
-    close_address = CURRENT_SIZE(out_sz);
+    close_address = out_sz;
 
     distance = close_address - open_address;
 
