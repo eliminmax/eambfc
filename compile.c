@@ -59,9 +59,7 @@
  * beginning of the machine code. */
 #define PAD_SZ (START_PADDR - (PHTB_SIZE + EHDR_SIZE))
 
-static off_t out_sz;
-static uint _line;
-static uint _col;
+static uint _line, _col;
 
 /* Write the ELF header to the file descriptor fd. */
 static bool write_ehdr(int fd, size_t code_sz, const arch_inter *inter) {
@@ -313,7 +311,7 @@ static inline bool bf_jump_open(
 static inline bool bf_jump_close(
     sized_buf *code_buf, bool *alloc_valve, const arch_inter *inter
 ) {
-    off_t open_address, close_address;
+    off_t open_addr;
     int32_t distance;
 
     /* ensure that the current index is in bounds */
@@ -328,11 +326,8 @@ static inline bool bf_jump_close(
         return false;
     }
     /* pop the matching `[` instruction's location */
-    open_address = jump_stack.locations[--jump_stack.index].dst_loc;
-    close_address = code_buf->sz;
-
-    distance = close_address - open_address;
-
+    open_addr = jump_stack.locations[--jump_stack.index].dst_loc;
+    distance = code_buf->sz - open_addr;
 
     /* create a second buffer for the `[` instruction, then copy it into the
      * actual code buffer, replacing the padding NOP instructions */
