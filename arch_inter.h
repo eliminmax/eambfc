@@ -9,7 +9,7 @@
 #define EAMBFC_ARCH_INTER_H 1
 /* internal */
 #include "config.h" /* EAMBFC_TARGET* */
-#include "types.h" /* uint*_t, int*_t, bool */
+#include "types.h" /* uint*_t, int*_t, bool, sized_buf */
 
 /* This defines the interface for the architecture. It is written around
  * assumptions that are true about Linux, namely that the system call number and
@@ -77,20 +77,20 @@ typedef const struct arch_funcs {
 
     /* General and Register Functions */
     /* Write instruction/s to fd to store immediate imm in register reg. */
-    bool (*const set_reg)(uint8_t reg, int64_t imm, int fd, off_t *sz);
+    bool (*const set_reg)(uint8_t reg, int64_t imm, sized_buf *dst_buf);
 
     /* Write instruction/s to fd to copy value stored in register src into
      * register dst. */
-    bool (*const reg_copy)(uint8_t dst, uint8_t src, int fd, off_t *sz);
+    bool (*const reg_copy)(uint8_t dst, uint8_t src, sized_buf *dst_buf);
 
     /* Write the system call instruction to fd. */
-    bool (*const syscall)(int fd, off_t *sz);
+    bool (*const syscall)(sized_buf *dst_buf);
 
     /* write NOP instruction/s that take the same space as the jump_zero
      * instruction output, to be overwritten once jump_zero is called, but allow
      * for a semi-functional program to analyze if compilation fails due to
      * an unclosed loop. */
-    bool (*const nop_loop_open)(int fd, off_t *sz);
+    bool (*const nop_loop_open)(sized_buf *dst_buf);
 
     /* Functions that correspond 1 to 1 with brainfuck instructions.
      * Note that the `.` and `,` instructions are implemented using more complex
@@ -102,65 +102,65 @@ typedef const struct arch_funcs {
      * address in register reg is set to zero.
      *
      * Used to implement the `[` brainfuck instruction. */
-    bool (*const jump_zero)(uint8_t reg, int64_t offset, int fd, off_t *sz);
+    bool (*const jump_zero)(uint8_t reg, int64_t offset, sized_buf *dst_buf);
 
     /* Write instruction/s to fd to jump <offset> bytes if the byte stored at
      * address in register reg is not set to zero.
      *
      * Used to implement the `]` brainfuck instruction. */
-    bool (*const jump_not_zero)(uint8_t reg, int64_t offset, int fd, off_t *sz);
+    bool (*const jump_not_zero)(uint8_t reg, int64_t offset, sized_buf *dst_buf);
 
     /* Write instruction/s to fd to increment register reg by one.
      *
      * Used to implement the `>` brainfuck instruction. */
-    bool (*const inc_reg)(uint8_t reg, int fd, off_t *sz);
+    bool (*const inc_reg)(uint8_t reg, sized_buf *dst_buf);
 
     /* Write instruction/s to fd to decrement register reg by one.
      *
      * Used to implement the `<` brainfuck instruction. */
-    bool (*const dec_reg)(uint8_t reg, int fd, off_t *sz);
+    bool (*const dec_reg)(uint8_t reg, sized_buf *dst_buf);
 
     /* Write instruction/s to fd to increment byte stored at address in register
      * reg by one.
      *
      * Used to implement the `+` brainfuck instruction. */
-    bool (*const inc_byte)(uint8_t reg, int fd, off_t *sz);
+    bool (*const inc_byte)(uint8_t reg, sized_buf *dst_buf);
 
     /* Write instruction/s to fd to decrement byte stored at address in register
      * reg by one.
      *
      * Used to implement the `-` brainfuck instruction. */
-    bool (*const dec_byte)(uint8_t reg, int fd, off_t *sz);
+    bool (*const dec_byte)(uint8_t reg, sized_buf *dst_buf);
 
     /* functions used for optimized instructions */
 
     /* Write instruction/s to fd to add imm to register reg.
      *
      * Used to implement sequences of consecutive `>` brainfuck instructions. */
-    bool (*const add_reg)(uint8_t reg, int64_t imm, int fd, off_t *sz);
+    bool (*const add_reg)(uint8_t reg, int64_t imm, sized_buf *dst_buf);
 
     /* Write instruction/s to fd to subtract imm from register reg.
      *
      * Used to implement sequences of consecutive `<` brainfuck instructions. */
-    bool (*const sub_reg)(uint8_t reg, int64_t imm, int fd, off_t *sz);
+    bool (*const sub_reg)(uint8_t reg, int64_t imm, sized_buf *dst_buf);
 
     /* Write instruction/s to fd to add imm8 to byte stored at address in
      * register reg.
      *
      * Used to implement sequences of consecutive `+` brainfuck instructions. */
-    bool (*const add_byte)(uint8_t reg, int8_t imm8, int fd, off_t *sz);
+    bool (*const add_byte)(uint8_t reg, int8_t imm8, sized_buf *dst_buf);
 
     /* Write instruction/s to fd to subtract imm8 from byte stored at address in
      * register reg.
      *
      * Used to implement sequences of consecutive `-` brainfuck instructions. */
-    bool (*const sub_byte)(uint8_t reg, int8_t imm8, int fd, off_t *sz);
+    bool (*const sub_byte)(uint8_t reg, int8_t imm8, sized_buf *dst_buf);
 
     /* Write instruction/s to fd to set the value of byte stored at address in
      * register reg to 0.
      *
      * Used to implement the `[-]` and `[+]` brainfuck instruction sequences. */
-    bool (*const zero_byte)(uint8_t reg, int fd, off_t *sz);
+    bool (*const zero_byte)(uint8_t reg, sized_buf *dst_buf);
 } arch_funcs;
 
 /* This struct contains all architecture-specific information needed for eambfc,

@@ -13,7 +13,7 @@
 #include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
 #include "err.h" /* basic_err */
 #include "types.h" /* uint*_t, int*_t, bool, off_t, size_t UINT64_C */
-#include "util.h" /* write_obj */
+#include "util.h" /* append_obj */
 
 /* in MOVK, MOVZ, and MOVN instructions, these correspond to the bits used
  * within the 3rd byte to indicate shift level. */
@@ -97,7 +97,7 @@ static void mov(
 
 /* Choose a combination of MOVZ, MOVK, and MOVN that sets register x.reg to
  * the immediate imm */
-static bool set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
+static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
     /* split the immediate into 4 16-bit parts - high, medium-high, medium-low,
      * and low. */
     struct shifted_imm { uint16_t imm16; shift_lvl shift; };
@@ -125,12 +125,12 @@ static bool set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
         /* all are the default value, so use this fallback instruction */
         /* (MOVZ|MOVN) x.reg, default_val */
         mov(lead_mt, default_val, A64_SL_NO_SHIFT, reg, instr_bytes);
-        if (!write_obj(fd, &instr_bytes, 4, sz)) return false;
+        if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
     } else {
         /* at least one needs to be set */
         /* (MOVZ|MOVN) x.reg, lead_imm{, lsl lead_shift} */
         mov(lead_mt, parts[i].imm16, parts[i].shift, reg, instr_bytes);
-        if (!write_obj(fd, &instr_bytes, 4, sz)) return false;
+        if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
         for(++i; i < 4; i++) if (parts[i].imm16 != default_val) {
             /*  MOVK x[reg], imm16{, lsl shift} */
             mov(
@@ -140,7 +140,7 @@ static bool set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
                 reg,
                 instr_bytes
             );
-            if (!write_obj(fd, &instr_bytes, 4, sz)) return false;
+            if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
         }
     }
     return true;
@@ -148,28 +148,28 @@ static bool set_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
 
 /* MOV x.dst, x.src
  * technically an alias for ORR x.dst, XZR, x.src */
-static bool reg_copy(uint8_t dst, uint8_t src, int fd, off_t *sz) {
-    return write_obj(fd, (uint8_t[]){0xe0 | dst, 0x01, src, 0xaa}, 4, sz);
+static bool reg_copy(uint8_t dst, uint8_t src, sized_buf *dst_buf) {
+    return append_obj(dst_buf, (uint8_t[]){0xe0 | dst, 0x01, src, 0xaa}, 4);
 }
 
 /* SVC 0 */
-static bool syscall(int fd, off_t *sz) {
-    return write_obj(fd, (uint8_t[]){0x01, 0x00, 0x00, 0xd4}, 4, sz);
+static bool syscall(sized_buf *dst_buf) {
+    return append_obj(dst_buf, (uint8_t[]){0x01, 0x00, 0x00, 0xd4}, 4);
 }
 
 /* NOP; NOP; NOP */
-static bool nop_loop_open(int fd, off_t *sz) {
+static bool nop_loop_open(sized_buf *dst_buf) {
     uint8_t instr_bytes[12] = {
         0x1f, 0x20, 0x03, 0xd5, /* NOP */
         0x1f, 0x20, 0x03, 0xd5, /* NOP */
         0x1f, 0x20, 0x03, 0xd5 /* NOP */
     };
-    return write_obj(fd, instr_bytes, 12, sz);
+    return append_obj(dst_buf, instr_bytes, 12);
 }
 
 /* LDRB w.aux, x.reg; TST w.aux, 0xff; B.cond offset */
 static bool branch_cond(
-    uint8_t reg, int64_t offset, int fd, off_t *sz, uint8_t cond
+    uint8_t reg, int64_t offset, sized_buf *dst_buf, uint8_t cond
 ) {
     if ((offset % 4) != 0) {
         basic_err(
@@ -198,23 +198,23 @@ static bool branch_cond(
         cond | (offset_value << 5), offset_value >> 3, offset_value >> 11, 0x54
     };
     inject_reg_operands(aux, reg, test_and_branch);
-    return write_obj(fd, test_and_branch, 12, sz);
+    return append_obj(dst_buf, test_and_branch, 12);
 }
 
 /* LDRB w.aux, x.reg; TST w.aux, 0xff; B.NE offset */
-static bool jump_not_zero(uint8_t reg, int64_t offset, int fd, off_t *sz) {
+static bool jump_not_zero(uint8_t reg, int64_t offset, sized_buf *dst_buf) {
     /* 1 is the not zero / not equal condition code */
-    return branch_cond(reg, offset, fd, sz, 1);
+    return branch_cond(reg, offset, dst_buf, 1);
 }
 
 /* LDRB w.aux, x.reg; TST w.aux, 0xff; B.E offset */
-static bool jump_zero(uint8_t reg, int64_t offset, int fd, off_t *sz) {
+static bool jump_zero(uint8_t reg, int64_t offset, sized_buf *dst_buf) {
     /* 0 is the zero / equal condition code */
-    return branch_cond(reg, offset, fd, sz, 0);
+    return branch_cond(reg, offset, dst_buf, 0);
 }
 
 static bool add_sub_imm(
-    uint8_t reg, uint64_t imm, bool shift, arith_op op, int fd, off_t *sz
+    uint8_t reg, uint64_t imm, bool shift, arith_op op, sized_buf *dst_buf
 ) {
     if ((shift && (imm & ~0xfff000) != 0) || (!shift && (imm & ~0xfff) != 0)) {
         basic_err("IMMEDIATE_TOO_LARGE", "value is invalid for shift level.");
@@ -227,18 +227,18 @@ static bool add_sub_imm(
         (imm_bits >> 6) | (shift ? 0x40 : 0x0),
         op
     };
-    return write_obj(fd, &instr_bytes, 4, sz);
+    return append_obj(dst_buf, &instr_bytes, 4);
 }
 
 static bool add_sub(
-    uint8_t reg, arith_op op, uint64_t imm, int fd, off_t *sz
+    uint8_t reg, arith_op op, uint64_t imm, sized_buf *dst_buf
 ) {
     if (imm < UINT64_C(0x1000)) {
-        return add_sub_imm(reg, imm, false, op, fd, sz);
+        return add_sub_imm(reg, imm, false, op, dst_buf);
     } else if (imm < UINT64_C(0x1000000)) {
-        bool ret = add_sub_imm(reg, imm & 0xfff000, true, op, fd, sz);
+        bool ret = add_sub_imm(reg, imm & 0xfff000, true, op, dst_buf);
         if (ret && ((imm & 0xfff) != 0)) {
-            ret &= add_sub_imm(reg, imm & 0xfff, false, op, fd, sz);
+            ret &= add_sub_imm(reg, imm & 0xfff, false, op, dst_buf);
         }
         return ret;
     } else if (imm < UINT64_C(0x7fffffffffffffff)) {
@@ -246,11 +246,11 @@ static bool add_sub(
         uint8_t op_byte = (op == A64_OP_ADD) ? 0x8b : 0xcb;
         uint8_t aux = aux_reg(reg);
         /* set register x.aux to the target value */
-        if (!set_reg(aux, (int64_t)imm, fd, sz)) return false;
+        if (!set_reg(aux, (int64_t)imm, dst_buf)) return false;
         /* either ADD x.reg, x.reg, x.aux or SUB x.reg, x.reg, x.aux */
         uint8_t instr_bytes[4] = { 0, 0, aux, op_byte };
         inject_reg_operands(reg, reg, instr_bytes);
-        return write_obj(fd, &instr_bytes, 4, sz);
+        return append_obj(dst_buf, &instr_bytes, 4);
     }
     /* over the 64-bit signed int limit, so print an error and return false. */
     char err_char_str[2] = {
@@ -265,46 +265,46 @@ static bool add_sub(
     return false;
 }
 
-static bool add_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
-    return add_sub(reg,  A64_OP_ADD, imm, fd, sz);
+static bool add_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
+    return add_sub(reg,  A64_OP_ADD, imm, dst_buf);
 }
 
-static bool sub_reg(uint8_t reg, int64_t imm, int fd, off_t *sz) {
-    return add_sub(reg, A64_OP_SUB, imm, fd, sz);
+static bool sub_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
+    return add_sub(reg, A64_OP_SUB, imm, dst_buf);
 }
 
-static bool inc_reg(uint8_t reg, int fd, off_t *sz) {
-    return add_sub(reg, A64_OP_ADD, 1, fd, sz);
+static bool inc_reg(uint8_t reg, sized_buf *dst_buf) {
+    return add_sub(reg, A64_OP_ADD, 1, dst_buf);
 }
 
-static bool dec_reg(uint8_t reg, int fd, off_t *sz) {
-    return add_sub(reg, A64_OP_SUB, 1, fd, sz);
+static bool dec_reg(uint8_t reg, sized_buf *dst_buf) {
+    return add_sub(reg, A64_OP_SUB, 1, dst_buf);
 }
 
 static bool inc_dec_byte(
-    uint8_t reg, int fd, off_t *sz,
-    bool (*inner_fn)(uint8_t reg, int fd, off_t *sz)
+    uint8_t reg, sized_buf *dst_buf,
+    bool (*inner_fn)(uint8_t reg, sized_buf *dst_buf)
 ) {
 
     uint8_t instr_bytes[4] = {0x00, 0x00, 0x00, 0x00};
     uint8_t aux = aux_reg(reg);
     load_from_byte(reg, aux, instr_bytes);
-    if (!write_obj(fd, &instr_bytes, 4, sz)) return false;
-    if (!inner_fn(aux, fd, sz)) return false;
+    if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
+    if (!inner_fn(aux, dst_buf)) return false;
     store_to_byte(reg, aux, instr_bytes);
-    return write_obj(fd, &instr_bytes, 4, sz);
+    return append_obj(dst_buf, &instr_bytes, 4);
 }
 
-static bool inc_byte(uint8_t reg, int fd, off_t *sz) {
-    return inc_dec_byte(reg, fd, sz, &inc_reg);
+static bool inc_byte(uint8_t reg, sized_buf *dst_buf) {
+    return inc_dec_byte(reg, dst_buf, &inc_reg);
 }
 
-static bool dec_byte(uint8_t reg, int fd, off_t *sz) {
-    return inc_dec_byte(reg, fd, sz, &dec_reg);
+static bool dec_byte(uint8_t reg, sized_buf *dst_buf) {
+    return inc_dec_byte(reg, dst_buf, &dec_reg);
 }
 
 static bool add_sub_byte(
-    uint8_t reg, int8_t imm8, arith_op op, int fd, off_t *sz
+    uint8_t reg, int8_t imm8, arith_op op, sized_buf *dst_buf
 ) {
     uint8_t imm = imm8;
     uint8_t aux = aux_reg(reg);
@@ -318,23 +318,23 @@ static bool add_sub_byte(
     load_from_byte(reg, aux, instr_bytes);
     /* store the lowest byte in x.aux back to the address in x.reg */
     store_to_byte(reg, aux, &(instr_bytes[8]));
-    return write_obj(fd, &instr_bytes, 12, sz);
+    return append_obj(dst_buf, &instr_bytes, 12);
 }
 
-static bool add_byte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
-    return add_sub_byte(reg, imm8, A64_OP_ADD, fd, sz);
+static bool add_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
+    return add_sub_byte(reg, imm8, A64_OP_ADD, dst_buf);
 }
 
-static bool sub_byte(uint8_t reg, int8_t imm8, int fd, off_t *sz) {
-    return add_sub_byte(reg, imm8, A64_OP_SUB, fd, sz);
+static bool sub_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
+    return add_sub_byte(reg, imm8, A64_OP_SUB, dst_buf);
 }
 
-static bool zero_byte(uint8_t reg, int fd, off_t *sz) {
+static bool zero_byte(uint8_t reg, sized_buf *dst_buf) {
     uint8_t aux = aux_reg(reg);
-    if (!set_reg(aux, 0, fd, sz)) return false;
+    if (!set_reg(aux, 0, dst_buf)) return false;
     uint8_t instr_bytes[4];
     store_to_byte(reg, aux, instr_bytes);
-    return write_obj(fd, &instr_bytes, 4, sz);
+    return append_obj(dst_buf, &instr_bytes, 4);
 }
 
 static const arch_funcs FUNCS = {
