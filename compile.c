@@ -438,21 +438,16 @@ static inline bool comp_ir_instr(
     }
 }
 
-/* Takes 2 open file descriptors - in_fd and out_fd, and a boolean - optimize
- * in_fd is a brainfuck source file, open for reading.
- * out_fd is the destination file, open for writing.
- * if optimize is true, then first optimize code, then compile optimized code.
- *      (optimize is currently not used)
+/* Compile code in source file to destination file.
+ * Parameters:
+ * - inter is a pointer to the arch_inter backend used to provide the functions
+ *   that compile brainfuck and EAMBFC-IR into machine code.
+ * - in_fd is a brainfuck source file, open for reading.
+ * - out_fd is the destination file, open for writing.
+ * - optimize is a boolean indicating whether to optimize code before compiling.
+ * - tape_blocks is the number of 4-KiB blocks to allocate for the tape.
  *
- * It compiles the source code in in_fd, writing the output to out_fd.
- *
- * It does not verify that in_fd and out_fd are valid file descriptors,
- * nor that they are open properly.
- *
- * It calls several other functions to compile the source code. If any of
- * them return false it returns false as well.
- *
- * If all of the other functions succeeded, it returns true. */
+ * Returns true if compilation was successful, and false otherwise. */
 bool bf_compile(
     const arch_inter *inter,
     int in_fd,
