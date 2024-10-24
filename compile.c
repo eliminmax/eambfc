@@ -438,25 +438,6 @@ static inline bool comp_ir_instr(
     }
 }
 
-static inline bool comp_ir(
-    char *ir, sized_buf *obj_code, const arch_inter *inter
-) {
-    bool ret = true;
-    char *p = ir;
-    int skip_ct;
-    bool alloc_valve = true;
-    while (*p) {
-        _col++;
-        ret &= comp_ir_instr(p++, obj_code, &skip_ct, &alloc_valve, inter);
-        if (!alloc_valve) {
-            alloc_err();
-            return false;
-        }
-        p += skip_ct;
-    }
-    return ret;
-}
-
 /* Takes 2 open file descriptors - in_fd and out_fd, and a boolean - optimize
  * in_fd is a brainfuck source file, open for reading.
  * out_fd is the destination file, open for writing.
@@ -509,22 +490,37 @@ bool bf_compile(
     _line = 1;
     _col = 0;
 
+    /* set the bf_ptr register to the address of the start of the tape */
     ret &= inter->FUNCS->set_reg(
         inter->REGS->bf_ptr,
         TAPE_ADDRESS,
         &obj_code
     );
+
+
+    /* compile the actual source code to object code */
+    bool alloc_valve = true; /* if set to false, an allocation failed. */
     if (optimize) {
         char *ir = to_ir(&src_code);
         if (ir == NULL) {
             free(obj_code.buf);
             return false;
         }
-        ret &= comp_ir(ir, &obj_code, inter);
+        char *p = ir;
+        int skip_ct;
+        while (*p) {
+            ret &= comp_ir_instr(p++, &obj_code, &skip_ct, &alloc_valve, inter);
+            if (!alloc_valve) {
+                free(obj_code.buf);
+                free(src_code.buf);
+                alloc_err();
+                return false;
+            }
+            p += skip_ct;
+        }
     } else {
         char *src = src_code.buf;
         for(size_t i = 0; i < src_code.sz; i++) {
-            bool alloc_valve = true;
             ret &= comp_instr(src[i], &obj_code, &alloc_valve, inter);
             if (!alloc_valve) {
                 free(obj_code.buf);
