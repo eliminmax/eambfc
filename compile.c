@@ -479,7 +479,7 @@ bool bf_compile(
     bool optimize,
     uint64_t tape_blocks
 ) {
-    int ret = true;
+    bool ret = true;
     sized_buf obj_code = {0, 4096, malloc(4096)};
     if (obj_code.buf == NULL) {
         alloc_err();
