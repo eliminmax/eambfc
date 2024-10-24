@@ -57,30 +57,41 @@ build_with () {
     fi
 }
 
-gcc_clang_args='-Wall -Werror -Wextra -pedantic -std=c99'
-# test at different optimization levels
-for op_lv in 0 1 2 3; do
-    # shellcheck disable=2086 # word splitting is intentional here
-    build_with gcc $gcc_clang_args -O"$op_lv"
-    # shellcheck disable=2086 # word splitting is intentional here
-    build_with musl-gcc $gcc_clang_args -O"$op_lv"
-    # shellcheck disable=2086 # word splitting is intentional here
-    build_with clang $gcc_clang_args -O"$op_lv"
-    # shellcheck disable=2086 # word splitting is intentional here
-    build_with zig cc $gcc_clang_args -O"$op_lv" # zig's built-in C compiler
+gcc_clang_test() {
+    for op_lv in 0 1 2 3; do
+        # shellcheck disable=SC2086 # word splitting is intentional here
+        build_with "$@" -Wall -Werror -Wextra -pedantic -std=c99 -O"$op_lv"
+    done
+}
 
-    # a bunch of prerequisites for testing on non-s390x systems - qemu-user must
-    # be installed, and binfmt support must be enabled and provided for s390x
-    # ELF executables by qemu-s390x.
-    if [ "$(uname -m)" != s390x ] && [ "$(uname)" = Linux ] &&\
-        [ "$(cat /proc/sys/fs/binfmt_misc/status)" = 'enabled' ] &&\
-        [ "$(head -n1 /proc/sys/fs/binfmt_misc/qemu-s390x)" = 'enabled' ]; then
-        # shellcheck disable=2086 # word splitting is intentional here
-        build_with s390x-linux-gnu-gcc $gcc_clang_args -O"$op_lv" -static
+test_for_triple() {
+    triple_gcc="$1-$2-$3-gcc"
+    if [ -n "$SKIP_TEST" ]; then
+        gcc_clang_test "$triple_gcc" -static
+    elif command -v "$triple_gcc" >/dev/null 2>&1 && {
+        printf 'int main(void){return 0;}' | "$triple_gcc" -x c -static -
+        ./a.out  >/dev/null 2>&1
+        rm a.out
+    }; then
+        gcc_clang_test "$triple_gcc" -static
     else
-        skipped=$((skipped+1))
+        printf 'Either don'\''t have gcc for triple %s-%s-%s, ' "$1" "$2" "$3"
+        printf 'or have it but can'\''t run the output properly, so skipping.\n'
+        printf '\t(skipping tests at 4 optimization levels.)\n'
+        skipped=$((skipped+4))
+        total=$((total+4))
     fi
-done
+}
+
+gcc_clang_test gcc
+gcc_clang_test musl-gcc
+gcc_clang_test clang
+gcc_clang_test zig cc
+
+test_for_triple i686 linux gnu # 32-bit le
+test_for_triple aarch64 linux gnu # 64-bit le
+test_for_triple mips linux gnu # 32-bit be
+test_for_triple s390x linux gnu # 64-bit be
 
 build_with tcc
 
@@ -90,6 +101,5 @@ printf 'TOTAL COMPILERS SKIPPED: %d\n' "$skipped"
 printf 'TOTAL COMPILERS SUCCESSFUL: %d\n' "$success"
 printf 'TOTAL COMPILERS FAILED: %d\n' "$failed"
 
-# exit code set by this last line
-# shellcheck disable=2015 # different semantics than if-then-else are intended.
-[ "$failed" -eq 0 ] && [ -z "$NO_SKIP_MULTIBUILD" ] || [ "$skipped" -eq 0 ]
+# exit code is set by this last line
+[ "$failed" -eq 0 ] && { [ -z "$NO_SKIP_MULTIBUILD" ] || [ "$skipped" -eq 0 ]; }
