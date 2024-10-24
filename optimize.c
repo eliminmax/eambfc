@@ -15,7 +15,7 @@
 #include "types.h" /* bool, uint, UINT64_MAX, uint*_t, INT64_MAX, sized_buf */
 #include "util.h" /* append_obj, read_to_sized_buf */
 
-/* return a pointer to a string containing just the brainfuck characters. */
+/* filter out the non-bf characters from code->buf */
 static void filter_non_bf(sized_buf *code) {
     sized_buf tmp = {0, 4096, malloc(4096)};
     char *str = code->buf;
@@ -69,7 +69,7 @@ static const char *find_loop_end(const char *loop_start) {
     return NULL;
 }
 
-/* ensure that the loops are balanced */
+/* return true if the loops are balanced, false otherwise */
 static bool loops_match(const char *code) {
     const char *open_p = strchr(code, '[');
     const char *close_p = strchr(code, ']');
@@ -99,7 +99,7 @@ static bool loops_match(const char *code) {
     return (find_loop_end(open_p) != NULL);
 }
 
-/* remove redundant instructions like `<>` */
+/* remove redundant instruction sequences like `<>` */
 static void strip_dead(sized_buf *ir) {
     /* code constructs that do nothing - either 2 adjacent instructions that
      * cancel each other out, or 256 consecutive `+` or `-` instructions that
@@ -162,7 +162,7 @@ static void strip_dead(sized_buf *ir) {
     ir->sz = strlen(str) + 1;
 }
 
-/* condense a sequence of identical instructions into IR operation. */
+/* condense a sequence of identical instructions into an IR operation. */
 static size_t condense(char instr, uint64_t consec_ct, char* dest) {
     char opcode;
 #if SIZE_MAX < UINT64_MAX
@@ -224,22 +224,21 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
     return (size_t)sprintf(dest, "%c%" PRIx64, opcode, consec_ct);
 }
 
-/* Replace certain instruction sequences with alternative instructions that
- * can be compiled to fewer machine instructions with the same effect.
- *
- * Should be done on code that was already optimized.
+/* Substitute instructions
  *
  * SUBSTITUTIONS:
  *
- * >*N: }N
- * <*N: {N
- * +*N: #N   | chosen as a "double stroked" version of the
- * -*N: =N   | symbol, not for mathematical meaning.
+ * N consecutive `>` instructions are replaced with `}N`.
+ * N consecutive `<` instructions are replaced with `{N`.
+ * N consecutive `+` instructions are replaced with `#N`.
+ * N consecutive `-` instructions are replaced with `=N`.
  *
- * single +, -, <, and > instructions are left as is.
+ * single `+`, `-`, `<`, and `>` instructions are left as is.
  *
- * [+] or [-] | @ | both of these set the cell to 0. */
-
+ * `[+]` and `[-]` both get replaced with `@`.
+ *
+ * all `,` and `.` instructions are left unchanged, as are any `[` or `]`
+ * instructions not part of the two sequences that are replaced with `@`. */
 static void instr_merge(sized_buf *ir) {
     char *str = ir->buf;
     /* used to check what's between [ and ] if they're 2 apart */
