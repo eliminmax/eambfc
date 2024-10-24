@@ -74,7 +74,7 @@ codespell --skip=.git
 # run shellcheck and checkbashisms on all shell files
 find . -name '*.sh' -type f \
     -exec shellcheck {} +\
-    -exec checkbashisms {} +
+    -exec checkbashisms -f {} +
 
 # ensure licensing information is structured in a manner that complies with the
 # REUSE 3.2 specification
