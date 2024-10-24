@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * This defines functions to convert 64-bit ELF structs into LSB char arrays. */
+ * This defines functions to convert 64-bit ELF structs into char arrays. */
 
 /* C99 */
 #include <stddef.h> /* size_t */
@@ -10,7 +10,7 @@
 #include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr */
 #include "types.h" /* uint*_t, int*_t */
 
-/* serialize a 16-bit value pointed to by v16 into 2 bytes in dest, in LSB order
+/* serialize a 16-bit value in u16 into 2 bytes in dest, in LSB order
  * return value is the number of bytes written. */
 size_t serialize16le(uint16_t u16, void *dest) {
     size_t size = 0;
@@ -22,6 +22,8 @@ size_t serialize16le(uint16_t u16, void *dest) {
     return size;
 }
 
+/* serialize a 16-bit value in u16 into 2 bytes in dest, in MSB order
+ * return value is the number of bytes written. */
 size_t serialize16be(uint32_t u16, void *dest) {
     size_t size = 0;
     char *p = dest;
@@ -32,31 +34,39 @@ size_t serialize16be(uint32_t u16, void *dest) {
     return size;
 }
 
+/* serialize a 32-bit value in u32 into 4 bytes in dest, in LSB order
+ * return value is the number of bytes written. */
 size_t serialize32le(uint32_t u32, void *dest) {
     size_t size = serialize16le(u32, dest);
     size += serialize16le(u32 >> 16, (char *)dest + size);
     return size;
 }
 
+/* serialize a 32-bit value in u32 into 4 bytes in dest, in MSB order
+ * return value is the number of bytes written. */
 size_t serialize32be(uint32_t u32, void *dest) {
     size_t size = serialize16be(u32 >> 16, dest);
     size += serialize16le(u32, (char *)dest + size);
     return size;
 }
 
+/* serialize a 64-bit value in u64 into 8 bytes in dest, in LSB order
+ * return value is the number of bytes written. */
 size_t serialize64le(uint64_t u64, char *dest) {
     size_t size = serialize32le(u64, dest);
     size += serialize32le(u64 >> 32, (char *)dest + size);
     return size;
 }
 
+/* serialize a 64-bit value in u64 into 8 bytes in dest, in MSB order
+ * return value is the number of bytes written. */
 size_t serialize64be(uint64_t u64, char *dest) {
     size_t size = serialize32be(u64 >> 32, dest);
     size += serialize32be(u64, (char *)dest + size);
     return size;
 }
 
-
+/* serialize a 64-bit Ehdr into a byte sequence, in LSB order */
 size_t serialize_ehdr64_le(Elf64_Ehdr* ehdr, void* dest) {
     size_t i;
     char *p = dest;
@@ -80,6 +90,7 @@ size_t serialize_ehdr64_le(Elf64_Ehdr* ehdr, void* dest) {
     return i;
 }
 
+/* serialize a 64-bit Ehdr into a byte sequence, in MSB order */
 size_t serialize_ehdr64_be(Elf64_Ehdr* ehdr, void* dest) {
     size_t i;
     char *p = dest;
@@ -103,6 +114,7 @@ size_t serialize_ehdr64_be(Elf64_Ehdr* ehdr, void* dest) {
     return i;
 }
 
+/* serialize a 64-bit Phdr into a byte sequence, in LSB order */
 size_t serialize_phdr64_le(Elf64_Phdr* phdr, void* dest) {
     size_t i = 0;
     char *p = dest;
@@ -117,6 +129,7 @@ size_t serialize_phdr64_le(Elf64_Phdr* phdr, void* dest) {
     return i;
 }
 
+/* serialize a 64-bit Phdr into a byte sequence, in MSB order */
 size_t serialize_phdr64_be(Elf64_Phdr* phdr, void* dest) {
     size_t i = 0;
     char *p = dest;
