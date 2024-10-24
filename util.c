@@ -37,7 +37,8 @@ bool write_obj(int fd, const void *buf, size_t ct) {
 bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
     /* if inadequate space is available, allocate more */
     if (dst->sz + bytes_sz > dst->alloc_sz) {
-        dst->alloc_sz += 4096;
+        /* keep adding 4096 to alloc_sz until it's large enough. */
+        while (dst->alloc_sz < dst->sz + bytes_sz) dst->alloc_sz += 4096;
         /* reallocate to new alloc_sz */
         void* new_buf = realloc(dst->buf, dst->alloc_sz);
         if (new_buf == NULL) {
