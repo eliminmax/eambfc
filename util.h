@@ -6,12 +6,16 @@
 #ifndef EAMBFC_UTIL_H
 #define EAMBFC_UTIL_H 1
 #include "types.h" /* off_t, size_t, sized_buf */
-/* passes arguments to write, and checks if bytes written is equal to sz.
- * if it is, returns true. otherwise, outputs a FAILED_WRITE error and
- * returns false. See write.3POSIX for more information. */
+/* Passes arguments to write, and checks if bytes written is equal to ct.
+ * If it is, returns true. otherwise, outputs a FAILED_WRITE error and
+ * returns false. If ct is more than SSIZE_MAX, it will print an error and
+ * return false immediately, as it's too big to validate.
+ *
+ * See write.3POSIX for more information on arguments. */
 bool write_obj(int fd, const void *buf, size_t ct);
 
-/* appends bytes to dst, handling reallocs and alloc failures as needed */
+/* Appends bytes to dst, handling reallocs as needed.
+ * If reallocation fails, will free dst->buf then set dst to {0, 0, NULL} */
 bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz);
 
 /* Reads the contents of fd into sb. If a read error occurs, frees what's
