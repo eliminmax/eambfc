@@ -301,7 +301,7 @@ static inline bool bf_jump_open(
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
 static inline bool bf_jump_close(
-    sized_buf *obj_code, bool *alloc_valve, const arch_inter *inter
+    sized_buf *obj_code, const arch_inter *inter
 ) {
     off_t open_addr;
     int32_t distance;
@@ -374,7 +374,7 @@ static bool comp_instr(
         return bf_io(obj_code, STDIN_FILENO, inter->SC_NUMS->read, inter);
       /* `[` and `]` do their own error handling. */
       case '[': return bf_jump_open(obj_code, alloc_valve, inter);
-      case ']': return bf_jump_close(obj_code, alloc_valve, inter);
+      case ']': return bf_jump_close(obj_code, inter);
       case '\n':
         /* add 1 to the line number and reset the column. */
         _line++;
