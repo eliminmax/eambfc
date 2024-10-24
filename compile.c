@@ -49,12 +49,6 @@
  * boundary. */
 #define START_PADDR (((((EHDR_SIZE + PHTB_SIZE)) & ~ 0xff) + 0x100))
 
-/* the current size of the file
- * - if called mid-compilation, it will be the size as of the most
- *   recently-compiled machine code instruction.
- * - if called at the end, it will be the final file size. */
-#define CURRENT_SIZE(sz) (START_PADDR + sz)
-
 /* number of padding bytes between the end of the Program Header Table and the
  * beginning of the machine code. */
 #define PAD_SZ (START_PADDR - (PHTB_SIZE + EHDR_SIZE))
@@ -190,11 +184,11 @@ static inline bool write_phtb(
     phdr_table[1].p_paddr = 0;
     /* Size within the file on disk - the size of the whole file, as this
      * segment contains the whole thing. */
-    phdr_table[1].p_filesz = CURRENT_SIZE(code_sz);
+    phdr_table[1].p_filesz = START_PADDR + code_sz;
     /* size within memory - must be at least p_filesz.
      * In this case, it's the size of the whole file, as the whole file is
      * loaded into this segment */
-    phdr_table[1].p_memsz = CURRENT_SIZE(code_sz);
+    phdr_table[1].p_memsz = START_PADDR + code_sz;
     /* supposed to be a power of 2, went with 2^0 */
     phdr_table[1].p_align = 1;
 
