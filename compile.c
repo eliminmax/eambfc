@@ -321,22 +321,19 @@ static inline bool bf_jump_close(
     open_addr = jump_stack.locations[--jump_stack.index].dst_loc;
     distance = obj_code->sz - open_addr;
 
-    /* create a second buffer for the `[` instruction, then copy it into the
-     * actual obj_code buffer, replacing the padding NOP instructions */
-    sized_buf tmp_buf = {0, 4096, malloc(4096)};
-    if (tmp_buf.buf == NULL) {
-        *alloc_valve = false;
-        return false;
-    }
+    /* This is messy, but cuts down the number of allocations massively.
+     * Because the NOP padding added earlier is the same size as the jump point,
+     * if it made it this far, then enough space is allocated. By reporting the
+     * allocated size accurately, but underreporting the used size as being the
+     * index of the open address, the NOP padding will be replaced with the
+     * conditional jump instruction without any risk of unnecessary reallocation
+     * or any temporary buffer, sized or not. */
+
+    sized_buf tmp_buf = {open_addr, obj_code->alloc_sz, obj_code->buf};
 
     if (!inter->FUNCS->jump_zero(inter->REGS->bf_ptr, distance, &tmp_buf)) {
-        free(tmp_buf.buf);
         return false;
     }
-
-    char* start_addr = obj_code->buf;
-    memcpy(start_addr + open_addr, tmp_buf.buf, tmp_buf.sz);
-    free(tmp_buf.buf);
 
     /* jumps to right after the `[` instruction, to skip a redundant check */
     return inter->FUNCS->jump_not_zero(
