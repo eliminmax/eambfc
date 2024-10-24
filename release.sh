@@ -21,6 +21,7 @@
 # * sed
 # * shellcheck
 # * tar
+# * valgrind
 # * xz-utils
 #
 # Additionally, the main Makefile, test Makefile, and scripts they call use
@@ -34,7 +35,7 @@
 # libubsan1
 # libasan6
 # tcc
-# qemu-user-binfmt | qemu-user-static
+# qemu-user-static (backport version, as stable segfaults sometimes for s390x)
 #
 # Lastly, a few tools not packaged for Debian are required - here's a list, with
 # URLS and info on how I installed them.
@@ -115,6 +116,11 @@ tar --strip-components=1 -xf "eambfc-$version-src.tar"
 # multibuild.sh fails if any compilers are skipped and env var is non-empty
 NO_SKIP_MULTIBUILD=yep make CC=gcc all_tests
 
+# generate a wrapper script to run test suite under valgrind's watchful eye.
+# shellcheck disable=SC2016 # this shouldn't be expanded here
+printf > valgrind-eambfc.sh '#!/bin/sh
+exec valgrind "$(dirname "$(realpath "$0")")"/eambfc "$@"\n'
+chmod +x valgrind-eambfc.sh
 
 test_for_arch() {
     # run test suite with and without EAMBFC optimization mode with ubsan
@@ -122,11 +128,15 @@ test_for_arch() {
     make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-kOa$1" clean test
     SKIP_DEAD_CODE=1 \
         make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-ka$1" clean test
+    # do the same with the valgrind wrapper script
+    make EAMBFC=../valgrind-eambfc.sh EAMBFC_ARGS="-kOa$1" clean test
+    SKIP_DEAD_CODE=1 \
+        make EAMBFC=../valgrind-eambfc.sh EAMBFC_ARGS="-ka$1" clean test
 }
 
 # ensure strict and ubsan builds work at all gcc optimization levels
 for o_lvl in 0 1 2 3 s fast g z; do
-    make -s CFLAGS="-O$o_lvl" clean ubsan strict;
+    make -s CC=gcc CFLAGS="-O$o_lvl" clean ubsan strict eambfc;
     cd tests
     # __BACKENDS__
     test_for_arch x86_64
