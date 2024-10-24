@@ -24,7 +24,7 @@
  * It does not verify that in_fd and out_fd are valid file descriptors,
  * nor that they are open properly.
  *
- * if it runs into any problems, it prints an appropriate error message.
+ * If it runs into any problems, it prints an appropriate error message.
  * It will try to continue after hitting certain errors, so that the resulting
  * binary can still be examined and debugged. If that is not needed, the output
  * file can be deleted, as it is in main.c if bf_compile returns false.
