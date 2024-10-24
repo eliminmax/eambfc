@@ -184,7 +184,7 @@ static void strip_dead(sized_buf *ir) {
 static size_t condense(char instr, uint64_t consec_ct, char* dest) {
     char opcode;
 #if SIZE_MAX < UINT64_MAX
-    if (consec_t > SIZE_MAX) {
+    if (consec_ct > SIZE_MAX) {
         instr_err(
             "TOO_MANY_INSTRUCTIONS",
             "More than SIZE_MAX consecutive identical instructions. Somehow.",
