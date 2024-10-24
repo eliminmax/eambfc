@@ -10,17 +10,21 @@
 #include "types.h" /* sized_buf */
 
 /* Replaces the content of the buffer with a null-terminated string containing
- * an internal intermediate representation of the code.
+ * an internal intermediate representation of the code, and dead loops are
+ * removed, as are sequences of instructions that cancel out, such as `<>`.
  *
  * SUBSTITUTIONS:
  *
- * >*N: }N
- * <*N: {N
- * +*N: #N   | chosen as a "double stroked" version of the
- * -*N: =N   | symbol, not for mathematical meaning.
+ * N consecutive `>` instructions are replaced with `}N`.
+ * N consecutive `<` instructions are replaced with `{N`.
+ * N consecutive `+` instructions are replaced with `#N`.
+ * N consecutive `-` instructions are replaced with `=N`.
  *
- * single +, -, <, and > instructions are left as is.
+ * single `+`, `-`, `<`, and `>` instructions are left as is.
  *
- * [+] and [-] both get replaced with @ */
+ * `[+]` and `[-]` both get replaced with `@`.
+ *
+ * all `,` and `.` instructions are left unchanged, as are any `[` or `]`
+ * instructions not part of the two sequences that are replaced with `@`. */
 void to_ir(sized_buf *src);
 #endif /* EAMBFC_OPTIMIZE_H */
