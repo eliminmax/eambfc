@@ -13,7 +13,7 @@
 /* internal */
 #include "err.h" /* basic_err, instr_err */
 #include "types.h" /* bool, uint, UINT64_MAX, uint*_t, INT64_MAX, sized_buf */
-#include "util.h" /* append_obj */
+#include "util.h" /* append_obj, read_to_sized_buf */
 
 /* return a pointer to a string containing just the brainfuck characters. */
 static void filter_non_bf(sized_buf *code) {

@@ -18,7 +18,7 @@
 #include "optimize.h" /* to_ir */
 #include "serialize.h" /* serialize_*hdr64_[bl]e */
 #include "types.h" /* bool, int*_t, uint*_t, SCNx64, sized_buf */
-#include "util.h" /* write_obj */
+#include "util.h" /* read_to_sized_buf, write_obj */
 
 /* virtual memory address of the tape - cannot overlap with the machine code.
  * 0 is invalid as it's the null address, so this is an arbitrarily-chosen
