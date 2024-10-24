@@ -47,7 +47,7 @@
 /* physical address of the starting instruction
  * use the same technique as LOAD_VADDR to ensure that it is at a 256-byte
  * boundary. */
-#define START_PADDR (((((EHDR_SIZE + PHTB_SIZE)) & ~ 0xff) + 0x100))
+#define START_PADDR (((EHDR_SIZE + PHTB_SIZE) & ~ 0xff) + 0x100)
 
 /* number of padding bytes between the end of the Program Header Table and the
  * beginning of the machine code. */
