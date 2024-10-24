@@ -501,12 +501,12 @@ bool bf_compile(
     /* compile the actual source code to object code */
     bool alloc_valve = true; /* if set to false, an allocation failed. */
     if (optimize) {
-        char *ir = to_ir(&src_code);
-        if (ir == NULL) {
+        to_ir(&src_code);
+        if (src_code.buf == NULL) {
             free(obj_code.buf);
             return false;
         }
-        char *p = ir;
+        char *p = src_code.buf;
         int skip_ct;
         while (*p) {
             ret &= comp_ir_instr(p++, &obj_code, &skip_ct, &alloc_valve, inter);

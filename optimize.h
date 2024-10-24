@@ -9,9 +9,8 @@
 /* internal */
 #include "types.h" /* sized_buf */
 
-/* Reads the content of the buffer, and returns a string containing optimized
- * internal intermediate representation of the code.
- * Calling function is responsible for `free`ing the returned string.
+/* Replaces the content of the buffer with a null-terminated string containing
+ * an internal intermediate representation of the code.
  *
  * SUBSTITUTIONS:
  *
@@ -22,8 +21,6 @@
  *
  * single +, -, <, and > instructions are left as is.
  *
- * [+] and [-] both get replaced with @
- *
- * If it fails to allocate space for the string, it returns NULL. */
-char *to_ir(sized_buf *src);
+ * [+] and [-] both get replaced with @ */
+void to_ir(sized_buf *src);
 #endif /* EAMBFC_OPTIMIZE_H */

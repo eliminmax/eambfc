@@ -366,16 +366,25 @@ int main(int argc, char *argv[]) {
  * internal intermediate representation of that file's code.
  * fd must be open for reading already, no check is performed.
  * Calling function is responsible for `free`ing the returned string. */
-char *to_ir(sized_buf *src) {
+void to_ir(sized_buf *src) {
     filter_non_bf(src);
-    if (src->buf == NULL) return NULL;
+    if (src->buf == NULL) {
+        free(src->buf);
+        src->buf = NULL;
+        return;
+    }
     if (!loops_match(src->buf)) {
         free(src->buf);
-        return NULL;
+        src->buf = NULL;
+        return;
     }
     strip_dead(src);
-    if (src->buf == NULL) return NULL;
+    if (src->buf == NULL) {
+        free(src->buf);
+        src->buf = NULL;
+        return;
+    }
     instr_merge(src);
-    return src->buf;
+    src->sz = strlen(src->buf) + 1;
 }
 #endif /* OPTIMIZE_STANDALONE */
