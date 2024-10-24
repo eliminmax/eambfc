@@ -99,7 +99,6 @@ static bool loops_match(const char *code) {
     return (find_loop_end(open_p) != NULL);
 }
 
-#define SIMPLE_PATTERN_NUM 6
 /* remove redundant instructions like `<>` */
 static void strip_dead(sized_buf *ir) {
     /* code constructs that do nothing - either 2 adjacent instructions that
@@ -137,7 +136,7 @@ static void strip_dead(sized_buf *ir) {
             memmove(str, loop_end, strlen(loop_end) + 1);
         }
         /* next, remove any matches for simple_patterns[*] */
-        for (uint8_t i = 0; i < SIMPLE_PATTERN_NUM; i++) {
+        for (uint8_t i = 0; i < 6 /* there are 6 patterns */; i++) {
             while (((match_start = strstr(str, simple_patterns[i])) != NULL)) {
                 matched = true;
                 memmove(
