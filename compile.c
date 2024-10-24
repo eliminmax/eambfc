@@ -392,30 +392,8 @@ static bool comp_instr(
 /* similar to the above COMPILE_WITH, but with an extra parameter passed to the
  * function, so that can't be reused. */
 #define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, ct, obj_code)
-/* compile a condensed instruction sequence */
-static inline bool comp_ir_condensed_instr(
-    char *p,
-    sized_buf *obj_code,
-    int *skip_p,
-    const arch_inter *inter
-) {
-    uint64_t ct;
-    if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_p) != 1) {
-        basic_err("IR_FAILED_SCAN", "Failed to get count for EAMBFC-IR op.");
-        return false;
-    } else {
-        switch (*p) {
-          case '#': return IR_COMPILE_WITH(inter->FUNCS->add_byte);
-          case '=': return IR_COMPILE_WITH(inter->FUNCS->sub_byte);
-          case '}': return IR_COMPILE_WITH(inter->FUNCS->add_reg);
-          case '{': return IR_COMPILE_WITH(inter->FUNCS->sub_reg);
-          default:
-            basic_err("INVALID_IR", "Invalid IR Opcode");
-            return false;
-        }
-    }
-}
 
+/* Compile an ir instruction */
 static inline bool comp_ir_instr(
     char *p,
     sized_buf *obj_code,
@@ -423,8 +401,10 @@ static inline bool comp_ir_instr(
     bool *alloc_valve,
     const arch_inter *inter
 ) {
+    uint64_t ct;
     *skip_ct_p = 0;
     switch(*p) {
+      /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
       case '+':
       case '-':
       case '<':
@@ -434,10 +414,27 @@ static inline bool comp_ir_instr(
       case '[':
       case ']':
         return comp_instr(*p, obj_code, alloc_valve, inter);
+        /* if it's @, then zero the byte pointed to by bf_ptr */
       case '@':
         return inter->FUNCS->zero_byte(inter->REGS->bf_ptr, obj_code);
       default:
-        return comp_ir_condensed_instr(p, obj_code, skip_ct_p, inter);
+        /* if not one of the standalone instructions, parse out the number of
+         * consecutive instructions, and compile it with the appropriate
+         * function. */
+        if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_ct_p) != 1) {
+            basic_err("IR_FAILED_SCAN", "Failed to get count for EAMBFC-IR op.");
+            return false;
+        } else {
+            switch (*p) {
+              case '#': return IR_COMPILE_WITH(inter->FUNCS->add_byte);
+              case '=': return IR_COMPILE_WITH(inter->FUNCS->sub_byte);
+              case '}': return IR_COMPILE_WITH(inter->FUNCS->add_reg);
+              case '{': return IR_COMPILE_WITH(inter->FUNCS->sub_reg);
+              default:
+                basic_err("INVALID_IR", "Invalid IR Opcode");
+                return false;
+            }
+        }
     }
 }
 
@@ -457,29 +454,6 @@ static inline bool comp_ir(
         }
         p += skip_ct;
     }
-    return ret;
-}
-
-static bool finalize(
-    int fd, sized_buf *obj_code, uint64_t tb, const arch_inter *inter
-) {
-    /* write code to perform the exit(0) syscall */
-    /* set system call register to exit system call number */
-    bool ret = inter->FUNCS->set_reg(
-        inter->REGS->sc_num,
-        inter->SC_NUMS->exit,
-        obj_code
-    );
-    /* set system call register to the desired exit code (0) */
-    ret &= inter->FUNCS->set_reg(inter->REGS->arg1, 0, obj_code);
-    /* perform a system call */
-    ret &= inter->FUNCS->syscall(obj_code);
-    ret &= write_ehdr(fd, obj_code->sz, inter);
-    ret &= write_phtb(fd, obj_code->sz, tb, inter);
-
-    char padding[PAD_SZ] = {0};
-    ret &= write_obj(fd, padding, PAD_SZ);
-    ret &= write_obj(fd, obj_code->buf, obj_code->sz);
     return ret;
 }
 
@@ -540,7 +514,6 @@ bool bf_compile(
         TAPE_ADDRESS,
         &obj_code
     );
-
     if (optimize) {
         char *ir = to_ir(&src_code);
         if (ir == NULL) {
@@ -562,9 +535,26 @@ bool bf_compile(
         }
     }
 
-    /* now, obj_code size is known, so we can write the headers
-     * the appropriate error message(s) are already appended */
-    if (!finalize(out_fd, &obj_code, tape_blocks, inter)) ret = false;
+    /* write code to perform the exit(0) syscall */
+    /* set system call register to exit system call number */
+    ret &= inter->FUNCS->set_reg(
+            inter->REGS->sc_num,
+            inter->SC_NUMS->exit,
+            &obj_code
+    );
+    /* set system call register to the desired exit code (0) */
+    ret &= inter->FUNCS->set_reg(inter->REGS->arg1, 0, &obj_code);
+    /* perform a system call */
+    ret &= inter->FUNCS->syscall(&obj_code);
+
+    /* now, obj_code size is known, so we can write the headers and padding */
+    ret &= write_ehdr(out_fd, obj_code.sz, inter);
+    ret &= write_phtb(out_fd, obj_code.sz, tape_blocks, inter);
+    char padding[PAD_SZ] = {0};
+    ret &= write_obj(out_fd, padding, PAD_SZ);
+    /* finally, write the code itself. */
+    ret &= write_obj(out_fd, obj_code.buf, obj_code.sz);
+
     /* check if any unmatched loop openings were left over. */
     if (jump_stack.index-- > 0) {
         position_err(
