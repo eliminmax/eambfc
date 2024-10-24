@@ -14,7 +14,7 @@
 #include "err.h" /* basic_err, alloc_err */
 #include "types.h" /* ssize_t, size_t, off_t */
 
-/* Wrapper arround write.3POSIX that returns true if all bytes were written, and
+/* Wrapper around write.3POSIX that returns true if all bytes were written, and
  * prints an error and returns false otherwise or if ct is too large to
  * validate. */
 bool write_obj(int fd, const void *buf, size_t ct) {

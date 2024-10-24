@@ -321,7 +321,7 @@ static bool dec_byte(uint8_t reg, sized_buf *dst_buf) {
     return inc_dec_byte(reg, dst_buf, &dec_reg);
 }
 
-/* similar to add_sub_reg, but operating on an auxiliary regiser, after loading
+/* similar to add_sub_reg, but operating on an auxiliary register, after loading
  * from byte and before restoring to that byte, much like inc_dec_byte */
 static bool add_sub_byte(
     uint8_t reg, int8_t imm8, arith_op op, sized_buf *dst_buf
