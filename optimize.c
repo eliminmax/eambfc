@@ -163,23 +163,6 @@ static void strip_dead(sized_buf *ir) {
     ir->sz = strlen(str) + 1;
 }
 
-
-/* Replace certain instruction sequences with alternative instructions that
- * can be compiled to fewer machine instructions with the same effect.
- *
- * Should be done on code that was already optimized.
- *
- * SUBSTITUTIONS:
- *
- * >*N: }N
- * <*N: {N
- * +*N: #N   | chosen as a "double stroked" version of the
- * -*N: =N   | symbol, not for mathematical meaning.
- *
- * single +, -, <, and > instructions are left as is.
- *
- * [+] or [-] | @ | both of these set the cell to 0. */
-
 /* condense a sequence of identical instructions into IR operation. */
 static size_t condense(char instr, uint64_t consec_ct, char* dest) {
     char opcode;
@@ -241,6 +224,22 @@ static size_t condense(char instr, uint64_t consec_ct, char* dest) {
       }
     return (size_t)sprintf(dest, "%c%" PRIx64, opcode, consec_ct);
 }
+
+/* Replace certain instruction sequences with alternative instructions that
+ * can be compiled to fewer machine instructions with the same effect.
+ *
+ * Should be done on code that was already optimized.
+ *
+ * SUBSTITUTIONS:
+ *
+ * >*N: }N
+ * <*N: {N
+ * +*N: #N   | chosen as a "double stroked" version of the
+ * -*N: =N   | symbol, not for mathematical meaning.
+ *
+ * single +, -, <, and > instructions are left as is.
+ *
+ * [+] or [-] | @ | both of these set the cell to 0. */
 
 static void instr_merge(sized_buf *ir) {
     char *str = ir->buf;
