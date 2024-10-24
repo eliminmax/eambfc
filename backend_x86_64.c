@@ -14,6 +14,10 @@
 #include "types.h" /* uint*_t, int*_t, bool, size_t, off_t */
 #include "util.h" /* append_obj */
 
+/* If there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
+ * functions, the common lines dealing with writing machine code should
+ * be moved into a separate function. */
+
 /* in eambfc, `[` and `]` are both compiled to TEST (3 bytes), followed by a Jcc
  * instruction (6 bytes). When encountering a `[` instruction, fill this many
  * bytes with NOP instructins to leave room for them. */
@@ -22,9 +26,6 @@
 /* most common values for opcodes in add/sub instructions */
 typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
 
-/* if there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
- * functions, the common lines dealing with writing machine code should
- * be moved into a separate function. */
 /* TEST byte [reg], 0xff; Jcc|tttn offset */
 static bool test_jcc(
     char tttn, uint8_t reg, int32_t offset, sized_buf *dst_buf

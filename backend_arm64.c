@@ -216,11 +216,15 @@ static bool jump_zero(uint8_t reg, int64_t offset, sized_buf *dst_buf) {
 static bool add_sub_imm(
     uint8_t reg, uint64_t imm, bool shift, arith_op op, sized_buf *dst_buf
 ) {
+    /* The immediate can be a 12-bit immediate or a 24-bit immediate with the
+     * lower 12 bits set to zero, in which case shift should be set to true. */
     if ((shift && (imm & ~0xfff000) != 0) || (!shift && (imm & ~0xfff) != 0)) {
         basic_err("IMMEDIATE_TOO_LARGE", "value is invalid for shift level.");
         return false;
     }
+    /* if shift is set to true, imm needs to be shifted back by 12 bits */
     uint16_t imm_bits = shift ? (imm >> 12) : imm;
+    /* (ADD|SUB) x.reg, x.reg, imm{, lsl12} */
     uint8_t instr_bytes[4] = {
         reg | (reg << 5),
         (reg >> 3) | ((imm_bits << 2) & 0xff),
@@ -233,6 +237,14 @@ static bool add_sub_imm(
 static bool add_sub(
     uint8_t reg, arith_op op, uint64_t imm, sized_buf *dst_buf
 ) {
+    /* If the immediate fits within 12 bits, it's a far simpler process - simply
+     * ADD or SUB the immediate. If it fits within 24 bits, use an ADD or SUB,
+     * and shift the higher 12 of the 24 bits. If the 12 lower bits are
+     * non-zero, then also ADD or SUB them afterwards.
+     *
+     * If the immediate does not fit within the lower 24 bits, then first set an
+     * auxiliary register to the immediate, then ADD or SUB that, assuming that
+     * it still fits within the 64-bit signed limit. */
     if (imm < UINT64_C(0x1000)) {
         return add_sub_imm(reg, imm, false, op, dst_buf);
     } else if (imm < UINT64_C(0x1000000)) {
@@ -264,9 +276,10 @@ static bool add_sub(
     );
     return false;
 }
-
+/* add_reg, sub_reg, inc_reg, and dec_reg are all simple wrappers around
+ * add_sub. */
 static bool add_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
-    return add_sub(reg,  A64_OP_ADD, imm, dst_buf);
+    return add_sub(reg, A64_OP_ADD, imm, dst_buf);
 }
 
 static bool sub_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
@@ -281,11 +294,14 @@ static bool dec_reg(uint8_t reg, sized_buf *dst_buf) {
     return add_sub(reg, A64_OP_SUB, 1, dst_buf);
 }
 
+/* to increment or decrement a byte, first load it into an auxiliary register,
+ * then call an inner function (either inc_reg or dec_reg) on that register,
+ * and finally, store the least significant byte of the register into that
+ * memory address. */
 static bool inc_dec_byte(
     uint8_t reg, sized_buf *dst_buf,
     bool (*inner_fn)(uint8_t reg, sized_buf *dst_buf)
 ) {
-
     uint8_t instr_bytes[4] = {0x00, 0x00, 0x00, 0x00};
     uint8_t aux = aux_reg(reg);
     load_from_byte(reg, aux, instr_bytes);
@@ -295,6 +311,8 @@ static bool inc_dec_byte(
     return append_obj(dst_buf, &instr_bytes, 4);
 }
 
+/* next, some thin wrappers around the inc_dec_byte function that can be used in
+ * the arch_funcs struct */
 static bool inc_byte(uint8_t reg, sized_buf *dst_buf) {
     return inc_dec_byte(reg, dst_buf, &inc_reg);
 }
@@ -303,6 +321,8 @@ static bool dec_byte(uint8_t reg, sized_buf *dst_buf) {
     return inc_dec_byte(reg, dst_buf, &dec_reg);
 }
 
+/* similar to add_sub_reg, but operating on an auxiliary regiser, after loading
+ * from byte and before restoring to that byte, much like inc_dec_byte */
 static bool add_sub_byte(
     uint8_t reg, int8_t imm8, arith_op op, sized_buf *dst_buf
 ) {
@@ -321,6 +341,8 @@ static bool add_sub_byte(
     return append_obj(dst_buf, &instr_bytes, 12);
 }
 
+/* now, the last few thin wrapper functions */
+
 static bool add_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
     return add_sub_byte(reg, imm8, A64_OP_ADD, dst_buf);
 }
@@ -329,6 +351,8 @@ static bool sub_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
     return add_sub_byte(reg, imm8, A64_OP_SUB, dst_buf);
 }
 
+/* a function to zero out a memory address. It sets an auxiliary register to 0,
+ * then stores its least significant byte in the address in reg. */
 static bool zero_byte(uint8_t reg, sized_buf *dst_buf) {
     uint8_t aux = aux_reg(reg);
     if (!set_reg(aux, 0, dst_buf)) return false;
