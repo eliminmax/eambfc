@@ -108,6 +108,7 @@ typedef struct {
 
 /* values used for e_machine (architecture).  */
 #define EM_NONE        0   /* No machine */
+#define EM_S390       22   /* IBM S390 */
 #define EM_X86_64     62   /* AMD x86-64 architecture */
 #define EM_AARCH64   183   /* ARM AARCH64 */
 
