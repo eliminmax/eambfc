@@ -4,8 +4,6 @@
  *
  * This file provides the arch_inter for the x86_64 architecture. */
 
-/* POSIX */
-#include <unistd.h> /* write */
 /* internal */
 #include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
 #include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */

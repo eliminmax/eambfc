@@ -6,8 +6,6 @@
  * Unlike the x86_64 backend, this is based on the Rust implementation, rather
  * than the other way around. */
 
-/* POSIX */
-#include <unistd.h> /* write */
 /* internal */
 #include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
 #include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
