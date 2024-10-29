@@ -162,7 +162,7 @@ static bool nop_loop_open(sized_buf *dst_buf) {
         0x1f, 0x20, 0x03, 0xd5, /* NOP */
         0x1f, 0x20, 0x03, 0xd5 /* NOP */
     };
-    return append_obj(dst_buf, instr_bytes, 12);
+    return append_obj(dst_buf, &instr_bytes, 12);
 }
 
 /* LDRB w.aux, x.reg; TST w.aux, 0xff; B.cond offset */
