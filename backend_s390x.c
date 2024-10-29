@@ -123,7 +123,11 @@ static const arch_registers REGS = {
     2 /* arg1 */,
     3 /* arg2 */,
     4 /* arg3 */,
-    7 /* bf_ptr */
+    8 /* bf_ptr */
+    /* NOTE: the s390x-abi specifies that registers r6..r13 and r15 are not to
+     * be clobbered by function calls. The linux kernel uses r6 and r7 for
+     * syscall args, but r8 for "this-and-that", so r8 should be fine to use.
+     * https://www.kernel.org/doc/html/v5.3/s390/debugging390.html */
 };
 
 
