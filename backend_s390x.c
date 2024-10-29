@@ -23,9 +23,16 @@ static bool reg_copy(uint8_t dst, uint8_t src, sized_buf *dst_buf){
     return false;
 }
 
+/* SVC 0 */
 static bool syscall(sized_buf *dst_buf){
-    /* TODO */
-    return false;
+    /* SVC 0  - second byte, if non-zero, is the system call number.
+     * On s390x, if the SC number is less than 256, it it can be passed as the
+     * second byte of the instruction, but taking advantage of that would
+     * require an extra parameter in the arch_inter.syscall prototype, which
+     * would only be useful on this specific architecture. The initial
+     * implementation ofs390x must be complete and working without any change
+     * outside of the designated insertion points. */
+    return append_obj(dst_buf, (uint8_t[]){ 0x0a, 0x00 }, 2);
 }
 
 static bool nop_loop_open(sized_buf *dst_buf){
@@ -106,17 +113,17 @@ static const arch_funcs FUNCS = {
 };
 
 static const arch_sc_nums SC_NUMS = {
-    0 /* TODO read */,
-    0 /* TODO write */,
-    0 /* TODO exit */
+    3 /* read */,
+    4 /* write */,
+    1 /* exit */
 };
 
 static const arch_registers REGS = {
-    0 /* sc_num = TODO */,
-    0 /* arg1 = TODO */,
-    0 /* arg2 = TODO */,
-    0 /* arg3 = TODO */,
-    0 /* bf_ptr = TODO */
+    1 /* sc_num */,
+    2 /* arg1 */,
+    3 /* arg2 */,
+    4 /* arg3 */,
+    7 /* bf_ptr */
 };
 
 
