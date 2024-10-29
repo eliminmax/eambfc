@@ -120,6 +120,32 @@ static bool nop_loop_open(sized_buf *dst_buf){
     return false;
 }
 
+static bool branch_cond(
+    uint8_t reg,
+    int64_t offset,
+    sized_buf *dst_buf
+) {
+    /* jumps are done by Halfwords, not bytes, so must ensure it's valid. */
+    if ((offset % 2) != 0) {
+        basic_err(
+            "INVALID_JUMP_ADDRESS",
+            "offset is an invalid address offset (offset % 2 != 0)"
+        );
+        return false;
+    }
+    /* make sure offset is in range */
+    if ((offset > 0) && (offset >> 17) != 0) ||
+        (offset < 0) && (offset >> 17) != -1)) {
+        basic_err(
+            "JUMP_TOO_LONG",
+            "offset is outside the range of possible 48-bit signed values"
+        );
+        return false;
+    }
+    /* TODO */
+    return false;
+}
+
 static bool jump_zero(uint8_t reg, int64_t offset, sized_buf *dst_buf){
     /* TODO */
     return false;
