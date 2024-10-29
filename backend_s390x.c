@@ -127,7 +127,7 @@ static const arch_registers REGS = {
 };
 
 
-const arch_inter ARM64_INTER = {
+const arch_inter S390X_INTER = {
     &FUNCS,
     &SC_NUMS,
     &REGS,
