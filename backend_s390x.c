@@ -45,7 +45,7 @@ static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf){
     /* There are numerous ways to store immediates in registers for this
      * architecture. This function tries to find a way to load a given immediate
      * in as few machine instructions as possible, using shorter instructions
-     * when available. No promise it actualy is particularly efficient. */
+     * when available. No promise it actually is particularly efficient. */
     if (imm <= INT16_MAX && imm >= INT16_MIN) {
         /* if it fits within a halfword (i.e. 16 bits) use the Load Halfword
          * Immediate instruction, which is in the RI-a format.
