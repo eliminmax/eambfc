@@ -135,4 +135,3 @@ const arch_inter ARM64_INTER = {
     EM_S390,
     ELFDATA2MSB
 };
-
