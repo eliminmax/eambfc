@@ -91,7 +91,7 @@ typedef struct {
 #define EI_DATA       5    /* Data encoding byte index */
 #define ELFDATANONE   0    /* Invalid data encoding */
 #define ELFDATA2LSB   1    /* 2's complement, little endian */
-#define ELFDATA2MSB   1    /* 2's complement, big endian */
+#define ELFDATA2MSB   2    /* 2's complement, big endian */
 
 #define EI_VERSION    6    /* File version byte index */
                            /* Value must be EV_CURRENT */
