@@ -23,14 +23,15 @@
  * 0. Restore the e_machine value to compat/elf.h from GLIBC's elf.h
  * 1. Add a target for that backend to the Makefile
  * 2. Near the top of the Makefile, add it to the BACKENDS variable
- * 3. In config.template.h, define a macro starting with EAMBFC_TARGET_ to act
+ * 3. Add the backend source file to the UNIBUILD_FILES variable in the Makefile
+ * 4. In config.template.h, define a macro starting with EAMBFC_TARGET_ to act
  *    as a feature switch for your backend. To disable by default, set it to 0.
- * 4. At the bottom of this file, add a block which declares your interface if
+ * 5. At the bottom of this file, add a block which declares your interface if
  *    your EAMBFC_TARGET_ macro is set to a non-zero value.
- * 5. Add your backend to the validation block at the start of main.c.
- * 6. Add arguments to select your architecture to the help text and the
+ * 6. Add your backend to the validation block at the start of main.c.
+ * 7. Add arguments to select your architecture to the help text and the
  *    argument parsing logic, both in main.c
- * 7. Add it to the list of architectures to test with ubsan in release.sh
+ * 8. Add it to the list of architectures to test with ubsan in release.sh
  *
  * All of the places that need to be edited have the text __BACKENDS__ in a
  * comment that's right before them, to make it easier to find them, except for
