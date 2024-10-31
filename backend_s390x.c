@@ -314,7 +314,7 @@ static bool branch_cond(
     /* no need to serialize the immediate in the first instruction, as it's
      * already initialized to zero. The offset, on the other hand, still needs
      * to be set. */
-    ret &= serialize32be(offset, &i_bytes[1][2]) == 6 &&
+    ret &= serialize32be((offset >> 1), &i_bytes[1][2]) == 4 &&
         append_obj(dst_buf, &i_bytes, 12);
 
     return ret;
@@ -404,7 +404,7 @@ static bool dec_reg(uint8_t reg, sized_buf *dst_buf) {
 static bool add_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
     uint8_t aux = aux_reg(reg);
     bool ret = load_from_byte(reg, aux, dst_buf);
-    ret &= add_reg(reg, imm8, dst_buf);
+    ret &= add_reg(aux, imm8, dst_buf);
     ret &= store_to_byte(reg, aux, dst_buf);
     return ret;
 }
@@ -412,7 +412,7 @@ static bool add_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
 static bool sub_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
     uint8_t aux = aux_reg(reg);
     bool ret = load_from_byte(reg, aux, dst_buf);
-    ret &= add_reg(reg, -imm8, dst_buf);
+    ret &= add_reg(aux, -imm8, dst_buf);
     ret &= store_to_byte(reg, aux, dst_buf);
     return ret;
 }
