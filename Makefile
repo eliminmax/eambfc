@@ -13,7 +13,7 @@ CC = c99
 POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
 # __BACKENDS__
-BACKENDS = backend_arm64.o backend_x86_64.o
+BACKENDS = backend_arm64.o backend_s390x.o backend_x86_64.o
 
 COMPILE_DEPS = serialize.o $(BACKENDS) optimize.o err.o util.o
 EAMBFC_DEPS = compile.o $(COMPILE_DEPS) main.o
@@ -74,6 +74,7 @@ util.o: util.c
 optimize.o: err.o util.o optimize.c
 # __BACKENDS__
 backend_arm64.o: backend_arm64.c
+backend_s390x.o: backend_s390x.c
 backend_x86_64.o: backend_x86_64.c
 
 # for testing

@@ -33,6 +33,13 @@
 #  endif /* EAMBFC_TARGET_ARM64 == 0 */
 #  define DEFAULT_ARCH_STR "arm64"
 #  define DEFAULT_INTER ARM64_INTER
+#elif EAMBFC_TARGET == EM_S390
+    /* make sure s390x is enabled if set to default target */
+#  if EAMBFC_TARGET_S390X == 0
+#    error EAMBFC_TARGET is EM_S390, but EAMBFC_TARGET_S390X is disabled.
+#  endif /* EAMBFC_TARGET_S390X == 0 */
+#  define DEFAULT_ARCH_STR "s390x"
+#  define DEFAULT_INTER S390X_INTER
 #else
 #  error EAMBFC_TARGET is not recognized.
 #endif /* EAMBFC_TARGET */
@@ -143,6 +150,10 @@ int main(int argc, char* argv[]) {
 #if EAMBFC_TARGET_ARM64
                 "- arm64 (aliases: aarch64)\n"
 #endif /* EAMBFC_TARGET_ARM64 */
+#if EAMBFC_TARGET_S390X
+                "- s390x (aliases: s390, z/architecture)\n"
+#endif /* EAMBFC_TARGET_S390X */
+
                 "\nIf no architecture is specified, it defaults to x86_64.\n",
                 argv[0]
             );
@@ -241,6 +252,12 @@ int main(int argc, char* argv[]) {
             ) {
                 inter = &ARM64_INTER;
 #endif /* EAMBFC_TARGET_ARM64 */
+#if EAMBFC_TARGET_S390X
+            } else if (any_strcmp(
+                optarg, 3, (const char*[]){"s390x", "s390", "z/architecture"}
+            )) {
+                inter = &S390X_INTER;
+#endif /* EAMBFC_TARGET_S390X */
             } else {
                 param_err(
                     "UNKNOWN_ARCH",

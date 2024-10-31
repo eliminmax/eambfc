@@ -13,6 +13,7 @@
 /* for each optional target, set to 0 if you don't want it included in the
  * eambfc binary. */
 #define EAMBFC_TARGET_ARM64 1
+#define EAMBFC_TARGET_S390X 1
 /* The target architecture - should be the same as the ELF e_machine value for
  * that architecture for consistency's sake. */
 #define EAMBFC_TARGET EM_X86_64

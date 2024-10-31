@@ -14,52 +14,185 @@
 #include "types.h" /* uint*_t, int*_t, bool, off_t, size_t, INT*_{MAX, MIN} */
 #include "util.h" /* append_obj */
 
-/* Information about this ISA is primarily from IBM's z/Architecture Reference
- * Summary, 11th Edition, available at the following URL as of 2024-10-29:
- * https://ibm.com/support/pages/sites/default/files/2021-05/SA22-7871-10.pdf
- *
- * The more comprehensive z/Architecture Principles of Operation was used when
- * more detail was needed. As of 2024-10-29, the 14th edition is available at
- * the following URL:
+/* The z/Architecture Principles of Operation comprehensively documents the
+ * z/Architecture ISA, and its 14th edition was the main source for information
+ * about the architecture when writing this backend. As of 2024-10-29, IBM
+ * provides a PDF of that edition at the following URL:
  * https://www.ibm.com/docs/en/module_1678991624569/pdf/SA22-7832-13.pdf
  *
- * Additional information comes from the ELF Application Binary Interface s390x
- * Supplement, Version 1.6.1, which is available from IBM's GitHub:
+ * The z/Architecture Reference Summary provides a selection of the information
+ * from the Principles of Operation in a more concise form, and is a helpful
+ * supplement to it. As of 2024-10-29, IBM provides the 11th edition at the
+ * following URL:
+ * https://ibm.com/support/pages/sites/default/files/2021-05/SA22-7871-10.pdf
+ *
+ * Additional information about the ISA is available in the ELF Application
+ * Binary Interface s390x Supplement, Version 1.6.1. As f 2024-10-29, IBM
+ * provides it at the following URL:
  * https://github.com/IBM/s390x-abi/releases/download/v1.6.1/lzsabi_s390x.pdf
  *
- * Finally, some information is from examining existing s390x binaries with the
- * rasm2 dis/assembler from the Radare2 project - mainly my own implementation
- * of a minimal 'clear' command, made in a hex editor.
+ * Information about the Linux Kernel's use of different registers was obtained
+ * from the "Debugging on Linux for s/390 & z/Architecture" page in the docs for
+ * Linux 5.3.0, available at the following URL:
+ * https://www.kernel.org/doc/html/v5.3/s390/debugging390.html
+ *
+ * Finally, some information was gleaned from examining existing s390x binaries
+ * with the rasm2 assember/disassembler from the Radare2 project - mainly an
+ * implementation of a minimal 'clear' command, made in a hex editor.
  * https://rada.re/n/radare2.html
  * https://github.com/eliminmax/tiny-clear-elf/tree/main/s390x/ */
 
-/* 2 common formats (RI-a and RIL-a) for instructions that use immediates uses
- * 16 bits for the opcode and register, followed by the actual immediate value.
- * The only difference between them is the number of immediate bytes included -
- * RI-a uses a Halfword Immediate, which is 16 bits, while RIL-a uses a 32-bit
- * immediate. The following can be used to initialize an array with the first 16
- * bits set, only needing to serialize the remaining bits as needed. */
-#define ENCODE_OP_REG(op, reg) { (op) >> 4, ((reg) << 4) | ((op) & 0xf) }
+/* ISA Information
+ *
+ * This is explained here, rather than being repeated throughout the comments
+ * throughout this file.
+ *
+ * the z/Architecture ISA has 16 general-purpose registers, r0 to r15. If any
+ * value other than zero is stored in r0, an exception occurs, so it can always
+ * be assumed to contain zero.
+ *
+ * Some instructions take a memory operand, which consists of a 12-bit
+ * displacement 'd', an optional index register 'x', and an optional base
+ * register 'b'. Others take a 20-bit displacement, split into the 12 lower bits
+ * 'dl', and the 8 higher bits 'dh'. In both cases, the values in the index and
+ * base registers are added to the displacement to get a memory address.
+ *
+ * Bits are grouped into 8-bit "bytes", as is almost universal.
+ *
+ * Bytes can be grouped into larger structures, most commonly 2-byte
+ * "halfwords", though 4-byte "words", 8-byte "doublewords", and more exist.
+ * The full list is on page "3-4" of the Principles of Operation book, but what
+ * must be understood is that they must be aligned properly (e.g. half-words
+ * must start on even-numbered bytes).
+ *
+ * Instructions are 1, 2, or 3 halfwords long.
+ *
+ * There are numerous formats for instructions, which are given letter codes,
+ * such as E, I, IE, MII, RI-a, and so on. They are listed in the Reference
+ * Summary, starting on page #1, which is actually the 13th page of the PDF.
+ *
+ * The instruction formats used in eambfc are listed below:
+ *
+ * * I (1 halfword, 8-bit opcode, [byte immediate])
+ *  - bits 0-8: opcode
+ *  - bits 8-16: immediate
+ *
+ * * RI-a (2 halfwords, 12-bit opcode, [register, halfword immediate])
+ *  - bits 0-7: higher 8 bits of opcode
+ *  - bits 8-11: register
+ *  - bits 12-15: lower 4 bits of opcode
+ *  - bits 16-31: immediate
+ *
+ * * RIL-a (3 halfwords, 12-bit opcode, [register, word immediate])
+ *  - bits 0-7: higher 8 bits of opcode
+ *  - bits 8-11: register
+ *  - bits 12-15: lower 4 bits of opcode
+ *  - bits 16-47: immediate
+ *
+ * * RIL-c (3 halfwords, 12-bit opcode, [mask, 32-bit relative immediate])
+ *  - bits 0-7: higher 8 bits of opcode
+ *  - bits 8-11: mask
+ *  - bits 12-15: lower 4 bits of opcode
+ *  - bits 16-47: relative immediate
+ *
+ * * RX-a (2 halfwords, 8-bit opcode, [register, memory])
+ *  - bits 0-7: opcode
+ *  - bits 8-11: register
+ *  - bits 12-15: memory index register
+ *  - bits 16-19: memory base register
+ *  - bits 20-31: memory displacement
+ *
+ * * RX-b (2 halfwords, 8-bit opcode, [mask, memory])
+ *  - bits 0-7: opcode
+ *  - bits 8-11: mask
+ *  - bits 12-15: memory index register
+ *  - bits 16-19: memory base register
+ *  - bits 20-31: memory displacement
+ *
+ * * RXY-a (3 halfwords, 16-bit opcode, [register, extended memory])
+ *  - bits 0-7: higher 8 bits of opcode
+ *  - bits 8-11: register
+ *  - bits 12-15: memory index register
+ *  - bits 16-19: memory base register
+ *  - bits 20-31: memory displacement (lower 12 bits)
+ *  - bits 32-39: memory displacement (higher 8 bits)
+ *  - bits 40-47: lower 8 bits of opcode
+ *
+ * * RR (2 halfwords, 8-bit opcode, [register or mask, register])
+ *  - bits 0-7: opcode
+ *  - bits 8-11: first register or mask
+ *  - bits 12-15: second register
+ *
+ * * RRE (2 halfwords, 16-bit opcode, [register, register])
+ *  - bits 0-15: opcode
+ *  - bits 16-23: unassigned (must be set to 0)
+ *  - bits 24-27: first register
+ *  - bits 28-31: second register
+ *
+ * As with other backends, when a machine instruction appears, it has the
+ * corresponding assembly in a comment nearby. Unlike other backends, that
+ * comment is followed by the instruction format in curly braces. */
 
-static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf){
+/* 3 common formats within eambfc (RI-a, RIL-c, and RIL-a) have 12-bit opcodes,
+ * with a 4-bit operand between the higher 8 and lower 4 bits of the opcodes
+ * within the highest 16 bits, followed by an immediate, with the differences
+ * being the operand types and immediate size.
+ * The following macro can initialize an array for any of the three, and the
+ * appropriately-sized serialize{16,32}be funcion can be used for the actual
+ * immediate value after initializing the array. */
+#define ENCODE_RI_OP(op, reg) { (op) >> 4, ((reg) << 4) | ((op) & 0xf) }
+
+/* return a call-clobbered register to use as a temporary auxiliary register */
+static inline uint8_t aux_reg(uint8_t reg) {
+    return (reg == 4) ? UINT8_C(5) : UINT8_C(4);
+}
+
+static bool store_to_byte(uint8_t reg, uint8_t aux, sized_buf *dst_buf) {
+    /* STC aux, 0(reg) {RX-a} */
+    uint8_t i_bytes[4] = {
+        0x42,
+        (aux << 4) | reg,
+        0x00, 0x00 /* base register and displacement are set to 0 */
+    };
+    return append_obj(dst_buf, &i_bytes, 4);
+}
+
+static bool load_from_byte(uint8_t reg, uint8_t aux, sized_buf *dst_buf) {
+    /* LLGC aux, 0(reg) {RXY-a} */
+    uint8_t i_bytes[6] = {
+        0xe3,
+        (aux << 4) | reg,
+        0x00, 0x00, 0x00, /* base register and displacement are set to 0 */
+        0x90
+    };
+    return append_obj(dst_buf, &i_bytes, 6);
+}
+
+/* declared before set_reg as it's used in set_reg, even though it's not first
+ * in the struct. */
+static bool reg_copy(uint8_t dst, uint8_t src, sized_buf *dst_buf) {
+    /* LGR dst, src {RRE} */
+    return append_obj(dst_buf, (uint8_t[]){ 0xb9, 0x04, 0x00, (dst<<4)|src}, 4);
+}
+
+static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
     /* There are numerous ways to store immediates in registers for this
      * architecture. This function tries to find a way to load a given immediate
      * in as few machine instructions as possible, using shorter instructions
      * when available. No promise it actually is particularly efficient. */
-    if (imm <= INT16_MAX && imm >= INT16_MIN) {
-        /* if it fits within a halfword (i.e. 16 bits) use the Load Halfword
-         * Immediate instruction, which is in the RI-a format.
-        /* LGHI r.reg, imm */
-        uint8_t i_bytes[4] = ENCODE_OP_REG(0xa79, reg);
+    if (imm == 0) {
+        /* copy from the zero register to reg */
+        return reg_copy(reg, 0, dst_buf);
+    } else if (imm <= INT16_MAX && imm >= INT16_MIN) {
+        /* if it fits in a halfword, use Load Halfword Immediate (64 <- 16) */
+        /* LGHI r.reg, imm {RI-a} */
+        uint8_t i_bytes[4] = ENCODE_RI_OP(0xa79, reg);
         return serialize16be(imm, &i_bytes[2]) == 2 &&
                 append_obj(dst_buf, &i_bytes, 4);
     } else if (imm <= INT32_MAX && imm >= INT32_MIN) {
-        /* if it fits within a word (i.e. 32 bits) use the Load Immediate
-         * instruction, which is in the RIL-a format, meaning that it is encoded
-         * in the same way as the RI-a format, but with a 32-bit instead of a
-         * 16-bit immediate. */
-        /* LGFI r.reg, imm */
-        uint8_t i_bytes[6] = ENCODE_OP_REG(0xc01, reg);
+        /* if it fits within a word, use Load Immediate (64 <- 32). */
+        /* LGFI r.reg, imm {RIL-a} */
+        uint8_t i_bytes[6] = ENCODE_RI_OP(0xc01, reg);
         return serialize32be(imm, &i_bytes[2]) == 4 &&
                 append_obj(dst_buf, &i_bytes, 6);
     } else {
@@ -68,136 +201,233 @@ static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf){
          * a 32-bit value and call this function recursively to handle the lower
          * 32 bits, then use an "insert immediate" instruction to set the higher
          * bits. */
-        int16_t default = (imm >= 0) ? 0 : -1;
+        int16_t default_val = (imm >= 0) ? INT16_C(0) : INT16_C(-1);
         int32_t upper_imm = imm >> 32;
+
         /* try to set the upper bits no matter what, but if the lower bits
          * failed, still want to return false. */
         bool ret = set_reg(reg, (int32_t)imm, dst_buf);
+        /* check if only one of the two higher quarters need to be explicitly
+         * set, as that enables using shorter instructions. In the terminology
+         * of the architecture, they are the high high and high low quarters of
+         * the register's value. */
         if (upper_imm <= INT16_MAX && upper_imm >= INT16_MIN) {
-            /* Insert Immediate (high low) is in RI-a format, much like LGHI. */
-            /* IIHL reg, upper_imm */
-            uint8_t i_bytes[4] = ENCODE_OP_REG(0xa51, reg);
-            ret &= (serialize16be(upper_imm, &i_bytes[2]) == 2) &&
+            /* sets bits 16-31 of the register to the immediate */
+            /* IIHL reg, upper_imm {RI-a} */
+            uint8_t i_bytes[4] = ENCODE_RI_OP(0xa51, reg);
+            ret &= serialize16be(upper_imm, &i_bytes[2]) == 2 &&
                 append_obj(dst_buf, &i_bytes, 4);
-        } else if ((int16_t)upper_imm == default) {
-            /* in this case, the lower half-word of the upper half don't need
-             * to be explicitly set, so use the Insert Immediate (high high)
-             * instruction, which is also in RI-a format. */
-            /* IIHH reg, upper_imm */
-            uint8_t i_bytes[4] = ENCODE_OP_REG(0xa50, reg);
-            ret &= (serialize16be(upper_imm, &i_bytes[2]) == 2) &&
+        } else if ((int16_t)upper_imm == default_val) {
+            /* sets bits 0-15 of the register to the immediate. */
+            /* IIHH reg, upper_imm {RI-a} */
+            uint8_t i_bytes[4] = ENCODE_RI_OP(0xa50, reg);
+            ret &= serialize16be(upper_imm, &i_bytes[2]) == 2 &&
                 append_obj(dst_buf, &i_bytes, 4);
         } else {
-            /* no shortcuts, just set the upper 32 bits directly with
-             * Insert Immediate (high) */
-            /* IIHF reg, imm */
-            uint8_t i_bytes[6] = ENCODE_OP_REG(0xc09, reg);
-            ret &= (serialize32be(upper_imm, &i_bytes[2]) == 4) &&
+            /* need to set the full upper word, with Insert Immediate (high) */
+            /* IIHF reg, imm {RIL-a} */
+            uint8_t i_bytes[6] = ENCODE_RI_OP(0xc09, reg);
+            ret &= serialize32be(upper_imm, &i_bytes[2]) == 4 &&
                 append_obj(dst_buf, &i_bytes, 6);
         }
         return ret;
     }
 }
 
-static bool reg_copy(uint8_t dst, uint8_t src, sized_buf *dst_buf){
-    /* LGR dst, src */
-    return append_obj(dst_buf, (uint8_t[]){ 0xb9, 0x04, 0x00, (dst<<4)|src}, 4);
-}
-
-static bool syscall(sized_buf *dst_buf){
-    /* SVC 0 - second byte, if non-zero, is the system call number.
-     * On s390x, if the SC number is less than 256, it it can be passed as the
-     * second byte of the instruction, but taking advantage of that would
-     * require refactoring - perhaps an extra parameter in the
+static bool syscall(sized_buf *dst_buf) {
+    /* SVC 0 {I} */
+    /* NOTE: on Linux s390x, if the SC number is less than 256, it it can be
+     * passed as the second byte of the instruction, but taking advantage of
+     * that would require refactoring - perhaps an extra parameter in the
      * arch_inter.syscall prototype, which would only be useful on this specific
      * architecture. The initial implementation of s390x must be complete and
      * working without any change outside of the designated insertion points. */
     return append_obj(dst_buf, (uint8_t[]){ 0x0a, 0x00 }, 2);
 }
 
-static bool nop_loop_open(sized_buf *dst_buf){
-    /* TODO */
-    return false;
-}
+typedef enum {
+    MASK_EQ = 8,
+    MASK_LT = 4,
+    MASK_GT = 2,
+    MASK_NE = MASK_LT | MASK_GT,
+    MASK_NOP = 0
+} comp_mask;
 
 static bool branch_cond(
     uint8_t reg,
     int64_t offset,
+    comp_mask mask,
     sized_buf *dst_buf
 ) {
     /* jumps are done by Halfwords, not bytes, so must ensure it's valid. */
     if ((offset % 2) != 0) {
         basic_err(
             "INVALID_JUMP_ADDRESS",
-            "offset is an invalid address offset (offset % 2 != 0)"
+            "offset is not on a halfword boundry"
         );
         return false;
     }
-    /* make sure offset is in range */
-    if ((offset > 0) && (offset >> 17) != 0) ||
-        (offset < 0) && (offset >> 17) != -1)) {
+    /* make sure offset is in range - the branch instructions take a halfword
+     * offset. */
+    if ((offset > 0 && (offset >> 17) != 0) ||
+        (offset < 0 && (offset >> 17) != -1)) {
         basic_err(
             "JUMP_TOO_LONG",
-            "offset is outside the range of possible 48-bit signed values"
+            "offset is out-of-range for this architecture"
         );
         return false;
     }
-    /* TODO */
-    return false;
+    /* addressing halfwords is possible in compare instructions, but not
+     * addressing individual bytes, so instead load the byte of interest into
+     * an auxiliary register and compare with that, much like the ARM
+     * implementation. */
+    uint8_t aux = aux_reg(reg);
+    /* load the value to compare with into the auxiliary register */
+    bool ret = load_from_byte(reg, aux, dst_buf);
+    /* set condition code according to contents of the auxiliary register, then
+     * conditionally branch if the condition code's corresponding mask bit is
+     * set to one.
+     *
+     * More specifically, if the auxiliary register contains the value 0, then
+     * the condition code will be 0b1000 If it's less than 0, then it will be
+     * 0b0100, and if it's more than zero, it will be 0b0010.
+     * That's according to page "C-2" of the Principles of Operation.
+     *
+     * in pseudocode:
+     * | switch (aux) {
+     * |   case 0: condition_code = 0b1000;
+     * |   case i if i < 0: condition_code = 0b0100;
+     * |   case i if i > 0: condition_code = 0b0010;
+     * | }
+     * |
+     * | if (condition_code & mask) {
+     * |    jump (offset);
+     * | }
+     *
+     * */
+    uint8_t i_bytes[2][6] = {
+        /* CFI aux, 0 {RIL-a} */
+        ENCODE_RI_OP(0xc2d, aux),
+        /* BRCL mask, offset */
+        ENCODE_RI_OP(0xc04, mask)
+    };
+    /* no need to serialize the immediate in the first instruction, as it's
+     * already initialized to zero. The offset, on the other hand, still needs
+     * to be set. */
+    ret &= serialize32be(offset, &i_bytes[1][2]) == 6 &&
+        append_obj(dst_buf, &i_bytes, 12);
+
+    return ret;
 }
 
-static bool jump_zero(uint8_t reg, int64_t offset, sized_buf *dst_buf){
-    /* TODO */
-    return false;
+static bool nop_loop_open(sized_buf *dst_buf) {
+    /* BRANCH ON CONDITION with all operands set to zero is used as a NO-OP.
+     *
+     * As all bytes beyond the first in each instruction are set to zero, only
+     * the first byte is specified for each one.
+     *
+     * The last instruction is only 2 bytes long, but 4 bytes are allocated.
+     * It was that, have 9 instructions rather than 5 instructions to get the
+     * amount of padding, or use much messier code to set it up. */
+    uint8_t i_bytes[5][4] = {
+        /* TIMES 4 BC 0, 0 {RX-b} */
+        { 0x47 },
+        { 0x47 },
+        { 0x47 },
+        { 0x47 },
+        /* BCR 0, 0 {RR} */
+        { 0x07 }
+    };
+    return append_obj(dst_buf, &i_bytes, 18);
 }
 
-static bool jump_not_zero(
-    uint8_t reg, int64_t offset, sized_buf *dst_buf
-);
-
-static bool inc_reg(uint8_t reg, sized_buf *dst_buf){
-    /* TODO */
-    return false;
+static bool jump_zero(uint8_t reg, int64_t offset, sized_buf *dst_buf) {
+    return branch_cond(reg, offset, MASK_EQ, dst_buf);
 }
 
-static bool dec_reg(uint8_t reg, sized_buf *dst_buf){
-    /* TODO */
-    return false;
+static bool jump_not_zero(uint8_t reg, int64_t offset, sized_buf *dst_buf) {
+    return branch_cond(reg, offset, MASK_NE, dst_buf);
 }
 
-static bool inc_byte(uint8_t reg, sized_buf *dst_buf){
-    /* TODO */
-    return false;
+static bool add_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
+
+    if (imm >= INT16_MIN && imm <= INT16_MIN) {
+        /* if imm fits within a halfword, a shorter instruction can be used. */
+        /* AGHI reg, imm {RI-a} */
+        uint8_t i_bytes[4] = ENCODE_RI_OP(0xa7b, reg);
+        return serialize16be(imm, &i_bytes[2]) == 2 &&
+            append_obj(dst_buf, &i_bytes, 4);
+    } else if ((imm >= INT32_MIN || imm < INT32_MAX)) {
+        /* If imm fits within a word, then use a normal add immediate */
+        /* AFGI reg, imm {RIL-a} */
+        uint8_t i_bytes[6] = ENCODE_RI_OP(0xc28, reg);
+        return serialize32be(imm, &i_bytes[2]) == 4 &&
+            append_obj(dst_buf, &i_bytes, 6);
+    } else {
+        bool ret = true;
+        if ((int32_t)imm != 0) {
+            /* if the lower 32 bits are non-zero, call this function recursively
+             * to add to them */
+            ret = add_reg(reg, (int32_t)imm, dst_buf);
+        }
+        /* add the higher 32 bits */
+        /* AIH reg, imm {RIL-a} */
+        uint8_t i_bytes[6] = ENCODE_RI_OP(0xcc8, reg);
+        ret &= serialize32be((imm >> 32), &i_bytes[2]) == 4 &&
+            append_obj(dst_buf, &i_bytes, 6);
+        return ret;
+    }
 }
 
-static bool dec_byte(uint8_t reg, sized_buf *dst_buf){
-    /* TODO */
-    return false;
+static bool sub_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
+    /* there are not equivalent sub instructions to any of the add instructions
+     * used, so just check that "-imm" won't cause problems, then call add_reg
+     * with negative imm. */
+    if (imm <= INT64_MIN) {
+        basic_err(
+            "TOO_MANY_INSTRUCTIONS",
+            "Number of consecutive '<' surpasses 64-bit integer limit!"
+        );
+        return false;
+    }
+    return add_reg(reg, -imm, dst_buf);
 }
 
-static bool add_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf){
-    /* TODO */
-    return false;
+static bool inc_reg(uint8_t reg, sized_buf *dst_buf) {
+    return add_reg(reg, 1, dst_buf);
 }
 
-static bool sub_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf){
-    /* TODO */
-    return false;
+static bool dec_reg(uint8_t reg, sized_buf *dst_buf) {
+    return add_reg(reg, -1, dst_buf);
 }
 
-static bool add_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf){
-    /* TODO */
-    return false;
+static bool add_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
+    uint8_t aux = aux_reg(reg);
+    bool ret = load_from_byte(reg, aux, dst_buf);
+    ret &= add_reg(reg, imm8, dst_buf);
+    ret &= store_to_byte(reg, aux, dst_buf);
+    return ret;
 }
 
-static bool sub_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf){
-    /* TODO */
-    return false;
+static bool sub_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
+    uint8_t aux = aux_reg(reg);
+    bool ret = load_from_byte(reg, aux, dst_buf);
+    ret &= add_reg(reg, -imm8, dst_buf);
+    ret &= store_to_byte(reg, aux, dst_buf);
+    return ret;
 }
 
-static bool zero_byte(uint8_t reg, sized_buf *dst_buf){
-    /* TODO */
-    return false;
+static bool inc_byte(uint8_t reg, sized_buf *dst_buf) {
+    return add_byte(reg, 1, dst_buf);
+}
+
+static bool dec_byte(uint8_t reg, sized_buf *dst_buf) {
+    return add_byte(reg, -1, dst_buf);
+}
+
+static bool zero_byte(uint8_t reg, sized_buf *dst_buf) {
+    /* STC 0, 0(reg) {RX-a} */
+    return store_to_byte(reg, 0, dst_buf);
 }
 
 static const arch_funcs FUNCS = {
