@@ -15,10 +15,8 @@
 size_t serialize16le(uint16_t u16, void *dest) {
     size_t size = 0;
     char *p = dest;
-    uint8_t byte_val = u16;
-    p[size++] = byte_val;
-    byte_val = (u16 >> 8);
-    p[size++] = byte_val;
+    p[size++] = u16;
+    p[size++] = (u16 >> 8);
     return size;
 }
 
@@ -27,10 +25,8 @@ size_t serialize16le(uint16_t u16, void *dest) {
 size_t serialize16be(uint32_t u16, void *dest) {
     size_t size = 0;
     char *p = dest;
-    uint8_t byte_val = (u16 >> 8);
-    p[size++] = byte_val;
-    byte_val = u16;
-    p[size++] = byte_val;
+    p[size++] = (u16 >> 8);
+    p[size++] = u16;
     return size;
 }
 
