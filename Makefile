@@ -74,8 +74,8 @@ err.o: config.h err.c
 util.o: util.c
 optimize.o: err.o util.o optimize.c
 # __BACKENDS__
-backend_arm64.o: backend_arm64.c
-backend_s390x.o: backend_s390x.c
+backend_arm64.o: backend_arm64.c config.h
+backend_s390x.o: backend_s390x.c config.h
 backend_x86_64.o: backend_x86_64.c
 
 # for testing

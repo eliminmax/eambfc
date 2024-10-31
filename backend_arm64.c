@@ -5,13 +5,14 @@
  *
  * Unlike the x86_64 backend, this is based on the Rust implementation, rather
  * than the other way around. */
-
 /* internal */
 #include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
+#include "config.h" /* EAMBFC_TARGET_ARM64 */
 #include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
 #include "err.h" /* basic_err */
 #include "types.h" /* uint*_t, int*_t, bool, off_t, size_t UINT64_C */
 #include "util.h" /* append_obj */
+#if EAMBFC_TARGET_ARM64
 
 /* in MOVK, MOVZ, and MOVN instructions, these correspond to the bits used
  * within the 3rd byte to indicate shift level. */
@@ -399,3 +400,4 @@ const arch_inter ARM64_INTER = {
     EM_AARCH64,
     ELFDATA2LSB
 };
+#endif /* EAMBFC_TARGEET_ARM64 */
