@@ -37,7 +37,7 @@
  * https://www.kernel.org/doc/html/v5.3/s390/debugging390.html
  *
  * Finally, some information was gleaned from examining existing s390x binaries
- * with the rasm2 assember/disassembler from the Radare2 project - mainly an
+ * with the rasm2 assembler/disassembler from the Radare2 project - mainly an
  * implementation of a minimal 'clear' command, made in a hex editor.
  * https://rada.re/n/radare2.html
  * https://github.com/eliminmax/tiny-clear-elf/tree/main/s390x/ */
@@ -138,7 +138,7 @@
  * within the highest 16 bits, followed by an immediate, with the differences
  * being the operand types and immediate size.
  * The following macro can initialize an array for any of the three, and the
- * appropriately-sized serialize{16,32}be funcion can be used for the actual
+ * appropriately-sized serialize{16,32}be function can be used for the actual
  * immediate value after initializing the array. */
 #define ENCODE_RI_OP(op, reg) { (op) >> 4, ((reg) << 4) | ((op) & 0xf) }
 
@@ -263,7 +263,7 @@ static bool branch_cond(
     if ((offset % 2) != 0) {
         basic_err(
             "INVALID_JUMP_ADDRESS",
-            "offset is not on a halfword boundry"
+            "offset is not on a halfword boundary"
         );
         return false;
     }
