@@ -33,8 +33,9 @@ GCC_UBSAN_FLAGS = -std=c99 -fanalyzer -fsanitize=address,undefined \
 GCC_INT_TORTURE_FLAGS = -D INT_TORTURE_TEST=1 $(GCC_STRICT_FLAGS) -Wno-format \
 			-Wno-pedantic -fsanitize=address,undefined
 
+# __BACKENDS__
 UNIBUILD_FILES = serialize.c compile.c optimize.c err.c util.c \
-			backend_arm64.c backend_x86_64.c main.c
+			backend_arm64.c backend_s390x.c backend_x86_64.c main.c
 
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
 # overridden if CFLAGS are passed as an argument to make.
