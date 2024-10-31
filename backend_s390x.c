@@ -360,7 +360,7 @@ static bool add_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
         uint8_t i_bytes[4] = ENCODE_RI_OP(0xa7b, reg);
         return serialize16be(imm, &i_bytes[2]) == 2 &&
             append_obj(dst_buf, &i_bytes, 4);
-    } else if ((imm >= INT32_MIN || imm < INT32_MAX)) {
+    } else if ((imm >= INT32_MIN && imm <= INT32_MAX)) {
         /* If imm fits within a word, then use a normal add immediate */
         /* AFGI reg, imm {RIL-a} */
         uint8_t i_bytes[6] = ENCODE_RI_OP(0xc28, reg);
