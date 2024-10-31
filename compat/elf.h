@@ -91,7 +91,7 @@ typedef struct {
 #define EI_DATA       5    /* Data encoding byte index */
 #define ELFDATANONE   0    /* Invalid data encoding */
 #define ELFDATA2LSB   1    /* 2's complement, little endian */
-#define ELFDATA2MSB   1    /* 2's complement, big endian */
+#define ELFDATA2MSB   2    /* 2's complement, big endian */
 
 #define EI_VERSION    6    /* File version byte index */
                            /* Value must be EV_CURRENT */
@@ -108,6 +108,7 @@ typedef struct {
 
 /* values used for e_machine (architecture).  */
 #define EM_NONE        0   /* No machine */
+#define EM_S390       22   /* IBM S390 */
 #define EM_X86_64     62   /* AMD x86-64 architecture */
 #define EM_AARCH64   183   /* ARM AARCH64 */
 
