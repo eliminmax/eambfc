@@ -46,7 +46,7 @@ size_t serialize32le(uint32_t u32, void *dest) {
  * return value is the number of bytes written. */
 size_t serialize32be(uint32_t u32, void *dest) {
     size_t size = serialize16be(u32 >> 16, dest);
-    size += serialize16le(u32, (char *)dest + size);
+    size += serialize16be(u32, (char *)dest + size);
     return size;
 }
 
