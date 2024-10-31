@@ -181,7 +181,7 @@ static bool branch_cond(
         (offset < 0 && (offset >> 44) != -1)) {
         basic_err(
             "JUMP_TOO_LONG",
-            "offset is outside the range of possible 20-bit signed values"
+            "offset is outside the range of possible 21-bit signed values"
         );
         return false;
     }
