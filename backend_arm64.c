@@ -269,7 +269,7 @@ static bool add_sub(
     };
     param_err(
         "TOO_MANY_INSTRUCTIONS",
-        "Over 8192 PiB of consecitive `{}` instructions",
+        "Over 8192 PiB of consecutive `{}` instructions",
         err_char_str
     );
     return false;
