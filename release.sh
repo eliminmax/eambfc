@@ -138,7 +138,7 @@ test_for_arch() {
 sed -i '/TARGET_S390X/s/ 0/ 1/' config.h
 # ensure strict and ubsan builds work at all gcc optimization levels
 for o_lvl in 0 1 2 3 s fast g z; do
-    make -s CC=gcc CFLAGS="-O$o_lvl" clean ubsan strict eambfc;
+    make CC=gcc CFLAGS="-O$o_lvl" clean ubsan strict eambfc;
     cd tests
     # __BACKENDS__
     test_for_arch x86_64
