@@ -76,7 +76,7 @@ static void load_from_byte(uint8_t reg, uint8_t aux, uint8_t dst[4]) {
 
 /* return an scratch register that isn't the same as x.reg to use */
 static inline uint8_t aux_reg(uint8_t reg) {
-    return (reg == 17) ? 16 : 17;
+    return (reg == 15) ? 14 : 15;
 }
 
 /* set dst to the machine code for one of MOVK, MOVN, or MOVZ, depending on mt,
