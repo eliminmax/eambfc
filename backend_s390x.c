@@ -354,7 +354,7 @@ static bool jump_not_zero(uint8_t reg, int64_t offset, sized_buf *dst_buf) {
 
 static bool add_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
 
-    if (imm >= INT16_MIN && imm <= INT16_MIN) {
+    if (imm >= INT16_MIN && imm <= INT16_MAX) {
         /* if imm fits within a halfword, a shorter instruction can be used. */
         /* AGHI reg, imm {RI-a} */
         uint8_t i_bytes[4] = ENCODE_RI_OP(0xa7b, reg);
