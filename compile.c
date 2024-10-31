@@ -56,9 +56,7 @@
 static uint _line, _col;
 
 /* Write the ELF header to the file descriptor fd. */
-static bool write_ehdr(
-    int fd, size_t code_sz, uint64_t tape_blocks, const arch_inter *inter
-) {
+static bool write_ehdr(int fd, uint64_t tape_blocks, const arch_inter *inter) {
 
     /* The format of the ELF header is well-defined and well-documented
      * elsewhere. The struct for it is defined in compat/elf.h, as are most
@@ -538,7 +536,7 @@ bool bf_compile(
     ret &= inter->FUNCS->syscall(&obj_code);
 
     /* now, obj_code size is known, so we can write the headers and padding */
-    ret &= write_ehdr(out_fd, obj_code.sz, tape_blocks, inter);
+    ret &= write_ehdr(out_fd, tape_blocks, inter);
     ret &= write_phtb(out_fd, obj_code.sz, tape_blocks, inter);
     char padding[PAD_SZ] = {0};
     ret &= write_obj(out_fd, padding, PAD_SZ);
