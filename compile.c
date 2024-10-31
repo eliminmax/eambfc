@@ -56,7 +56,9 @@
 static uint _line, _col;
 
 /* Write the ELF header to the file descriptor fd. */
-static bool write_ehdr(int fd, size_t code_sz, const arch_inter *inter) {
+static bool write_ehdr(
+    int fd, size_t code_sz, uint64_t tape_blocks, const arch_inter *inter
+) {
 
     /* The format of the ELF header is well-defined and well-documented
      * elsewhere. The struct for it is defined in compat/elf.h, as are most
@@ -131,7 +133,7 @@ static bool write_ehdr(int fd, size_t code_sz, const arch_inter *inter) {
 
     /* e_entry is the virtual memory address of the program's entry point -
      * (i.e. the first instruction to execute). */
-    header.e_entry = LOAD_VADDR(code_sz) + START_PADDR;
+    header.e_entry = LOAD_VADDR(tape_blocks) + START_PADDR;
 
     /* e_flags has a processor-specific meaning. For x86_64, no values are
      * defined, and it should be set to 0. */
@@ -179,7 +181,7 @@ static inline bool write_phtb(
     /* Load initial bytes from this offset within the file */
     phdr_table[1].p_offset = 0;
     /* Start at this memory address */
-    phdr_table[1].p_vaddr = LOAD_VADDR(code_sz);
+    phdr_table[1].p_vaddr = LOAD_VADDR(tape_blocks);
     /* Load from this physical address */
     phdr_table[1].p_paddr = 0;
     /* Size within the file on disk - the size of the whole file, as this
@@ -536,7 +538,7 @@ bool bf_compile(
     ret &= inter->FUNCS->syscall(&obj_code);
 
     /* now, obj_code size is known, so we can write the headers and padding */
-    ret &= write_ehdr(out_fd, obj_code.sz, inter);
+    ret &= write_ehdr(out_fd, obj_code.sz, tape_blocks, inter);
     ret &= write_phtb(out_fd, obj_code.sz, tape_blocks, inter);
     char padding[PAD_SZ] = {0};
     ret &= write_obj(out_fd, padding, PAD_SZ);
