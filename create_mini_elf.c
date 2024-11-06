@@ -34,13 +34,13 @@ int main(void) {
     /* compile an empty program called mini_elf */
     int out_fd = open("mini_elf", O_WRONLY | O_CREAT | O_TRUNC, 0755);
     if (out_fd == -1) {
-        close(in_fd);
+        fclose(tmp_file);
         fputs("Failed to open mini_elf for writing.\n", stderr);
         return EXIT_FAILURE;
     }
     int ret = bf_compile(&X86_64_INTER, in_fd, out_fd, false, 1) ?
         EXIT_SUCCESS : EXIT_FAILURE;
-    close(in_fd);
+    fclose(tmp_file);
     close(out_fd);
     return ret;
 }
