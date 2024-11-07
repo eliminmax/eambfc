@@ -23,6 +23,7 @@ bool write_obj(int fd, const void *buf, size_t ct) {
             "WRITE_TOO_LARGE",
             "Didn't write because write is too large to properly validate."
         );
+        return false;
     }
     ssize_t written = write(fd, buf, ct);
     if (written != (ssize_t)ct) {
