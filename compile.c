@@ -419,7 +419,10 @@ static inline bool comp_ir_instr(
          * consecutive instructions, and compile it with the appropriate
          * function. */
         if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_ct_p) != 1) {
-            basic_err("IR_FAILED_SCAN", "Failed to get count for EAMBFC-IR op.");
+            basic_err(
+                "IR_FAILED_SCAN",
+                "Failed to get count for EAMBFC-IR op."
+            );
             return false;
         } else {
             switch (*p) {
