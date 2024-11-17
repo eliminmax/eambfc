@@ -13,5 +13,9 @@
 #include "compat/eambfc_inttypes.h" /* uint*_t, int*_t, PRI*, SCN*, and more */
 
 typedef unsigned int uint;
-typedef struct { size_t sz; size_t alloc_sz; void* buf; } sized_buf;
+typedef struct sized_buf {
+    size_t sz; /* size of data used in buffer */
+    size_t capacity; /* amount of space allocated for buffer */
+    void* buf;
+} sized_buf;
 #endif /* EAMBFC_TYPES_H */

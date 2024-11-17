@@ -44,7 +44,7 @@ static void filter_non_bf(sized_buf *code) {
     append_obj(&tmp, &instr, 1);
     free(code->buf);
     code->sz = tmp.sz;
-    code->alloc_sz = tmp.alloc_sz;
+    code->capacity = tmp.capacity;
     code->buf = tmp.buf;
 }
 

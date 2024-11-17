@@ -38,7 +38,7 @@ bool write_obj(int fd, const void *buf, size_t ct) {
  * If reallocation fails, free dst->buf then set dst to {0, 0, NULL} */
 bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
     /* if inadequate space is available, allocate more */
-    if (dst->sz + bytes_sz > dst->alloc_sz) {
+    if (dst->sz + bytes_sz > dst->capacity) {
         size_t added_sz = (bytes_sz & 0xfff) ?
             ((bytes_sz & (~0xfff)) + 0x1000) :
             bytes_sz;
@@ -51,9 +51,9 @@ bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
 
         }
 
-        dst->alloc_sz += added_sz;
-        /* reallocate to new alloc_sz */
-        void* new_buf = realloc(dst->buf, dst->alloc_sz);
+        dst->capacity += added_sz;
+        /* reallocate to new capacity */
+        void* new_buf = realloc(dst->buf, dst->capacity);
         if (new_buf == NULL) {
             alloc_err();
             goto failure_cleanup;
@@ -74,7 +74,7 @@ bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
      * function */
 failure_cleanup:
     free(dst->buf);
-    dst->alloc_sz = 0;
+    dst->capacity = 0;
     dst->sz = 0;
     dst->buf = NULL;
     return false;
@@ -84,7 +84,7 @@ failure_cleanup:
  * already been read, and sets sb to {0, 0, NULL}. */
 void read_to_sized_buf(sized_buf *sb, int fd) {
     sb->sz = 0;
-    sb->alloc_sz = 4096;
+    sb->capacity = 4096;
     sb->buf = malloc(4096);
     if (sb->buf == NULL) {
         alloc_err();
@@ -98,7 +98,7 @@ void read_to_sized_buf(sized_buf *sb, int fd) {
             basic_err("FAILED_READ", "Failed to read from file");
             free(sb->buf);
             sb->sz = 0;
-            sb->alloc_sz = 0;
+            sb->capacity = 0;
             sb->buf = NULL;
             return;
         }
@@ -106,7 +106,7 @@ void read_to_sized_buf(sized_buf *sb, int fd) {
         /* in case of error, */
         if (!append_obj(sb, &chunk, count)) {
             sb->sz = 0;
-            sb->alloc_sz = 0;
+            sb->capacity = 0;
             return;
         }
     }

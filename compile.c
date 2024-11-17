@@ -329,7 +329,7 @@ static inline bool bf_jump_close(
      * conditional jump instruction without any risk of unnecessary reallocation
      * or any temporary buffer, sized or not. */
 
-    sized_buf tmp_buf = {open_addr, obj_code->alloc_sz, obj_code->buf};
+    sized_buf tmp_buf = {open_addr, obj_code->capacity, obj_code->buf};
 
     if (!inter->FUNCS->jump_zero(inter->REGS->bf_ptr, distance, &tmp_buf)) {
         return false;
