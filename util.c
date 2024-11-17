@@ -36,6 +36,14 @@ bool write_obj(int fd, const void *buf, size_t ct) {
 /* Append bytes to dst, handling reallocs as needed.
  * If reallocation fails, free dst->buf then set dst to {0, 0, NULL} */
 bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
+    if (dst->sz >= (SIZE_MAX - 4096)) {
+        free(dst->buf);
+        dst->sz = 0;
+        dst->alloc_sz = 0;
+        dst->buf = NULL;
+        basic_err("BUF_TOO_LARGE", "Trying to extend buffer would overflow.");
+        return false;
+    }
     /* if inadequate space is available, allocate more */
     if (dst->sz + bytes_sz > dst->alloc_sz) {
         /* keep adding 4096 to alloc_sz until it's large enough. */
