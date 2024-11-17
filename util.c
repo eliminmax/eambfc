@@ -33,46 +33,61 @@ bool write_obj(int fd, const void *buf, size_t ct) {
     return true;
 }
 
-#define WOULD_OVERFLOW(val) ((val) >= SIZE_MAX - 4096)
 /* Append bytes to dst, handling reallocs as needed.
- * If reallocation fails, free dst->buf then set dst to {0, 0, NULL} */
+ * If realloc fails, frees dst->buf then sets dst to {0, 0, NULL} */
 bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
-    /* if inadequate space is available, allocate more */
-    if (dst->sz + bytes_sz > dst->capacity) {
-        size_t added_sz = (bytes_sz & 0xfff) ?
-            ((bytes_sz & (~0xfff)) + 0x1000) :
-            bytes_sz;
-        if (WOULD_OVERFLOW(added_sz) || WOULD_OVERFLOW(dst->sz + added_sz)) {
-            basic_err(
-                "BUF_SIZE_OVERFLOW",
-                "Extending buffer would cause size to overflow."
-            );
-            goto failure_cleanup;
-
-        }
-
-        dst->capacity += added_sz;
-        /* reallocate to new capacity */
-        void* new_buf = realloc(dst->buf, dst->capacity);
-        if (new_buf == NULL) {
-            alloc_err();
-            goto failure_cleanup;
-        }
-        dst->buf = new_buf;
-    } else if (dst->buf == NULL) {
-        /* if passed a sized_buf with a NULL pointer, exit immediately. */
-        return false;
+    /* if more space is needed, ensure no overflow occurs then allocate it
+     *
+     * Make sure to leave 8 KiB shy of SIZE_MAX available - it will never
+     * get anywhere near that high in any realisitic scenario, and the extra
+     * space simplifies overflow checking logic. Besides, any sensible malloc
+     * implementation will be returning NULL well before this is relevant. */
+    if (
+        (bytes_sz > (SIZE_MAX - 0x8000)) ||
+        (dst->capacity > (SIZE_MAX - (bytes_sz + 0x8000)))
+    ) {
+        basic_err(
+            "BUF_TOO_LARGE",
+            "Extending buffer would put size within 8 KiB of SIZE_MAX"
+        );
+        goto append_obj_cleanup;
     }
 
+    if (dst->buf == NULL) {
+        internal_err(
+            "APPEND_OBJ_TO_NULL",
+            "append_obj called with dst->buf set to NULL"
+        );
+        return false;
+    }
+    /* how much capacity should be allocated */
+    size_t needed_cap = bytes_sz + dst->sz;
+    /* if needed_cap isn't a multiple of 4 KiB in size, pad it out -
+     * most usage of this function is going to be for small objects, so the
+     * number of reallocations is vastly reduced that way.
+     *
+     * Because the previous check established that there's at least 2 KiB of
+     * padding available, this is guaranteed not to overflow. */
+    if (needed_cap & 0xfff) needed_cap = (needed_cap + 0x1000) & (~0xfff);
+
+    if (needed_cap > dst->capacity) {
+        /* reallocate to new capacity */
+        void* new_buf = realloc(dst->buf, needed_cap);
+        if (new_buf == NULL) {
+            alloc_err();
+            goto append_obj_cleanup;
+        }
+        dst->capacity = needed_cap;
+        dst->buf = new_buf;
+    }
     /* actually append the object now that prep work is done */
-    char* start_addr = dst->buf;
-    memcpy(start_addr + dst->sz, bytes, bytes_sz);
+    memcpy((char*)(dst->buf) + dst->sz, bytes, bytes_sz);
     dst->sz += bytes_sz;
     return true;
 
-    /* jump here if something went wrong, after calling appopriate *_err
-     * function */
-failure_cleanup:
+    /* when errors occur, goto this label after calling the appropriate error
+     * message for the shared failure-handling steps. */
+append_obj_cleanup:
     free(dst->buf);
     dst->capacity = 0;
     dst->sz = 0;
