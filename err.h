@@ -25,6 +25,10 @@ void alloc_err(void);
 /* a generic error message */
 void basic_err(char *id, char *msg);
 
+/* a wrapper around basic_err that marks error as an internal compiler error,
+ * for use when an error can only happen if a bug in EAMBFC occurs. */
+void internal_err(char *id, char *msg);
+
 /* an error message related to a specific instruction */
 void instr_err(char *id, char *msg, char instr);
 
