@@ -33,30 +33,30 @@ bool write_obj(int fd, const void *buf, size_t ct) {
     return true;
 }
 
+#define WOULD_OVERFLOW(val) ((val) >= SIZE_MAX - 4096)
 /* Append bytes to dst, handling reallocs as needed.
  * If reallocation fails, free dst->buf then set dst to {0, 0, NULL} */
 bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
-    if (dst->sz >= (SIZE_MAX - 4096)) {
-        free(dst->buf);
-        dst->sz = 0;
-        dst->alloc_sz = 0;
-        dst->buf = NULL;
-        basic_err("BUF_TOO_LARGE", "Trying to extend buffer would overflow.");
-        return false;
-    }
     /* if inadequate space is available, allocate more */
     if (dst->sz + bytes_sz > dst->alloc_sz) {
-        /* keep adding 4096 to alloc_sz until it's large enough. */
-        while (dst->alloc_sz < dst->sz + bytes_sz) dst->alloc_sz += 4096;
+        size_t added_sz = (bytes_sz & 0xfff) ?
+            ((bytes_sz & (~0xfff)) + 0x1000) :
+            bytes_sz;
+        if (WOULD_OVERFLOW(added_sz) || WOULD_OVERFLOW(dst->sz + added_sz)) {
+            basic_err(
+                "BUF_SIZE_OVERFLOW",
+                "Extending buffer would cause size to overflow."
+            );
+            goto failure_cleanup;
+
+        }
+
+        dst->alloc_sz += added_sz;
         /* reallocate to new alloc_sz */
         void* new_buf = realloc(dst->buf, dst->alloc_sz);
         if (new_buf == NULL) {
             alloc_err();
-            free(dst->buf);
-            dst->sz = 0;
-            dst->alloc_sz = 0;
-            dst->buf = NULL;
-            return false;
+            goto failure_cleanup;
         }
         dst->buf = new_buf;
     } else if (dst->buf == NULL) {
@@ -69,6 +69,15 @@ bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
     memcpy(start_addr + dst->sz, bytes, bytes_sz);
     dst->sz += bytes_sz;
     return true;
+
+    /* jump here if something went wrong, after calling appopriate *_err
+     * function */
+failure_cleanup:
+    free(dst->buf);
+    dst->alloc_sz = 0;
+    dst->sz = 0;
+    dst->buf = NULL;
+    return false;
 }
 
 /* Reads the contents of fd into sb. If a read error occurs, frees what's
