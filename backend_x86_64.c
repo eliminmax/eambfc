@@ -86,7 +86,7 @@ static bool reg_arith (
 /* INC and DEC are encoded very similarly with very few differences between
  * the encoding for operating on registers and operating on bytes pointed to by
  * registers. Because of the similarity, one function can be used for all 4 of
- * the `+`, `-`, `>`, and `<` brainfuck instructions in one inline function.
+ * the `+`, `-`, `>`, and `<` brainfuck instructions in one function.
  *
  * `+` is INC byte [reg], which is encoded as 0xfe reg
  * `-` is DEC byte [reg], which is encoded as 0xfe 0x08|reg
@@ -96,9 +96,7 @@ static bool reg_arith (
  * Therefore, setting op to 0 for INC and 8 for DEC and adm (Address Mode) to 3
  * when working on registers and 0 when working on memory, then doing some messy
  * bitwise hackery, the following function can be used. */
-static inline bool x86_offset(
-    char op, uint8_t adm, uint8_t reg, sized_buf *dst_buf
-) {
+static bool x86_offset(char op, uint8_t adm, uint8_t reg, sized_buf *dst_buf) {
     return append_obj(dst_buf, (uint8_t[]){0xfe|(adm&1), (op|reg|(adm<<6))}, 2);
 }
 

@@ -87,7 +87,7 @@ static bool any_strcmp(const char *s, int count, const char** strs) {
 }
 
 /* remove ext from end of str. If str doesn't end with ext, return false. */
-static inline bool rm_ext(char *str, const char *ext) {
+static bool rm_ext(char *str, const char *ext) {
     size_t strsz = strlen(str);
     size_t extsz = strlen(ext);
     /* strsz must be at least 1 character longer than extsz to continue. */

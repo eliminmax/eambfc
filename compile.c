@@ -148,7 +148,7 @@ static bool write_ehdr(int fd, uint64_t tape_blocks, const arch_inter *inter) {
 
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
-static inline bool write_phtb(
+static bool write_phtb(
     int fd, size_t code_sz, uint64_t tape_blocks, const arch_inter *inter
 ) {
     Elf64_Phdr phdr_table[PHNUM];
@@ -217,7 +217,7 @@ static inline bool write_phtb(
  *  - arg3 is the number of bytes to write/read
  *
  * Due to their similarity, ',' and '.' are both implemented with bf_io. */
-static inline bool bf_io(
+static bool bf_io(
     sized_buf *obj_code,
     int bf_fd,
     int sc,
@@ -262,7 +262,7 @@ static struct jump_stack {
  *
  * If too many nested loops are encountered, tries to resize the jump stack.
  * If that fails, sets alloc_valve to false and aborts. */
-static inline bool bf_jump_open(
+static bool bf_jump_open(
     sized_buf *obj_code, bool *alloc_valve, const arch_inter *inter
 ) {
     /* ensure that there are no more than the maximum nesting level */
@@ -300,9 +300,7 @@ static inline bool bf_jump_open(
 
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
-static inline bool bf_jump_close(
-    sized_buf *obj_code, const arch_inter *inter
-) {
+static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
     off_t open_addr;
     int32_t distance;
 
@@ -391,7 +389,7 @@ static bool comp_instr(
 #define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, ct, obj_code)
 
 /* Compile an ir instruction */
-static inline bool comp_ir_instr(
+static bool comp_ir_instr(
     char *p,
     sized_buf *obj_code,
     int *skip_ct_p,

@@ -88,8 +88,7 @@ static char *json_str(char* str) {
 #undef BS_ESCAPE_APPEND
 
 
-/* simple enough to inline this one, I think. */
-static inline void basic_jerr(char* id, char *msg) {
+static void basic_jerr(char* id, char *msg) {
     /* assume error id is json-safe, but don't assume that for msg. */
     if ((msg = json_str(msg)) == NULL) {
         alloc_err();
@@ -104,7 +103,6 @@ void basic_err(char* id, char *msg) {
     else if (!_quiet) fprintf(stderr, "Error %s: %s\n", id, msg);
 }
 
-/* with up to 2 frees needed, and 2 early exits if they fail, don't inline */
 static void pos_jerr(char *id, char *msg, char instr, uint line, uint col) {
     /* Assume id needs no escaping, but msg and instr might. */
     /* First, convert instr into a string, then serialize that string. */

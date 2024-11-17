@@ -146,7 +146,7 @@
 #define ENCODE_RI_OP(op, reg) { (op) >> 4, ((reg) << 4) | ((op) & 0xf) }
 
 /* return a call-clobbered register to use as a temporary auxiliary register */
-static inline uint8_t aux_reg(uint8_t reg) {
+static uint8_t aux_reg(uint8_t reg) {
     return (reg == 4) ? UINT8_C(5) : UINT8_C(4);
 }
 
