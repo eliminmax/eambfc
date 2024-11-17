@@ -23,7 +23,7 @@ void json_mode(void);
 void alloc_err(void);
 
 /* a generic error message */
-void basic_err(char* id, char *msg);
+void basic_err(char *id, char *msg);
 
 /* an error message related to a specific instruction */
 void instr_err(char *id, char *msg, char instr);
