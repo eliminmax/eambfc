@@ -20,11 +20,12 @@ EAMBFC_DEPS = compile.o $(COMPILE_DEPS) main.o
 
 
 # flags for some of the more specialized, non-portable builds
-GCC_STRICT_FLAGS = -Wall -Wextra -Werror -Wpedantic -Winit-self -Winline       \
-		-Wno-error=inline -Wundef -Wunused-macros -Wlogical-op         \
-		-Wshadow -Wtrampolines -Wformat-signedness -Wcast-qual         \
-		-Wnull-dereference -Wduplicated-cond -Wredundant-decls         \
-		-Wduplicated-branches -Wbad-function-cast -std=c99 -fanalyzer  \
+GCC_STRICT_FLAGS = -Wall -Wextra -Wpedantic -Werror -std=c99 -fanalyzer        \
+		-Wformat-truncation=2 -Wduplicated-branches -Wshadow           \
+		-Wformat-overflow=2 -Wformat-signedness -Wbad-function-cast    \
+		-Wnull-dereference -Wredundant-decls -Wduplicated-cond         \
+		-Warray-bounds=2 -Wuninitialized -Wunused-macros -Wformat=2    \
+		-Wtrampolines -Wlogical-op -Winit-self -Wcast-qual -Wundef     \
 		$(POSIX_CFLAG) $(CFLAGS)
 
 GCC_UBSAN_FLAGS = -std=c99 -fanalyzer -fsanitize=address,undefined \
