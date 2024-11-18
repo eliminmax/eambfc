@@ -32,6 +32,7 @@ void alloc_err(void) {
             stderr
         );
     }
+    exit(EXIT_FAILURE);
 }
 
 /* macro specifically for use inside json_str, to avoid ugly, repeated code. */
