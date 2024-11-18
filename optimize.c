@@ -8,7 +8,7 @@
 
 /* C99 */
 #include <stdio.h> /* sprintf, puts */
-#include <stdlib.h> /* free, malloc, realloc */
+#include <stdlib.h> /* free, malloc */
 #include <string.h> /* memmove, memset, strchr, strcpy, strlen, strstr */
 /* internal */
 #include "err.h" /* basic_err, instr_err */
