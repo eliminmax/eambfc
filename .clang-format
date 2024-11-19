@@ -38,12 +38,10 @@ IncludeCategories:
     CaseSensitive: false
 IndentCaseLabels: false
 IndentGotoLabels: false
-IndentPPDirectives: AfterHash
 IndentWidth: 4
 InsertNewlineAtEOF: true
 InsertTrailingCommas: Wrapped
 LineEnding: LF
-PPIndentWidth: 0
 PenaltyBreakBeforeFirstCallParameter: 0
 PenaltyReturnTypeOnItsOwnLine: 10000
 PointerAlignment: Right
