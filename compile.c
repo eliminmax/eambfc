@@ -56,7 +56,7 @@
 static uint _line, _col;
 
 /* Write the ELF header to the file descriptor fd. */
-static bool write_ehdr(int fd, uint64_t tape_blocks, const arch_inter *inter) {
+static bool write_ehdr(int fd, u64 tape_blocks, const arch_inter *inter) {
 
     /* The format of the ELF header is well-defined and well-documented
      * elsewhere. The struct for it is defined in compat/elf.h, as are most
@@ -149,7 +149,7 @@ static bool write_ehdr(int fd, uint64_t tape_blocks, const arch_inter *inter) {
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
 static bool write_phtb(
-    int fd, size_t code_sz, uint64_t tape_blocks, const arch_inter *inter
+    int fd, size_t code_sz, u64 tape_blocks, const arch_inter *inter
 ) {
     Elf64_Phdr phdr_table[PHNUM];
     char phdr_table_bytes[PHTB_SIZE];
@@ -302,7 +302,7 @@ static bool bf_jump_open(
  * called when `]` is the instruction to be compiled */
 static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
     off_t open_addr;
-    int32_t distance;
+    i32 distance;
 
     /* ensure that the current index is in bounds */
     if (jump_stack.index == 0) {
@@ -396,7 +396,7 @@ static bool comp_ir_instr(
     bool *alloc_valve,
     const arch_inter *inter
 ) {
-    uint64_t ct;
+    u64 ct;
     *skip_ct_p = 0;
     switch(*p) {
       /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
@@ -451,7 +451,7 @@ bool bf_compile(
     int in_fd,
     int out_fd,
     bool optimize,
-    uint64_t tape_blocks
+    u64 tape_blocks
 ) {
     bool ret = true;
     sized_buf obj_code = {0, 4096, malloc(4096)};

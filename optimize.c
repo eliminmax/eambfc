@@ -136,7 +136,7 @@ static void strip_dead(sized_buf *ir) {
             memmove(str, loop_end, strlen(loop_end) + 1);
         }
         /* next, remove any matches for simple_patterns[*] */
-        for (uint8_t i = 0; i < 6 /* there are 6 patterns */; i++) {
+        for (u8 i = 0; i < 6 /* there are 6 patterns */; i++) {
             while (((match_start = strstr(str, simple_patterns[i])) != NULL)) {
                 matched = true;
                 memmove(
@@ -163,7 +163,7 @@ static void strip_dead(sized_buf *ir) {
 }
 
 /* condense a sequence of identical instructions into an IR operation. */
-static size_t condense(char instr, uint64_t consec_ct, char* dest) {
+static size_t condense(char instr, u64 consec_ct, char* dest) {
     char opcode;
 #if SIZE_MAX < UINT64_MAX
     if (consec_ct > SIZE_MAX) {
@@ -250,7 +250,7 @@ static void instr_merge(sized_buf *ir) {
         return;
     }
     char *p = new_str;
-    uint64_t consec_ct = 1;
+    u64 consec_ct = 1;
     size_t i;
     size_t skip;
     /* condese consecutive identical instructions */

@@ -40,7 +40,7 @@ typedef enum {
 
 /* For an instruction that takes 2 registers, OR their bit values into the
  * appropriate parts of the machine code bytes in dst. */
-static void inject_reg_operands(uint8_t rt, uint8_t rn, uint8_t dst[4]) {
+static void inject_reg_operands(u8 rt, u8 rn, u8 dst[4]) {
     dst[0] |= (rt | rn << 5);
     dst[1] |= (rn >> 3);
 }
@@ -50,7 +50,7 @@ static void inject_reg_operands(uint8_t rt, uint8_t rn, uint8_t dst[4]) {
  * This assumes that dst has everything except the register, shift, and
  * immediate bits set, and that the immediate bits are set to zero. */
 static void inject_imm16_operands(
-    uint16_t imm, shift_lvl shift, uint8_t reg, uint8_t *dst
+    u16 imm, shift_lvl shift, u8 reg, u8 *dst
 ) {
     dst[0] |= (reg | ((imm & 07) << 5));
     dst[1] |= (imm >> 3);
@@ -58,7 +58,7 @@ static void inject_imm16_operands(
 }
 
 /* set dst to the machine code for STRB w.aux, x.reg */
-static void store_to_byte(uint8_t reg, uint8_t aux, uint8_t dst[4]) {
+static void store_to_byte(u8 reg, u8 aux, u8 dst[4]) {
     dst[0] = 0x00;
     dst[1] = 0x04;
     dst[2] = 0x00;
@@ -67,7 +67,7 @@ static void store_to_byte(uint8_t reg, uint8_t aux, uint8_t dst[4]) {
 }
 
 /* set dst to the machine code for LDRB w.aux, x.reg */
-static void load_from_byte(uint8_t reg, uint8_t aux, uint8_t dst[4]) {
+static void load_from_byte(u8 reg, u8 aux, u8 dst[4]) {
     dst[0] = 0x00;
     dst[1] = 0x04;
     dst[2] = 0x40;
@@ -76,17 +76,17 @@ static void load_from_byte(uint8_t reg, uint8_t aux, uint8_t dst[4]) {
 }
 
 /* return an scratch register that isn't the same as x.reg to use */
-static uint8_t aux_reg(uint8_t reg) {
+static u8 aux_reg(u8 reg) {
     return (reg == 17) ? 16 : 17;
 }
 
 /* set dst to the machine code for one of MOVK, MOVN, or MOVZ, depending on mt,
  * with the given operands. */
 static void mov(
-    mov_type mt, uint16_t imm, shift_lvl shift, uint8_t reg, uint8_t *dst
+    mov_type mt, u16 imm, shift_lvl shift, u8 reg, u8 *dst
 ) {
     /* for MOVN, the bits need to be inverted. Ask Arm, not me. */
-    uint16_t imm_bits = (mt == A64_MT_INVERT) ? ~imm : imm;
+    u16 imm_bits = (mt == A64_MT_INVERT) ? ~imm : imm;
     dst[0] = 0x00;
     dst[1] = 0x00;
     dst[2] = 0x80;
@@ -96,17 +96,17 @@ static void mov(
 
 /* Choose a combination of MOVZ, MOVK, and MOVN that sets register x.reg to
  * the immediate imm */
-static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
-    uint16_t default_val;
+static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+    u16 default_val;
     mov_type lead_mt;
     /* split the immediate into 4 16-bit parts - high, medium-high, medium-low,
      * and low. */
-    struct shifted_imm { uint16_t imm16; shift_lvl shift; };
+    struct shifted_imm { u16 imm16; shift_lvl shift; };
     struct shifted_imm parts[4] = {
-        {(uint16_t)imm, A64_SL_NO_SHIFT},
-        {(uint16_t)(imm >> 16), A64_SL_SHIFT16},
-        {(uint16_t)(imm >> 32), A64_SL_SHIFT32},
-        {(uint16_t)(imm >> 48), A64_SL_SHIFT48}
+        {(u16)imm, A64_SL_NO_SHIFT},
+        {(u16)(imm >> 16), A64_SL_SHIFT16},
+        {(u16)(imm >> 32), A64_SL_SHIFT32},
+        {(u16)(imm >> 48), A64_SL_SHIFT48}
     };
     if (imm < 0) {
         default_val = 0xffff;
@@ -118,7 +118,7 @@ static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
     /* skip to the first part with non-default imm16 values. */
     int i;
     for(i = 0; i < 4; i++) if (parts[i].imm16 != default_val) break;
-    uint8_t instr_bytes[4] = {0, 0, 0, 0};
+    u8 instr_bytes[4] = {0, 0, 0, 0};
     /* check if the end was reached without finding a non-default value */
     if (i == 4) {
         /* all are the default value, so use this fallback instruction */
@@ -147,18 +147,18 @@ static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
 
 /* MOV x.dst, x.src
  * technically an alias for ORR x.dst, XZR, x.src */
-static bool reg_copy(uint8_t dst, uint8_t src, sized_buf *dst_buf) {
-    return append_obj(dst_buf, (uint8_t[]){0xe0 | dst, 0x01, src, 0xaa}, 4);
+static bool reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
+    return append_obj(dst_buf, (u8[]){0xe0 | dst, 0x01, src, 0xaa}, 4);
 }
 
 /* SVC 0 */
 static bool syscall(sized_buf *dst_buf) {
-    return append_obj(dst_buf, (uint8_t[]){0x01, 0x00, 0x00, 0xd4}, 4);
+    return append_obj(dst_buf, (u8[]){0x01, 0x00, 0x00, 0xd4}, 4);
 }
 
 /* NOP; NOP; NOP */
 static bool nop_loop_open(sized_buf *dst_buf) {
-    uint8_t instr_bytes[12] = {
+    u8 instr_bytes[12] = {
         0x1f, 0x20, 0x03, 0xd5, /* NOP */
         0x1f, 0x20, 0x03, 0xd5, /* NOP */
         0x1f, 0x20, 0x03, 0xd5 /* NOP */
@@ -168,7 +168,7 @@ static bool nop_loop_open(sized_buf *dst_buf) {
 
 /* LDRB w.aux, x.reg; TST w.aux, 0xff; B.cond offset */
 static bool branch_cond(
-    uint8_t reg, int64_t offset, sized_buf *dst_buf, uint8_t cond
+    u8 reg, i64 offset, sized_buf *dst_buf, u8 cond
 ) {
     if ((offset % 4) != 0) {
         basic_err(
@@ -186,9 +186,9 @@ static bool branch_cond(
         );
         return false;
     }
-    uint32_t offset_value = 1 + ((((uint32_t) offset) >> 2) & 0x7fffff);
-    uint8_t aux = aux_reg(reg);
-    uint8_t test_and_branch[12] = {
+    u32 offset_value = 1 + ((((u32) offset) >> 2) & 0x7fffff);
+    u8 aux = aux_reg(reg);
+    u8 test_and_branch[12] = {
         /* after inject_reg_operands, will be LDRB w.aux, x.reg */
         0x00, 0x04, 0x40, 0x38,
         /* TST x.reg, 0xff */
@@ -201,19 +201,19 @@ static bool branch_cond(
 }
 
 /* LDRB w.aux, x.reg; TST w.aux, 0xff; B.NE offset */
-static bool jump_not_zero(uint8_t reg, int64_t offset, sized_buf *dst_buf) {
+static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
     /* 1 is the not zero / not equal condition code */
     return branch_cond(reg, offset, dst_buf, 1);
 }
 
 /* LDRB w.aux, x.reg; TST w.aux, 0xff; B.E offset */
-static bool jump_zero(uint8_t reg, int64_t offset, sized_buf *dst_buf) {
+static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
     /* 0 is the zero / equal condition code */
     return branch_cond(reg, offset, dst_buf, 0);
 }
 
 static bool add_sub_imm(
-    uint8_t reg, uint64_t imm, bool shift, arith_op op, sized_buf *dst_buf
+    u8 reg, u64 imm, bool shift, arith_op op, sized_buf *dst_buf
 ) {
     /* The immediate can be a 12-bit immediate or a 24-bit immediate with the
      * lower 12 bits set to zero, in which case shift should be set to true. */
@@ -222,9 +222,9 @@ static bool add_sub_imm(
         return false;
     }
     /* if shift is set to true, imm needs to be shifted back by 12 bits */
-    uint16_t imm_bits = shift ? (imm >> 12) : imm;
+    u16 imm_bits = shift ? (imm >> 12) : imm;
     /* (ADD|SUB) x.reg, x.reg, imm{, lsl12} */
-    uint8_t instr_bytes[4] = {
+    u8 instr_bytes[4] = {
         reg | (reg << 5),
         (reg >> 3) | ((imm_bits << 2) & 0xff),
         (imm_bits >> 6) | (shift ? 0x40 : 0x0),
@@ -234,7 +234,7 @@ static bool add_sub_imm(
 }
 
 static bool add_sub(
-    uint8_t reg, arith_op op, uint64_t imm, sized_buf *dst_buf
+    u8 reg, arith_op op, u64 imm, sized_buf *dst_buf
 ) {
     /* If the immediate fits within 12 bits, it's a far simpler process - simply
      * ADD or SUB the immediate. If it fits within 24 bits, use an ADD or SUB,
@@ -254,12 +254,12 @@ static bool add_sub(
         return ret;
     } else if (imm < UINT64_C(0x7fffffffffffffff)) {
         /* different byte values are needed than normal here */
-        uint8_t op_byte = (op == A64_OP_ADD) ? 0x8b : 0xcb;
-        uint8_t aux = aux_reg(reg);
+        u8 op_byte = (op == A64_OP_ADD) ? 0x8b : 0xcb;
+        u8 aux = aux_reg(reg);
         /* set register x.aux to the target value */
-        if (!set_reg(aux, (int64_t)imm, dst_buf)) return false;
+        if (!set_reg(aux, (i64)imm, dst_buf)) return false;
         /* either ADD x.reg, x.reg, x.aux or SUB x.reg, x.reg, x.aux */
-        uint8_t instr_bytes[4] = { 0, 0, aux, op_byte };
+        u8 instr_bytes[4] = { 0, 0, aux, op_byte };
         inject_reg_operands(reg, reg, instr_bytes);
         return append_obj(dst_buf, &instr_bytes, 4);
     }
@@ -277,19 +277,19 @@ static bool add_sub(
 }
 /* add_reg, sub_reg, inc_reg, and dec_reg are all simple wrappers around
  * add_sub. */
-static bool add_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
+static bool add_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     return add_sub(reg, A64_OP_ADD, imm, dst_buf);
 }
 
-static bool sub_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
+static bool sub_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     return add_sub(reg, A64_OP_SUB, imm, dst_buf);
 }
 
-static bool inc_reg(uint8_t reg, sized_buf *dst_buf) {
+static bool inc_reg(u8 reg, sized_buf *dst_buf) {
     return add_sub(reg, A64_OP_ADD, 1, dst_buf);
 }
 
-static bool dec_reg(uint8_t reg, sized_buf *dst_buf) {
+static bool dec_reg(u8 reg, sized_buf *dst_buf) {
     return add_sub(reg, A64_OP_SUB, 1, dst_buf);
 }
 
@@ -298,11 +298,11 @@ static bool dec_reg(uint8_t reg, sized_buf *dst_buf) {
  * and finally, store the least significant byte of the register into that
  * memory address. */
 static bool inc_dec_byte(
-    uint8_t reg, sized_buf *dst_buf,
-    bool (*inner_fn)(uint8_t reg, sized_buf *dst_buf)
+    u8 reg, sized_buf *dst_buf,
+    bool (*inner_fn)(u8 reg, sized_buf *dst_buf)
 ) {
-    uint8_t instr_bytes[4] = {0x00, 0x00, 0x00, 0x00};
-    uint8_t aux = aux_reg(reg);
+    u8 instr_bytes[4] = {0x00, 0x00, 0x00, 0x00};
+    u8 aux = aux_reg(reg);
     load_from_byte(reg, aux, instr_bytes);
     if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
     if (!inner_fn(aux, dst_buf)) return false;
@@ -312,22 +312,22 @@ static bool inc_dec_byte(
 
 /* next, some thin wrappers around the inc_dec_byte function that can be used in
  * the arch_funcs struct */
-static bool inc_byte(uint8_t reg, sized_buf *dst_buf) {
+static bool inc_byte(u8 reg, sized_buf *dst_buf) {
     return inc_dec_byte(reg, dst_buf, &inc_reg);
 }
 
-static bool dec_byte(uint8_t reg, sized_buf *dst_buf) {
+static bool dec_byte(u8 reg, sized_buf *dst_buf) {
     return inc_dec_byte(reg, dst_buf, &dec_reg);
 }
 
 /* similar to add_sub_reg, but operating on an auxiliary register, after loading
  * from byte and before restoring to that byte, much like inc_dec_byte */
 static bool add_sub_byte(
-    uint8_t reg, int8_t imm8, arith_op op, sized_buf *dst_buf
+    u8 reg, i8 imm8, arith_op op, sized_buf *dst_buf
 ) {
-    uint8_t imm = imm8;
-    uint8_t aux = aux_reg(reg);
-    uint8_t instr_bytes[12] = {
+    u8 imm = imm8;
+    u8 aux = aux_reg(reg);
+    u8 instr_bytes[12] = {
         0x00, 0x00, 0x00, 0x00,
         /* set middle instruction to (ADD|SUB) x.aux, x.aux, imm */
         aux | (aux << 5), (imm << 2) | (aux >> 3), imm >> 6, op,
@@ -342,20 +342,20 @@ static bool add_sub_byte(
 
 /* now, the last few thin wrapper functions */
 
-static bool add_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
+static bool add_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
     return add_sub_byte(reg, imm8, A64_OP_ADD, dst_buf);
 }
 
-static bool sub_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
+static bool sub_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
     return add_sub_byte(reg, imm8, A64_OP_SUB, dst_buf);
 }
 
 /* a function to zero out a memory address. It sets an auxiliary register to 0,
  * then stores its least significant byte in the address in reg. */
-static bool zero_byte(uint8_t reg, sized_buf *dst_buf) {
-    uint8_t aux = aux_reg(reg);
+static bool zero_byte(u8 reg, sized_buf *dst_buf) {
+    u8 aux = aux_reg(reg);
     if (!set_reg(aux, 0, dst_buf)) return false;
-    uint8_t instr_bytes[4];
+    u8 instr_bytes[4];
     store_to_byte(reg, aux, instr_bytes);
     return append_obj(dst_buf, &instr_bytes, 4);
 }

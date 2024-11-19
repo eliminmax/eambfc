@@ -17,7 +17,7 @@
 #include "compile.h" /* bf_compile */
 #include "config.h" /* EAMBFC_* */
 #include "err.h" /* *_err */
-#include "types.h" /* bool, uint64_t, UINT64_MAX */
+#include "types.h" /* bool, u64, UINT64_MAX */
 
 /* __BACKENDS__ */
 /* Before anything else, validate default target, and define DEFAULT_* macros
@@ -119,7 +119,7 @@ int main(int argc, char* argv[]) {
     bool quiet = false, keep = false, moveahead = false, json = false;
     bool optimize = false;
     char char_str_buf[2] = { '\0', '\0' };
-    uint64_t tape_blocks = 0;
+    u64 tape_blocks = 0;
     arch_inter *inter = NULL;
     while ((opt = getopt(argc, argv, ":hVqjOkmAa:e:t:")) != -1) {
         switch(opt) {
@@ -229,7 +229,7 @@ int main(int argc, char* argv[]) {
                 SHOW_HINT();
                 return EXIT_FAILURE;
             }
-            tape_blocks = (uint64_t) holder;
+            tape_blocks = (u64) holder;
             break;
           case 'a':
             if (inter != NULL) {

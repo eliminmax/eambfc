@@ -8,7 +8,7 @@
 #define EAMBFC_COMPILE_H 1
 /* internal */
 #include "arch_inter.h" /* arch_inter */
-#include "types.h" /* bool, uint64_t */
+#include "types.h" /* bool, u64 */
 
 /* Compile code in source file to destination file.
  * Parameters:
@@ -38,7 +38,7 @@ bool bf_compile(
     int in_fd,
     int out_fd,
     bool optimize,
-    uint64_t tape_blocks
+    u64 tape_blocks
 );
 
 #endif /* EAMBFC_COMPILE_H */

@@ -146,13 +146,13 @@
 #define ENCODE_RI_OP(op, reg) { (op) >> 4, ((reg) << 4) | ((op) & 0xf) }
 
 /* return a call-clobbered register to use as a temporary auxiliary register */
-static uint8_t aux_reg(uint8_t reg) {
+static u8 aux_reg(u8 reg) {
     return (reg == 4) ? UINT8_C(5) : UINT8_C(4);
 }
 
-static bool store_to_byte(uint8_t reg, uint8_t aux, sized_buf *dst_buf) {
+static bool store_to_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
     /* STC aux, 0(reg) {RX-a} */
-    uint8_t i_bytes[4] = {
+    u8 i_bytes[4] = {
         0x42,
         (aux << 4) | reg,
         0x00, 0x00 /* base register and displacement are set to 0 */
@@ -160,9 +160,9 @@ static bool store_to_byte(uint8_t reg, uint8_t aux, sized_buf *dst_buf) {
     return append_obj(dst_buf, &i_bytes, 4);
 }
 
-static bool load_from_byte(uint8_t reg, uint8_t aux, sized_buf *dst_buf) {
+static bool load_from_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
     /* LLGC aux, 0(reg) {RXY-a} */
-    uint8_t i_bytes[6] = {
+    u8 i_bytes[6] = {
         0xe3,
         (aux << 4) | reg,
         0x00, 0x00, 0x00, /* base register and displacement are set to 0 */
@@ -173,12 +173,12 @@ static bool load_from_byte(uint8_t reg, uint8_t aux, sized_buf *dst_buf) {
 
 /* declared before set_reg as it's used in set_reg, even though it's not first
  * in the struct. */
-static bool reg_copy(uint8_t dst, uint8_t src, sized_buf *dst_buf) {
+static bool reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
     /* LGR dst, src {RRE} */
-    return append_obj(dst_buf, (uint8_t[]){ 0xb9, 0x04, 0x00, (dst<<4)|src}, 4);
+    return append_obj(dst_buf, (u8[]){ 0xb9, 0x04, 0x00, (dst<<4)|src}, 4);
 }
 
-static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
+static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     /* There are numerous ways to store immediates in registers for this
      * architecture. This function tries to find a way to load a given immediate
      * in as few machine instructions as possible, using shorter instructions
@@ -189,13 +189,13 @@ static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
     } else if (imm <= INT16_MAX && imm >= INT16_MIN) {
         /* if it fits in a halfword, use Load Halfword Immediate (64 <- 16) */
         /* LGHI r.reg, imm {RI-a} */
-        uint8_t i_bytes[4] = ENCODE_RI_OP(0xa79, reg);
+        u8 i_bytes[4] = ENCODE_RI_OP(0xa79, reg);
         return serialize16be(imm, &i_bytes[2]) == 2 &&
                 append_obj(dst_buf, &i_bytes, 4);
     } else if (imm <= INT32_MAX && imm >= INT32_MIN) {
         /* if it fits within a word, use Load Immediate (64 <- 32). */
         /* LGFI r.reg, imm {RIL-a} */
-        uint8_t i_bytes[6] = ENCODE_RI_OP(0xc01, reg);
+        u8 i_bytes[6] = ENCODE_RI_OP(0xc01, reg);
         return serialize32be(imm, &i_bytes[2]) == 4 &&
                 append_obj(dst_buf, &i_bytes, 6);
     } else {
@@ -204,12 +204,12 @@ static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
          * a 32-bit value and call this function recursively to handle the lower
          * 32 bits, then use an "insert immediate" instruction to set the higher
          * bits. */
-        int16_t default_val = (imm >= 0) ? INT16_C(0) : INT16_C(-1);
-        int32_t upper_imm = imm >> 32;
+        i16 default_val = (imm >= 0) ? INT16_C(0) : INT16_C(-1);
+        i32 upper_imm = imm >> 32;
 
         /* try to set the upper bits no matter what, but if the lower bits
          * failed, still want to return false. */
-        bool ret = set_reg(reg, (int32_t)imm, dst_buf);
+        bool ret = set_reg(reg, (i32)imm, dst_buf);
         /* check if only one of the two higher quarters need to be explicitly
          * set, as that enables using shorter instructions. In the terminology
          * of the architecture, they are the high high and high low quarters of
@@ -217,19 +217,19 @@ static bool set_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
         if (upper_imm <= INT16_MAX && upper_imm >= INT16_MIN) {
             /* sets bits 16-31 of the register to the immediate */
             /* IIHL reg, upper_imm {RI-a} */
-            uint8_t i_bytes[4] = ENCODE_RI_OP(0xa51, reg);
+            u8 i_bytes[4] = ENCODE_RI_OP(0xa51, reg);
             ret &= serialize16be(upper_imm, &i_bytes[2]) == 2 &&
                 append_obj(dst_buf, &i_bytes, 4);
-        } else if ((int16_t)upper_imm == default_val) {
+        } else if ((i16)upper_imm == default_val) {
             /* sets bits 0-15 of the register to the immediate. */
             /* IIHH reg, upper_imm {RI-a} */
-            uint8_t i_bytes[4] = ENCODE_RI_OP(0xa50, reg);
+            u8 i_bytes[4] = ENCODE_RI_OP(0xa50, reg);
             ret &= serialize16be(upper_imm, &i_bytes[2]) == 2 &&
                 append_obj(dst_buf, &i_bytes, 4);
         } else {
             /* need to set the full upper word, with Insert Immediate (high) */
             /* IIHF reg, imm {RIL-a} */
-            uint8_t i_bytes[6] = ENCODE_RI_OP(0xc09, reg);
+            u8 i_bytes[6] = ENCODE_RI_OP(0xc09, reg);
             ret &= serialize32be(upper_imm, &i_bytes[2]) == 4 &&
                 append_obj(dst_buf, &i_bytes, 6);
         }
@@ -245,7 +245,7 @@ static bool syscall(sized_buf *dst_buf) {
      * arch_inter.syscall prototype, which would only be useful on this specific
      * architecture. The initial implementation of s390x must be complete and
      * working without any change outside of the designated insertion points. */
-    return append_obj(dst_buf, (uint8_t[]){ 0x0a, 0x00 }, 2);
+    return append_obj(dst_buf, (u8[]){ 0x0a, 0x00 }, 2);
 }
 
 typedef enum {
@@ -257,8 +257,8 @@ typedef enum {
 } comp_mask;
 
 static bool branch_cond(
-    uint8_t reg,
-    int64_t offset,
+    u8 reg,
+    i64 offset,
     comp_mask mask,
     sized_buf *dst_buf
 ) {
@@ -284,7 +284,7 @@ static bool branch_cond(
      * addressing individual bytes, so instead load the byte of interest into
      * an auxiliary register and compare with that, much like the ARM
      * implementation. */
-    uint8_t aux = aux_reg(reg);
+    u8 aux = aux_reg(reg);
     /* load the value to compare with into the auxiliary register */
     bool ret = load_from_byte(reg, aux, dst_buf);
     /* set condition code according to contents of the auxiliary register, then
@@ -308,7 +308,7 @@ static bool branch_cond(
      * | }
      *
      * */
-    uint8_t i_bytes[2][6] = {
+    u8 i_bytes[2][6] = {
         /* CFI aux, 0 {RIL-a} */
         ENCODE_RI_OP(0xc2d, aux),
         /* BRCL mask, offset */
@@ -332,7 +332,7 @@ static bool nop_loop_open(sized_buf *dst_buf) {
      * The last instruction is only 2 bytes long, but 4 bytes are allocated.
      * It was that, have 9 instructions rather than 5 instructions to get the
      * amount of padding, or use much messier code to set it up. */
-    uint8_t i_bytes[5][4] = {
+    u8 i_bytes[5][4] = {
         /* TIMES 4 BC 0, 0 {RX-b} */
         { 0x47 },
         { 0x47 },
@@ -344,45 +344,45 @@ static bool nop_loop_open(sized_buf *dst_buf) {
     return append_obj(dst_buf, &i_bytes, 18);
 }
 
-static bool jump_zero(uint8_t reg, int64_t offset, sized_buf *dst_buf) {
+static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
     return branch_cond(reg, offset, MASK_EQ, dst_buf);
 }
 
-static bool jump_not_zero(uint8_t reg, int64_t offset, sized_buf *dst_buf) {
+static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
     return branch_cond(reg, offset, MASK_NE, dst_buf);
 }
 
-static bool add_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
+static bool add_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
 
     if (imm >= INT16_MIN && imm <= INT16_MAX) {
         /* if imm fits within a halfword, a shorter instruction can be used. */
         /* AGHI reg, imm {RI-a} */
-        uint8_t i_bytes[4] = ENCODE_RI_OP(0xa7b, reg);
+        u8 i_bytes[4] = ENCODE_RI_OP(0xa7b, reg);
         return serialize16be(imm, &i_bytes[2]) == 2 &&
             append_obj(dst_buf, &i_bytes, 4);
     } else if ((imm >= INT32_MIN && imm <= INT32_MAX)) {
         /* If imm fits within a word, then use a normal add immediate */
         /* AFGI reg, imm {RIL-a} */
-        uint8_t i_bytes[6] = ENCODE_RI_OP(0xc28, reg);
+        u8 i_bytes[6] = ENCODE_RI_OP(0xc28, reg);
         return serialize32be(imm, &i_bytes[2]) == 4 &&
             append_obj(dst_buf, &i_bytes, 6);
     } else {
         bool ret = true;
-        if ((int32_t)imm != 0) {
+        if ((i32)imm != 0) {
             /* if the lower 32 bits are non-zero, call this function recursively
              * to add to them */
-            ret = add_reg(reg, (int32_t)imm, dst_buf);
+            ret = add_reg(reg, (i32)imm, dst_buf);
         }
         /* add the higher 32 bits */
         /* AIH reg, imm {RIL-a} */
-        uint8_t i_bytes[6] = ENCODE_RI_OP(0xcc8, reg);
+        u8 i_bytes[6] = ENCODE_RI_OP(0xcc8, reg);
         ret &= serialize32be((imm >> 32), &i_bytes[2]) == 4 &&
             append_obj(dst_buf, &i_bytes, 6);
         return ret;
     }
 }
 
-static bool sub_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
+static bool sub_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     /* there are not equivalent sub instructions to any of the add instructions
      * used, so just check that "-imm" won't cause problems, then call add_reg
      * with negative imm. */
@@ -396,39 +396,39 @@ static bool sub_reg(uint8_t reg, int64_t imm, sized_buf *dst_buf) {
     return add_reg(reg, -imm, dst_buf);
 }
 
-static bool inc_reg(uint8_t reg, sized_buf *dst_buf) {
+static bool inc_reg(u8 reg, sized_buf *dst_buf) {
     return add_reg(reg, 1, dst_buf);
 }
 
-static bool dec_reg(uint8_t reg, sized_buf *dst_buf) {
+static bool dec_reg(u8 reg, sized_buf *dst_buf) {
     return add_reg(reg, -1, dst_buf);
 }
 
-static bool add_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
-    uint8_t aux = aux_reg(reg);
+static bool add_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
+    u8 aux = aux_reg(reg);
     bool ret = load_from_byte(reg, aux, dst_buf);
     ret &= add_reg(aux, imm8, dst_buf);
     ret &= store_to_byte(reg, aux, dst_buf);
     return ret;
 }
 
-static bool sub_byte(uint8_t reg, int8_t imm8, sized_buf *dst_buf) {
-    uint8_t aux = aux_reg(reg);
+static bool sub_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
+    u8 aux = aux_reg(reg);
     bool ret = load_from_byte(reg, aux, dst_buf);
     ret &= add_reg(aux, -imm8, dst_buf);
     ret &= store_to_byte(reg, aux, dst_buf);
     return ret;
 }
 
-static bool inc_byte(uint8_t reg, sized_buf *dst_buf) {
+static bool inc_byte(u8 reg, sized_buf *dst_buf) {
     return add_byte(reg, 1, dst_buf);
 }
 
-static bool dec_byte(uint8_t reg, sized_buf *dst_buf) {
+static bool dec_byte(u8 reg, sized_buf *dst_buf) {
     return add_byte(reg, -1, dst_buf);
 }
 
-static bool zero_byte(uint8_t reg, sized_buf *dst_buf) {
+static bool zero_byte(u8 reg, sized_buf *dst_buf) {
     /* STC 0, 0(reg) {RX-a} */
     return store_to_byte(reg, 0, dst_buf);
 }
