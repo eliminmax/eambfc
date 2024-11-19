@@ -10,55 +10,55 @@
 #include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr */
 #include "types.h" /* uint*_t, int*_t */
 
-/* serialize a 16-bit value in u16 into 2 bytes in dest, in LSB order
+/* serialize a 16-bit value in v16 into 2 bytes in dest, in LSB order
  * return value is the number of bytes written. */
-size_t serialize16le(uint16_t u16, void *dest) {
+size_t serialize16le(uint16_t v16, void *dest) {
     size_t size = 0;
     char *p = dest;
-    p[size++] = u16;
-    p[size++] = (u16 >> 8);
+    p[size++] = v16;
+    p[size++] = (v16 >> 8);
     return size;
 }
 
-/* serialize a 16-bit value in u16 into 2 bytes in dest, in MSB order
+/* serialize a 16-bit value in v16 into 2 bytes in dest, in MSB order
  * return value is the number of bytes written. */
-size_t serialize16be(uint32_t u16, void *dest) {
+size_t serialize16be(uint32_t v16, void *dest) {
     size_t size = 0;
     char *p = dest;
-    p[size++] = (u16 >> 8);
-    p[size++] = u16;
+    p[size++] = (v16 >> 8);
+    p[size++] = v16;
     return size;
 }
 
-/* serialize a 32-bit value in u32 into 4 bytes in dest, in LSB order
+/* serialize a 32-bit value in v32 into 4 bytes in dest, in LSB order
  * return value is the number of bytes written. */
-size_t serialize32le(uint32_t u32, void *dest) {
-    size_t size = serialize16le(u32, dest);
-    size += serialize16le(u32 >> 16, (char *)dest + size);
+size_t serialize32le(uint32_t v32, void *dest) {
+    size_t size = serialize16le(v32, dest);
+    size += serialize16le(v32 >> 16, (char *)dest + size);
     return size;
 }
 
-/* serialize a 32-bit value in u32 into 4 bytes in dest, in MSB order
+/* serialize a 32-bit value in v32 into 4 bytes in dest, in MSB order
  * return value is the number of bytes written. */
-size_t serialize32be(uint32_t u32, void *dest) {
-    size_t size = serialize16be(u32 >> 16, dest);
-    size += serialize16be(u32, (char *)dest + size);
+size_t serialize32be(uint32_t v32, void *dest) {
+    size_t size = serialize16be(v32 >> 16, dest);
+    size += serialize16be(v32, (char *)dest + size);
     return size;
 }
 
-/* serialize a 64-bit value in u64 into 8 bytes in dest, in LSB order
+/* serialize a 64-bit value in v64 into 8 bytes in dest, in LSB order
  * return value is the number of bytes written. */
-size_t serialize64le(uint64_t u64, char *dest) {
-    size_t size = serialize32le(u64, dest);
-    size += serialize32le(u64 >> 32, (char *)dest + size);
+size_t serialize64le(uint64_t v64, char *dest) {
+    size_t size = serialize32le(v64, dest);
+    size += serialize32le(v64 >> 32, (char *)dest + size);
     return size;
 }
 
-/* serialize a 64-bit value in u64 into 8 bytes in dest, in MSB order
+/* serialize a 64-bit value in v64 into 8 bytes in dest, in MSB order
  * return value is the number of bytes written. */
-size_t serialize64be(uint64_t u64, char *dest) {
-    size_t size = serialize32be(u64 >> 32, dest);
-    size += serialize32be(u64, (char *)dest + size);
+size_t serialize64be(uint64_t v64, char *dest) {
+    size_t size = serialize32be(v64 >> 32, dest);
+    size += serialize32be(v64, (char *)dest + size);
     return size;
 }
 
