@@ -196,11 +196,11 @@ int main(int argc, char* argv[]) {
                 return EXIT_FAILURE;
             }
             char *endptr;
-            // casting unsigned long long instead of using scanf as scanf can
-            // lead to undefined behavior if input isn't well-crafted, and
-            // unsigned long long is guaranteed to be at least 64 bits.
+            /* casting unsigned long long instead of using scanf as scanf can
+             * lead to undefined behavior if input isn't well-crafted, and
+             * unsigned long long is guaranteed to be at least 64 bits. */
             unsigned long long holder = strtoull(optarg, &endptr, 10);
-            // if the full opt_arg wasn't consumed, it's not a numeric value.
+            /* if the full opt_arg wasn't consumed, it's not a numeric value. */
             if (*endptr != '\0') {
                 param_err(
                     "NOT_NUMERIC",
