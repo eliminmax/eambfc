@@ -24,8 +24,8 @@ static struct resource_tracker {
     void *allocs[MAX_ALLOCS];
     int fds[MAX_FDS];
     /* index variables are for the NEXT entry in the array. */
-    ifast_8 alloc_i = 0;
-    ifast_8 fd_i = 0;
+    ifast_8 alloc_i;
+    ifast_8 fd_i;
 } resources;
 
 static ifast_8 alloc_index(void *ptr) {
@@ -68,7 +68,7 @@ void mgr_free(void *ptr) {
     size_t to_move = (index - resources.alloc_i) * sizeof(void*);
     memmove(
         &(resources.allocs[index]),
-        &(resources.allocss[index + 1]),
+        &(resources.allocs[index + 1]),
         to_move
     );
 }
@@ -95,7 +95,7 @@ void *mgr_realloc(void *ptr, size_t size) {
 static int mgr_open_handler(
     const char *pathname, int flags, mode_t mode, bool with_mode
 ) {
-    if (++resources.fd_i > MAX_OPENS) {
+    if (++resources.fd_i > MAX_FDS) {
         internal_err(
             "TOO_MANY_OPENS",
             "Opened too many files for resource_mgr to track."
@@ -131,7 +131,7 @@ int mgr_open(const char *pathname, int flags) {
 int mgr_close(int fd) {
     ifast_8 index = -1;
     for (ifast_8 i = 0; i <= resources.fd_i; i++) {
-        if (resources.fds[i] == ptr) {
+        if (resources.fds[i] == fd) {
             index = i;
             break;
         }
