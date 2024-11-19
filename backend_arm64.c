@@ -49,9 +49,7 @@ static void inject_reg_operands(u8 rt, u8 rn, u8 dst[4]) {
  *
  * This assumes that dst has everything except the register, shift, and
  * immediate bits set, and that the immediate bits are set to zero. */
-static void inject_imm16_operands(
-    u16 imm, shift_lvl shift, u8 reg, u8 *dst
-) {
+static void inject_imm16_operands(u16 imm, shift_lvl shift, u8 reg, u8 *dst) {
     dst[0] |= (reg | ((imm & 07) << 5));
     dst[1] |= (imm >> 3);
     dst[2] |= (shift | (imm >> 11));
@@ -132,13 +130,7 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
         for(++i; i < 4; i++) if (parts[i].imm16 != default_val) {
             /*  MOVK x[reg], imm16{, lsl shift} */
-            mov(
-                A64_MT_KEEP,
-                parts[i].imm16,
-                parts[i].shift,
-                reg,
-                instr_bytes
-            );
+            mov(A64_MT_KEEP, parts[i].imm16, parts[i].shift, reg, instr_bytes);
             if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
         }
     }
@@ -167,9 +159,7 @@ static bool nop_loop_open(sized_buf *dst_buf) {
 }
 
 /* LDRB w.aux, x.reg; TST w.aux, 0xff; B.cond offset */
-static bool branch_cond(
-    u8 reg, i64 offset, sized_buf *dst_buf, u8 cond
-) {
+static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
     if ((offset % 4) != 0) {
         basic_err(
             "INVALID_JUMP_ADDRESS",
@@ -233,9 +223,7 @@ static bool add_sub_imm(
     return append_obj(dst_buf, &instr_bytes, 4);
 }
 
-static bool add_sub(
-    u8 reg, arith_op op, u64 imm, sized_buf *dst_buf
-) {
+static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
     /* If the immediate fits within 12 bits, it's a far simpler process - simply
      * ADD or SUB the immediate. If it fits within 24 bits, use an ADD or SUB,
      * and shift the higher 12 of the 24 bits. If the 12 lower bits are
@@ -298,8 +286,7 @@ static bool dec_reg(u8 reg, sized_buf *dst_buf) {
  * and finally, store the least significant byte of the register into that
  * memory address. */
 static bool inc_dec_byte(
-    u8 reg, sized_buf *dst_buf,
-    bool (*inner_fn)(u8 reg, sized_buf *dst_buf)
+    u8 reg, sized_buf *dst_buf, bool (*inner_fn)(u8 reg, sized_buf *dst_buf)
 ) {
     u8 instr_bytes[4] = {0x00, 0x00, 0x00, 0x00};
     u8 aux = aux_reg(reg);
@@ -323,8 +310,7 @@ static bool dec_byte(u8 reg, sized_buf *dst_buf) {
 /* similar to add_sub_reg, but operating on an auxiliary register, after loading
  * from byte and before restoring to that byte, much like inc_dec_byte */
 static bool add_sub_byte(
-    u8 reg, i8 imm8, arith_op op, sized_buf *dst_buf
-) {
+    u8 reg, i8 imm8, arith_op op, sized_buf *dst_buf) {
     u8 imm = imm8;
     u8 aux = aux_reg(reg);
     u8 instr_bytes[12] = {

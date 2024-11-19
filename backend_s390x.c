@@ -256,12 +256,7 @@ typedef enum {
     MASK_NOP = 0
 } comp_mask;
 
-static bool branch_cond(
-    u8 reg,
-    i64 offset,
-    comp_mask mask,
-    sized_buf *dst_buf
-) {
+static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
     /* jumps are done by Halfwords, not bytes, so must ensure it's valid. */
     if ((offset % 2) != 0) {
         basic_err(
@@ -286,7 +281,7 @@ static bool branch_cond(
      * implementation. */
     u8 aux = aux_reg(reg);
     /* load the value to compare with into the auxiliary register */
-    bool ret = load_from_byte(reg, aux, dst_buf);
+    bool ret = load_from_byte(reg, aux, dst);
     /* set condition code according to contents of the auxiliary register, then
      * conditionally branch if the condition code's corresponding mask bit is
      * set to one.
@@ -318,7 +313,7 @@ static bool branch_cond(
      * already initialized to zero. The offset, on the other hand, still needs
      * to be set. */
     ret &= serialize32be((offset >> 1), &i_bytes[1][2]) == 4 &&
-        append_obj(dst_buf, &i_bytes, 12);
+        append_obj(dst, &i_bytes, 12);
 
     return ret;
 }

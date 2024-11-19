@@ -195,13 +195,11 @@ static bool write_phtb(
     for (int i = 0; i < PHNUM; i++) {
         if (inter->ELF_DATA == ELFDATA2LSB) {
             serialize_phdr64_le(
-                &(phdr_table[i]),
-                &(phdr_table_bytes[i * PHDR_SIZE])
+                &(phdr_table[i]), &(phdr_table_bytes[i * PHDR_SIZE])
             );
         } else {
             serialize_phdr64_be(
-                &(phdr_table[i]),
-                &(phdr_table_bytes[i * PHDR_SIZE])
+                &(phdr_table[i]), &(phdr_table_bytes[i * PHDR_SIZE])
             );
         }
     }
@@ -218,10 +216,7 @@ static bool write_phtb(
  *
  * Due to their similarity, ',' and '.' are both implemented with bf_io. */
 static bool bf_io(
-    sized_buf *obj_code,
-    int bf_fd,
-    int sc,
-    const arch_inter *inter
+    sized_buf *obj_code, int bf_fd, int sc, const arch_inter *inter
 ) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
@@ -348,10 +343,7 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
 static bool comp_instr(
-    char c,
-    sized_buf *obj_code,
-    bool *alloc_valve,
-    const arch_inter *inter
+    char c, sized_buf *obj_code, bool *alloc_valve, const arch_inter *inter
 ) {
     _col++;
     switch(c) {
@@ -527,9 +519,7 @@ bool bf_compile(
     /* write code to perform the exit(0) syscall */
     /* set system call register to exit system call number */
     ret &= inter->FUNCS->set_reg(
-            inter->REGS->sc_num,
-            inter->SC_NUMS->exit,
-            &obj_code
+        inter->REGS->sc_num, inter->SC_NUMS->exit, &obj_code
     );
     /* set system call register to the desired exit code (0) */
     ret &= inter->FUNCS->set_reg(inter->REGS->arg1, 0, &obj_code);
