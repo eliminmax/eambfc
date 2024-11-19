@@ -305,8 +305,8 @@ int main(int argc, char* argv[]) {
         outname = malloc(strlen(argv[optind]) + 1);
         if (outname == NULL) {
             alloc_err();
-            ret = EXIT_FAILURE;
-            if (moveahead) continue; else break;
+            /* alloc_err calls exit(EXIT_FAILURE), so the following won't run */
+            goto inner_loop_failure;
         }
         strcpy(outname, argv[optind]);
         if (!rm_ext(outname, ext)) {
@@ -315,9 +315,8 @@ int main(int argc, char* argv[]) {
                 "File {} does not end with expected extension.",
                 argv[optind]
             );
-            ret = EXIT_FAILURE;
             free(outname);
-            if (moveahead) continue; else break;
+            goto inner_loop_failure;
         }
         src_fd = open(argv[optind], O_RDONLY);
         if (src_fd < 0) {
@@ -327,8 +326,7 @@ int main(int argc, char* argv[]) {
                 argv[optind]
             );
             free(outname);
-            ret = EXIT_FAILURE;
-            if (moveahead) continue; else break;
+            goto inner_loop_failure;
         }
         dst_fd = open(outname, O_WRONLY|O_CREAT|O_TRUNC, 0755);
         if (dst_fd < 0) {
@@ -338,20 +336,26 @@ int main(int argc, char* argv[]) {
                 outname
             );
             close(src_fd);
-            ret = EXIT_FAILURE;
             free(outname);
-            if (moveahead) continue; else break;
+            goto inner_loop_failure;
         }
         result = bf_compile(inter, src_fd, dst_fd, optimize, tape_blocks);
         close(src_fd);
         close(dst_fd);
         if (!result) {
             if (!keep) remove(outname);
-            ret = EXIT_FAILURE;
             free(outname);
-            if (moveahead) continue; else break;
+            goto inner_loop_failure;
         }
         free(outname);
+        continue;
+inner_loop_failure:
+        ret = EXIT_FAILURE;
+        if (moveahead) {
+            continue;
+        } else {
+            break;
+        }
     }
 
     return ret;
