@@ -14,6 +14,13 @@
 #include "util.h" /* append_obj */
 #if EAMBFC_TARGET_ARM64
 
+/* mark a series of bytes within a u8 array as being a single instruction,
+ * mostly to prevent automated code formatting from splitting them up */
+#define INSTRUCTION(...) __VA_ARGS__
+
+/* padding bytes to be replaced with an instruction within a u8 array. */
+#define PAD_INSTRUCTION 0x00, 0x00, 0x00, 0x00
+
 /* in MOVK, MOVZ, and MOVN instructions, these correspond to the bits used
  * within the 3rd byte to indicate shift level. */
 typedef enum {
@@ -103,7 +110,8 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         {(u16)imm, A64_SL_NO_SHIFT},
         {(u16)(imm >> 16), A64_SL_SHIFT16},
         {(u16)(imm >> 32), A64_SL_SHIFT32},
-        {(u16)(imm >> 48), A64_SL_SHIFT48}};
+        {(u16)(imm >> 48), A64_SL_SHIFT48},
+    };
     if (imm < 0) {
         default_val = 0xffff;
         lead_mt = A64_MT_INVERT;
@@ -153,21 +161,9 @@ static bool syscall(sized_buf *dst_buf) {
 }
 
 /* NOP; NOP; NOP */
+#define NOP 0x1f, 0x20, 0x03, 0xdf
 static bool nop_loop_open(sized_buf *dst_buf) {
-    u8 instr_bytes[12] = {
-        0x1f,
-        0x20,
-        0x03,
-        0xd5, /* NOP */
-        0x1f,
-        0x20,
-        0x03,
-        0xd5, /* NOP */
-        0x1f,
-        0x20,
-        0x03,
-        0xd5 /* NOP */
-    };
+    u8 instr_bytes[12] = {NOP, NOP, NOP};
     return append_obj(dst_buf, &instr_bytes, 12);
 }
 
@@ -189,25 +185,17 @@ static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
         );
         return false;
     }
-    u32 offset_value = 1 + ((((u32)offset) >> 2) & 0x7fffff);
+    u32 off_val = 1 + ((((u32)offset) >> 2) & 0x7fffff);
     u8 aux = aux_reg(reg);
     u8 test_and_branch[12] = {
         /* after inject_reg_operands, will be LDRB w.aux, x.reg */
-        0x00,
-        0x04,
-        0x40,
-        0x38,
+        PAD_INSTRUCTION,
         /* TST x.reg, 0xff */
-        0x1f | aux << 5,
-        (aux >> 3) | 0x1c,
-        0x40,
-        0xf2,
+        INSTRUCTION(0x1f | aux << 5, (aux >> 3) | 0x1c, 0x40, 0xf2),
         /* B.cond offset */
-        cond | (offset_value << 5),
-        offset_value >> 3,
-        offset_value >> 11,
-        0x54};
-    inject_reg_operands(aux, reg, test_and_branch);
+        INSTRUCTION(cond | (off_val << 5), off_val >> 3, off_val >> 11, 0x54),
+    };
+    load_from_byte(reg, aux, test_and_branch);
     return append_obj(dst_buf, test_and_branch, 12);
 }
 
@@ -239,7 +227,8 @@ static bool add_sub_imm(
         reg | (reg << 5),
         (reg >> 3) | ((imm_bits << 2) & 0xff),
         (imm_bits >> 6) | (shift ? 0x40 : 0x0),
-        op};
+        op,
+    };
     return append_obj(dst_buf, &instr_bytes, 4);
 }
 
@@ -331,19 +320,11 @@ static bool add_sub_byte(u8 reg, i8 imm8, arith_op op, sized_buf *dst_buf) {
     u8 imm = imm8;
     u8 aux = aux_reg(reg);
     u8 instr_bytes[12] = {
-        0x00,
-        0x00,
-        0x00,
-        0x00,
+        PAD_INSTRUCTION,
         /* set middle instruction to (ADD|SUB) x.aux, x.aux, imm */
-        aux | (aux << 5),
-        (imm << 2) | (aux >> 3),
-        imm >> 6,
-        op,
-        0x00,
-        0x00,
-        0x00,
-        0x00};
+        INSTRUCTION(aux | (aux << 5), (imm << 2) | (aux >> 3), imm >> 6, op),
+        PAD_INSTRUCTION,
+    };
     /* load the byte in address stored in x.reg into x.aux */
     load_from_byte(reg, aux, instr_bytes);
     /* store the lowest byte in x.aux back to the address in x.reg */
@@ -386,25 +367,29 @@ static const arch_funcs FUNCS = {
     sub_reg,
     add_byte,
     sub_byte,
-    zero_byte};
+    zero_byte,
+};
 
 static const arch_sc_nums SC_NUMS = {
-    63 /* read */, 64 /* write */, 93 /* exit */
+    .read = 63,
+    .write = 64,
+    .exit = 93,
 };
 
 static const arch_registers REGS = {
-    8 /* sc_num = w8 */,
-    0 /* arg1 = x0 */,
-    1 /* arg2 = x1 */,
-    2 /* arg3 = x2 */,
-    19 /* bf_ptr = x19 */
+    .sc_num = 8 /* w8 */,
+    .arg1 = 0 /* x0 */,
+    .arg2 = 1 /* x1 */,
+    .arg3 = 2 /* x2 */,
+    .bf_ptr = 19 /* x19 */,
 };
 
 const arch_inter ARM64_INTER = {
-    &FUNCS,
-    &SC_NUMS,
-    &REGS,
-    0 /* no flags are defined for this architecture */,
-    EM_AARCH64,
-    ELFDATA2LSB};
+    .FUNCS = &FUNCS,
+    .SC_NUMS = &SC_NUMS,
+    .REGS = &REGS,
+    .FLAGS = 0 /* no flags are defined for this architecture */,
+    .ELF_ARCH = EM_AARCH64,
+    .ELF_DATA = ELFDATA2LSB,
+};
 #endif /* EAMBFC_TARGEET_ARM64 */

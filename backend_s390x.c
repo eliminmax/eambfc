@@ -153,24 +153,13 @@ static u8 aux_reg(u8 reg) {
 
 static bool store_to_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
     /* STC aux, 0(reg) {RX-a} */
-    u8 i_bytes[4] = {
-        0x42,
-        (aux << 4) | reg,
-        0x00,
-        0x00 /* base register and displacement are set to 0 */
-    };
+    u8 i_bytes[4] = {0x42, (aux << 4) | reg, 0x00, 0x00};
     return append_obj(dst_buf, &i_bytes, 4);
 }
 
 static bool load_from_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
     /* LLGC aux, 0(reg) {RXY-a} */
-    u8 i_bytes[6] = {
-        0xe3,
-        (aux << 4) | reg,
-        0x00,
-        0x00,
-        0x00, /* base register and displacement are set to 0 */
-        0x90};
+    u8 i_bytes[6] = {0xe3, (aux << 4) | reg, 0x00, 0x00, 0x00, 0x90};
     return append_obj(dst_buf, &i_bytes, 6);
 }
 
@@ -304,10 +293,9 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
      * | }
      *
      * */
-    u8 i_bytes[2][6] = {/* CFI aux, 0 {RIL-a} */
-                        ENCODE_RI_OP(0xc2d, aux),
-                        /* BRCL mask, offset */
-                        ENCODE_RI_OP(0xc04, mask)};
+
+    /* CFI aux, 0 {RIL-a}; BRCL mask, offset; */
+    u8 i_bytes[2][6] = {ENCODE_RI_OP(0xc2d, aux), ENCODE_RI_OP(0xc04, mask)};
     /* no need to serialize the immediate in the first instruction, as it's
      * already initialized to zero. The offset, on the other hand, still needs
      * to be set. */
@@ -317,25 +305,19 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
     return ret;
 }
 
+/* BRANCH ON CONDITION with all operands set to zero is used as a NO-OP.
+ * Two different lengths are used. */
+/* NOP is an extended mnemonic for BC 0, 0 {RX-b} */
+#define NOP 0x47, 0x00, 0x00, 0x00
+/* NOPR is an extended mnemonic for BCR 0, 0 {RR} */
+#define NOPR 0x07, 0x00
 static bool nop_loop_open(sized_buf *dst_buf) {
-    /* BRANCH ON CONDITION with all operands set to zero is used as a NO-OP.
-     *
-     * As all bytes beyond the first in each instruction are set to zero, only
-     * the first byte is specified for each one.
-     *
-     * The last instruction is only 2 bytes long, but 4 bytes are allocated.
+    /* The last instruction is only 2 bytes long, but 4 bytes are allocated.
      * It was that, have 9 instructions rather than 5 instructions to get the
      * amount of padding, or use much messier code to set it up. */
-    u8 i_bytes[5][4] = {/* TIMES 4 BC 0, 0 {RX-b} */
-                        {0x47},
-                        {0x47},
-                        {0x47},
-                        {0x47},
-                        /* BCR 0, 0 {RR} */
-                        {0x07}};
+    u8 i_bytes[5][4] = {{NOP}, {NOP}, {NOP}, {NOP}, {NOPR}};
     return append_obj(dst_buf, &i_bytes, 18);
 }
-
 static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
     return branch_cond(reg, offset, MASK_EQ, dst_buf);
 }
@@ -439,25 +421,33 @@ static const arch_funcs FUNCS = {
     sub_reg,
     add_byte,
     sub_byte,
-    zero_byte};
+    zero_byte,
+};
 
 static const arch_sc_nums SC_NUMS = {
-    3 /* read */, 4 /* write */, 1 /* exit */
+    .read = 3,
+    .write = 4,
+    .exit = 1,
 };
 
 static const arch_registers REGS = {
-    1 /* sc_num */, 2 /* arg1 */, 3 /* arg2 */, 4 /* arg3 */, 8 /* bf_ptr */
+    .sc_num = 1,
+    .arg1 = 2,
+    .arg2 = 3,
+    .arg3 = 4,
     /* NOTE: the s390x-abi specifies that registers r6 through r13, as well as
      * r15, are not clobbered by function calls. The linux kernel uses r6 and r7
      * for syscall args, not r8, so it should be fine to use.
      * See https://www.kernel.org/doc/html/v5.3/s390/debugging390.html */
+    .bf_ptr = 8,
 };
 
 const arch_inter S390X_INTER = {
-    &FUNCS,
-    &SC_NUMS,
-    &REGS,
-    0 /* no flags are defined for this architecture */,
-    EM_S390,
-    ELFDATA2MSB};
+    .FUNCS = &FUNCS,
+    .SC_NUMS = &SC_NUMS,
+    .REGS = &REGS,
+    .FLAGS = 0 /* no flags are defined for this architecture */,
+    .ELF_ARCH = EM_S390,
+    .ELF_DATA = ELFDATA2MSB,
+};
 #endif /* EAMBFC_TARGET_S390X */
