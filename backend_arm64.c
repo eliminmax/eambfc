@@ -10,7 +10,7 @@
 #include "config.h" /* EAMBFC_TARGET_ARM64 */
 #include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
 #include "err.h" /* basic_err */
-#include "types.h" /* uint*_t, int*_t, bool, off_t, size_t UINT64_C */
+#include "types.h" /* [iu]{8,16,32,64}, bool, off_t, size_t, UINT64_C */
 #include "util.h" /* append_obj */
 #if EAMBFC_TARGET_ARM64
 

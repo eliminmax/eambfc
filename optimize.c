@@ -12,7 +12,7 @@
 #include <string.h> /* memmove, memset, strchr, strcpy, strlen, strstr */
 /* internal */
 #include "err.h" /* basic_err, instr_err */
-#include "types.h" /* bool, uint, UINT64_MAX, uint*_t, INT64_MAX, sized_buf */
+#include "types.h" /* bool, uint, {U,}INT64_MAX, [iu]{8,16,32,64}, sized_buf */
 #include "util.h" /* append_obj, read_to_sized_buf */
 
 /* filter out the non-bf characters from code->buf */

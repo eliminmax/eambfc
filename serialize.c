@@ -8,7 +8,7 @@
 #include <stddef.h> /* size_t */
 /* internal */
 #include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr */
-#include "types.h" /* uint*_t, int*_t */
+#include "types.h" /* [iu]{8,16,32,64} */
 
 /* serialize a 16-bit value in v16 into 2 bytes in dest, in LSB order
  * return value is the number of bytes written. */

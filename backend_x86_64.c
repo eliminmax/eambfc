@@ -9,7 +9,7 @@
 #include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
 #include "err.h" /* basic_err */
 #include "serialize.h" /* serialize* */
-#include "types.h" /* i32, i64, i8, u8, bool, size_t, off_t */
+#include "types.h" /* [iu]{8,16,32,64}, bool, size_t, off_t */
 #include "util.h" /* append_obj */
 
 /* If there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ

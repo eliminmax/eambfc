@@ -9,7 +9,7 @@
 #define EAMBFC_SERIALIZE_H 1
 /* internal */
 #include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr */
-#include "types.h" /* uint*_t */
+#include "types.h" /* [iu]{8,16,32,64} */
 
 /* given an unsigned integer of a given size and a char array, these write the
  * value to the char array, in LSB order, returning the number of bytes written.

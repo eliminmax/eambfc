@@ -9,7 +9,7 @@
 #define EAMBFC_ARCH_INTER_H 1
 /* internal */
 #include "config.h" /* EAMBFC_TARGET* */
-#include "types.h" /* uint*_t, int*_t, bool, sized_buf */
+#include "types.h" /* [iu]{8,16,32,64}, bool, sized_buf */
 
 /* This defines the interface for the architecture. It is written around
  * assumptions that are true about Linux, namely that the system call number and

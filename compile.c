@@ -17,7 +17,7 @@
 #include "err.h" /* *_err */
 #include "optimize.h" /* to_ir */
 #include "serialize.h" /* serialize_*hdr64_[bl]e */
-#include "types.h" /* bool, int*_t, uint*_t, SCNx64, sized_buf */
+#include "types.h" /* bool, [iu]{8,16,32,64}, SCNx64, sized_buf */
 #include "util.h" /* read_to_sized_buf, write_obj */
 
 /* virtual memory address of the tape - cannot overlap with the machine code.

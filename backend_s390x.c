@@ -12,7 +12,7 @@
 #include "compat/elf.h" /* EM_S390, ELFDATA2MSB */
 #include "err.h" /* basic_err */
 #include "serialize.h" /* serialize* */
-#include "types.h" /* uint*_t, int*_t, bool, off_t, size_t, INT*_{MAX, MIN} */
+#include "types.h" /* [iu]{8,16,32,64}, bool, off_t, size_t, INT*_{MAX, MIN} */
 #include "util.h" /* append_obj */
 
 #if EAMBFC_TARGET_S390X
