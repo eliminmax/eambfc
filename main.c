@@ -9,8 +9,8 @@
 #include <stdlib.h> /* malloc, free, EXIT_*, strtoull */
 #include <string.h> /* strncmp, strlen, strcpy */
 /* POSIX */
-#include <fcntl.h> /* open, O_*, mode_t */
-#include <unistd.h> /* getopt, optopt, close */
+#include <fcntl.h> /* O_*, mode_t */
+#include <unistd.h> /* getopt, optopt */
 /* internal */
 #include "arch_inter.h" /* arch_inter, *_INTER */
 #include "compat/elf.h" /* EM_* */
@@ -294,7 +294,7 @@ int main(int argc, char *argv[]) {
     if (inter == NULL) inter = &DEFAULT_INTER;
 
     for (/* reusing optind here */; optind < argc; optind++) {
-        outname = malloc(strlen(argv[optind]) + 1);
+        outname = mgr_malloc(strlen(argv[optind]) + 1);
         if (outname == NULL) {
             alloc_err();
             /* alloc_err calls exit(EXIT_FAILURE), so the following won't run */
@@ -307,35 +307,35 @@ int main(int argc, char *argv[]) {
                 "File {} does not end with expected extension.",
                 argv[optind]
             );
-            free(outname);
+            mgr_free(outname);
             goto inner_loop_failure;
         }
-        src_fd = open(argv[optind], O_RDONLY);
+        src_fd = mgr_open(argv[optind], O_RDONLY);
         if (src_fd < 0) {
             param_err(
                 "OPEN_R_FAILED", "Failed to open {} for reading.", argv[optind]
             );
-            free(outname);
+            mgr_free(outname);
             goto inner_loop_failure;
         }
-        dst_fd = open(outname, O_WRONLY | O_CREAT | O_TRUNC, 0755);
+        dst_fd = mgr_open_m(outname, O_WRONLY | O_CREAT | O_TRUNC, 0755);
         if (dst_fd < 0) {
             param_err(
                 "OPEN_W_FAILED", "Failed to open {} for writing.", outname
             );
-            close(src_fd);
-            free(outname);
+            mgr_close(src_fd);
+            mgr_free(outname);
             goto inner_loop_failure;
         }
         result = bf_compile(inter, src_fd, dst_fd, optimize, tape_blocks);
-        close(src_fd);
-        close(dst_fd);
+        mgr_close(src_fd);
+        mgr_close(dst_fd);
         if (!result) {
             if (!keep) remove(outname);
-            free(outname);
+            mgr_free(outname);
             goto inner_loop_failure;
         }
-        free(outname);
+        mgr_free(outname);
         continue;
 inner_loop_failure:
         ret = EXIT_FAILURE;
