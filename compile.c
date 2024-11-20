@@ -372,6 +372,7 @@ static bool comp_instr(
     default: return true;
     }
 }
+
 /* similar to the above COMPILE_WITH, but with an extra parameter passed to the
  * function, so that can't be reused. */
 #define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, ct, obj_code)

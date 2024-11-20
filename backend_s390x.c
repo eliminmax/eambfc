@@ -311,6 +311,7 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
 #define NOP 0x47, 0x00, 0x00, 0x00
 /* NOPR is an extended mnemonic for BCR 0, 0 {RR} */
 #define NOPR 0x07, 0x00
+
 static bool nop_loop_open(sized_buf *dst_buf) {
     /* The last instruction is only 2 bytes long, but 4 bytes are allocated.
      * It was that, have 9 instructions rather than 5 instructions to get the
@@ -318,6 +319,7 @@ static bool nop_loop_open(sized_buf *dst_buf) {
     u8 i_bytes[5][4] = {{NOP}, {NOP}, {NOP}, {NOP}, {NOPR}};
     return append_obj(dst_buf, &i_bytes, 18);
 }
+
 static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
     return branch_cond(reg, offset, MASK_EQ, dst_buf);
 }
