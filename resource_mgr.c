@@ -63,6 +63,7 @@ void mgr_free(void *ptr) {
             "MGR_FREE_UNKNOWN",
             "mgr_free called with an unregistered *ptr value"
         );
+        /* will never return, as internal_err calls exit(EXIT_FAILURE) */
         return;
     }
     size_t to_move = (index - resources.alloc_i) * sizeof(void *);
@@ -74,6 +75,7 @@ void mgr_free(void *ptr) {
 void *mgr_realloc(void *ptr, size_t size) {
     ifast_8 index = alloc_index(ptr);
     if (index == -1) {
+        /* will never return, as internal_err calls exit(EXIT_FAILURE) */
         internal_err(
             "MGR_REALLOC_UNKNOWN",
             "mgr_realloc called with an unregistered *ptr value"
