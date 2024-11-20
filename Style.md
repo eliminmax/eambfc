@@ -12,12 +12,10 @@ The following are the formatting I follow for source code:
 * 80 character maximum per line, regardless of language.
 * Indentation:
   * General: 4 spaces for indentation, except in the following cases:
-    * C: `case`s within `switch` statements are half indented
     * Makefiles use 8-wide tab characters due to the constraints of the format
     * Markdown files use 2 spaces due to the constraints of the format
 * C: Open braces are on the same line as the function signature/conditional/etc.
 * C: Multi-line comments have an asterisk at the start of each line.
-  * Exception: license heading in `compat/elf.h` is left as-is.
 * Names:
   * macros, enum variants, and const struct members are `SCREAMING_SNAKE_CASE`.
   * everything else is `snake_case` or `abrevnames`, depending on what fits.
@@ -30,11 +28,29 @@ The following are the formatting I follow for source code:
   * `/* internal */`: the header is provided within the `eambfc` source tree.
   * Each `#include` are accompanied by a comment explaining why it's there.
 
-Most of the code in this repository was written specifically for this project,
-and follows the formatting and style rules. Code originally from other projects
-may or may not be adapted to fit some or all of the formatting and style rules.
+There's a .clang-format file for clang-format-16, which is the latest verison
+available in Debian Bookworm. If installed, a pre-commit hook can be created (by
+default at `"$GIT_DIR/hooks/pre-commit"`) with the following contents to ensure
+that all C source and header files except `compat/elf.h` are formatted according
+to the rules in `.clang-format`:
 
-Brainfuck source code in the `test/` directory is the exception - it has no
-formatting rules or style guides, but the code should include commentary to
+```sh
+#!/bin/sh
+cd "$(git rev-parse --show-toplevel)" || exit 1
+git clang-format-16 *.[ch] compat/eambfc_inttypes.h
+```
+
+If not already formatted according to those rules, the commit will abort, and
+the files will be adjusted to meet them.
+
+There are two cases where those formatting rules don't apply.
+
+The first is in `compat/elf.h` - it's adapted from glibc's `elf.h`, and its
+style is a more arbitrary hybrid of the original and my own style, and should be
+hand-adjusted to ensure internal consistency within the header.
+
+Brainfuck source code in the `test/` directory is the other exception - it has
+no formatting rules or style guides, but the code should include commentary to
 explain what it's doing, how, and, if not written for this project, where it
 came from.
+
