@@ -56,12 +56,12 @@
 #ifndef INT64_MAX /* if not defined, int64_t is not supported. */
 #define INT64_MAX 9223372036854775807LL
 #define INT64_MIN -9223372036854775808LL
-typedef long long int int64_t
+typedef long long int int64_t;
 #endif /* INT64_MAX */
 
 #ifndef UINT64_MAX /* if not defined, uint64_t is not supported. */
 #define UINT64_MAX 18446744073709551615ULL
-typedef unsigned long long int uint64_t
+typedef unsigned long long int uint64_t;
 #define PRIx64 "%llu"
 #define SCNx64 "%llu"
 #endif /* UINT64_MAX */
