@@ -13,8 +13,13 @@
 /* internal */
 #include "arch_inter.h" /* X86_64_INTER */
 #include "compile.h" /* bf_compile */
+#include "resource_mgr.h" /* register_mgr */
 
 int main(void) {
+    /* register atexit function to clean up any open files or memory allocations
+     * left behind. */
+    register_mgr();
+
     /* a tmpfile will be open by default, so it's a portable way to have an
      * empty source file. */
     FILE *tmp_file = tmpfile();

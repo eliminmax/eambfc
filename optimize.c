@@ -12,6 +12,7 @@
 #include <string.h> /* memmove, memset, strchr, strcpy, strlen, strstr */
 /* internal */
 #include "err.h" /* basic_err, instr_err */
+#include "resource_mgr.h" /* register_mgr */
 #include "types.h" /* bool, uint, {U,}INT64_MAX, [iu]{8,16,32,64}, sized_buf */
 #include "util.h" /* append_obj, read_to_sized_buf */
 
@@ -288,12 +289,14 @@ static void instr_merge(sized_buf *ir) {
 /* POSIX */
 #include <fcntl.h> /* open */
 #include <unistd.h> /* close */
-
 /* used for testing purposes
  * inspired by Python's `if __name__ == "__main__" idiom
  * compile with flag -D OPTIMIZE_STANDALONE to enable this and compile a
  * standalone program that provides insight into the optimization process. */
 int main(int argc, char *argv[]) {
+    /* register atexit function to clean up any open files or memory allocations
+     * left behind. */
+    register_mgr();
     if (argc < 2) {
         fputs("Not enough arguments.\n", stderr);
         return EXIT_FAILURE;
