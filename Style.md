@@ -29,19 +29,17 @@ The following are the formatting I follow for source code:
   * Each `#include` are accompanied by a comment explaining why it's there.
 
 There's a .clang-format file for clang-format-16, which is the latest verison
-available in Debian Bookworm. If installed, a pre-commit hook can be created (by
-default at `"$GIT_DIR/hooks/pre-commit"`) with the following contents to ensure
+available in Debian Bookworm. If installed, a pre-push hook can be created (by
+default at `"$GIT_DIR/hooks/pre-pysh"`) with the following contents to ensure
 that all C source and header files except `compat/elf.h` are formatted according
-to the rules in `.clang-format`:
+to the rules in `.clang-format` before pushing.
 
 ```sh
 #!/bin/sh
 cd "$(git rev-parse --show-toplevel)" || exit 1
-git clang-format-16 *.[ch] compat/eambfc_inttypes.h
-```
 
-If not already formatted according to those rules, the commit will abort, and
-the files will be adjusted to meet them.
+clang-format-16 -Werror -n *.[ch] compat/*.h
+```
 
 There are two cases where those formatting rules don't apply.
 
