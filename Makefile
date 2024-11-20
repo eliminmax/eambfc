@@ -64,8 +64,8 @@ config.h: config.template.h version
 	else \
 		git_str='Not built from git repo'; \
 	fi; \
-	sed -e "/EAMBFC_VERSION/s/@@/\"$$(cat version)\"/" \
-		-e "/EAMBFC_COMMIT/s/@@/\"$$git_str\"/" \
+	sed -e "/EAMBFC_VERSION/s/@/\"$$(cat version)\"/" \
+		-e "/EAMBFC_COMMIT/s/@/\"$$git_str\"/" \
 		<config.template.h >config.h
 
 resource_mgr.o: resource_mgr.c

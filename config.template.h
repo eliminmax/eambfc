@@ -19,9 +19,9 @@
 #define EAMBFC_TARGET EM_X86_64
 
 /* The current version - this is set in the config.h make target */
-#define EAMBFC_VERSION @ @
+#define EAMBFC_VERSION @
 
 /* The current git commit - this is set in the config.h make target */
-#define EAMBFC_COMMIT @ @
+#define EAMBFC_COMMIT @
 
 #endif /* EAMBFC_CONFIG_H */
