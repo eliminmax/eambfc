@@ -66,6 +66,7 @@ void mgr_free(void *ptr) {
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
         return;
     }
+    free(ptr);
     size_t to_move = (index - resources.alloc_i) * sizeof(void *);
     memmove(
         &(resources.allocs[index]), &(resources.allocs[index + 1]), to_move
