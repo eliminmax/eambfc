@@ -17,6 +17,7 @@
 #include "compile.h" /* bf_compile */
 #include "config.h" /* EAMBFC_* */
 #include "err.h" /* *_err */
+#include "resource_mgr.h" /* mgr_*, register_mgr */
 #include "types.h" /* bool, u64, UINT64_MAX */
 
 /* __BACKENDS__ */
@@ -111,6 +112,9 @@ static bool rm_ext(char *str, const char *ext) {
     if (!(quiet || json)) show_help(stderr, argv[0])
 
 int main(int argc, char *argv[]) {
+    /* register atexit function to clean up any open files or memory allocations
+     * left behind. */
+    register_mgr();
     int src_fd, dst_fd;
     int result;
     int opt;
