@@ -133,6 +133,7 @@ all_tests: test multibuild_test strict ubsan int_torture_test
 
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
-	rm -rf *.o eambfc alt-builds *mini_elf optimize can_run_linux_amd64
+	rm -rf $(EAMBFC_DEPS) eambfc alt-builds optimize \
+	    create_mini_elf.o create_mini_elf mini_elf can_run_linux_amd64
 	if [ -e .git ]; then rm -f config.h; fi
 	(cd tests; make clean)
