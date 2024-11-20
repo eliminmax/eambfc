@@ -18,6 +18,8 @@
  * latter. Doing so is neither necessary nor beneficial, as this file will still
  * be available, but it is still an option. */
 
+/* clang-format off */
+
 /* This file defines standard ELF types, structures, and macros.
    Copyright (C) 1995-2022 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
