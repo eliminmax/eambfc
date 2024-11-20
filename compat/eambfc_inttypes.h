@@ -10,7 +10,7 @@
  * about, because I can't understand why POSIX does what it does here.
  *
  * POSIX requires that appropriate types exist for int8_t, int16_t, int32_t,
- * and their uintN_t equivalents, and that the PRI and SCN macros are as well.
+ * and their uintN_t equivalents, and that the PRI and SCN macros are available.
  *
  * You know what it does not require?
  * Definitions for int64_t and uint64_t.
