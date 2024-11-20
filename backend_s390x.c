@@ -8,8 +8,8 @@
 
 /* internal */
 #include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter}  */
-#include "config.h" /* EAMBFC_TARGET_S390X */
 #include "compat/elf.h" /* EM_S390, ELFDATA2MSB */
+#include "config.h" /* EAMBFC_TARGET_S390X */
 #include "err.h" /* basic_err */
 #include "serialize.h" /* serialize* */
 #include "types.h" /* [iu]{8,16,32,64}, bool, off_t, size_t, INT*_{MAX, MIN} */
@@ -143,7 +143,8 @@
  * The following macro can initialize an array for any of the three, and the
  * appropriately-sized serialize{16,32}be function can be used for the actual
  * immediate value after initializing the array. */
-#define ENCODE_RI_OP(op, reg) { (op) >> 4, ((reg) << 4) | ((op) & 0xf) }
+#define ENCODE_RI_OP(op, reg) \
+    { (op) >> 4, ((reg) << 4) | ((op)&0xf) }
 
 /* return a call-clobbered register to use as a temporary auxiliary register */
 static u8 aux_reg(u8 reg) {
@@ -155,7 +156,8 @@ static bool store_to_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
     u8 i_bytes[4] = {
         0x42,
         (aux << 4) | reg,
-        0x00, 0x00 /* base register and displacement are set to 0 */
+        0x00,
+        0x00 /* base register and displacement are set to 0 */
     };
     return append_obj(dst_buf, &i_bytes, 4);
 }
@@ -165,9 +167,10 @@ static bool load_from_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
     u8 i_bytes[6] = {
         0xe3,
         (aux << 4) | reg,
-        0x00, 0x00, 0x00, /* base register and displacement are set to 0 */
-        0x90
-    };
+        0x00,
+        0x00,
+        0x00, /* base register and displacement are set to 0 */
+        0x90};
     return append_obj(dst_buf, &i_bytes, 6);
 }
 
@@ -175,7 +178,7 @@ static bool load_from_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
  * in the struct. */
 static bool reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
     /* LGR dst, src {RRE} */
-    return append_obj(dst_buf, (u8[]){ 0xb9, 0x04, 0x00, (dst<<4)|src}, 4);
+    return append_obj(dst_buf, (u8[]){0xb9, 0x04, 0x00, (dst << 4) | src}, 4);
 }
 
 static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
@@ -191,13 +194,13 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         /* LGHI r.reg, imm {RI-a} */
         u8 i_bytes[4] = ENCODE_RI_OP(0xa79, reg);
         return serialize16be(imm, &i_bytes[2]) == 2 &&
-                append_obj(dst_buf, &i_bytes, 4);
+               append_obj(dst_buf, &i_bytes, 4);
     } else if (imm <= INT32_MAX && imm >= INT32_MIN) {
         /* if it fits within a word, use Load Immediate (64 <- 32). */
         /* LGFI r.reg, imm {RIL-a} */
         u8 i_bytes[6] = ENCODE_RI_OP(0xc01, reg);
         return serialize32be(imm, &i_bytes[2]) == 4 &&
-                append_obj(dst_buf, &i_bytes, 6);
+               append_obj(dst_buf, &i_bytes, 6);
     } else {
         /* if it does not fit within 32 bits, then the lower 32 bits need to be
          * set as normal, then the higher 32 bits need to be set. Cast imm to
@@ -219,19 +222,19 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
             /* IIHL reg, upper_imm {RI-a} */
             u8 i_bytes[4] = ENCODE_RI_OP(0xa51, reg);
             ret &= serialize16be(upper_imm, &i_bytes[2]) == 2 &&
-                append_obj(dst_buf, &i_bytes, 4);
+                   append_obj(dst_buf, &i_bytes, 4);
         } else if ((i16)upper_imm == default_val) {
             /* sets bits 0-15 of the register to the immediate. */
             /* IIHH reg, upper_imm {RI-a} */
             u8 i_bytes[4] = ENCODE_RI_OP(0xa50, reg);
             ret &= serialize16be(upper_imm, &i_bytes[2]) == 2 &&
-                append_obj(dst_buf, &i_bytes, 4);
+                   append_obj(dst_buf, &i_bytes, 4);
         } else {
             /* need to set the full upper word, with Insert Immediate (high) */
             /* IIHF reg, imm {RIL-a} */
             u8 i_bytes[6] = ENCODE_RI_OP(0xc09, reg);
             ret &= serialize32be(upper_imm, &i_bytes[2]) == 4 &&
-                append_obj(dst_buf, &i_bytes, 6);
+                   append_obj(dst_buf, &i_bytes, 6);
         }
         return ret;
     }
@@ -245,7 +248,7 @@ static bool syscall(sized_buf *dst_buf) {
      * arch_inter.syscall prototype, which would only be useful on this specific
      * architecture. The initial implementation of s390x must be complete and
      * working without any change outside of the designated insertion points. */
-    return append_obj(dst_buf, (u8[]){ 0x0a, 0x00 }, 2);
+    return append_obj(dst_buf, (u8[]){0x0a, 0x00}, 2);
 }
 
 typedef enum {
@@ -260,8 +263,7 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
     /* jumps are done by Halfwords, not bytes, so must ensure it's valid. */
     if ((offset % 2) != 0) {
         basic_err(
-            "INVALID_JUMP_ADDRESS",
-            "offset is not on a halfword boundary"
+            "INVALID_JUMP_ADDRESS", "offset is not on a halfword boundary"
         );
         return false;
     }
@@ -270,8 +272,7 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
     if ((offset > 0 && (offset >> 17) != 0) ||
         (offset < 0 && (offset >> 17) != -1)) {
         basic_err(
-            "JUMP_TOO_LONG",
-            "offset is out-of-range for this architecture"
+            "JUMP_TOO_LONG", "offset is out-of-range for this architecture"
         );
         return false;
     }
@@ -303,17 +304,15 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
      * | }
      *
      * */
-    u8 i_bytes[2][6] = {
-        /* CFI aux, 0 {RIL-a} */
-        ENCODE_RI_OP(0xc2d, aux),
-        /* BRCL mask, offset */
-        ENCODE_RI_OP(0xc04, mask)
-    };
+    u8 i_bytes[2][6] = {/* CFI aux, 0 {RIL-a} */
+                        ENCODE_RI_OP(0xc2d, aux),
+                        /* BRCL mask, offset */
+                        ENCODE_RI_OP(0xc04, mask)};
     /* no need to serialize the immediate in the first instruction, as it's
      * already initialized to zero. The offset, on the other hand, still needs
      * to be set. */
     ret &= serialize32be((offset >> 1), &i_bytes[1][2]) == 4 &&
-        append_obj(dst, &i_bytes, 12);
+           append_obj(dst, &i_bytes, 12);
 
     return ret;
 }
@@ -327,15 +326,13 @@ static bool nop_loop_open(sized_buf *dst_buf) {
      * The last instruction is only 2 bytes long, but 4 bytes are allocated.
      * It was that, have 9 instructions rather than 5 instructions to get the
      * amount of padding, or use much messier code to set it up. */
-    u8 i_bytes[5][4] = {
-        /* TIMES 4 BC 0, 0 {RX-b} */
-        { 0x47 },
-        { 0x47 },
-        { 0x47 },
-        { 0x47 },
-        /* BCR 0, 0 {RR} */
-        { 0x07 }
-    };
+    u8 i_bytes[5][4] = {/* TIMES 4 BC 0, 0 {RX-b} */
+                        {0x47},
+                        {0x47},
+                        {0x47},
+                        {0x47},
+                        /* BCR 0, 0 {RR} */
+                        {0x07}};
     return append_obj(dst_buf, &i_bytes, 18);
 }
 
@@ -348,19 +345,18 @@ static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
 }
 
 static bool add_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
-
     if (imm >= INT16_MIN && imm <= INT16_MAX) {
         /* if imm fits within a halfword, a shorter instruction can be used. */
         /* AGHI reg, imm {RI-a} */
         u8 i_bytes[4] = ENCODE_RI_OP(0xa7b, reg);
         return serialize16be(imm, &i_bytes[2]) == 2 &&
-            append_obj(dst_buf, &i_bytes, 4);
+               append_obj(dst_buf, &i_bytes, 4);
     } else if ((imm >= INT32_MIN && imm <= INT32_MAX)) {
         /* If imm fits within a word, then use a normal add immediate */
         /* AFGI reg, imm {RIL-a} */
         u8 i_bytes[6] = ENCODE_RI_OP(0xc28, reg);
         return serialize32be(imm, &i_bytes[2]) == 4 &&
-            append_obj(dst_buf, &i_bytes, 6);
+               append_obj(dst_buf, &i_bytes, 6);
     } else {
         bool ret = true;
         if ((i32)imm != 0) {
@@ -372,7 +368,7 @@ static bool add_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         /* AIH reg, imm {RIL-a} */
         u8 i_bytes[6] = ENCODE_RI_OP(0xcc8, reg);
         ret &= serialize32be((imm >> 32), &i_bytes[2]) == 4 &&
-            append_obj(dst_buf, &i_bytes, 6);
+               append_obj(dst_buf, &i_bytes, 6);
         return ret;
     }
 }
@@ -443,27 +439,19 @@ static const arch_funcs FUNCS = {
     sub_reg,
     add_byte,
     sub_byte,
-    zero_byte
-};
+    zero_byte};
 
 static const arch_sc_nums SC_NUMS = {
-    3 /* read */,
-    4 /* write */,
-    1 /* exit */
+    3 /* read */, 4 /* write */, 1 /* exit */
 };
 
 static const arch_registers REGS = {
-    1 /* sc_num */,
-    2 /* arg1 */,
-    3 /* arg2 */,
-    4 /* arg3 */,
-    8 /* bf_ptr */
+    1 /* sc_num */, 2 /* arg1 */, 3 /* arg2 */, 4 /* arg3 */, 8 /* bf_ptr */
     /* NOTE: the s390x-abi specifies that registers r6 through r13, as well as
      * r15, are not clobbered by function calls. The linux kernel uses r6 and r7
      * for syscall args, not r8, so it should be fine to use.
      * See https://www.kernel.org/doc/html/v5.3/s390/debugging390.html */
 };
-
 
 const arch_inter S390X_INTER = {
     &FUNCS,
@@ -471,6 +459,5 @@ const arch_inter S390X_INTER = {
     &REGS,
     0 /* no flags are defined for this architecture */,
     EM_S390,
-    ELFDATA2MSB
-};
+    ELFDATA2MSB};
 #endif /* EAMBFC_TARGET_S390X */

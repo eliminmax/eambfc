@@ -108,9 +108,7 @@ typedef const struct arch_funcs {
      * at address in register reg is not set to zero.
      *
      * Used to implement the `]` brainfuck instruction. */
-    bool (*const jump_not_zero)(
-        u8 reg, i64 offset, sized_buf *dst_buf
-    );
+    bool (*const jump_not_zero)(u8 reg, i64 offset, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to increment register reg by one.
      *
@@ -191,4 +189,4 @@ extern const arch_inter ARM64_INTER;
 extern const arch_inter S390X_INTER;
 #endif /* EAMBFC_TARGET_S390X */
 
-# endif /* EAMBFC_ARCH_INTER_H */
+#endif /* EAMBFC_ARCH_INTER_H */

@@ -42,10 +42,8 @@ bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
      * get anywhere near that high in any realisitic scenario, and the extra
      * space simplifies overflow checking logic. Besides, any sensible malloc
      * implementation will be returning NULL well before this is relevant. */
-    if (
-        (bytes_sz > (SIZE_MAX - 0x8000)) ||
-        (dst->capacity > (SIZE_MAX - (bytes_sz + 0x8000)))
-    ) {
+    if ((bytes_sz > (SIZE_MAX - 0x8000)) ||
+        (dst->capacity > (SIZE_MAX - (bytes_sz + 0x8000)))) {
         basic_err(
             "BUF_TOO_LARGE",
             "Extending buffer would put size within 8 KiB of SIZE_MAX"
@@ -55,8 +53,7 @@ bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
 
     if (dst->buf == NULL) {
         internal_err(
-            "APPEND_OBJ_TO_NULL",
-            "append_obj called with dst->buf set to NULL"
+            "APPEND_OBJ_TO_NULL", "append_obj called with dst->buf set to NULL"
         );
         return false;
     }
@@ -72,7 +69,7 @@ bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
 
     if (needed_cap > dst->capacity) {
         /* reallocate to new capacity */
-        void* new_buf = realloc(dst->buf, needed_cap);
+        void *new_buf = realloc(dst->buf, needed_cap);
         if (new_buf == NULL) {
             alloc_err();
             goto append_obj_cleanup;
@@ -81,7 +78,7 @@ bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
         dst->buf = new_buf;
     }
     /* actually append the object now that prep work is done */
-    memcpy((char*)(dst->buf) + dst->sz, bytes, bytes_sz);
+    memcpy((char *)(dst->buf) + dst->sz, bytes, bytes_sz);
     dst->sz += bytes_sz;
     return true;
 

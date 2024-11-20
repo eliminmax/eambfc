@@ -79,7 +79,7 @@ void mgr_free(void *ptr);
  * Fatal Error Calls:
  *  - if called with 16 file descriptors already registered, call internal_err
  *    with error code `TOO_MANY_OPENS`.
-*/
+ */
 int mgr_open_m(const char *pathname, int flags, mode_t mode);
 int mgr_open(const char *pathname, int flags);
 

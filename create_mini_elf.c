@@ -17,7 +17,7 @@
 int main(void) {
     /* a tmpfile will be open by default, so it's a portable way to have an
      * empty source file. */
-    FILE* tmp_file = tmpfile();
+    FILE *tmp_file = tmpfile();
     if (tmp_file == NULL) {
         fputs("Failed to open tmpfile.\n", stderr);
         return EXIT_FAILURE;
@@ -39,7 +39,8 @@ int main(void) {
         return EXIT_FAILURE;
     }
     int ret = bf_compile(&X86_64_INTER, in_fd, out_fd, false, 1) ?
-        EXIT_SUCCESS : EXIT_FAILURE;
+                  EXIT_SUCCESS :
+                  EXIT_FAILURE;
     fclose(tmp_file);
     close(out_fd);
     return ret;

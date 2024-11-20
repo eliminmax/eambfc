@@ -7,8 +7,8 @@
  * than the other way around. */
 /* internal */
 #include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
-#include "config.h" /* EAMBFC_TARGET_ARM64 */
 #include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
+#include "config.h" /* EAMBFC_TARGET_ARM64 */
 #include "err.h" /* basic_err */
 #include "types.h" /* [iu]{8,16,32,64}, bool, off_t, size_t, UINT64_C */
 #include "util.h" /* append_obj */
@@ -25,10 +25,7 @@ typedef enum {
 
 /* these byte values often appear within ADD and SUB instructions, and are the
  * only difference between them. */
-typedef enum {
-    A64_OP_ADD = 0x91,
-    A64_OP_SUB = 0xd1
-} arith_op;
+typedef enum { A64_OP_ADD = 0x91, A64_OP_SUB = 0xd1 } arith_op;
 
 /* the final byte of each of the MOVK, MOVN, and MOVZ instructions are used as
  * the corresponding enum values here */
@@ -80,9 +77,7 @@ static u8 aux_reg(u8 reg) {
 
 /* set dst to the machine code for one of MOVK, MOVN, or MOVZ, depending on mt,
  * with the given operands. */
-static void mov(
-    mov_type mt, u16 imm, shift_lvl shift, u8 reg, u8 *dst
-) {
+static void mov(mov_type mt, u16 imm, shift_lvl shift, u8 reg, u8 *dst) {
     /* for MOVN, the bits need to be inverted. Ask Arm, not me. */
     u16 imm_bits = (mt == A64_MT_INVERT) ? ~imm : imm;
     dst[0] = 0x00;
@@ -97,15 +92,18 @@ static void mov(
 static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     u16 default_val;
     mov_type lead_mt;
+
     /* split the immediate into 4 16-bit parts - high, medium-high, medium-low,
      * and low. */
-    struct shifted_imm { u16 imm16; shift_lvl shift; };
+    struct shifted_imm {
+        u16 imm16;
+        shift_lvl shift;
+    };
     struct shifted_imm parts[4] = {
         {(u16)imm, A64_SL_NO_SHIFT},
         {(u16)(imm >> 16), A64_SL_SHIFT16},
         {(u16)(imm >> 32), A64_SL_SHIFT32},
-        {(u16)(imm >> 48), A64_SL_SHIFT48}
-    };
+        {(u16)(imm >> 48), A64_SL_SHIFT48}};
     if (imm < 0) {
         default_val = 0xffff;
         lead_mt = A64_MT_INVERT;
@@ -115,7 +113,8 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     }
     /* skip to the first part with non-default imm16 values. */
     int i;
-    for(i = 0; i < 4; i++) if (parts[i].imm16 != default_val) break;
+    for (i = 0; i < 4; i++)
+        if (parts[i].imm16 != default_val) break;
     u8 instr_bytes[4] = {0, 0, 0, 0};
     /* check if the end was reached without finding a non-default value */
     if (i == 4) {
@@ -128,11 +127,16 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         /* (MOVZ|MOVN) x.reg, lead_imm{, lsl lead_shift} */
         mov(lead_mt, parts[i].imm16, parts[i].shift, reg, instr_bytes);
         if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
-        for(++i; i < 4; i++) if (parts[i].imm16 != default_val) {
-            /*  MOVK x[reg], imm16{, lsl shift} */
-            mov(A64_MT_KEEP, parts[i].imm16, parts[i].shift, reg, instr_bytes);
-            if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
-        }
+        for (++i; i < 4; i++)
+            if (parts[i].imm16 != default_val) {
+                /*  MOVK x[reg], imm16{, lsl shift} */
+                mov(A64_MT_KEEP,
+                    parts[i].imm16,
+                    parts[i].shift,
+                    reg,
+                    instr_bytes);
+                if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
+            }
     }
     return true;
 }
@@ -151,9 +155,18 @@ static bool syscall(sized_buf *dst_buf) {
 /* NOP; NOP; NOP */
 static bool nop_loop_open(sized_buf *dst_buf) {
     u8 instr_bytes[12] = {
-        0x1f, 0x20, 0x03, 0xd5, /* NOP */
-        0x1f, 0x20, 0x03, 0xd5, /* NOP */
-        0x1f, 0x20, 0x03, 0xd5 /* NOP */
+        0x1f,
+        0x20,
+        0x03,
+        0xd5, /* NOP */
+        0x1f,
+        0x20,
+        0x03,
+        0xd5, /* NOP */
+        0x1f,
+        0x20,
+        0x03,
+        0xd5 /* NOP */
     };
     return append_obj(dst_buf, &instr_bytes, 12);
 }
@@ -176,16 +189,24 @@ static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
         );
         return false;
     }
-    u32 offset_value = 1 + ((((u32) offset) >> 2) & 0x7fffff);
+    u32 offset_value = 1 + ((((u32)offset) >> 2) & 0x7fffff);
     u8 aux = aux_reg(reg);
     u8 test_and_branch[12] = {
         /* after inject_reg_operands, will be LDRB w.aux, x.reg */
-        0x00, 0x04, 0x40, 0x38,
+        0x00,
+        0x04,
+        0x40,
+        0x38,
         /* TST x.reg, 0xff */
-        0x1f | aux << 5, (aux >> 3) | 0x1c, 0x40, 0xf2,
+        0x1f | aux << 5,
+        (aux >> 3) | 0x1c,
+        0x40,
+        0xf2,
         /* B.cond offset */
-        cond | (offset_value << 5), offset_value >> 3, offset_value >> 11, 0x54
-    };
+        cond | (offset_value << 5),
+        offset_value >> 3,
+        offset_value >> 11,
+        0x54};
     inject_reg_operands(aux, reg, test_and_branch);
     return append_obj(dst_buf, test_and_branch, 12);
 }
@@ -218,8 +239,7 @@ static bool add_sub_imm(
         reg | (reg << 5),
         (reg >> 3) | ((imm_bits << 2) & 0xff),
         (imm_bits >> 6) | (shift ? 0x40 : 0x0),
-        op
-    };
+        op};
     return append_obj(dst_buf, &instr_bytes, 4);
 }
 
@@ -247,15 +267,12 @@ static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
         /* set register x.aux to the target value */
         if (!set_reg(aux, (i64)imm, dst_buf)) return false;
         /* either ADD x.reg, x.reg, x.aux or SUB x.reg, x.reg, x.aux */
-        u8 instr_bytes[4] = { 0, 0, aux, op_byte };
+        u8 instr_bytes[4] = {0, 0, aux, op_byte};
         inject_reg_operands(reg, reg, instr_bytes);
         return append_obj(dst_buf, &instr_bytes, 4);
     }
     /* over the 64-bit signed int limit, so print an error and return false. */
-    char err_char_str[2] = {
-        (op == A64_OP_ADD) ? '>' : '<',
-        '\0'
-    };
+    char err_char_str[2] = {(op == A64_OP_ADD) ? '>' : '<', '\0'};
     param_err(
         "TOO_MANY_INSTRUCTIONS",
         "Over 8192 PiB of consecutive `{}` instructions",
@@ -263,6 +280,7 @@ static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
     );
     return false;
 }
+
 /* add_reg, sub_reg, inc_reg, and dec_reg are all simple wrappers around
  * add_sub. */
 static bool add_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
@@ -309,16 +327,23 @@ static bool dec_byte(u8 reg, sized_buf *dst_buf) {
 
 /* similar to add_sub_reg, but operating on an auxiliary register, after loading
  * from byte and before restoring to that byte, much like inc_dec_byte */
-static bool add_sub_byte(
-    u8 reg, i8 imm8, arith_op op, sized_buf *dst_buf) {
+static bool add_sub_byte(u8 reg, i8 imm8, arith_op op, sized_buf *dst_buf) {
     u8 imm = imm8;
     u8 aux = aux_reg(reg);
     u8 instr_bytes[12] = {
-        0x00, 0x00, 0x00, 0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
         /* set middle instruction to (ADD|SUB) x.aux, x.aux, imm */
-        aux | (aux << 5), (imm << 2) | (aux >> 3), imm >> 6, op,
-        0x00, 0x00, 0x00, 0x00
-    };
+        aux | (aux << 5),
+        (imm << 2) | (aux >> 3),
+        imm >> 6,
+        op,
+        0x00,
+        0x00,
+        0x00,
+        0x00};
     /* load the byte in address stored in x.reg into x.aux */
     load_from_byte(reg, aux, instr_bytes);
     /* store the lowest byte in x.aux back to the address in x.reg */
@@ -361,13 +386,10 @@ static const arch_funcs FUNCS = {
     sub_reg,
     add_byte,
     sub_byte,
-    zero_byte
-};
+    zero_byte};
 
 static const arch_sc_nums SC_NUMS = {
-    63 /* read */,
-    64 /* write */,
-    93 /* exit */
+    63 /* read */, 64 /* write */, 93 /* exit */
 };
 
 static const arch_registers REGS = {
@@ -384,6 +406,5 @@ const arch_inter ARM64_INTER = {
     &REGS,
     0 /* no flags are defined for this architecture */,
     EM_AARCH64,
-    ELFDATA2LSB
-};
+    ELFDATA2LSB};
 #endif /* EAMBFC_TARGEET_ARM64 */

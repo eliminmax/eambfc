@@ -34,10 +34,9 @@ typedef uint_fast16_t ufast_16;
 typedef uint_fast32_t ufast_32;
 typedef uint_fast64_t ufast_64;
 
-
 typedef struct sized_buf {
     size_t sz; /* size of data used in buffer */
     size_t capacity; /* amount of space allocated for buffer */
-    void* buf;
+    void *buf;
 } sized_buf;
 #endif /* EAMBFC_TYPES_H */

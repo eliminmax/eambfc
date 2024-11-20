@@ -26,17 +26,15 @@ static void filter_non_bf(sized_buf *code) {
     }
     char instr;
     for (size_t i = 0; i < code->sz; i++) {
-        switch(instr = str[i]) {
-          case '[':
-          case '-':
-          case '.':
-          case '<':
-          case '>':
-          case ',':
-          case '+':
-          case ']':
-            append_obj(&tmp, &instr, 1);
-            break;
+        switch (instr = str[i]) {
+        case '[':
+        case '-':
+        case '.':
+        case '<':
+        case '>':
+        case ',':
+        case '+':
+        case ']': append_obj(&tmp, &instr, 1); break;
         }
     }
     instr = '\0';
@@ -61,11 +59,7 @@ static const char *find_loop_end(const char *loop_start) {
         }
     }
     /* The above loop only terminates if an '[' was unmatched. */
-    instr_err(
-        "UNMATCHED_OPEN",
-        "Could not optimize due to unmatched '['",
-        '['
-    );
+    instr_err("UNMATCHED_OPEN", "Could not optimize due to unmatched '['", '[');
     return NULL;
 }
 
@@ -78,17 +72,13 @@ static bool loops_match(const char *code) {
     /* if only one is found, that's a mismatch */
     if ((open_p == NULL) && !(close_p == NULL)) {
         instr_err(
-            "UNMATCHED_CLOSE",
-            "Could not optimize due to unmatched ']'",
-            ']'
+            "UNMATCHED_CLOSE", "Could not optimize due to unmatched ']'", ']'
         );
         return false;
     }
     if ((close_p == NULL) && !(open_p == NULL)) {
         instr_err(
-            "UNMATCHED_OPEN",
-            "Could not optimize due to unmatched '['",
-            '['
+            "UNMATCHED_OPEN", "Could not optimize due to unmatched '['", '['
         );
         return false;
     }
@@ -106,7 +96,10 @@ static void strip_dead(sized_buf *ir) {
      * loop the current cell back to its current value */
     char *str = ir->buf;
     char *simple_patterns[] = {
-        "<>", "><", "-+", "+-",
+        "<>",
+        "><",
+        "-+",
+        "+-",
         "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
         "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
         "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
@@ -118,7 +111,7 @@ static void strip_dead(sized_buf *ir) {
     };
     /* don't want to compute these every loop, or even every run, so hard-code
      * the known sizes sof the simple patterns here. */
-    size_t simple_pattern_sizes[] = { 2, 2, 2, 2, 256, 256 };
+    size_t simple_pattern_sizes[] = {2, 2, 2, 2, 256, 256};
     bool matched = false;
     char *match_start;
     const char *loop_end;
@@ -163,7 +156,7 @@ static void strip_dead(sized_buf *ir) {
 }
 
 /* condense a sequence of identical instructions into an IR operation. */
-static size_t condense(char instr, u64 consec_ct, char* dest) {
+static size_t condense(char instr, u64 consec_ct, char *dest) {
     char opcode;
 #if SIZE_MAX < UINT64_MAX
     if (consec_ct > SIZE_MAX) {
@@ -178,49 +171,42 @@ static size_t condense(char instr, u64 consec_ct, char* dest) {
     if (consec_ct == 1) {
         *dest = instr;
         return 1;
-    } else switch(instr) {
-      case '.':
-      case ',':
-      case ']':
-      case '[':
-        memset(dest, instr, consec_ct);
-        return (size_t)consec_ct;
-      case '>':
-        if (consec_ct <= INT64_MAX) {
-            opcode = '}';
-        } else {
-            instr_err(
-                "TOO_MANY_INSTRUCTIONS",
-                "Over 8192 Pebibytes of '>' in a row.",
-                '>'
-            );
-            return 0;
+    } else
+        switch (instr) {
+        case '.':
+        case ',':
+        case ']':
+        case '[': memset(dest, instr, consec_ct); return (size_t)consec_ct;
+        case '>':
+            if (consec_ct <= INT64_MAX) {
+                opcode = '}';
+            } else {
+                instr_err(
+                    "TOO_MANY_INSTRUCTIONS",
+                    "Over 8192 Pebibytes of '>' in a row.",
+                    '>'
+                );
+                return 0;
+            }
+            break;
+        case '<':
+            if (consec_ct <= INT64_MAX) {
+                opcode = '{';
+            } else {
+                instr_err(
+                    "TOO_MANY_INSTRUCTIONS",
+                    "Over 8192 Pebibytes of '<' in a row.",
+                    '<'
+                );
+                return 0;
+            }
+            break;
+        /* for + and -, assume that consec_ct is less than 256, as a larger
+         * value would have been optimized down. */
+        case '+': opcode = '#'; break;
+        case '-': opcode = '='; break;
+        default: return 0; break;
         }
-        break;
-      case '<':
-        if (consec_ct <= INT64_MAX) {
-            opcode = '{';
-        } else {
-            instr_err(
-                "TOO_MANY_INSTRUCTIONS",
-                "Over 8192 Pebibytes of '<' in a row.",
-                '<'
-            );
-            return 0;
-        }
-        break;
-      /* for + and -, assume that consec_ct is less than 256, as a larger
-       * value would have been optimized down. */
-      case '+':
-        opcode = '#';
-        break;
-      case '-':
-        opcode = '=';
-        break;
-      default:
-        return 0;
-        break;
-      }
     return (size_t)sprintf(dest, "%c%" PRIx64, opcode, consec_ct);
 }
 
@@ -255,7 +241,7 @@ static void instr_merge(sized_buf *ir) {
     size_t skip;
     /* condese consecutive identical instructions */
     for (i = 1; i < ir->sz; i++) {
-        current_mode = *(str+i);
+        current_mode = *(str + i);
         if (current_mode != prev_mode) {
             if (!((skip = condense(prev_mode, consec_ct, p)))) {
                 free(new_str);
@@ -278,7 +264,7 @@ static void instr_merge(sized_buf *ir) {
                 );
                 return;
             } else {
-                consec_ct ++;
+                consec_ct++;
             }
         }
     }
@@ -303,6 +289,7 @@ static void instr_merge(sized_buf *ir) {
 /* POSIX */
 #include <fcntl.h> /* open */
 #include <unistd.h> /* close */
+
 /* used for testing purposes
  * inspired by Python's `if __name__ == "__main__" idiom
  * compile with flag -D OPTIMIZE_STANDALONE to enable this and compile a

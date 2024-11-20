@@ -23,30 +23,31 @@
 /* Before anything else, validate default target, and define DEFAULT_* macros
  * based on default target. */
 #if EAMBFC_TARGET == EM_X86_64
-    /* if it's set to EM_X86_64, it's valid, as that's always enabled. */
-#  define DEFAULT_ARCH_STR "x86_64"
-#  define DEFAULT_INTER X86_64_INTER
+/* if it's set to EM_X86_64, it's valid, as that's always enabled. */
+#define DEFAULT_ARCH_STR "x86_64"
+#define DEFAULT_INTER X86_64_INTER
 #elif EAMBFC_TARGET == EM_AARCH64
-    /* for arm64, make sure that the backend is enabled before anything else. */
-#  if EAMBFC_TARGET_ARM64 == 0
-#    error EAMBFC_TARGET is EM_AARCH64, but EAMBFC_TARGET_ARM64 is disabled.
-#  endif /* EAMBFC_TARGET_ARM64 == 0 */
-#  define DEFAULT_ARCH_STR "arm64"
-#  define DEFAULT_INTER ARM64_INTER
+/* for arm64, make sure that the backend is enabled before anything else. */
+#if EAMBFC_TARGET_ARM64 == 0
+#error EAMBFC_TARGET is EM_AARCH64, but EAMBFC_TARGET_ARM64 is disabled.
+#endif /* EAMBFC_TARGET_ARM64 == 0 */
+#define DEFAULT_ARCH_STR "arm64"
+#define DEFAULT_INTER ARM64_INTER
 #elif EAMBFC_TARGET == EM_S390
-    /* make sure s390x is enabled if set to default target */
-#  if EAMBFC_TARGET_S390X == 0
-#    error EAMBFC_TARGET is EM_S390, but EAMBFC_TARGET_S390X is disabled.
-#  endif /* EAMBFC_TARGET_S390X == 0 */
-#  define DEFAULT_ARCH_STR "s390x"
-#  define DEFAULT_INTER S390X_INTER
+/* make sure s390x is enabled if set to default target */
+#if EAMBFC_TARGET_S390X == 0
+#error EAMBFC_TARGET is EM_S390, but EAMBFC_TARGET_S390X is disabled.
+#endif /* EAMBFC_TARGET_S390X == 0 */
+#define DEFAULT_ARCH_STR "s390x"
+#define DEFAULT_INTER S390X_INTER
 #else
-#  error EAMBFC_TARGET is not recognized.
+#error EAMBFC_TARGET is not recognized.
 #endif /* EAMBFC_TARGET */
 
 /* print the help message to outfile. progname should be argv[0]. */
 static void show_help(FILE *outfile, char *progname) {
-    fprintf(outfile,
+    fprintf(
+        outfile,
         "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
         " -h        - display this help text and exit\n"
         " -V        - print version information and exit\n"
@@ -64,7 +65,8 @@ static void show_help(FILE *outfile, char *progname) {
         "             (This program will remove this at the end of the input\n"
         "             file to create the output file name)\n"
         " -a arch   - compile for the specified architecture\n"
-        "             (defaults to " DEFAULT_ARCH_STR " if not specified)**\n"
+        "             (defaults to " DEFAULT_ARCH_STR
+        " if not specified)**\n"
         " -A        - list supported architectures and exit\n"
         "\n"
         "* -q and -j will not affect arguments passed before they were.\n"
@@ -81,8 +83,9 @@ static void show_help(FILE *outfile, char *progname) {
 /* returns true if strcmp matches s to any strings in strs, and false otherwise.
  * strs is an array of strings, and count is the number of elements.
  * normal safety concerns around strcmp apply. */
-static bool any_strcmp(const char *s, int count, const char** strs) {
-    for (int i = 0; i < count; i++) if (strcmp(s, strs[i]) == 0) return true;
+static bool any_strcmp(const char *s, int count, const char **strs) {
+    for (int i = 0; i < count; i++)
+        if (strcmp(s, strs[i]) == 0) return true;
     return false;
 }
 
@@ -101,13 +104,13 @@ static bool rm_ext(char *str, const char *ext) {
     return true;
 }
 
-
 /* macro for use in main function only.
  * SHOW_HINT:
  *  * unless -q or -j was passed, write the help text to stderr. */
-#define SHOW_HINT() if (!(quiet || json)) show_help(stderr, argv[0])
+#define SHOW_HINT() \
+    if (!(quiet || json)) show_help(stderr, argv[0])
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     int src_fd, dst_fd;
     int result;
     int opt;
@@ -118,15 +121,13 @@ int main(int argc, char* argv[]) {
     /* default to false, set to true if relevant argument was passed. */
     bool quiet = false, keep = false, moveahead = false, json = false;
     bool optimize = false;
-    char char_str_buf[2] = { '\0', '\0' };
+    char char_str_buf[2] = {'\0', '\0'};
     u64 tape_blocks = 0;
     arch_inter *inter = NULL;
     while ((opt = getopt(argc, argv, ":hVqjOkmAa:e:t:")) != -1) {
-        switch(opt) {
-          case 'h':
-            show_help(stdout, argv[0]);
-            return EXIT_SUCCESS;
-          case 'V':
+        switch (opt) {
+        case 'h': show_help(stdout, argv[0]); return EXIT_SUCCESS;
+        case 'V':
             printf(
                 "%s: eambfc version %s\n\n"
                 "Copyright (c) 2024 Eli Array Minkoff.\n"
@@ -142,7 +143,7 @@ int main(int argc, char* argv[]) {
                 EAMBFC_COMMIT
             );
             return EXIT_SUCCESS;
-          case 'A':
+        case 'A':
             printf(
                 "This build of %s supports the following architectures:\n\n"
                 "- x86_64 (aliases: x64, amd64, x86-64)\n"
@@ -159,24 +160,18 @@ int main(int argc, char* argv[]) {
             );
             return EXIT_SUCCESS;
 
-          case 'q':
+        case 'q':
             quiet = true;
             quiet_mode();
             break;
-          case 'j':
+        case 'j':
             json = true;
             json_mode();
             break;
-          case 'O':
-            optimize = true;
-            break;
-          case 'k':
-            keep = true;
-            break;
-          case 'm':
-            moveahead = true;
-            break;
-          case 'e':
+        case 'O': optimize = true; break;
+        case 'k': keep = true; break;
+        case 'm': moveahead = true; break;
+        case 'e':
             /* Print an error if ext was already set. */
             if (strlen(ext) > 0) {
                 basic_err("MULTIPLE_EXTENSIONS", "passed -e multiple times.");
@@ -185,12 +180,11 @@ int main(int argc, char* argv[]) {
             }
             ext = optarg;
             break;
-          case 't':
+        case 't':
             /* Print an error if tape_blocks has already been set */
             if (tape_blocks != 0) {
                 basic_err(
-                    "MULTIPLE_TAPE_BLOCK_COUNTS",
-                    "passed -t multiple times."
+                    "MULTIPLE_TAPE_BLOCK_COUNTS", "passed -t multiple times."
                 );
                 SHOW_HINT();
                 return EXIT_FAILURE;
@@ -211,10 +205,7 @@ int main(int argc, char* argv[]) {
                 return EXIT_FAILURE;
             }
             if (holder == 0) {
-                basic_err(
-                    "NO_TAPE",
-                    "Tape value for -t must be at least 1"
-                );
+                basic_err("NO_TAPE", "Tape value for -t must be at least 1");
                 SHOW_HINT();
                 return EXIT_FAILURE;
             }
@@ -229,33 +220,34 @@ int main(int argc, char* argv[]) {
                 SHOW_HINT();
                 return EXIT_FAILURE;
             }
-            tape_blocks = (u64) holder;
+            tape_blocks = (u64)holder;
             break;
-          case 'a':
+        case 'a':
             if (inter != NULL) {
-                basic_err(
-                    "MULTIPLE_ARCHES",
-                    "passed -a multiple times."
-                );
+                basic_err("MULTIPLE_ARCHES", "passed -a multiple times.");
                 SHOW_HINT();
                 return EXIT_FAILURE;
             }
 
             if (any_strcmp(
-                optarg, 4, (const char*[]){"x86_64", "x64", "amd64", "x86-64"}
-            )) {
+                    optarg,
+                    4,
+                    (const char *[]){"x86_64", "x64", "amd64", "x86-64"}
+                )) {
                 inter = &X86_64_INTER;
 /* __BACKENDS__ */
 #if EAMBFC_TARGET_ARM64
-            } else if (
-                any_strcmp(optarg, 2, (const char*[]){"arm64", "aarch64"})
-            ) {
+            } else if (any_strcmp(
+                           optarg, 2, (const char *[]){"arm64", "aarch64"}
+                       )) {
                 inter = &ARM64_INTER;
 #endif /* EAMBFC_TARGET_ARM64 */
 #if EAMBFC_TARGET_S390X
             } else if (any_strcmp(
-                optarg, 3, (const char*[]){"s390x", "s390", "z/architecture"}
-            )) {
+                           optarg,
+                           3,
+                           (const char *[]){"s390x", "s390", "z/architecture"}
+                       )) {
                 inter = &S390X_INTER;
 #endif /* EAMBFC_TARGET_S390X */
             } else {
@@ -268,21 +260,17 @@ int main(int argc, char* argv[]) {
                 return EXIT_FAILURE;
             }
             break;
-          case ':': /* one of -a, -e, or -t is missing an argument */
-            char_str_buf[0] = (char) optopt;
+        case ':': /* one of -a, -e, or -t is missing an argument */
+            char_str_buf[0] = (char)optopt;
             param_err(
                 "MISSING_OPERAND",
                 "{} requires an additional argument",
                 char_str_buf
             );
             return EXIT_FAILURE;
-          case '?': /* unknown argument */
-            char_str_buf[0] = (char) optopt;
-            param_err(
-                "UNKNOWN_ARG",
-                "Unknown argument: {}.",
-                char_str_buf
-            );
+        case '?': /* unknown argument */
+            char_str_buf[0] = (char)optopt;
+            param_err("UNKNOWN_ARG", "Unknown argument: {}.", char_str_buf);
             return EXIT_FAILURE;
         }
     }
@@ -321,19 +309,15 @@ int main(int argc, char* argv[]) {
         src_fd = open(argv[optind], O_RDONLY);
         if (src_fd < 0) {
             param_err(
-                "OPEN_R_FAILED",
-                "Failed to open {} for reading.",
-                argv[optind]
+                "OPEN_R_FAILED", "Failed to open {} for reading.", argv[optind]
             );
             free(outname);
             goto inner_loop_failure;
         }
-        dst_fd = open(outname, O_WRONLY|O_CREAT|O_TRUNC, 0755);
+        dst_fd = open(outname, O_WRONLY | O_CREAT | O_TRUNC, 0755);
         if (dst_fd < 0) {
             param_err(
-                "OPEN_W_FAILED",
-                "Failed to open {} for writing.",
-                outname
+                "OPEN_W_FAILED", "Failed to open {} for writing.", outname
             );
             close(src_fd);
             free(outname);

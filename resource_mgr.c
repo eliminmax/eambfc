@@ -8,11 +8,11 @@
 #include <stdlib.h> /* {m,re}alloc, free, atexit */
 #include <string.h> /* memmove */
 /* POSIX */
-#include <unistd.h> /* close */
 #include <fcntl.h> /* open */
+#include <unistd.h> /* close */
 /* internal */
-#include "types.h" /* ifast_8, bool, mode_t, size_t */
 #include "err.h" /* internal_err, alloc_err */
+#include "types.h" /* ifast_8, bool, mode_t, size_t */
 
 #define MAX_ALLOCS 64
 #define MAX_FDS 16
@@ -45,7 +45,7 @@ void *mgr_malloc(size_t size) {
         return NULL;
     }
 
-    void* result = malloc(size);
+    void *result = malloc(size);
     if (result == NULL) {
         /* don't skip over this array index */
         resources.alloc_i--;
@@ -65,11 +65,9 @@ void mgr_free(void *ptr) {
         );
         return;
     }
-    size_t to_move = (index - resources.alloc_i) * sizeof(void*);
+    size_t to_move = (index - resources.alloc_i) * sizeof(void *);
     memmove(
-        &(resources.allocs[index]),
-        &(resources.allocs[index + 1]),
-        to_move
+        &(resources.allocs[index]), &(resources.allocs[index + 1]), to_move
     );
 }
 
@@ -97,8 +95,7 @@ static int mgr_open_handler(
 ) {
     if (++resources.fd_i > MAX_FDS) {
         internal_err(
-            "TOO_MANY_OPENS",
-            "Opened too many files for resource_mgr to track."
+            "TOO_MANY_OPENS", "Opened too many files for resource_mgr to track."
         );
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
         return -1;

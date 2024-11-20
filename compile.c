@@ -6,8 +6,8 @@
  * It is by far the most significant part of the EAMBFC codebase. */
 
 /* C99 */
-#include <stdlib.h> /* malloc, realloc, free */
 #include <stdio.h> /* sscanf */
+#include <stdlib.h> /* malloc, realloc, free */
 #include <string.h> /* memcpy */
 /* POSIX */
 #include <unistd.h> /* off_t, read, write, STD*_FILENO*/
@@ -42,12 +42,12 @@
  *
  * Zero out the lowest 2 bytes of the end of the tape and add 0x10000 to ensure
  * that there is enough room. */
-#define LOAD_VADDR(tb) (((TAPE_ADDRESS + TAPE_SIZE(tb)) & (~ 0xffff)) + 0x10000)
+#define LOAD_VADDR(tb) (((TAPE_ADDRESS + TAPE_SIZE(tb)) & (~0xffff)) + 0x10000)
 
 /* physical address of the starting instruction
  * use the same technique as LOAD_VADDR to ensure that it is at a 256-byte
  * boundary. */
-#define START_PADDR (((EHDR_SIZE + PHTB_SIZE) & ~ 0xff) + 0x100)
+#define START_PADDR (((EHDR_SIZE + PHTB_SIZE) & ~0xff) + 0x100)
 
 /* number of padding bytes between the end of the Program Header Table and the
  * beginning of the machine code. */
@@ -57,7 +57,6 @@ static uint _line, _col;
 
 /* Write the ELF header to the file descriptor fd. */
 static bool write_ehdr(int fd, u64 tape_blocks, const arch_inter *inter) {
-
     /* The format of the ELF header is well-defined and well-documented
      * elsewhere. The struct for it is defined in compat/elf.h, as are most
      * of the values used in here. */
@@ -346,31 +345,30 @@ static bool comp_instr(
     char c, sized_buf *obj_code, bool *alloc_valve, const arch_inter *inter
 ) {
     _col++;
-    switch(c) {
-      /* start with the simple cases handled with COMPILE_WITH */
-      /* decrement the tape pointer register */
-      case '<': return COMPILE_WITH(inter->FUNCS->dec_reg);
-      /* increment the tape pointer register */
-      case '>': return COMPILE_WITH(inter->FUNCS->inc_reg);
-      /* increment the current tape value */
-      case '+': return COMPILE_WITH(inter->FUNCS->inc_byte);
-      /* decrement the current tape value */
-      case '-': return COMPILE_WITH(inter->FUNCS->dec_byte);
-      /* write to stdout */
-      case '.':
+    switch (c) {
+    /* start with the simple cases handled with COMPILE_WITH */
+    /* decrement the tape pointer register */
+    case '<': return COMPILE_WITH(inter->FUNCS->dec_reg);
+    /* increment the tape pointer register */
+    case '>': return COMPILE_WITH(inter->FUNCS->inc_reg);
+    /* increment the current tape value */
+    case '+': return COMPILE_WITH(inter->FUNCS->inc_byte);
+    /* decrement the current tape value */
+    case '-': return COMPILE_WITH(inter->FUNCS->dec_byte);
+    /* write to stdout */
+    case '.':
         return bf_io(obj_code, STDOUT_FILENO, inter->SC_NUMS->write, inter);
-      /* read from stdin */
-      case ',':
-        return bf_io(obj_code, STDIN_FILENO, inter->SC_NUMS->read, inter);
-      /* `[` and `]` do their own error handling. */
-      case '[': return bf_jump_open(obj_code, alloc_valve, inter);
-      case ']': return bf_jump_close(obj_code, inter);
-      case '\n':
+    /* read from stdin */
+    case ',': return bf_io(obj_code, STDIN_FILENO, inter->SC_NUMS->read, inter);
+    /* `[` and `]` do their own error handling. */
+    case '[': return bf_jump_open(obj_code, alloc_valve, inter);
+    case ']': return bf_jump_close(obj_code, inter);
+    case '\n':
         /* add 1 to the line number and reset the column. */
         _line++;
         _col = 0;
         return true;
-      default:
+    default:
         /* any other characters are comments, silently continue. */
         return true;
     }
@@ -390,39 +388,35 @@ static bool comp_ir_instr(
 ) {
     u64 ct;
     *skip_ct_p = 0;
-    switch(*p) {
-      /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
-      case '+':
-      case '-':
-      case '<':
-      case '>':
-      case '.':
-      case ',':
-      case '[':
-      case ']':
+    switch (*p) {
+    /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
+    case '+':
+    case '-':
+    case '<':
+    case '>':
+    case '.':
+    case ',':
+    case '[':
+    case ']':
         return comp_instr(*p, obj_code, alloc_valve, inter);
         /* if it's @, then zero the byte pointed to by bf_ptr */
-      case '@':
-        return inter->FUNCS->zero_byte(inter->REGS->bf_ptr, obj_code);
-      default:
+    case '@': return inter->FUNCS->zero_byte(inter->REGS->bf_ptr, obj_code);
+    default:
         /* if not one of the standalone instructions, parse out the number of
          * consecutive instructions, and compile it with the appropriate
          * function. */
         if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_ct_p) != 1) {
             basic_err(
-                "IR_FAILED_SCAN",
-                "Failed to get count for EAMBFC-IR op."
+                "IR_FAILED_SCAN", "Failed to get count for EAMBFC-IR op."
             );
             return false;
         } else {
             switch (*p) {
-              case '#': return IR_COMPILE_WITH(inter->FUNCS->add_byte);
-              case '=': return IR_COMPILE_WITH(inter->FUNCS->sub_byte);
-              case '}': return IR_COMPILE_WITH(inter->FUNCS->add_reg);
-              case '{': return IR_COMPILE_WITH(inter->FUNCS->sub_reg);
-              default:
-                basic_err("INVALID_IR", "Invalid IR Opcode");
-                return false;
+            case '#': return IR_COMPILE_WITH(inter->FUNCS->add_byte);
+            case '=': return IR_COMPILE_WITH(inter->FUNCS->sub_byte);
+            case '}': return IR_COMPILE_WITH(inter->FUNCS->add_reg);
+            case '{': return IR_COMPILE_WITH(inter->FUNCS->sub_reg);
+            default: basic_err("INVALID_IR", "Invalid IR Opcode"); return false;
             }
         }
     }
@@ -476,12 +470,7 @@ bool bf_compile(
     _col = 0;
 
     /* set the bf_ptr register to the address of the start of the tape */
-    ret &= inter->FUNCS->set_reg(
-        inter->REGS->bf_ptr,
-        TAPE_ADDRESS,
-        &obj_code
-    );
-
+    ret &= inter->FUNCS->set_reg(inter->REGS->bf_ptr, TAPE_ADDRESS, &obj_code);
 
     /* compile the actual source code to object code */
     bool alloc_valve = true; /* if set to false, an allocation failed. */
@@ -505,7 +494,7 @@ bool bf_compile(
         }
     } else {
         char *src = src_code.buf;
-        for(size_t i = 0; i < src_code.sz; i++) {
+        for (size_t i = 0; i < src_code.sz; i++) {
             ret &= comp_instr(src[i], &obj_code, &alloc_valve, inter);
             if (!alloc_valve) {
                 free(obj_code.buf);

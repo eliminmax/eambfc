@@ -15,8 +15,13 @@ static bool _quiet;
 static bool _json;
 
 /* the only external access to the variables is through these functions. */
-void quiet_mode(void) { _quiet = true; }
-void json_mode(void) { _json = true; }
+void quiet_mode(void) {
+    _quiet = true;
+}
+
+void json_mode(void) {
+    _json = true;
+}
 
 /* avoid using json_str for this special case, as malloc may fail again,
  * causing a loop of failures to generate json error messages properly. */
@@ -36,10 +41,14 @@ void alloc_err(void) {
 }
 
 /* macro specifically for use inside json_str, to avoid ugly, repeated code. */
-#define BS_ESCAPE_APPEND(c) *(outp++) = '\\'; *(outp++) = c; used += 2
+#define BS_ESCAPE_APPEND(c) \
+    *(outp++) = '\\'; \
+    *(outp++) = c; \
+    used += 2
+
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
-static char *json_str(char* str) {
+static char *json_str(char *str) {
     size_t bufsz = strlen(str) + 16; /* 16 for padding, more added as needed */
     size_t used = 0;
     char *p = str;
@@ -49,15 +58,15 @@ static char *json_str(char* str) {
     if (json_escaped == NULL) return NULL;
     p = str;
     while (*p) {
-        switch(*p) {
-          case '\n': BS_ESCAPE_APPEND('n'); break;
-          case '\r': BS_ESCAPE_APPEND('r'); break;
-          case '\f': BS_ESCAPE_APPEND('f'); break;
-          case '\t': BS_ESCAPE_APPEND('t'); break;
-          case '\b': BS_ESCAPE_APPEND('b'); break;
-          case '\\': BS_ESCAPE_APPEND('\\'); break;
-          case '\"': BS_ESCAPE_APPEND('\"'); break;
-          default:
+        switch (*p) {
+        case '\n': BS_ESCAPE_APPEND('n'); break;
+        case '\r': BS_ESCAPE_APPEND('r'); break;
+        case '\f': BS_ESCAPE_APPEND('f'); break;
+        case '\t': BS_ESCAPE_APPEND('t'); break;
+        case '\b': BS_ESCAPE_APPEND('b'); break;
+        case '\\': BS_ESCAPE_APPEND('\\'); break;
+        case '\"': BS_ESCAPE_APPEND('\"'); break;
+        default:
             /* would prefer a pure switch statement, but `case a ... d` is
              * a non-standard (though common) extension to C, and is not
              * Using this `if`-within-a-`switch` instead. */
@@ -86,10 +95,10 @@ static char *json_str(char* str) {
     *outp = 0;
     return json_escaped;
 }
+
 #undef BS_ESCAPE_APPEND
 
-
-static void basic_jerr(char* id, char *msg) {
+static void basic_jerr(char *id, char *msg) {
     /* assume error id is json-safe, but don't assume that for msg. */
     if ((msg = json_str(msg)) == NULL) {
         alloc_err();
@@ -99,15 +108,17 @@ static void basic_jerr(char* id, char *msg) {
     }
 }
 
-void basic_err(char* id, char *msg) {
-    if (_json) basic_jerr(id, msg);
-    else if (!_quiet) fprintf(stderr, "Error %s: %s\n", id, msg);
+void basic_err(char *id, char *msg) {
+    if (_json)
+        basic_jerr(id, msg);
+    else if (!_quiet)
+        fprintf(stderr, "Error %s: %s\n", id, msg);
 }
 
 static void pos_jerr(char *id, char *msg, char instr, uint line, uint col) {
     /* Assume id needs no escaping, but msg and instr might. */
     /* First, convert instr into a string, then serialize that string. */
-    char instr_str[2] = { instr, '\0' };
+    char instr_str[2] = {instr, '\0'};
     char *instr_json;
     if ((instr_json = json_str(instr_str)) == NULL) {
         alloc_err();
@@ -120,19 +131,29 @@ static void pos_jerr(char *id, char *msg, char instr, uint line, uint col) {
     }
     printf(
         "{\"errorId\":\"%s\",\"message\":\"%s\",\"instruction\":\"%s\","
-        "\"line\":%u,\"column\":%u}\n", id, msg, instr_json, line, col
+        "\"line\":%u,\"column\":%u}\n",
+        id,
+        msg,
+        instr_json,
+        line,
+        col
     );
     free(msg);
     free(instr_json);
 }
 
 void position_err(char *id, char *msg, char instr, uint line, uint col) {
-    if (_json) pos_jerr(id, msg, instr, line, col);
+    if (_json)
+        pos_jerr(id, msg, instr, line, col);
     else if (!_quiet) {
         fprintf(
             stderr,
             "Error %s when compiling '%c' at line %u, column %u: %s\n",
-            id, instr, line, col, msg
+            id,
+            instr,
+            line,
+            col,
+            msg
         );
     }
 }
@@ -140,7 +161,7 @@ void position_err(char *id, char *msg, char instr, uint line, uint col) {
 static void instr_jerr(char *id, char *msg, char instr) {
     /* Assume id needs no escaping, but msg and instr might. */
     /* First, convert instr into a string, then serialize that string. */
-    char instr_str[2] = { instr, '\0' };
+    char instr_str[2] = {instr, '\0'};
     char *instr_json;
     if ((instr_json = json_str(instr_str)) == NULL) {
         alloc_err();
@@ -153,14 +174,17 @@ static void instr_jerr(char *id, char *msg, char instr) {
     }
     printf(
         "{\"errorId\":\"%s\",\"message\":\"%s\",\"instruction\":\"%s\"}\n",
-        id, msg, instr_json
+        id,
+        msg,
+        instr_json
     );
     free(msg);
     free(instr_json);
 }
 
 void instr_err(char *id, char *msg, char instr) {
-    if (_json) instr_jerr(id, msg, instr);
+    if (_json)
+        instr_jerr(id, msg, instr);
     else if (!_quiet) {
         fprintf(stderr, "Error %s when compiling '%c: %s'.\n", id, instr, msg);
     }
@@ -195,13 +219,12 @@ void param_err(char *id, char *proto, char *arg) {
     free(msg);
 }
 
-
 void internal_err(char *id, char *msg) {
     char ice_id[64] = "ICE:";
     char ice_msg[128] = "Internal Compiler Error: ";
     /* Ensure buffers have capacity
-    * 64 - (strlen("ICE:") + 1) is 59
-    * 128 - (strlen("Internal Compiler Error: " + 1) is 102 */
+     * 64 - (strlen("ICE:") + 1) is 59
+     * 128 - (strlen("Internal Compiler Error: " + 1) is 102 */
     if (strlen(id) > 59 || strlen(msg) > 102) {
         strcpy(ice_id + 4, "ICE_PARAMS_TOO_LONG");
         strcpy(
