@@ -363,17 +363,15 @@ static bool comp_instr(
     /* `[` and `]` do their own error handling. */
     case '[': return bf_jump_open(obj_code, alloc_valve, inter);
     case ']': return bf_jump_close(obj_code, inter);
+    /* on a newline, add 1 to the line number and reset the column */
     case '\n':
-        /* add 1 to the line number and reset the column. */
         _line++;
         _col = 0;
         return true;
-    default:
-        /* any other characters are comments, silently continue. */
-        return true;
+    /* any other characters are comments, so silently continue. */
+    default: return true;
     }
 }
-
 /* similar to the above COMPILE_WITH, but with an extra parameter passed to the
  * function, so that can't be reused. */
 #define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, ct, obj_code)
@@ -465,7 +463,7 @@ bool bf_compile(
     }
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
 
-    /* reset the current line, column, and instruction character */
+    /* reset the current line and column */
     _line = 1;
     _col = 0;
 
