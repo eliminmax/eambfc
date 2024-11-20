@@ -23,7 +23,7 @@ BitFieldColonSpacing: After
 BreakBeforeTernaryOperators: false
 DerivePointerAlignment: false
 IncludeCategories:
-  - Regex: ^<\(std.*\|string\)*\.h>
+  - Regex: ^<\(std.*\|string\|inttypes\)*\.h>
     Priority: 2
     SortPriority: 0
   - Regex: ^<.*\.h>
