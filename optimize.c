@@ -89,6 +89,10 @@ static bool loops_match(const char *code) {
     return (find_loop_end(open_p) != NULL);
 }
 
+#define REPSTR16(s) s s s s s s s s s s s s s s s s
+#define REPSTR64(s) REPSTR16(s) REPSTR16(s) REPSTR16(s) REPSTR16(s)
+#define REPSTR256(s) REPSTR64(s) REPSTR64(s) REPSTR64(s) REPSTR64(s)
+
 /* remove redundant instruction sequences like `<>` */
 static void strip_dead(sized_buf *ir) {
     /* code constructs that do nothing - either 2 adjacent instructions that
@@ -100,14 +104,8 @@ static void strip_dead(sized_buf *ir) {
         "><",
         "-+",
         "+-",
-        "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-        "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-        "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-        "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",
-        "----------------------------------------------------------------"
-        "----------------------------------------------------------------"
-        "----------------------------------------------------------------"
-        "----------------------------------------------------------------",
+        REPSTR256("+"),
+        REPSTR256("-"),
     };
     /* don't want to compute these every loop, or even every run, so hard-code
      * the known sizes sof the simple patterns here. */
@@ -171,7 +169,7 @@ static size_t condense(char instr, u64 consec_ct, char *dest) {
     if (consec_ct == 1) {
         *dest = instr;
         return 1;
-    } else
+    } else {
         switch (instr) {
         case '.':
         case ',':
@@ -207,6 +205,7 @@ static size_t condense(char instr, u64 consec_ct, char *dest) {
         case '-': opcode = '='; break;
         default: return 0; break;
         }
+    }
     return (size_t)sprintf(dest, "%c%" PRIx64, opcode, consec_ct);
 }
 
