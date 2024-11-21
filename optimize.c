@@ -219,8 +219,6 @@ static size_t condense(char instr, u64 consec_ct, char *dest) {
  * instructions not part of the two sequences that are replaced with `@`. */
 static void instr_merge(sized_buf *ir) {
     char *str = ir->buf;
-    /* used to check what's between [ and ] if they're 2 apart */
-    char current_mode;
     char prev_mode = *str;
     char *new_str = mgr_malloc(ir->sz);
     if (new_str == NULL) {
@@ -233,7 +231,7 @@ static void instr_merge(sized_buf *ir) {
     size_t skip;
     /* condese consecutive identical instructions */
     for (i = 1; i < ir->sz; i++) {
-        current_mode = *(str + i);
+        char current_mode = *(str + i);
         if (current_mode != prev_mode) {
             if (!((skip = condense(prev_mode, consec_ct, p)))) {
                 mgr_free(new_str);
