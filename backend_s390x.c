@@ -313,10 +313,7 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
 #define NOPR 0x07, 0x00
 
 static bool nop_loop_open(sized_buf *dst_buf) {
-    /* The last instruction is only 2 bytes long, but 4 bytes are allocated.
-     * It was that, have 9 instructions rather than 5 instructions to get the
-     * amount of padding, or use much messier code to set it up. */
-    u8 i_bytes[5][4] = {{NOP}, {NOP}, {NOP}, {NOP}, {NOPR}};
+    u8 i_bytes[18] = {NOP, NOP, NOP, NOP, NOPR};
     return append_obj(dst_buf, &i_bytes, 18);
 }
 
