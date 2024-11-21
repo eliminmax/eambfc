@@ -79,7 +79,8 @@ make clean
 
 version="$(cat version)"
 
-build_name="eambfc-$version"
+build_name="eambfc-$(git describe --tags)"
+
 src_tarball_name="$build_name-src.tar"
 mkdir -p releases/
 # remove existing
