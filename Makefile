@@ -51,7 +51,7 @@ install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
 	cp -f eambfc.1 $(DESTDIR)$(PREFIX)/share/man/man1/eambfc.1
 
-config.h: config.template.h version
+version.h: version.template.h version
 	if command -v git >/dev/null && [ -e .git ]; then \
 		git_str="$$(git log -n1 --pretty=format:'git commit: %h')"; \
 		if [ -n "$$(git status --short)" ]; then \
@@ -62,18 +62,19 @@ config.h: config.template.h version
 	fi; \
 	sed -e "/EAMBFC_VERSION/s/@/\"$$(cat version)\"/" \
 		-e "/EAMBFC_COMMIT/s/@/\"$$git_str\"/" \
-		<config.template.h >config.h
+		<version.template.h >version.h
+
 
 resource_mgr.o: resource_mgr.c
 serialize.o: serialize.c
-compile.o: util.h config.h backend_x86_64.o compile.c
-main.o: config.h main.c
-err.o: config.h err.c
+compile.o: util.h backend_x86_64.o compile.c
+main.o: version.h main.c
+err.o: err.c
 util.o: util.h util.c
 optimize.o: err.o util.h util.o optimize.c
 # __BACKENDS__
-backend_arm64.o: backend_arm64.c config.h
-backend_s390x.o: backend_s390x.c config.h
+backend_arm64.o: backend_arm64.c
+backend_s390x.o: backend_s390x.c
 backend_x86_64.o: backend_x86_64.c
 
 # for testing
@@ -84,7 +85,7 @@ backend_x86_64.o: backend_x86_64.c
 # For an example of the former, see Linux on 64-bit ARM with qemu + binfmt_misc
 # For an example of the latter, see FreeBSD's Linux syscall emulation.
 # `make test` works in both of those example cases
-create_mini_elf.o: config.h create_mini_elf.c
+create_mini_elf.o: create_mini_elf.c
 create_mini_elf: create_mini_elf.o compile.o $(COMPILE_DEPS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(POSIX_CFLAG)\
 		$(COMPILE_DEPS) compile.o $@.o $(LDLIBS)
@@ -95,16 +96,16 @@ can_run_linux_amd64: mini_elf
 test: can_run_linux_amd64 eambfc
 	(cd tests; make clean test)
 
-multibuild: config.h
+multibuild:
 	env SKIP_TEST=y ./multibuild.sh
-multibuild_test: can_run_linux_amd64 config.h
+multibuild_test: can_run_linux_amd64
 	./multibuild.sh
 
 optimize: optimize.c util.h err.o util.o resource_mgr.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) -D OPTIMIZE_STANDALONE \
 		-o $@ optimize.c err.o util.o resource_mgr.o
 
-strict: can_run_linux_amd64 config.h
+strict: can_run_linux_amd64
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE!\n' >&2
 	gcc $(GCC_STRICT_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
@@ -129,7 +130,6 @@ all_tests: test multibuild_test strict ubsan int_torture_test
 
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
-	rm -rf $(EAMBFC_DEPS) eambfc alt-builds optimize \
+	rm -rf $(EAMBFC_DEPS) eambfc alt-builds optimize version.h \
 	    create_mini_elf.o create_mini_elf mini_elf can_run_linux_amd64
-	if [ -e .git ]; then rm -f config.h; fi
 	(cd tests; make clean)

@@ -16,35 +16,36 @@
 #include "arch_inter.h" /* arch_inter, *_INTER */
 #include "compat/elf.h" /* EM_* */
 #include "compile.h" /* bf_compile */
-#include "config.h" /* EAMBFC_* */
+#include "config.h" /* EAMBFC_DEFAULT_TARGET, EAMBFC_TARGET_* */
 #include "err.h" /* *_err */
 #include "resource_mgr.h" /* mgr_*, register_mgr */
 #include "types.h" /* bool, u64, UINT64_MAX */
+#include "version.h" /* EAMBFC_VERSION, EAMBFC_COMMIT */
 
 /* __BACKENDS__ */
 /* Before anything else, validate default target, and define DEFAULT_* macros
  * based on default target. */
-#if EAMBFC_TARGET == EM_X86_64
+#if EAMBFC_DEFAULT_TARGET == EM_X86_64
 /* if it's set to EM_X86_64, it's valid, as that's always enabled. */
 #define DEFAULT_ARCH_STR "x86_64"
 #define DEFAULT_INTER X86_64_INTER
-#elif EAMBFC_TARGET == EM_AARCH64
+#elif EAMBFC_DEFAULT_TARGET == EM_AARCH64
 /* for arm64, make sure that the backend is enabled before anything else. */
 #if EAMBFC_TARGET_ARM64 == 0
-#error EAMBFC_TARGET is EM_AARCH64, but EAMBFC_TARGET_ARM64 is disabled.
+#error EAMBFC_DEFAULT_TARGET is EM_AARCH64, but EAMBFC_TARGET_ARM64 is disabled.
 #endif /* EAMBFC_TARGET_ARM64 == 0 */
 #define DEFAULT_ARCH_STR "arm64"
 #define DEFAULT_INTER ARM64_INTER
-#elif EAMBFC_TARGET == EM_S390
+#elif EAMBFC_DEFAULT_TARGET == EM_S390
 /* make sure s390x is enabled if set to default target */
 #if EAMBFC_TARGET_S390X == 0
-#error EAMBFC_TARGET is EM_S390, but EAMBFC_TARGET_S390X is disabled.
+#error EAMBFC_DEFAULT_TARGET is EM_S390, but EAMBFC_TARGET_S390X is disabled.
 #endif /* EAMBFC_TARGET_S390X == 0 */
 #define DEFAULT_ARCH_STR "s390x"
 #define DEFAULT_INTER S390X_INTER
 #else
-#error EAMBFC_TARGET is not recognized.
-#endif /* EAMBFC_TARGET */
+#error EAMBFC_DEFAULT_TARGET is not recognized.
+#endif /* EAMBFC_DEFAULT_TARGET */
 
 /* print the help message to outfile. progname should be argv[0]. */
 static void show_help(FILE *outfile, char *progname) {

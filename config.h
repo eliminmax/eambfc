@@ -16,12 +16,6 @@
 #define EAMBFC_TARGET_S390X 1
 /* The target architecture - should be the same as the ELF e_machine value for
  * that architecture for consistency's sake. */
-#define EAMBFC_TARGET EM_X86_64
-
-/* The current version - this is set in the config.h make target */
-#define EAMBFC_VERSION @
-
-/* The current git commit - this is set in the config.h make target */
-#define EAMBFC_COMMIT @
+#define EAMBFC_DEFAULT_TARGET EM_X86_64
 
 #endif /* EAMBFC_CONFIG_H */
