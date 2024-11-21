@@ -51,18 +51,8 @@ install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
 	cp -f eambfc.1 $(DESTDIR)$(PREFIX)/share/man/man1/eambfc.1
 
-version.h: version.template.h version
-	if command -v git >/dev/null && [ -e .git ]; then \
-		git_str="$$(git log -n1 --pretty=format:'git commit: %h')"; \
-		if [ -n "$$(git status --short)" ]; then \
-			git_str="$$git_str (with local changes)"; \
-		fi \
-	else \
-		git_str='Not built from git repo'; \
-	fi; \
-	sed -e "/EAMBFC_VERSION/s/@/\"$$(cat version)\"/" \
-		-e "/EAMBFC_COMMIT/s/@/\"$$git_str\"/" \
-		<version.template.h >version.h
+version.h: gen_version_h.sh version
+	./gen_version_h.sh
 
 
 resource_mgr.o: resource_mgr.c
@@ -130,6 +120,7 @@ all_tests: test multibuild_test strict ubsan int_torture_test
 
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
-	rm -rf $(EAMBFC_DEPS) eambfc alt-builds optimize version.h \
+	rm -rf $(EAMBFC_DEPS) eambfc alt-builds optimize \
 	    create_mini_elf.o create_mini_elf mini_elf can_run_linux_amd64
+	[ -e .git ] && rm version.h
 	(cd tests; make clean)
