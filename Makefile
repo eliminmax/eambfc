@@ -51,10 +51,6 @@ install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
 	cp -f eambfc.1 $(DESTDIR)$(PREFIX)/share/man/man1/eambfc.1
 
-version.h: gen_version_h.sh version
-	./gen_version_h.sh
-
-
 resource_mgr.o: resource_mgr.c
 serialize.o: serialize.c
 compile.o: util.h backend_x86_64.o compile.c
@@ -122,5 +118,4 @@ all_tests: test multibuild_test strict ubsan int_torture_test
 clean:
 	rm -rf $(EAMBFC_DEPS) eambfc alt-builds optimize \
 	    create_mini_elf.o create_mini_elf mini_elf can_run_linux_amd64
-	[ -e .git ] && rm -f version.h
 	(cd tests; make clean)
