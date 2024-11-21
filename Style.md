@@ -30,9 +30,10 @@ The following are the formatting I follow for source code:
 
 There's a .clang-format file for clang-format-16, which is the latest verison
 available in Debian Bookworm. If installed, a pre-push hook can be created (by
-default at `"$GIT_DIR/hooks/pre-pysh"`) with the following contents to ensure
+default at `"$GIT_DIR/hooks/pre-push"`) with the following contents to ensure
 that all C source and header files except `compat/elf.h` are formatted according
-to the rules in `.clang-format` before pushing.
+to the rules in `.clang-format` before pushing. I have pre-push and pre-commit
+hooks set up.
 
 ```sh
 #!/bin/sh
