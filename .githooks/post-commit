@@ -6,5 +6,5 @@
 
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
-# if version.h exists, regenerate it for the new commit
-[ -e version.h ] && ./gen_version_h.sh
+# if version.h exists, regenerate it for the new commit, otherwise, do nothing.
+if [ -e version.h ]; then ./gen_version_h.sh; else exit 0; fi
