@@ -11,24 +11,34 @@
 # this script uses commands from the following Debian 12 (Bookworm) packages:
 #
 # * binutils
-# * codespell
 # * coreutils
-# * devscripts
 # * findutils
 # * git
 # * gzip
 # * make
 # * sed
-# * shellcheck
 # * tar
 # * valgrind
 # * xz-utils
+#
+# The static analyses and linting done with run-lints.sh depend on the following
+# additional packages:
+#
+# * clang-format-16
+# * codespell
+# * cppcheck
+# * devscripts
+# * findutils
+# * shellcheck
 #
 # Additionally, the main Makefile, test Makefile, and scripts they call use
 # commands and libraries from the following packages and their dependencies:
 #
 # gcc
+# gcc-i686-linux-gnu
 # gcc-s390x-linux-gnu
+# gcc-mips-linux-gnu
+# gcc-aarch64-linux-gnu
 # musl-gcc
 # gawk
 # clang
@@ -66,22 +76,7 @@ fi
 make clean
 
 # first, some linting
-
-# Catch typos in the code.
-# Learned about this one from Lasse Colin's writeup of the xz backdoor. Really.
-codespell --skip=.git
-
-# run shellcheck and checkbashisms on all shell files
-find . -name '*.sh' -type f \
-    -exec shellcheck {} +\
-    -exec checkbashisms -f {} +
-
-# ensure licensing information is structured in a manner that complies with the
-# REUSE 3.2 specification
-# if reuse lint -q fails, it is silent, so run it again without passing -q to
-# suppress output if that happens
-reuse lint -q || reuse lint
-
+./run-lints.sh
 
 version="$(cat version)"
 
@@ -91,11 +86,11 @@ mkdir -p releases/
 # remove existing
 rm -rf releases/"$build_name"*
 
-# generate config.h
-make -s clean config.h
+# generate version.h
+make -s clean version.h
 
 # change the git commit in config.h to reflect that it's a source tarball build
-sed '/git commit: /s/"/"source tarball from /' -i config.h
+sed '/git commit: /s/"/"source tarball from /' -i version.h
 
 git archive HEAD --format=tar      \
     --prefix="$build_name-src"/    \
@@ -148,7 +143,7 @@ done
 # portability test - can a minimal, public domain POSIX make implementation
 # complete the clean, eambfc, and test targets?
 # move config.h out of the way so that it isn't clobbered by pdpmake
-mv config.h config.h-real
+mv version.h version.h-real
 # ensure that recursive calls use the right make by putting it first in $PATH
 mkdir -p .utils
 ln -sfv "$(command -v pdpmake)" .utils/make
