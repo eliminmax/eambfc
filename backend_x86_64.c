@@ -111,11 +111,6 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         return append_obj(
             dst_buf, (u8[]){INSTRUCTION(0x31, 0xc0 | (reg << 3) | reg)}, 2
         );
-    } else if (imm >= INT8_MIN && imm <= INT8_MAX) {
-        /* PUSH imm8; POP reg */
-        return append_obj(
-            dst_buf, (u8[]){INSTRUCTION(0x6a, imm, 0x58 + reg)}, 3
-        );
     } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
         /* MOV reg, imm32 */
         u8 instr_bytes[5] = {INSTRUCTION(0xb8 | reg, IMM32_PADDING)};
