@@ -56,7 +56,6 @@ static char *json_str(char *str) {
     char *reallocator;
     char *outp = json_escaped;
     if (json_escaped == NULL) return NULL;
-    p = str;
     while (*p) {
         switch (*p) {
         case '\n': BS_ESCAPE_APPEND('n'); break;
