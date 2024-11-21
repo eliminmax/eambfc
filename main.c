@@ -89,11 +89,15 @@ static void show_help(FILE *outfile, char *progname) {
 static bool any_match(const char *s, int count, ...) {
     va_list ap;
     va_start(ap, count);
+    bool found = false;
     for (int i = 0; i < count; i++) {
-        if (!strcmp(s, va_arg(ap, const char *))) return true;
+        if (!strcmp(s, va_arg(ap, const char *))) {
+            found = true;
+            break;
+        }
     }
     va_end(ap);
-    return false;
+    return found;
 }
 
 /* remove ext from end of str. If str doesn't end with ext, return false. */
