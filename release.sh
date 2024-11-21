@@ -134,8 +134,6 @@ test_for_arch() {
         make EAMBFC=../valgrind-eambfc.sh EAMBFC_ARGS="-ka$1" clean test
 }
 
-# enable s390x target for testing purposes
-sed -i '/TARGET_S390X/s/ 0/ 1/' config.h
 # ensure strict and ubsan builds work at all gcc optimization levels
 for o_lvl in 0 1 2 3 s fast g z; do
     make CC=gcc CFLAGS="-O$o_lvl" clean ubsan strict eambfc;
@@ -146,7 +144,6 @@ for o_lvl in 0 1 2 3 s fast g z; do
     test_for_arch arm64
     cd ..
 done
-sed -i /TARGET_S390X/s/1/0/ config.h
 
 # portability test - can a minimal, public domain POSIX make implementation
 # complete the clean, eambfc, and test targets?
