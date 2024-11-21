@@ -14,9 +14,6 @@
  * See write.3POSIX for more information on arguments. */
 bool write_obj(int fd, const void *buf, size_t ct);
 
-/* initialize a new sized buf with capacity 4096 */
-sized_buf new_sized_buf(void);
-
 /* Appends first bytes_sz of bytes to dst, reallocating dst as needed. */
 bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz);
 

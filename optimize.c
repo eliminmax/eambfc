@@ -13,11 +13,11 @@
 #include "err.h" /* basic_err, instr_err */
 #include "resource_mgr.h" /* register_mgr, mgr_malloc */
 #include "types.h" /* bool, uint, {U,}INT64_MAX, [iu]{8,16,32,64}, sized_buf */
-#include "util.h" /* append_obj, read_to_sized_buf, new_sized_buf */
+#include "util.h" /* append_obj, read_to_sized_buf */
 
 /* filter out the non-bf characters from code->buf */
 static void filter_non_bf(sized_buf *code) {
-    sized_buf tmp = new_sized_buf();
+    sized_buf tmp = {.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
     char instr;
     for (size_t i = 0; i < code->sz; i++) {
         switch (instr = ((char *)(code->buf))[i]) {

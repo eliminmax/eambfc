@@ -18,7 +18,7 @@
 #include "resource_mgr.h" /* mgr_* */
 #include "serialize.h" /* serialize_*hdr64_[bl]e */
 #include "types.h" /* bool, [iu]{8,16,32,64}, SCNx64, sized_buf */
-#include "util.h" /* read_to_sized_buf, write_obj, new_sized_buf */
+#include "util.h" /* read_to_sized_buf, write_obj */
 
 /* virtual memory address of the tape - cannot overlap with the machine code.
  * 0 is invalid as it's the null address, so this is an arbitrarily-chosen
@@ -428,7 +428,7 @@ bool bf_compile(
     sized_buf src_code = read_to_sized_buf(in_fd);
     /* Return immediately if a read failed */
     if (src_code.buf == NULL) return false;
-    sized_buf obj_code = new_sized_buf();
+    sized_buf obj_code = {.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
 
     bool ret = true;
 

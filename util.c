@@ -13,7 +13,6 @@
 #include "err.h" /* basic_err */
 #include "resource_mgr.h" /* mgr_malloc, mgr_realloc, mgr_free */
 #include "types.h" /* ssize_t, size_t, off_t */
-#include "util.h" /* new_sized_buf */
 
 /* Wrapper around write.3POSIX that returns true if all bytes were written, and
  * prints an error and returns false otherwise or if ct is too large to
@@ -85,15 +84,10 @@ bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
     return true;
 }
 
-/* return a new sized_buf with an initial capacity of 4096 */
-sized_buf new_sized_buf(void) {
-    return (sized_buf){.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
-}
-
 /* Reads the contents of fd into sb. If a read error occurs, frees what's
  * already been read, and sets sb to {0, 0, NULL}. */
 sized_buf read_to_sized_buf(int fd) {
-    sized_buf sb = new_sized_buf();
+    sized_buf sb = {.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
     /* read into sb in 4096-byte chunks */
     char chunk[4096];
     ssize_t count;
