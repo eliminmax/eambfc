@@ -20,7 +20,7 @@ static void filter_non_bf(sized_buf *code) {
     sized_buf tmp = {0, 4096, mgr_malloc(4096)};
     char instr;
     for (size_t i = 0; i < code->sz; i++) {
-        switch (instr = (char *)(code->buf)[i]) {
+        switch (instr = ((char *)(code->buf))[i]) {
         case '[':
         case '-':
         case '.':
