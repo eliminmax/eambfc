@@ -93,9 +93,12 @@ and FreeBSD 14.1 amd64 with Linux binary support. Features that are documented
 and exposed via command-line flags are tested, working, and complete, though
 code that's part of WIP features may be present, but not activated.
 
-The dev branch has no guarantees of any kind. It may have untested code, fatal
-bugs, invalid code that won't compile at all, failing tests, undefined behavior,
-improperly-formatted files, or other problems. Do not use it.
+The only thing said about the dev branch is that it has successfully been tested
+with `make clean test` on my primary development system.
+
+When developing, I have `core.hookspath` set to `.githooks/`, so that the git
+hooks used can be checked into the git repository. There is a pre-commit hook
+to check code quality, a pre-push commit that validates that `make clean test`
 
 ### Standards compliance
 
