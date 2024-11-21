@@ -5,10 +5,6 @@
 
 PREFIX = /usr/local
 
-# POSIX standard tool to compile C99 code, could be any C99-compatible compiler
-# which supports the POSIX-specified options
-CC = c99
-
 # This flag enables POSIX.1-2008-specific macros and features
 POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
