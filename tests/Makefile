@@ -52,6 +52,8 @@ piped_in:
 		>.$@.build_err
 	if [ "$$(wc -c .$@.build_err | awk '{print $$1}')" -eq 0 ]; then\
 		rm .$@.build_err; else false; fi
+	# clean up fifo now that it's done
+	rm $@.bf
 # test support for alternative extensions
 alternative_extension: alternative_extension.brnfck
 
