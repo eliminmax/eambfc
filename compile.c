@@ -444,10 +444,9 @@ bool bf_compile(
     /* compile the actual source code to object code */
     if (optimize) {
         to_ir(&src_code);
-        /* to_ir will set buf to NULL in case of a parsing error */
+        /* to_ir will set src_code.buf to NULL in case of a parsing error */
         if (src_code.buf == NULL) {
             mgr_free(jump_stack.locations);
-            mgr_free(jump_stack.buf);
             return false;
         }
 
