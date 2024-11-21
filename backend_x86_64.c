@@ -144,7 +144,7 @@ static bool syscall(sized_buf *dst_buf) {
 /* times 9 NOP */
 static bool nop_loop_open(sized_buf *dst_buf) {
     u8 nops[9] = {NOP, NOP, NOP, NOP, NOP, NOP, NOP, NOP, NOP};
-    return append_obj(dst_buf, &nops, JUMP_SIZE);
+    return append_obj(dst_buf, &nops, 9);
 }
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
