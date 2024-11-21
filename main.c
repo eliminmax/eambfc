@@ -5,6 +5,7 @@
  * A Brainfuck to x86_64 Linux ELF compiler. */
 
 /* C99 */
+#include <stdarg.h> /* va_* */
 #include <stdio.h> /* FILE, stderr, stdout, printf, fprintf */
 #include <stdlib.h> /* malloc, free, EXIT_*, strtoull */
 #include <string.h> /* strncmp, strlen, strcpy */
@@ -81,12 +82,16 @@ static void show_help(FILE *outfile, char *progname) {
     );
 }
 
-/* returns true if strcmp matches s to any strings in strs, and false otherwise.
- * strs is an array of strings, and count is the number of elements.
+/* returns true if strcmp matches s to any strings in its argument,
+ * and false otherwise.
  * normal safety concerns around strcmp apply. */
-static bool any_strcmp(const char *s, int count, const char **strs) {
-    for (int i = 0; i < count; i++)
-        if (strcmp(s, strs[i]) == 0) return true;
+static bool any_match(const char *s, int count, ...) {
+    va_list ap;
+    va_start(ap, count);
+    for (int i = 0; i < count; i++) {
+        if (!strcmp(s, va_arg(ap, const char *))) return true;
+    }
+    va_end(ap);
     return false;
 }
 
@@ -233,24 +238,16 @@ int main(int argc, char *argv[]) {
                 return EXIT_FAILURE;
             }
 
-            if (any_strcmp(
-                    optarg,
-                    4,
-                    (const char *[]){"x86_64", "x64", "amd64", "x86-64"}
-                )) {
+            if (any_match(optarg, 4, "x86_64", "x64", "amd64", "x86-64")) {
                 inter = &X86_64_INTER;
 /* __BACKENDS__ */
 #if EAMBFC_TARGET_ARM64
-            } else if (any_strcmp(
-                           optarg, 2, (const char *[]){"arm64", "aarch64"}
-                       )) {
+            } else if (any_match(optarg, 2, "arm64", "aarch64")) {
                 inter = &ARM64_INTER;
 #endif /* EAMBFC_TARGET_ARM64 */
 #if EAMBFC_TARGET_S390X
-            } else if (any_strcmp(
-                           optarg,
-                           3,
-                           (const char *[]){"s390x", "s390", "z/architecture"}
+            } else if (any_match(
+                           optarg, 3, "s390x", "s390", "z/architecture"
                        )) {
                 inter = &S390X_INTER;
 #endif /* EAMBFC_TARGET_S390X */
