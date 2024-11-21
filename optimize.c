@@ -114,7 +114,7 @@ static void strip_dead(sized_buf *ir) {
             loop_end = find_loop_end(str);
             if (loop_end == NULL) {
                 mgr_free(ir->buf);
-                ir->buf == NULL;
+                ir->buf = NULL;
                 return;
             }
             memmove(str, loop_end, strlen(loop_end) + 1);
@@ -278,6 +278,8 @@ static void instr_merge(sized_buf *ir) {
 }
 
 #ifdef OPTIMIZE_STANDALONE
+/* C99 */
+#include <stdlib.h> /* exit, EXIT_* */
 /* POSIX */
 #include <fcntl.h> /* open */
 #include <unistd.h> /* close */
