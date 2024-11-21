@@ -14,15 +14,11 @@ else
 fi;
 
 cat >version.h <<EOF
-/* SPDX-FileCopyrightText NONE
- *
- * SPDX-License-Identifier: 0BSD
- *
- * A generated header file with version information */
+/* generated header file with version information */
 #ifndef EAMBFC_VERSION_H
 #define EAMBFC_VERSION_H 1
 
-#define EAMBFC_VERSION $(cat version)
+#define EAMBFC_VERSION "$(cat version)"
 
 #define EAMBFC_COMMIT "$git_str"
 
