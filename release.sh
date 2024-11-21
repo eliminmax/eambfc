@@ -12,7 +12,6 @@
 #
 # * binutils
 # * coreutils
-# * findutils
 # * git
 # * gzip
 # * make
