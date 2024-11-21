@@ -8,26 +8,19 @@
 
 /* C99 */
 #include <stdio.h> /* sprintf, puts */
-#include <stdlib.h> /* free, malloc */
 #include <string.h> /* memmove, memset, strchr, strcpy, strlen, strstr */
 /* internal */
 #include "err.h" /* basic_err, instr_err */
-#include "resource_mgr.h" /* register_mgr */
+#include "resource_mgr.h" /* register_mgr, mgr_malloc */
 #include "types.h" /* bool, uint, {U,}INT64_MAX, [iu]{8,16,32,64}, sized_buf */
 #include "util.h" /* append_obj, read_to_sized_buf */
 
 /* filter out the non-bf characters from code->buf */
 static void filter_non_bf(sized_buf *code) {
-    sized_buf tmp = {0, 4096, malloc(4096)};
-    char *str = code->buf;
-    if (tmp.buf == NULL) {
-        free(code->buf);
-        code->buf = NULL;
-        code->sz = 0;
-    }
+    sized_buf tmp = {0, 4096, mgr_malloc(4096)};
     char instr;
     for (size_t i = 0; i < code->sz; i++) {
-        switch (instr = str[i]) {
+        switch (instr = (char *)(code->buf)[i]) {
         case '[':
         case '-':
         case '.':
@@ -41,7 +34,6 @@ static void filter_non_bf(sized_buf *code) {
     instr = '\0';
     /* null terminate it */
     append_obj(&tmp, &instr, 1);
-    free(code->buf);
     code->sz = tmp.sz;
     code->capacity = tmp.capacity;
     code->buf = tmp.buf;
@@ -109,20 +101,20 @@ static void strip_dead(sized_buf *ir) {
         REPSTR256("-"),
     };
     /* don't want to compute these every loop, or even every run, so hard-code
-     * the known sizes sof the simple patterns here. */
+     * the known sizes of the simple patterns here. */
     size_t simple_pattern_sizes[] = {2, 2, 2, 2, 256, 256};
     bool matched = false;
     char *match_start;
     const char *loop_end;
     do {
         matched = false;
-        /* if str opens with a loop, that loop won't run - remove it */
+        /* if str opens with a loop, that loop won't run, so remove it */
         if (*str == '[') {
             matched = true;
             loop_end = find_loop_end(str);
             if (loop_end == NULL) {
-                free(ir->buf);
-                ir->buf = NULL;
+                mgr_free(ir->buf);
+                ir->buf == NULL;
                 return;
             }
             memmove(str, loop_end, strlen(loop_end) + 1);
@@ -144,7 +136,7 @@ static void strip_dead(sized_buf *ir) {
             /* skip past the closing `]` */
             loop_end = find_loop_end(++match_start);
             if (loop_end == NULL) {
-                free(ir->buf);
+                mgr_free(ir->buf);
                 ir->buf = NULL;
                 return;
             }
@@ -230,7 +222,7 @@ static void instr_merge(sized_buf *ir) {
     /* used to check what's between [ and ] if they're 2 apart */
     char current_mode;
     char prev_mode = *str;
-    char *new_str = malloc(ir->sz);
+    char *new_str = mgr_malloc(ir->sz);
     if (new_str == NULL) {
         alloc_err();
         return;
@@ -244,7 +236,7 @@ static void instr_merge(sized_buf *ir) {
         current_mode = *(str + i);
         if (current_mode != prev_mode) {
             if (!((skip = condense(prev_mode, consec_ct, p)))) {
-                free(new_str);
+                mgr_free(new_str);
                 instr_err(
                     "INTERNAL_ERROR",
                     "Failed to condense consecutive instructions",
@@ -282,7 +274,7 @@ static void instr_merge(sized_buf *ir) {
     }
     strcpy(str, new_str);
     ir->sz = strlen(str);
-    free(new_str);
+    mgr_free(new_str);
 }
 
 #ifdef OPTIMIZE_STANDALONE
@@ -308,7 +300,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    sized_buf ir = {0, 4096, malloc(4096)};
+    sized_buf ir = {0, 4096, mgr_malloc(4096)};
     if (ir.buf == NULL) {
         alloc_err();
         close(fd);
@@ -326,7 +318,7 @@ int main(int argc, char *argv[]) {
 
     puts("Stage 2:");
     if (!loops_match(ir.buf)) {
-        free(ir.buf);
+        mgr_free(ir.buf);
         fputs("Mismatched [ and ]; refusing to continue.\n", stderr);
         return EXIT_FAILURE;
     }
@@ -346,28 +338,28 @@ int main(int argc, char *argv[]) {
     }
     puts(ir.buf);
 
-    free(ir.buf);
+    mgr_free(ir.buf);
 }
 #else /* OPTIMIZE_STANDALONE */
 /* Reads the content of the file fd, and returns a string containing optimized
  * internal intermediate representation of that file's code.
  * fd must be open for reading already, no check is performed.
- * Calling function is responsible for `free`ing the returned string. */
+ * Calling function is responsible for `mgr_free`ing the returned string. */
 void to_ir(sized_buf *src) {
     filter_non_bf(src);
     if (src->buf == NULL) {
-        free(src->buf);
+        mgr_free(src->buf);
         src->buf = NULL;
         return;
     }
     if (!loops_match(src->buf)) {
-        free(src->buf);
+        mgr_free(src->buf);
         src->buf = NULL;
         return;
     }
     strip_dead(src);
     if (src->buf == NULL) {
-        free(src->buf);
+        mgr_free(src->buf);
         src->buf = NULL;
         return;
     }
