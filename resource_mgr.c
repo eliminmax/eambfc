@@ -28,7 +28,7 @@ static struct resource_tracker {
     ifast_8 fd_i;
 } resources;
 
-static ifast_8 alloc_index(void *ptr) {
+static ifast_8 alloc_index(const void *ptr) {
     /* work backwards, as more recent allocs are more likely to be used */
     for (ifast_8 i = resources.alloc_i - 1; i >= 0; --i) {
         if (resources.allocs[i] == ptr) return i;
