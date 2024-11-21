@@ -359,11 +359,7 @@ static bool sub_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
      * used, so just check that "-imm" won't cause problems, then call add_reg
      * with negative imm. */
     if (imm <= INT64_MIN) {
-        basic_err(
-            "TOO_MANY_INSTRUCTIONS",
-            "Number of consecutive '<' surpasses 64-bit integer limit!"
-        );
-        return false;
+        return add_reg(reg, -INT64_MAX, dst_buf) && add_reg(reg, -1, dst_buf);
     }
     return add_reg(reg, -imm, dst_buf);
 }
