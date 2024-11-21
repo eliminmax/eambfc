@@ -7,7 +7,6 @@
 
 /* C99 */
 #include <stdio.h> /* sscanf */
-#include <stdlib.h> /* malloc, realloc, free */
 #include <string.h> /* memcpy */
 /* POSIX */
 #include <unistd.h> /* off_t, read, write, STD*_FILENO*/
@@ -16,6 +15,7 @@
 #include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr, ELFDATA2[LM]SB */
 #include "err.h" /* *_err */
 #include "optimize.h" /* to_ir */
+#include "resource_mgr.h" /* mgr_* */
 #include "serialize.h" /* serialize_*hdr64_[bl]e */
 #include "types.h" /* bool, [iu]{8,16,32,64}, SCNx64, sized_buf */
 #include "util.h" /* read_to_sized_buf, write_obj */
@@ -254,11 +254,8 @@ static struct jump_stack {
 /* prepare to compile the brainfuck `[` instruction to file descriptor fd.
  * doesn't actually write to the file yet, as the address of `]` is unknown.
  *
- * If too many nested loops are encountered, tries to resize the jump stack.
- * If that fails, sets alloc_valve to false and aborts. */
-static bool bf_jump_open(
-    sized_buf *obj_code, bool *alloc_valve, const arch_inter *inter
-) {
+ * If too many nested loops are encountered, it exteds the jump stack. */
+static bool bf_jump_open(sized_buf *obj_code, const arch_inter *inter) {
     /* ensure that there are no more than the maximum nesting level */
     if (jump_stack.index + 1 == jump_stack.loc_sz) {
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
@@ -271,16 +268,10 @@ static bool bf_jump_open(
             return false;
         }
 
-        void *loc = realloc(
+        jump_stack.locations = mgr_realloc(
             jump_stack.locations,
             (jump_stack.index + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
         );
-        if (loc == NULL) {
-            *alloc_valve = false;
-            return false;
-        } else {
-            jump_stack.locations = loc;
-        }
     }
     /* push the current address onto the stack */
     jump_stack.locations[jump_stack.index].src_line = _line;
@@ -341,9 +332,7 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
-static bool comp_instr(
-    char c, sized_buf *obj_code, bool *alloc_valve, const arch_inter *inter
-) {
+static bool comp_instr(char c, sized_buf *obj_code, const arch_inter *inter) {
     _col++;
     switch (c) {
     /* start with the simple cases handled with COMPILE_WITH */
@@ -361,7 +350,7 @@ static bool comp_instr(
     /* read from stdin */
     case ',': return bf_io(obj_code, STDIN_FILENO, inter->SC_NUMS->read, inter);
     /* `[` and `]` do their own error handling. */
-    case '[': return bf_jump_open(obj_code, alloc_valve, inter);
+    case '[': return bf_jump_open(obj_code, inter);
     case ']': return bf_jump_close(obj_code, inter);
     /* on a newline, add 1 to the line number and reset the column */
     case '\n':
@@ -382,7 +371,6 @@ static bool comp_ir_instr(
     char *p,
     sized_buf *obj_code,
     int *skip_ct_p,
-    bool *alloc_valve,
     const arch_inter *inter
 ) {
     u64 ct;
@@ -397,7 +385,7 @@ static bool comp_ir_instr(
     case ',':
     case '[':
     case ']':
-        return comp_instr(*p, obj_code, alloc_valve, inter);
+        return comp_instr(*p, obj_code, inter);
         /* if it's @, then zero the byte pointed to by bf_ptr */
     case '@': return inter->FUNCS->zero_byte(inter->REGS->bf_ptr, obj_code);
     default:
@@ -439,29 +427,14 @@ bool bf_compile(
     u64 tape_blocks
 ) {
     bool ret = true;
-    sized_buf obj_code = {0, 4096, malloc(4096)};
-    if (obj_code.buf == NULL) {
-        alloc_err();
-        return false;
-    }
+    sized_buf obj_code = {0, 4096, mgr_malloc(4096)};
 
     sized_buf src_code;
     read_to_sized_buf(&src_code, in_fd);
-    if (src_code.buf == NULL) {
-        free(obj_code.buf);
-        alloc_err();
-        return false;
-    }
 
     /* reset the jump stack for the new file */
     jump_stack.index = 0;
-    jump_stack.locations = malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
-    if (jump_stack.locations == NULL) {
-        free(obj_code.buf);
-        free(src_code.buf);
-        alloc_err();
-        return false;
-    }
+    jump_stack.locations = mgr_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
 
     /* reset the current line and column */
@@ -472,35 +445,18 @@ bool bf_compile(
     ret &= inter->FUNCS->set_reg(inter->REGS->bf_ptr, TAPE_ADDRESS, &obj_code);
 
     /* compile the actual source code to object code */
-    bool alloc_valve = true; /* if set to false, an allocation failed. */
     if (optimize) {
         to_ir(&src_code);
-        if (src_code.buf == NULL) {
-            free(obj_code.buf);
-            return false;
-        }
         char *p = src_code.buf;
         int skip_ct;
         while (*p) {
-            ret &= comp_ir_instr(p++, &obj_code, &skip_ct, &alloc_valve, inter);
-            if (!alloc_valve) {
-                free(obj_code.buf);
-                free(src_code.buf);
-                alloc_err();
-                return false;
-            }
+            ret &= comp_ir_instr(p++, &obj_code, &skip_ct, inter);
             p += skip_ct;
         }
     } else {
         char *src = src_code.buf;
         for (size_t i = 0; i < src_code.sz; i++) {
-            ret &= comp_instr(src[i], &obj_code, &alloc_valve, inter);
-            if (!alloc_valve) {
-                free(obj_code.buf);
-                free(src_code.buf);
-                alloc_err();
-                return false;
-            }
+            ret &= comp_instr(src[i], &obj_code, inter);
         }
     }
 
@@ -534,9 +490,9 @@ bool bf_compile(
         ret = false;
     }
 
-    free(obj_code.buf);
-    free(src_code.buf);
-    free(jump_stack.locations);
+    mgr_free(obj_code.buf);
+    mgr_free(src_code.buf);
+    mgr_free(jump_stack.locations);
 
     return ret;
 }
