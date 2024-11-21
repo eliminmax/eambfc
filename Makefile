@@ -51,6 +51,9 @@ install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
 	cp -f eambfc.1 $(DESTDIR)$(PREFIX)/share/man/man1/eambfc.1
 
+version.h: version gen_version_h.sh
+	./gen_version_h.sh
+
 resource_mgr.o: resource_mgr.c
 serialize.o: serialize.c
 compile.o: util.h backend_x86_64.o compile.c
