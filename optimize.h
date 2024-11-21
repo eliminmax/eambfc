@@ -26,5 +26,5 @@
  *
  * all `,` and `.` instructions are left unchanged, as are any `[` or `]`
  * instructions not part of the two sequences that are replaced with `@`. */
-void to_ir(sized_buf *src);
+bool to_ir(sized_buf *src);
 #endif /* EAMBFC_OPTIMIZE_H */

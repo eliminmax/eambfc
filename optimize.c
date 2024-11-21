@@ -339,25 +339,26 @@ int main(int argc, char *argv[]) {
  * internal intermediate representation of that file's code.
  * fd must be open for reading already, no check is performed.
  * Calling function is responsible for `mgr_free`ing the returned string. */
-void to_ir(sized_buf *src) {
+bool to_ir(sized_buf *src) {
     filter_non_bf(src);
     if (src->buf == NULL) {
         mgr_free(src->buf);
         src->buf = NULL;
-        return;
+        return false;
     }
     if (!loops_match(src->buf)) {
         mgr_free(src->buf);
         src->buf = NULL;
-        return;
+        return false;
     }
     strip_dead(src);
     if (src->buf == NULL) {
         mgr_free(src->buf);
         src->buf = NULL;
-        return;
+        return false;
     }
     instr_merge(src);
     src->sz = strlen(src->buf) + 1;
+    return true;
 }
 #endif /* OPTIMIZE_STANDALONE */
