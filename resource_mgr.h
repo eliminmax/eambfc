@@ -19,6 +19,8 @@
  * unexpected state, so allocations and file descriptors shouldn't be left open
  * just because that happens. */
 
+#ifndef EAMBFC_RESOURCE_MGR_H
+#define EAMBFC_RESOURCE_MGR_H 1
 /* internal */
 #include "types.h" /* mode_t, size_t, bool */
 
@@ -89,3 +91,4 @@ int mgr_open(const char *pathname, int flags);
  * - if fd is not a registered file descriptor, it calls internal_err with
  *   error code `MGR_CLOSE_UNKNOWN` */
 int mgr_close(int fd);
+#endif /* EAMBFC_RESOURCE_MGR_H */
