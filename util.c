@@ -6,12 +6,12 @@
 
 /* C99 */
 #include <limits.h> /* SSIZE_MAX */
-#include <stdlib.h> /* realloc */
 #include <string.h> /* memcpy */
 /* POSIX */
 #include <unistd.h> /* read, write */
 /* internal */
 #include "err.h" /* basic_err, alloc_err */
+#include "resource_mgr.h" /* mgr_malloc, mgr_realloc, mgr_free */
 #include "types.h" /* ssize_t, size_t, off_t */
 
 /* Wrapper around write.3POSIX that returns true if all bytes were written, and
@@ -34,9 +34,10 @@ bool write_obj(int fd, const void *buf, size_t ct) {
 }
 
 /* Append bytes to dst, handling reallocs as needed.
- * If realloc fails, frees dst->buf then sets dst to {0, 0, NULL} */
+ * Assumes that dst has been allocated with resource_mgr. */
 bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
-    /* if more space is needed, ensure no overflow occurs then allocate it
+    /* if more space is needed, ensure no overflow occurs when calculating new
+     * space requirements, then allocate it.
      *
      * Make sure to leave 8 KiB shy of SIZE_MAX available - it will never
      * get anywhere near that high in any realisitic scenario, and the extra
@@ -48,48 +49,39 @@ bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
             "BUF_TOO_LARGE",
             "Extending buffer would put size within 8 KiB of SIZE_MAX"
         );
-        goto append_obj_cleanup;
+        mgr_free(dst->buf);
+        dst->capacity = 0;
+        dst->sz = 0;
+        dst->buf = NULL;
+        return false;
     }
 
     if (dst->buf == NULL) {
         internal_err(
             "APPEND_OBJ_TO_NULL", "append_obj called with dst->buf set to NULL"
         );
+        /* will never return, as internal_err calls exit(EXIT_FAILURE) */
         return false;
     }
-    /* how much capacity should be allocated */
+    /* how much capacity is needed */
     size_t needed_cap = bytes_sz + dst->sz;
     /* if needed_cap isn't a multiple of 4 KiB in size, pad it out -
      * most usage of this function is going to be for small objects, so the
      * number of reallocations is vastly reduced that way.
      *
-     * Because the previous check established that there's at least 2 KiB of
+     * Because the previous check established that there's at least 8 KiB of
      * padding available, this is guaranteed not to overflow. */
     if (needed_cap & 0xfff) needed_cap = (needed_cap + 0x1000) & (~0xfff);
 
     if (needed_cap > dst->capacity) {
         /* reallocate to new capacity */
-        void *new_buf = realloc(dst->buf, needed_cap);
-        if (new_buf == NULL) {
-            alloc_err();
-            goto append_obj_cleanup;
-        }
+        dst->buf = mgr_realloc(dst->buf, needed_cap);
         dst->capacity = needed_cap;
-        dst->buf = new_buf;
     }
     /* actually append the object now that prep work is done */
     memcpy((char *)(dst->buf) + dst->sz, bytes, bytes_sz);
     dst->sz += bytes_sz;
     return true;
-
-    /* when errors occur, goto this label after calling the appropriate error
-     * message for the shared failure-handling steps. */
-append_obj_cleanup:
-    free(dst->buf);
-    dst->capacity = 0;
-    dst->sz = 0;
-    dst->buf = NULL;
-    return false;
 }
 
 /* Reads the contents of fd into sb. If a read error occurs, frees what's
@@ -97,25 +89,21 @@ append_obj_cleanup:
 void read_to_sized_buf(sized_buf *sb, int fd) {
     sb->sz = 0;
     sb->capacity = 4096;
-    sb->buf = malloc(4096);
-    if (sb->buf == NULL) {
-        alloc_err();
-        return;
-    }
+    sb->buf = mgr_malloc(4096);
     /* read into sb in 4096-byte chunks */
     char chunk[4096];
     ssize_t count;
     while ((count = read(fd, &chunk, 4096))) {
         if (count < 0) {
             basic_err("FAILED_READ", "Failed to read from file");
-            free(sb->buf);
+            mgr_free(sb->buf);
             sb->sz = 0;
             sb->capacity = 0;
             sb->buf = NULL;
             return;
         }
 
-        /* in case of error, */
+        /* in case of error, null out sb */
         if (!append_obj(sb, &chunk, count)) {
             sb->sz = 0;
             sb->capacity = 0;
