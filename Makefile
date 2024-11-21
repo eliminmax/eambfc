@@ -15,7 +15,8 @@ POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 # __BACKENDS__
 BACKENDS = backend_arm64.o backend_s390x.o backend_x86_64.o
 
-COMPILE_DEPS = serialize.o $(BACKENDS) optimize.o err.o util.o resource_mgr.o
+COMPILE_DEPS = serialize.o $(BACKENDS) optimize.o err.o util.o util.h \
+	       resource_mgr.o
 EAMBFC_DEPS = compile.o $(COMPILE_DEPS) main.o
 
 
@@ -74,7 +75,7 @@ compile.o: config.h backend_x86_64.o compile.c
 main.o: config.h main.c
 err.o: config.h err.c
 util.o: util.c
-optimize.o: err.o util.o optimize.c
+optimize.o: err.o util.o util.h optimize.c
 # __BACKENDS__
 backend_arm64.o: backend_arm64.c config.h
 backend_s390x.o: backend_s390x.c config.h
@@ -104,7 +105,7 @@ multibuild: config.h
 multibuild_test: can_run_linux_amd64 config.h
 	./multibuild.sh
 
-optimize: optimize.c err.o util.o resource_mgr.o
+optimize: optimize.c util.h err.o util.o resource_mgr.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) -D OPTIMIZE_STANDALONE \
 		-o $@ optimize.c err.o util.o resource_mgr.o
 

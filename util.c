@@ -10,9 +10,10 @@
 /* POSIX */
 #include <unistd.h> /* read, write */
 /* internal */
-#include "err.h" /* basic_err, alloc_err */
+#include "err.h" /* basic_err */
 #include "resource_mgr.h" /* mgr_malloc, mgr_realloc, mgr_free */
 #include "types.h" /* ssize_t, size_t, off_t */
+#include "util.h" /* new_sized_buf */
 
 /* Wrapper around write.3POSIX that returns true if all bytes were written, and
  * prints an error and returns false otherwise or if ct is too large to
@@ -84,30 +85,26 @@ bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
     return true;
 }
 
+/* return a new sized_buf with an initial capacity of 4096 */
+extern sized_buf new_sized_buf(void);
+
 /* Reads the contents of fd into sb. If a read error occurs, frees what's
  * already been read, and sets sb to {0, 0, NULL}. */
-void read_to_sized_buf(sized_buf *sb, int fd) {
-    sb->sz = 0;
-    sb->capacity = 4096;
-    sb->buf = mgr_malloc(4096);
+sized_buf read_to_sized_buf(int fd) {
+    sized_buf sb = new_sized_buf();
     /* read into sb in 4096-byte chunks */
     char chunk[4096];
     ssize_t count;
     while ((count = read(fd, &chunk, 4096))) {
-        if (count < 0) {
+        if (count >= 0) {
+            append_obj(&sb, &chunk, count);
+        } else {
             basic_err("FAILED_READ", "Failed to read from file");
-            mgr_free(sb->buf);
-            sb->sz = 0;
-            sb->capacity = 0;
-            sb->buf = NULL;
-            return;
-        }
-
-        /* in case of error, null out sb */
-        if (!append_obj(sb, &chunk, count)) {
-            sb->sz = 0;
-            sb->capacity = 0;
-            return;
+            mgr_free(sb.buf);
+            sb.sz = 0;
+            sb.capacity = 0;
+            sb.buf = NULL;
         }
     }
+    return sb;
 }
