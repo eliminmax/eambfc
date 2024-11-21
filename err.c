@@ -230,7 +230,7 @@ void internal_err(char *id, char *msg) {
         strcpy(ice_id + 4, "ICE_PARAMS_TOO_LONG");
         strcpy(
             ice_msg + 25,
-            "An ICE occured, but id or msg was too long, resulting in this ICE"
+            "An ICE occurred, but id or msg was too long, resulting in this ICE"
         );
         return;
     } else {
