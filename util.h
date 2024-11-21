@@ -5,7 +5,6 @@
  * Miscellaneous utility functions used throughout the eambfc codebase. */
 #ifndef EAMBFC_UTIL_H
 #define EAMBFC_UTIL_H 1
-#include "resource_mgr.h" /* mgr_malloc */
 #include "types.h" /* off_t, size_t, sized_buf */
 /* Passes arguments to write, and checks if bytes written is equal to ct.
  * If it is, returns true. otherwise, outputs a FAILED_WRITE error and
@@ -15,10 +14,8 @@
  * See write.3POSIX for more information on arguments. */
 bool write_obj(int fd, const void *buf, size_t ct);
 
-/* typical way to initialize a new sized buf */
-inline sized_buf new_sized_buf(void) {
-    return (sized_buf){.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
-}
+/* initialize a new sized buf with capacity 4096 */
+sized_buf new_sized_buf(void);
 
 /* Appends first bytes_sz of bytes to dst, reallocating dst as needed. */
 bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz);

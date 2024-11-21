@@ -86,7 +86,9 @@ bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
 }
 
 /* return a new sized_buf with an initial capacity of 4096 */
-extern sized_buf new_sized_buf(void);
+sized_buf new_sized_buf(void) {
+    return (sized_buf){.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
+}
 
 /* Reads the contents of fd into sb. If a read error occurs, frees what's
  * already been read, and sets sb to {0, 0, NULL}. */
