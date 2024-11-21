@@ -115,6 +115,47 @@ static bool rm_ext(char *str, const char *ext) {
     return true;
 }
 
+/* compile a file */
+static bool compile_file(
+    char *filename,
+    arch_inter *inter,
+    bool optimize,
+    bool keep,
+    const char *ext,
+    u64 tape_blocks
+) {
+    char *outname = mgr_malloc(strlen(filename) + 1);
+    strcpy(outname, filename);
+    if (!rm_ext(outname, ext)) {
+        param_err(
+            "BAD_EXTENSION",
+            "File {} does not end with expected extension.",
+            filename
+        );
+        mgr_free(outname);
+        return false;
+    }
+    int src_fd = mgr_open(filename, O_RDONLY);
+    if (src_fd < 0) {
+        param_err("OPEN_R_FAILED", "Failed to open {} for reading.", filename);
+        mgr_free(outname);
+        return false;
+    }
+    int dst_fd = mgr_open_m(outname, O_WRONLY | O_CREAT | O_TRUNC, 0755);
+    if (dst_fd < 0) {
+        param_err("OPEN_W_FAILED", "Failed to open {} for writing.", outname);
+        mgr_close(src_fd);
+        mgr_free(outname);
+        return false;
+    }
+    bool result = bf_compile(inter, src_fd, dst_fd, optimize, tape_blocks);
+    if ((!result) && (!keep)) remove(outname);
+    mgr_close(src_fd);
+    mgr_close(dst_fd);
+    mgr_free(outname);
+    return result;
+}
+
 /* macro for use in main function only.
  * SHOW_HINT:
  *  * unless -q or -j was passed, write the help text to stderr. */
@@ -125,11 +166,8 @@ int main(int argc, char *argv[]) {
     /* register atexit function to clean up any open files or memory allocations
      * left behind. */
     register_mgr();
-    int src_fd, dst_fd;
-    int result;
     int opt;
     int ret = EXIT_SUCCESS;
-    char *outname;
     /* default to empty string. */
     char *ext = "";
     /* default to false, set to true if relevant argument was passed. */
@@ -296,56 +334,13 @@ int main(int argc, char *argv[]) {
     if (inter == NULL) inter = &DEFAULT_INTER;
 
     for (/* reusing optind here */; optind < argc; optind++) {
-        outname = mgr_malloc(strlen(argv[optind]) + 1);
-        if (outname == NULL) {
-            alloc_err();
-            /* alloc_err calls exit(EXIT_FAILURE), so the following won't run */
-            goto inner_loop_failure;
-        }
-        strcpy(outname, argv[optind]);
-        if (!rm_ext(outname, ext)) {
-            param_err(
-                "BAD_EXTENSION",
-                "File {} does not end with expected extension.",
-                argv[optind]
-            );
-            mgr_free(outname);
-            goto inner_loop_failure;
-        }
-        src_fd = mgr_open(argv[optind], O_RDONLY);
-        if (src_fd < 0) {
-            param_err(
-                "OPEN_R_FAILED", "Failed to open {} for reading.", argv[optind]
-            );
-            mgr_free(outname);
-            goto inner_loop_failure;
-        }
-        dst_fd = mgr_open_m(outname, O_WRONLY | O_CREAT | O_TRUNC, 0755);
-        if (dst_fd < 0) {
-            param_err(
-                "OPEN_W_FAILED", "Failed to open {} for writing.", outname
-            );
-            mgr_close(src_fd);
-            mgr_free(outname);
-            goto inner_loop_failure;
-        }
-        result = bf_compile(inter, src_fd, dst_fd, optimize, tape_blocks);
-        mgr_close(src_fd);
-        mgr_close(dst_fd);
-        if (!result) {
-            if (!keep) remove(outname);
-            mgr_free(outname);
-            goto inner_loop_failure;
-        }
-        mgr_free(outname);
-        continue;
-inner_loop_failure:
-        ret = EXIT_FAILURE;
-        if (moveahead) {
+        if (compile_file(
+                argv[optind], inter, optimize, keep, ext, tape_blocks
+            )) {
             continue;
-        } else {
-            break;
         }
+        ret = EXIT_FAILURE;
+        if (!moveahead) break;
     }
 
     return ret;
