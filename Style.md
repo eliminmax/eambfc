@@ -28,20 +28,6 @@ The following are the formatting I follow for source code:
   * `/* internal */`: the header is provided within the `eambfc` source tree.
   * Each `#include` are accompanied by a comment explaining why it's there.
 
-There's a .clang-format file for clang-format-16, which is the latest version
-available in Debian Bookworm. If installed, a pre-push hook can be created (by
-default at `"$GIT_DIR/hooks/pre-push"`) with the following contents to ensure
-that all C source and header files except `compat/elf.h` are formatted according
-to the rules in `.clang-format` before pushing. I have pre-push and pre-commit
-hooks set up.
-
-```sh
-#!/bin/sh
-cd "$(git rev-parse --show-toplevel)" || exit 1
-
-clang-format-16 -Werror -n *.[ch] compat/*.h
-```
-
 There are two cases where those formatting rules don't apply.
 
 The first is in `compat/elf.h` - it's adapted from glibc's `elf.h`, and its
