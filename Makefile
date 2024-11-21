@@ -122,5 +122,5 @@ all_tests: test multibuild_test strict ubsan int_torture_test
 clean:
 	rm -rf $(EAMBFC_DEPS) eambfc alt-builds optimize \
 	    create_mini_elf.o create_mini_elf mini_elf can_run_linux_amd64
-	[ -e .git ] && rm version.h
+	[ -e .git ] && rm -f version.h
 	(cd tests; make clean)
