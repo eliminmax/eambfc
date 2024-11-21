@@ -71,7 +71,9 @@ static char *json_str(char *str) {
              * a non-standard (though common) extension to C, and is not
              * Using this `if`-within-a-`switch` instead. */
             if ((unsigned char)(*p) < 040) { /* control chars are 000 to 037 */
-                sprintf(outp, "\\u%04hhx", *p);
+                /* cppcheck complains that hhx is for unsigned types unless
+                 * *p is cast explicitly here */
+                sprintf(outp, "\\u%04hhx", (unsigned char)*p);
                 used += 6;
                 outp += 6;
             } else {
