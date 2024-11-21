@@ -390,7 +390,7 @@ static bool comp_ir_instr(
          * consecutive instructions, and compile it with the appropriate
          * function. */
         if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_ct_p) != 1) {
-            basic_err(
+            internal_err(
                 "IR_FAILED_SCAN", "Failed to get count for EAMBFC-IR op."
             );
             return false;
@@ -400,7 +400,9 @@ static bool comp_ir_instr(
             case '=': return IR_COMPILE_WITH(inter->FUNCS->sub_byte);
             case '}': return IR_COMPILE_WITH(inter->FUNCS->add_reg);
             case '{': return IR_COMPILE_WITH(inter->FUNCS->sub_reg);
-            default: basic_err("INVALID_IR", "Invalid IR Opcode"); return false;
+            default:
+                internal_err("INVALID_IR", "Invalid IR Opcode");
+                return false;
             }
         }
     }
