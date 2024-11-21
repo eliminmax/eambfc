@@ -35,8 +35,9 @@ cd "$(dirname "$(realpath "$0")")"
 # check formatting of C source and header files
 find . -name '*.[ch]' -type f -exec clang-format-16 -n -Werror {} +
 
-# run checks on shell files with checkbashisms and shellcheck
-find . -name '*.sh' -type f -exec shellcheck {} + -exec checkbashisms -f {} +
+# run checks on shell scripts with checkbashisms and shellcheck
+find . '(' -name '*.sh' -o -path '.githooks/*' ')' -type f \
+    -exec shellcheck {} + -exec checkbashisms -f {} +
 
 # ensure licensing information is structured in a manner that complies with the
 # REUSE 3.2 specification
