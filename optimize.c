@@ -280,6 +280,8 @@ static void instr_merge(sized_buf *ir) {
 #ifdef OPTIMIZE_STANDALONE
 /* C99 */
 #include <stdlib.h> /* exit, EXIT_* */
+/* POSIX */
+#include <fcntl.h> /* O_RDONLY */
 
 /* used for testing purposes
  * inspired by Python's `if __name__ == "__main__" idiom
