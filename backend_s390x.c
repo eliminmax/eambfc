@@ -197,7 +197,9 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
          * 32 bits, then use an "insert immediate" instruction to set the higher
          * bits. */
         i16 default_val = (imm >= 0) ? INT16_C(0) : INT16_C(-1);
-        i32 upper_imm = imm >> 32;
+
+        /* casting to avoid portability issues */
+        i32 upper_imm = (u64)imm >> 32;
 
         /* try to set the upper bits no matter what, but if the lower bits
          * failed, still want to return false. */
@@ -256,10 +258,10 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
         );
         return false;
     }
-    /* make sure offset is in range - the branch instructions take a halfword
-     * offset. */
-    if ((offset > 0 && (offset >> 17) != 0) ||
-        (offset < 0 && (offset >> 17) != -1)) {
+    /* make sure offset is in range - the branch instructions take a 16-bit
+     * offset of halfwords, so offset must be even and fit within a 17-bit
+     * signed (2's complement) integer */
+    if (offset < -0x10000 || offset > 0xffff) {
         basic_err(
             "JUMP_TOO_LONG", "offset is out-of-range for this architecture"
         );
@@ -298,8 +300,9 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
     u8 i_bytes[2][6] = {ENCODE_RI_OP(0xc2d, aux), ENCODE_RI_OP(0xc04, mask)};
     /* no need to serialize the immediate in the first instruction, as it's
      * already initialized to zero. The offset, on the other hand, still needs
-     * to be set. */
-    ret &= serialize32be((offset >> 1), &i_bytes[1][2]) == 4 &&
+     * to be set. Cast offset to u64 to avoid portability issues with signed
+     * bit shifts. */
+    ret &= serialize32be(((u64)offset >> 1), &i_bytes[1][2]) == 4 &&
            append_obj(dst, &i_bytes, 12);
 
     return ret;
@@ -348,7 +351,8 @@ static bool add_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         /* add the higher 32 bits */
         /* AIH reg, imm {RIL-a} */
         u8 i_bytes[6] = ENCODE_RI_OP(0xcc8, reg);
-        ret &= serialize32be((imm >> 32), &i_bytes[2]) == 4 &&
+        /* cast to u64 to avoid portability issues */
+        ret &= serialize32be(((u64)imm >> 32), &i_bytes[2]) == 4 &&
                append_obj(dst_buf, &i_bytes, 6);
         return ret;
     }
