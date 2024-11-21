@@ -289,6 +289,7 @@ static void instr_merge(sized_buf *ir) {
 /* POSIX */
 #include <fcntl.h> /* open */
 #include <unistd.h> /* close */
+
 /* used for testing purposes
  * inspired by Python's `if __name__ == "__main__" idiom
  * compile with flag -D OPTIMIZE_STANDALONE to enable this and compile a

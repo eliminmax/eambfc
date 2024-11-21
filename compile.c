@@ -368,10 +368,7 @@ static bool comp_instr(char c, sized_buf *obj_code, const arch_inter *inter) {
 
 /* Compile an ir instruction */
 static bool comp_ir_instr(
-    char *p,
-    sized_buf *obj_code,
-    int *skip_ct_p,
-    const arch_inter *inter
+    char *p, sized_buf *obj_code, int *skip_ct_p, const arch_inter *inter
 ) {
     u64 ct;
     *skip_ct_p = 0;
