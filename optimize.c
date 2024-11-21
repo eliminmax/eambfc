@@ -280,9 +280,6 @@ static void instr_merge(sized_buf *ir) {
 #ifdef OPTIMIZE_STANDALONE
 /* C99 */
 #include <stdlib.h> /* exit, EXIT_* */
-/* POSIX */
-#include <fcntl.h> /* open */
-#include <unistd.h> /* close */
 
 /* used for testing purposes
  * inspired by Python's `if __name__ == "__main__" idiom
@@ -296,16 +293,12 @@ int main(int argc, char *argv[]) {
         fputs("Not enough arguments.\n", stderr);
         return EXIT_FAILURE;
     }
-    int fd = open(argv[1], O_RDONLY);
-    if (fd == -1) {
-        fputs("Failed to open file.\n", stderr);
-        return EXIT_FAILURE;
-    }
+    int fd = mgr_open(argv[1], O_RDONLY);
 
     sized_buf ir = {0, 4096, mgr_malloc(4096)};
     if (ir.buf == NULL) {
         alloc_err();
-        close(fd);
+        mgr_close(fd);
         return 1;
     }
     read_to_sized_buf(&ir, fd);
@@ -340,6 +333,7 @@ int main(int argc, char *argv[]) {
     }
     puts(ir.buf);
 
+    mgr_close(fd);
     mgr_free(ir.buf);
 }
 #else /* OPTIMIZE_STANDALONE */
