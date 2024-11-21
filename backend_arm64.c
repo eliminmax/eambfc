@@ -177,9 +177,11 @@ static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
         );
         return false;
     }
-    /* use some bit shifts to check if the value is in range */
-    if ((offset > 0 && (offset >> 44) != 0) ||
-        (offset < 0 && (offset >> 44) != -1)) {
+    /* use some bit shifts to check if the value is in range
+     * (19 immediate bits are used, but as it must be a multiple of 4, it treats
+     * them as though they're followed by an implicit 0b00, so it needs to fit
+     * within the range of possible 21-bit 2's complement values. */
+    if ((offset < -0x200000 || offset > 0x1fffff)) {
         basic_err(
             "JUMP_TOO_LONG",
             "offset is outside the range of possible 21-bit signed values"
