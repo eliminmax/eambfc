@@ -25,11 +25,6 @@
 #define IMM32_PADDING 0x00, 0x00, 0x00, 0x00
 #define IMM64_PADDING 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 
-/* in eambfc, `[` and `]` are both compiled to TEST (3 bytes), followed by a Jcc
- * instruction (6 bytes). When encountering a `[` instruction, fill this many
- * bytes with NOP instructins to leave room for them. */
-#define JUMP_SIZE 9
-
 /* most common values for opcodes in add/sub instructions */
 typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
 
@@ -146,10 +141,14 @@ static bool syscall(sized_buf *dst_buf) {
     return append_obj(dst_buf, (u8[]){INSTRUCTION(0x0f, 0x05)}, 2);
 }
 
-/* times JUMP_SIZE NOP */
+/* In this backend, `[` and `]` are both compiled to TEST (3 bytes), followed by
+ * a Jcc instruction (6 bytes). When encountering a `[` instruction, fill 9
+ * * bytes with NOP instructins to leave room for it. */
+#define NOP 0x90
+
+/* times 9 NOP */
 static bool nop_loop_open(sized_buf *dst_buf) {
-    u8 nops[JUMP_SIZE];
-    for (int i = 0; i < JUMP_SIZE; i++) nops[i] = 0x90;
+    u8 nops[9] = {NOP, NOP, NOP, NOP, NOP, NOP, NOP, NOP, NOP};
     return append_obj(dst_buf, &nops, JUMP_SIZE);
 }
 
