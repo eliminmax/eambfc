@@ -79,11 +79,11 @@ fi
 make clean
 
 # first, some linting
-./run-lints.sh *.[ch] *.sh .githooks/*
+./run-lints.sh ./*.[ch] ./*.sh .githooks/*
 # run codespell on files not included in those globs
 codespell --skip='.git','*.sh','.githooks','*.[ch]'
 # check for unused functions - not done with run-lints.sh
-cppcheck -q --enable=unusedFunction *.[ch]
+cppcheck -q --enable=unusedFunction --suppress=checkersReport ./*.[ch]
 
 version="$(cat version)"
 

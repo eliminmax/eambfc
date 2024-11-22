@@ -54,13 +54,10 @@ for file; do
         # check that C source and header files meet proper style guides
         clang-format-16 -n -Werror "$file"
 
-        # invoke the cppcheck static analysis tool, checking for both 32-bit
-        # and 64-bit Unix platforms
-        for platform in unix32 unix64; do
-            cppcheck -q --std=c99 --platform="$platform" --enable=all \
-                --disable=missingInclude,unusedFunction \
-                --check-level=exhaustive --error-exitcode=1 "$file"
-            done
+        # invoke the cppcheck static analysis tool
+        cppcheck -q --std=c99 --platform=unspecified --enable=all \
+            --disable=missingInclude,unusedFunction --suppress=checkersReport \
+            --check-level=exhaustive --error-exitcode=1 "$file"
         ;;
     esac; fi
     # Find typos in the code
