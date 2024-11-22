@@ -115,18 +115,202 @@ static bool rm_ext(char *str, const char *ext) {
     return true;
 }
 
+typedef struct {
+    arch_inter *inter;
+    char *ext;
+    u64 tape_blocks;
+    /* use bitfield booleans here */
+    bool quiet    : 1;
+    bool optimize : 1;
+    bool keep     : 1;
+    bool moveahead: 1;
+    bool json     : 1;
+} run_cfg;
+
+/* macro for use in parse_args function only.
+ * SHOW_HINT:
+ *  * unless -q or -j was passed, write the help text to stderr. */
+#define SHOW_HINT() \
+    if (!(rc.quiet || rc.json)) show_help(stderr, argv[0])
+
+static run_cfg parse_args(int argc, char *argv[]) {
+    int opt;
+    char char_str_buf[2] = "";
+    run_cfg rc = {
+        .inter = NULL,
+        .ext = NULL,
+        .tape_blocks = 0,
+        .quiet = false,
+        .optimize = false,
+        .keep = false,
+        .moveahead = false,
+        .json = false,
+    };
+
+    while ((opt = getopt(argc, argv, ":hVqjOkmAa:e:t:")) != -1) {
+        switch (opt) {
+        case 'h': show_help(stdout, argv[0]); exit(EXIT_SUCCESS);
+        case 'V':
+            printf(
+                "%s: eambfc version %s\n\n"
+                "Copyright (c) 2024 Eli Array Minkoff.\n"
+                "License: GNU GPL version 3 "
+                "<https://gnu.org/licenses/gpl.html>.\n"
+                "This is free software: "
+                "you are free to change and redistribute it.\n"
+                "There is NO WARRANTY, to the extent permitted by law.\n\n"
+                "Build information:\n"
+                " * %s\n", /* git info or message stating git not used. */
+                argv[0],
+                EAMBFC_VERSION,
+                EAMBFC_COMMIT
+            );
+            exit(EXIT_SUCCESS);
+        case 'A':
+            printf(
+                "This build of %s supports the following architectures:\n\n"
+                "- x86_64 (aliases: x64, amd64, x86-64)\n"
+/* __BACKENDS__ */
+#if EAMBFC_TARGET_ARM64
+                "- arm64 (aliases: aarch64)\n"
+#endif /* EAMBFC_TARGET_ARM64 */
+#if EAMBFC_TARGET_S390X
+                "- s390x (aliases: s390, z/architecture)\n"
+#endif /* EAMBFC_TARGET_S390X */
+
+                "\nIf no architecture is specified, it defaults to x86_64.\n",
+                argv[0]
+            );
+            exit(EXIT_SUCCESS);
+
+        case 'q':
+            rc.quiet = true;
+            quiet_mode();
+            break;
+        case 'j':
+            rc.json = true;
+            json_mode();
+            break;
+        case 'O': rc.optimize = true; break;
+        case 'k': rc.keep = true; break;
+        case 'm': rc.moveahead = true; break;
+        case 'e':
+            /* Print an error if ext was already set. */
+            if (rc.ext != NULL) {
+                basic_err("MULTIPLE_EXTENSIONS", "passed -e multiple times.");
+                SHOW_HINT();
+                exit(EXIT_FAILURE);
+            }
+            rc.ext = optarg;
+            break;
+        case 't':
+            /* Print an error if tape_blocks has already been set */
+            if (rc.tape_blocks != 0) {
+                basic_err(
+                    "MULTIPLE_TAPE_BLOCK_COUNTS", "passed -t multiple times."
+                );
+                SHOW_HINT();
+                exit(EXIT_FAILURE);
+            }
+            char *endptr;
+            /* casting unsigned long long instead of using scanf as scanf can
+             * lead to undefined behavior if input isn't well-crafted, and
+             * unsigned long long is guaranteed to be at least 64 bits. */
+            unsigned long long int holder = strtoull(optarg, &endptr, 10);
+            /* if the full opt_arg wasn't consumed, it's not a numeric value. */
+            if (*endptr != '\0') {
+                param_err(
+                    "NOT_NUMERIC",
+                    "{} could not be parsed as a numeric value",
+                    optarg
+                );
+                SHOW_HINT();
+                exit(EXIT_FAILURE);
+            }
+            if (holder == 0) {
+                basic_err("NO_TAPE", "Tape value for -t must be at least 1");
+                SHOW_HINT();
+                exit(EXIT_FAILURE);
+            }
+            /* if it's any larger than this, the tape size would exceed the
+             * 64-bit integer limit. */
+            if (holder >= (UINT64_MAX >> 12)) {
+                param_err(
+                    "TAPE_TOO_LARGE",
+                    "{} * 0x1000 exceeds the 64-bit integer limit.",
+                    optarg
+                );
+                SHOW_HINT();
+                exit(EXIT_FAILURE);
+            }
+            rc.tape_blocks = (u64)holder;
+            break;
+        case 'a':
+            if (rc.inter != NULL) {
+                basic_err("MULTIPLE_ARCHES", "passed -a multiple times.");
+                SHOW_HINT();
+                exit(EXIT_FAILURE);
+            }
+
+            if (any_match(optarg, 4, "x86_64", "x64", "amd64", "x86-64")) {
+                rc.inter = &X86_64_INTER;
+/* __BACKENDS__ */
+#if EAMBFC_TARGET_ARM64
+            } else if (any_match(optarg, 2, "arm64", "aarch64")) {
+                rc.inter = &ARM64_INTER;
+#endif /* EAMBFC_TARGET_ARM64 */
+#if EAMBFC_TARGET_S390X
+            } else if (any_match(
+                           optarg, 3, "s390x", "s390", "z/architecture"
+                       )) {
+                rc.inter = &S390X_INTER;
+#endif /* EAMBFC_TARGET_S390X */
+            } else {
+                param_err(
+                    "UNKNOWN_ARCH",
+                    "{} is not a recognized architecture",
+                    optarg
+                );
+                SHOW_HINT();
+                exit(EXIT_FAILURE);
+            }
+            break;
+        case ':': /* one of -a, -e, or -t is missing an argument */
+            char_str_buf[0] = (char)optopt;
+            param_err(
+                "MISSING_OPERAND",
+                "{} requires an additional argument",
+                char_str_buf
+            );
+            exit(EXIT_FAILURE);
+        case '?': /* unknown argument */
+            char_str_buf[0] = (char)optopt;
+            param_err("UNKNOWN_ARG", "Unknown argument: {}.", char_str_buf);
+            exit(EXIT_FAILURE);
+        }
+    }
+    if (optind == argc) {
+        basic_err("NO_SOURCE_FILES", "No source files provided.");
+        SHOW_HINT();
+        exit(EXIT_FAILURE);
+    }
+
+    /* if no extension was provided, use .bf */
+    if (rc.ext == NULL) rc.ext = ".bf";
+
+    /* if no tape size was specified, default to 8. */
+    if (rc.tape_blocks == 0) rc.tape_blocks = 8;
+
+    /* if no architecture was specified, default to default value set above */
+    if (rc.inter == NULL) rc.inter = &DEFAULT_INTER;
+    return rc;
+}
+
 /* compile a file */
-static bool compile_file(
-    char *filename,
-    arch_inter *inter,
-    bool optimize,
-    bool keep,
-    const char *ext,
-    u64 tape_blocks
-) {
+static bool compile_file(char *filename, run_cfg *rc) {
     char *outname = mgr_malloc(strlen(filename) + 1);
     strcpy(outname, filename);
-    if (!rm_ext(outname, ext)) {
+    if (!rm_ext(outname, rc->ext)) {
         param_err(
             "BAD_EXTENSION",
             "File {} does not end with expected extension.",
@@ -148,199 +332,34 @@ static bool compile_file(
         mgr_free(outname);
         return false;
     }
-    bool result = bf_compile(inter, src_fd, dst_fd, optimize, tape_blocks);
-    if ((!result) && (!keep)) remove(outname);
+    bool result =
+        bf_compile(rc->inter, src_fd, dst_fd, rc->optimize, rc->tape_blocks);
+    if ((!result) && (!rc->keep)) remove(outname);
     mgr_close(src_fd);
     mgr_close(dst_fd);
     mgr_free(outname);
     return result;
 }
 
-/* macro for use in main function only.
- * SHOW_HINT:
- *  * unless -q or -j was passed, write the help text to stderr. */
-#define SHOW_HINT() \
-    if (!(quiet || json)) show_help(stderr, argv[0])
-
 int main(int argc, char *argv[]) {
     /* register atexit function to clean up any open files or memory allocations
      * left behind. */
-    register_mgr();
-    int opt;
-    int ret = EXIT_SUCCESS;
-    /* default to empty string. */
-    char *ext = "";
-    /* default to false, set to true if relevant argument was passed. */
-    bool quiet = false, keep = false, moveahead = false, json = false;
-    bool optimize = false;
-    char char_str_buf[2] = {'\0', '\0'};
-    u64 tape_blocks = 0;
-    arch_inter *inter = NULL;
-    while ((opt = getopt(argc, argv, ":hVqjOkmAa:e:t:")) != -1) {
-        switch (opt) {
-        case 'h': show_help(stdout, argv[0]); return EXIT_SUCCESS;
-        case 'V':
-            printf(
-                "%s: eambfc version %s\n\n"
-                "Copyright (c) 2024 Eli Array Minkoff.\n"
-                "License: GNU GPL version 3 "
-                "<https://gnu.org/licenses/gpl.html>.\n"
-                "This is free software: "
-                "you are free to change and redistribute it.\n"
-                "There is NO WARRANTY, to the extent permitted by law.\n\n"
-                "Build configuration:\n"
-                " * %s\n", /* git info or message stating git not used. */
-                argv[0],
-                EAMBFC_VERSION,
-                EAMBFC_COMMIT
-            );
-            return EXIT_SUCCESS;
-        case 'A':
-            printf(
-                "This build of %s supports the following architectures:\n\n"
-                "- x86_64 (aliases: x64, amd64, x86-64)\n"
-/* __BACKENDS__ */
-#if EAMBFC_TARGET_ARM64
-                "- arm64 (aliases: aarch64)\n"
-#endif /* EAMBFC_TARGET_ARM64 */
-#if EAMBFC_TARGET_S390X
-                "- s390x (aliases: s390, z/architecture)\n"
-#endif /* EAMBFC_TARGET_S390X */
-
-                "\nIf no architecture is specified, it defaults to x86_64.\n",
-                argv[0]
-            );
-            return EXIT_SUCCESS;
-
-        case 'q':
-            quiet = true;
-            quiet_mode();
-            break;
-        case 'j':
-            json = true;
-            json_mode();
-            break;
-        case 'O': optimize = true; break;
-        case 'k': keep = true; break;
-        case 'm': moveahead = true; break;
-        case 'e':
-            /* Print an error if ext was already set. */
-            if (strlen(ext) > 0) {
-                basic_err("MULTIPLE_EXTENSIONS", "passed -e multiple times.");
-                SHOW_HINT();
-                return EXIT_FAILURE;
-            }
-            ext = optarg;
-            break;
-        case 't':
-            /* Print an error if tape_blocks has already been set */
-            if (tape_blocks != 0) {
-                basic_err(
-                    "MULTIPLE_TAPE_BLOCK_COUNTS", "passed -t multiple times."
-                );
-                SHOW_HINT();
-                return EXIT_FAILURE;
-            }
-            char *endptr;
-            /* casting unsigned long long instead of using scanf as scanf can
-             * lead to undefined behavior if input isn't well-crafted, and
-             * unsigned long long is guaranteed to be at least 64 bits. */
-            unsigned long long holder = strtoull(optarg, &endptr, 10);
-            /* if the full opt_arg wasn't consumed, it's not a numeric value. */
-            if (*endptr != '\0') {
-                param_err(
-                    "NOT_NUMERIC",
-                    "{} could not be parsed as a numeric value",
-                    optarg
-                );
-                SHOW_HINT();
-                return EXIT_FAILURE;
-            }
-            if (holder == 0) {
-                basic_err("NO_TAPE", "Tape value for -t must be at least 1");
-                SHOW_HINT();
-                return EXIT_FAILURE;
-            }
-            /* if it's any larger than this, the tape size would exceed the
-             * 64-bit integer limit. */
-            if (holder >= UINT64_MAX >> 12) {
-                param_err(
-                    "TAPE_TOO_LARGE",
-                    "{} * 0x1000 exceeds the 64-bit integer limit.",
-                    optarg
-                );
-                SHOW_HINT();
-                return EXIT_FAILURE;
-            }
-            tape_blocks = (u64)holder;
-            break;
-        case 'a':
-            if (inter != NULL) {
-                basic_err("MULTIPLE_ARCHES", "passed -a multiple times.");
-                SHOW_HINT();
-                return EXIT_FAILURE;
-            }
-
-            if (any_match(optarg, 4, "x86_64", "x64", "amd64", "x86-64")) {
-                inter = &X86_64_INTER;
-/* __BACKENDS__ */
-#if EAMBFC_TARGET_ARM64
-            } else if (any_match(optarg, 2, "arm64", "aarch64")) {
-                inter = &ARM64_INTER;
-#endif /* EAMBFC_TARGET_ARM64 */
-#if EAMBFC_TARGET_S390X
-            } else if (any_match(
-                           optarg, 3, "s390x", "s390", "z/architecture"
-                       )) {
-                inter = &S390X_INTER;
-#endif /* EAMBFC_TARGET_S390X */
-            } else {
-                param_err(
-                    "UNKNOWN_ARCH",
-                    "{} is not a recognized architecture",
-                    optarg
-                );
-                SHOW_HINT();
-                return EXIT_FAILURE;
-            }
-            break;
-        case ':': /* one of -a, -e, or -t is missing an argument */
-            char_str_buf[0] = (char)optopt;
-            param_err(
-                "MISSING_OPERAND",
-                "{} requires an additional argument",
-                char_str_buf
-            );
-            return EXIT_FAILURE;
-        case '?': /* unknown argument */
-            char_str_buf[0] = (char)optopt;
-            param_err("UNKNOWN_ARG", "Unknown argument: {}.", char_str_buf);
-            return EXIT_FAILURE;
-        }
-    }
-    if (optind == argc) {
-        basic_err("NO_SOURCE_FILES", "No source files provided.");
-        SHOW_HINT();
+    if (!argc) {
+        basic_err(
+            "NO_CMDLINE_ARGS",
+            "main called with argc=0, so something's wrong here"
+        );
         return EXIT_FAILURE;
     }
-
-    /* if no extension was provided, use .bf */
-    if (strlen(ext) == 0) ext = ".bf";
-
-    /* if no tape size was specified, default to 8. */
-    if (tape_blocks == 0) tape_blocks = 8;
-
-    /* if no architecture was specified, default to default value set above */
-    if (inter == NULL) inter = &DEFAULT_INTER;
-
-    for (/* reusing optind here */; optind < argc; optind++) {
-        if (compile_file(
-                argv[optind], inter, optimize, keep, ext, tape_blocks
-            )) {
-            continue;
-        }
+#ifndef SKIP_RESOURCE_MGR
+    register_mgr();
+#endif /* SKIP_RESOURCE_MGR */
+    int ret = EXIT_SUCCESS;
+    run_cfg rc = parse_args(argc, argv);
+    for (int i = optind; i < argc; i++) {
+        if (compile_file(argv[i], &rc)) continue;
         ret = EXIT_FAILURE;
-        if (!moveahead) break;
+        if (!rc.moveahead) break;
     }
 
     return ret;
