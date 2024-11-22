@@ -99,7 +99,7 @@ static char *json_str(char *str) {
 
 #undef BS_ESCAPE_APPEND
 
-static void basic_jerr(char *id, char *msg) {
+static void basic_jerr(const char *id, char *msg) {
     /* assume error id is json-safe, but don't assume that for msg. */
     if ((msg = json_str(msg)) == NULL) {
         alloc_err();
@@ -109,14 +109,16 @@ static void basic_jerr(char *id, char *msg) {
     }
 }
 
-void basic_err(char *id, char *msg) {
+void basic_err(const char *id, char *msg) {
     if (_json)
         basic_jerr(id, msg);
     else if (!_quiet)
         fprintf(stderr, "Error %s: %s\n", id, msg);
 }
 
-static void pos_jerr(char *id, char *msg, char instr, uint line, uint col) {
+static void pos_jerr(
+    const char *id, char *msg, char instr, uint line, uint col
+) {
     /* Assume id needs no escaping, but msg and instr might. */
     /* First, convert instr into a string, then serialize that string. */
     char instr_str[2] = {instr, '\0'};
@@ -143,7 +145,7 @@ static void pos_jerr(char *id, char *msg, char instr, uint line, uint col) {
     free(instr_json);
 }
 
-void position_err(char *id, char *msg, char instr, uint line, uint col) {
+void position_err(const char *id, char *msg, char instr, uint line, uint col) {
     if (_json)
         pos_jerr(id, msg, instr, line, col);
     else if (!_quiet) {
@@ -159,7 +161,7 @@ void position_err(char *id, char *msg, char instr, uint line, uint col) {
     }
 }
 
-static void instr_jerr(char *id, char *msg, char instr) {
+static void instr_jerr(const char *id, char *msg, char instr) {
     /* Assume id needs no escaping, but msg and instr might. */
     /* First, convert instr into a string, then serialize that string. */
     char instr_str[2] = {instr, '\0'};
@@ -183,7 +185,7 @@ static void instr_jerr(char *id, char *msg, char instr) {
     free(instr_json);
 }
 
-void instr_err(char *id, char *msg, char instr) {
+void instr_err(const char *id, char *msg, char instr) {
     if (_json)
         instr_jerr(id, msg, instr);
     else if (!_quiet) {
@@ -191,7 +193,7 @@ void instr_err(char *id, char *msg, char instr) {
     }
 }
 
-void param_err(char *id, char *proto, char *arg) {
+void param_err(const char *id, const char *proto, const char *arg) {
     char *inj_point;
     size_t proto_sz = strlen(proto);
     size_t arg_sz = strlen(arg);
@@ -220,7 +222,7 @@ void param_err(char *id, char *proto, char *arg) {
     free(msg);
 }
 
-void internal_err(char *id, char *msg) {
+void internal_err(const char *id, const char *msg) {
     char ice_id[64] = "ICE:";
     char ice_msg[128] = "Internal Compiler Error: ";
     /* Ensure buffers have capacity

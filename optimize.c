@@ -92,7 +92,7 @@ static void strip_dead(sized_buf *ir) {
      * cancel each other out, or 256 consecutive `+` or `-` instructions that
      * loop the current cell back to its current value */
     char *str = ir->buf;
-    char *simple_patterns[] = {
+    const char *simple_patterns[] = {
         "<>",
         "><",
         "-+",

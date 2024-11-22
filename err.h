@@ -18,16 +18,16 @@ void json_mode(void);
 /* functions to display error messages, depending on the current error mode. */
 
 /* print a generic error message */
-void basic_err(char *id, char *msg);
+void basic_err(const char *id, char *msg);
 /* an error message related to a specific instruction */
-void instr_err(char *id, char *msg, char instr);
+void instr_err(const char *id, char *msg, char instr);
 
 /* an error message related to a specific instruction at a specific location */
-void position_err(char *id, char *msg, char instr, uint line, uint col);
+void position_err(const char *id, char *msg, char instr, uint line, uint col);
 
 /* replaces first instance of "{}" within proto with arg, then passes it as msg
  * to basic_err */
-void param_err(char *id, char *proto, char *arg);
+void param_err(const char *id, const char *proto, const char *arg);
 
 /* FATAL ERRORS
  * these each call exit(EXIT_FAILURE) after printing the message. */
@@ -40,6 +40,6 @@ void alloc_err(void);
 /* an alternative to basic_err that marks error as an internal compiler error,
  * for use when an error can only trigger if another bug was mishandled.
  * Calls exit(EXIT_FAILURE) */
-void internal_err(char *id, char *msg);
+void internal_err(const char *id, const char *msg);
 
 #endif /* EAMBFC_ERR_H */

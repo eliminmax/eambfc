@@ -107,7 +107,7 @@ size_t serialize_ehdr64_be(Elf64_Ehdr *ehdr, void *dest) {
 }
 
 /* serialize a 64-bit Phdr into a byte sequence, in LSB order */
-size_t serialize_phdr64_le(Elf64_Phdr *phdr, void *dest) {
+size_t serialize_phdr64_le(const Elf64_Phdr *phdr, void *dest) {
     size_t i = 0;
     char *p = dest;
     i += serialize32le(phdr->p_type, p + i);
@@ -122,7 +122,7 @@ size_t serialize_phdr64_le(Elf64_Phdr *phdr, void *dest) {
 }
 
 /* serialize a 64-bit Phdr into a byte sequence, in MSB order */
-size_t serialize_phdr64_be(Elf64_Phdr *phdr, void *dest) {
+size_t serialize_phdr64_be(const Elf64_Phdr *phdr, void *dest) {
     size_t i = 0;
     char *p = dest;
     i += serialize32be(phdr->p_type, p + i);

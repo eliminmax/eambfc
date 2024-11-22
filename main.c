@@ -48,7 +48,7 @@
 #endif /* EAMBFC_DEFAULT_TARGET */
 
 /* print the help message to outfile. progname should be argv[0]. */
-static void show_help(FILE *outfile, char *progname) {
+static void show_help(FILE *outfile, const char *progname) {
     fprintf(
         outfile,
         "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
@@ -307,7 +307,7 @@ static run_cfg parse_args(int argc, char *argv[]) {
 }
 
 /* compile a file */
-static bool compile_file(char *filename, run_cfg *rc) {
+static bool compile_file(const char *filename, const run_cfg *rc) {
     char *outname = mgr_malloc(strlen(filename) + 1);
     strcpy(outname, filename);
     if (!rm_ext(outname, rc->ext)) {

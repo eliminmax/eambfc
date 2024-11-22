@@ -106,7 +106,7 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         u16 imm16;
         shift_lvl shift;
     };
-    struct shifted_imm parts[4] = {
+    const struct shifted_imm parts[4] = {
         {(u16)imm, A64_SL_NO_SHIFT},
         {(u16)(imm >> 16), A64_SL_SHIFT16},
         {(u16)(imm >> 32), A64_SL_SHIFT32},
@@ -264,7 +264,7 @@ static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
         return append_obj(dst_buf, &instr_bytes, 4);
     }
     /* over the 64-bit signed int limit, so print an error and return false. */
-    char err_char_str[2] = {(op == A64_OP_ADD) ? '>' : '<', '\0'};
+    const char err_char_str[2] = {(op == A64_OP_ADD) ? '>' : '<', '\0'};
     param_err(
         "TOO_MANY_INSTRUCTIONS",
         "Over 8192 PiB of consecutive `{}` instructions",

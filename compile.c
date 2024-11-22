@@ -368,7 +368,7 @@ static bool comp_instr(char c, sized_buf *obj_code, const arch_inter *inter) {
 
 /* Compile an ir instruction */
 static bool comp_ir_instr(
-    char *p, sized_buf *obj_code, int *skip_ct_p, const arch_inter *inter
+    const char *p, sized_buf *obj_code, int *skip_ct_p, const arch_inter *inter
 ) {
     u64 ct;
     *skip_ct_p = 0;
@@ -458,7 +458,7 @@ bool bf_compile(
             p += skip_ct;
         }
     } else {
-        char *src = src_code.buf;
+        const char *src = src_code.buf;
         for (size_t i = 0; i < src_code.sz; i++) {
             ret &= comp_instr(src[i], &obj_code, inter);
         }
@@ -477,7 +477,7 @@ bool bf_compile(
     /* now, obj_code size is known, so we can write the headers and padding */
     ret &= write_ehdr(out_fd, tape_blocks, inter);
     ret &= write_phtb(out_fd, obj_code.sz, tape_blocks, inter);
-    char padding[PAD_SZ] = {0};
+    const char padding[PAD_SZ] = {0};
     ret &= write_obj(out_fd, padding, PAD_SZ);
     /* finally, write the code itself. */
     ret &= write_obj(out_fd, obj_code.buf, obj_code.sz);
