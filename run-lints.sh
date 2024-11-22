@@ -57,7 +57,16 @@ pdpmake -n clean all test multibuild >/dev/null
 find . -name '*.[ch]' -type f -exec clang-format-16 -n -Werror {} +
 
 # invoke the cppcheck static analysis tool recursively on all C source files
-cppcheck -q --enable=all --disable=missingInclude --std=c99 --error-exitcode=2 .
+cppck_args='-q --enable=all --disable=missingInclude --std=c99'
+new_cppck_args="$cppck_args --check-level=exhaustive"
+# if using newer version that supports them, pass extra flags
+# this quickly checks if the new flags are supported without running checks
+# shellcheck disable=SC2086 # word splitting is intentional here
+if cppcheck $new_cppck_args --check-config main.c 2>/dev/null; then
+    cppck_args="$new_cppck_args"
+fi
+# shellcheck disable=SC2086 # word splitting is intentional here
+cppcheck $cppck_args --error-exitcode=2 .
 
 # Find typos in the code
 # Learned about this tool from Lasse Colin's writeup of the xz backdoor. Really.
