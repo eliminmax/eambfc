@@ -29,7 +29,7 @@
 typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
 
 /* TEST byte [reg], 0xff; Jcc|tttn offset */
-static bool test_jcc(char tttn, u8 reg, i32 offset, sized_buf *dst_buf) {
+static bool test_jcc(char tttn, u8 reg, i64 offset, sized_buf *dst_buf) {
     if (offset > INT32_MAX || offset < INT32_MIN) {
         basic_err(
             "JUMP_TOO_LONG",
