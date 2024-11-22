@@ -25,7 +25,6 @@
 #
 # * clang-format-16
 # * codespell
-# * cppcheck
 # * devscripts
 # * findutils
 # * shellcheck
@@ -60,6 +59,11 @@
 # reuse helper tool >= 4.0.0 (newer than Debian package in bookworm/main)
 #       https://git.fsfe.org/reuse/tool
 #   I installed with pipx, which was in turn installed with apt
+#
+# cppcheck >= 2.16.0 (newer than Debian package in Bookworm/main
+#       https://github.com/danmar/cppcheck
+#   I built with cmake, installed into its own prefix, then symlinked it into
+#   PATH - finds more issues than the older version bundled by Debian
 
 set -e
 
@@ -75,7 +79,11 @@ fi
 make clean
 
 # first, some linting
-./run-lints.sh
+./run-lints.sh *.[ch] *.sh .githooks/*
+# run codespell on files not included in those globs
+codespell --skip='.git','*.sh','.githooks','*.[ch]'
+# check for unused functions - not done with run-lints.sh
+cppcheck -q --enable=unusedFunction *.[ch]
 
 version="$(cat version)"
 
