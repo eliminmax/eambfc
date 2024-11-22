@@ -12,21 +12,26 @@
 # * clang-format-16
 # * codespell
 # * coreutils
-# * cppcheck
+# * cppcheck (* though I use a newer version *)
 # * devscripts
 # * findutils
 # * shellcheck
 #
-# Lastly, a few tools not packaged for Debian are required - here's a list, with
-# URLS and info on how I installed them.
+# Additionally, a few tools not packaged for Debian are required - here's a list
+# with URLS and info on how I installed them.
 #
 # Ron Yorston's Public Domain POSIX make implementation - installed as pdpmake
 #       https://frippery.org/make/
 #   I downloaded source, built by running GNU make, then copied into PATH
 #
-# reuse helper tool >= 4.0.0 (newer than Debian package in bookworm/main)
+# reuse helper tool >= 4.0.0 (newer than Debian package in Bookworm/main)
 #       https://git.fsfe.org/reuse/tool
 #   I installed with pipx, which was in turn installed with apt
+#
+# Optional: cppcheck >= 2.16.0 (newer than Debian package in Bookworm/main
+#       https://github.com/danmar/cppcheck
+#   I built with cmake, installed into its own prefix, then symlinked it into
+#   PATH - finds more issues than the older version bundled by Debian
 
 
 set -e
