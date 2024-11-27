@@ -458,9 +458,8 @@ bool bf_compile(
             p += skip_ct;
         }
     } else {
-        const char *src = src_code.buf;
         for (size_t i = 0; i < src_code.sz; i++) {
-            ret &= comp_instr(src[i], &obj_code, inter);
+            ret &= comp_instr(((char *)src_code.buf)[i], &obj_code, inter);
         }
     }
 
