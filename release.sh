@@ -37,7 +37,7 @@
 # gcc-s390x-linux-gnu
 # gcc-mips-linux-gnu
 # gcc-aarch64-linux-gnu
-# musl-gcc
+# musl-tools
 # gawk
 # clang
 # libubsan1
