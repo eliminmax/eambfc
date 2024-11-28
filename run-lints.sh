@@ -46,10 +46,10 @@ reuse lint -q || reuse lint
 pdpmake -n clean all test multibuild >/dev/null
 
 for file; do
-    if head -n1 "$file" | grep -q '^#! */bin/sh'; then
+    if head -c128 "$file" | grep -q '^#! */bin/sh'; then
         shellcheck "$file"
         checkbashisms -f "$file"
-    else case "$file" in *.c)
+    else case "$file" in *.[ch])
 
         # check that C source and header files meet proper style guides
         clang-format-16 -n -Werror "$file"
