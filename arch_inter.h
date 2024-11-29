@@ -181,7 +181,9 @@ typedef const struct arch_inter {
 /* __BACKENDS__ */
 /* this is where the actual interfaces defined in the backend_* files are made
  * available in other files. */
+#if EAMBFC_TARGET_X86_64
 extern const arch_inter X86_64_INTER;
+#endif /* EAMBFC_TARGET_X86_64 */
 #if EAMBFC_TARGET_ARM64
 extern const arch_inter ARM64_INTER;
 #endif /* EAMBFC_TARGET_ARM64 */

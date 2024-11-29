@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * This file provides the arch_inter for the x86_64 architecture. */
-
 /* internal */
 #include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
 #include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
@@ -11,6 +10,7 @@
 #include "serialize.h" /* serialize* */
 #include "types.h" /* [iu]{8,16,32,64}, bool, size_t, off_t */
 #include "util.h" /* append_obj */
+#if EAMBFC_TARGET_X86_64
 
 /* If there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
  * functions, the common lines dealing with writing machine code should
@@ -242,3 +242,4 @@ const arch_inter X86_64_INTER = {
     .ELF_ARCH = EM_X86_64,
     .ELF_DATA = ELFDATA2LSB,
 };
+#endif /* EAMBFC_TARGET_X86_64 */
