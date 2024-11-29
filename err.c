@@ -49,13 +49,13 @@ void alloc_err(void) {
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
 static char *json_str(char *str) {
-    size_t bufsz = strlen(str) + 16; /* 16 for padding, more added as needed */
+    size_t bufsz = 4096; /* 16 for padding, more added as needed */
     size_t used = 0;
     char *p = str;
-    char *json_escaped = malloc(bufsz);
     char *reallocator;
-    char *outp = json_escaped;
+    char *json_escaped = malloc(bufsz);
     if (json_escaped == NULL) return NULL;
+    char *outp = json_escaped;
     while (*p) {
         switch (*p) {
         case '\n': BS_ESCAPE_APPEND('n'); break;
@@ -84,8 +84,9 @@ static char *json_str(char *str) {
         }
         /* If less than 8 chars are left before overflow, allocate more space */
         if (used > (bufsz - 8)) {
-            bufsz += 16;
-            if (((reallocator = realloc(json_escaped, bufsz)) == NULL)) {
+            bufsz += 4096;
+            reallocator = realloc(json_escaped, bufsz);
+            if (reallocator == NULL) {
                 free(json_escaped);
                 return NULL;
             }
