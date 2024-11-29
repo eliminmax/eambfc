@@ -16,36 +16,11 @@
 #include "arch_inter.h" /* arch_inter, *_INTER */
 #include "compat/elf.h" /* EM_* */
 #include "compile.h" /* bf_compile */
-#include "config.h" /* EAMBFC_DEFAULT_TARGET, EAMBFC_TARGET_* */
+#include "config.h" /* EAMBFC_DEFAULT_*, EAMBFC_TARGET_* */
 #include "err.h" /* *_err */
 #include "resource_mgr.h" /* mgr_*, register_mgr */
 #include "types.h" /* bool, u64, UINT64_MAX */
 #include "version.h" /* EAMBFC_VERSION, EAMBFC_COMMIT */
-
-/* __BACKENDS__ */
-/* Before anything else, validate default target, and define DEFAULT_* macros
- * based on default target. */
-#if EAMBFC_DEFAULT_TARGET == EM_X86_64
-/* if it's set to EM_X86_64, it's valid, as that's always enabled. */
-#define DEFAULT_ARCH_STR "x86_64"
-#define DEFAULT_INTER X86_64_INTER
-#elif EAMBFC_DEFAULT_TARGET == EM_AARCH64
-/* for arm64, make sure that the backend is enabled before anything else. */
-#if EAMBFC_TARGET_ARM64 == 0
-#error EAMBFC_DEFAULT_TARGET is EM_AARCH64, but EAMBFC_TARGET_ARM64 is disabled.
-#endif /* EAMBFC_TARGET_ARM64 == 0 */
-#define DEFAULT_ARCH_STR "arm64"
-#define DEFAULT_INTER ARM64_INTER
-#elif EAMBFC_DEFAULT_TARGET == EM_S390
-/* make sure s390x is enabled if set to default target */
-#if EAMBFC_TARGET_S390X == 0
-#error EAMBFC_DEFAULT_TARGET is EM_S390, but EAMBFC_TARGET_S390X is disabled.
-#endif /* EAMBFC_TARGET_S390X == 0 */
-#define DEFAULT_ARCH_STR "s390x"
-#define DEFAULT_INTER S390X_INTER
-#else
-#error EAMBFC_DEFAULT_TARGET is not recognized.
-#endif /* EAMBFC_DEFAULT_TARGET */
 
 /* print the help message to outfile. progname should be argv[0]. */
 static void show_help(FILE *outfile, const char *progname) {
@@ -68,7 +43,7 @@ static void show_help(FILE *outfile, const char *progname) {
         "             (This program will remove this at the end of the input\n"
         "             file to create the output file name)\n"
         " -a arch   - compile for the specified architecture\n"
-        "             (defaults to " DEFAULT_ARCH_STR
+        "             (defaults to " EAMBFC_DEFAULT_ARCH_STR
         " if not specified)**\n"
         " -A        - list supported architectures and exit\n"
         "\n"
@@ -169,16 +144,19 @@ static run_cfg parse_args(int argc, char *argv[]) {
         case 'A':
             printf(
                 "This build of %s supports the following architectures:\n\n"
-                "- x86_64 (aliases: x64, amd64, x86-64)\n"
 /* __BACKENDS__ */
+#if EAMBFC_TARGET_X86_64
+                "- x86_64 (aliases: x64, amd64, x86-64)\n"
+#endif /* EAMBFC_TARGET_X86_64 */
 #if EAMBFC_TARGET_ARM64
                 "- arm64 (aliases: aarch64)\n"
 #endif /* EAMBFC_TARGET_ARM64 */
 #if EAMBFC_TARGET_S390X
-                "- s390x (aliases: s390, z/architecture)\n"
+                "- s390x (aliases: s390, s390x, z/architecture)\n"
 #endif /* EAMBFC_TARGET_S390X */
 
-                "\nIf no architecture is specified, it defaults to x86_64.\n",
+                "\nIf no architecture is specified, it defaults "
+                "to " EAMBFC_DEFAULT_ARCH_STR " .\n",
                 argv[0]
             );
             exit(EXIT_SUCCESS);
@@ -251,20 +229,20 @@ static run_cfg parse_args(int argc, char *argv[]) {
                 SHOW_HINT();
                 exit(EXIT_FAILURE);
             }
-
-            if (any_match(optarg, 4, "x86_64", "x64", "amd64", "x86-64")) {
+            /* either a bunch of #if preprocessor stuff or this, and the former
+             * would need to have an `if (false)` to make sure it's valid.
+             * Instead, use the macros and trust the compiler to optimize out
+             * the constant check, and optimize out any disabled blocks. */
+            /* __BACKENDS__ add a block here */
+            if (EAMBFC_TARGET_X86_64 &&
+                any_match(optarg, 4, "x86_64", "x64", "amd64", "x86-64")) {
                 rc.inter = &X86_64_INTER;
-/* __BACKENDS__ */
-#if EAMBFC_TARGET_ARM64
-            } else if (any_match(optarg, 2, "arm64", "aarch64")) {
+            } else if (EAMBFC_TARGET_ARM64 &&
+                    any_match(optarg, 2, "arm64", "aarch64")) {
                 rc.inter = &ARM64_INTER;
-#endif /* EAMBFC_TARGET_ARM64 */
-#if EAMBFC_TARGET_S390X
-            } else if (any_match(
-                           optarg, 3, "s390x", "s390", "z/architecture"
-                       )) {
+            } else if (EAMBFC_TARGET_S390X &&
+                    any_match(optarg, 3, "s390x", "s390", "z/architecture")) {
                 rc.inter = &S390X_INTER;
-#endif /* EAMBFC_TARGET_S390X */
             } else {
                 param_err(
                     "UNKNOWN_ARCH",
@@ -302,7 +280,7 @@ static run_cfg parse_args(int argc, char *argv[]) {
     if (rc.tape_blocks == 0) rc.tape_blocks = 8;
 
     /* if no architecture was specified, default to default value set above */
-    if (rc.inter == NULL) rc.inter = &DEFAULT_INTER;
+    if (rc.inter == NULL) rc.inter = &EAMBFC_DEFAULT_INTER;
     return rc;
 }
 
