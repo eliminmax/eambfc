@@ -19,6 +19,7 @@
 # * tar
 # * valgrind
 # * xz-utils
+# * clang-tools-16
 #
 # The static analyses and linting done with run-lints.sh depend on the following
 # additional packages:
@@ -32,18 +33,18 @@
 # Additionally, the main Makefile, test Makefile, and scripts they call use
 # commands and libraries from the following packages and their dependencies:
 #
-# gcc
-# gcc-i686-linux-gnu
-# gcc-s390x-linux-gnu
-# gcc-mips-linux-gnu
-# gcc-aarch64-linux-gnu
-# musl-tools
-# gawk
-# clang
-# libubsan1
-# libasan6
-# tcc
-# qemu-user-static (backport version, as stable segfaults sometimes for s390x)
+# * gcc
+# * gcc-i686-linux-gnu
+# * gcc-s390x-linux-gnu
+# * gcc-mips-linux-gnu
+# * gcc-aarch64-linux-gnu
+# * musl-tools
+# * gawk
+# * clang
+# * libubsan1
+# * libasan6
+# * tcc
+# * qemu-user-static (backport version, as stable segfaults sometimes for s390x)
 #
 # Lastly, a few tools not packaged for Debian are required - here's a list, with
 # URLS and info on how I installed them.
@@ -82,8 +83,13 @@ make clean
 ./run-lints.sh ./*.[ch] ./*.sh .githooks/*
 # run codespell on files not included in those globs
 codespell --skip='.git','*.sh','.githooks','*.[ch]'
-# check for unused functions - not done with run-lints.sh
-cppcheck -q --enable=unusedFunction --suppress=checkersReport ./*.[ch]
+# check for unused functions and struct members - not done with run-lints.sh, as
+# it lacks context if not looking at every file
+cppcheck -q --enable=unusedFunction,unusedStructMember \
+    --suppress=checkersReport ./*.[ch]
+
+# use scan-build to test for potential issues
+scan-build-16 --status-bugs make && make clean
 
 version="$(cat version)"
 
@@ -91,7 +97,7 @@ build_name="eambfc-$(git describe --tags)"
 
 src_tarball_name="$build_name-src.tar"
 mkdir -p releases/
-# remove existing
+# remove existing build artifacts with the current build name
 rm -rf releases/"$build_name"*
 
 # generate version.h

@@ -56,7 +56,8 @@ for file; do
 
         # invoke the cppcheck static analysis tool
         cppcheck -q --std=c99 --platform=unspecified --enable=all \
-            --disable=missingInclude,unusedFunction --suppress=checkersReport \
+            --disable=missingInclude,unusedFunction \
+            --suppress=checkersReport --suppress=unusedStructMember \
             --check-level=exhaustive --error-exitcode=1 "$file"
         ;;
     esac; fi
