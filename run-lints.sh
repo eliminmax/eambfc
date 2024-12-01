@@ -23,7 +23,7 @@
 #       https://frippery.org/make/
 #   I downloaded source, built by running GNU make, then copied into PATH
 #
-# reuse helper tool >= 4.0.0 (newer than Debian package in Bookworm/main)
+# reuse helper tool >= 5.0.0 (newer than Debian package in Bookworm/main)
 #       https://git.fsfe.org/reuse/tool
 #   I installed with pipx, which was in turn installed with apt
 #
@@ -37,7 +37,7 @@ set -e
 cd "$(dirname "$(realpath "$0")")"
 
 # ensure licensing information is structured in a manner that complies with the
-# REUSE 3.2 specification
+# REUSE 3.3 specification
 # only want output if there's an issue, so run with -q, and if there's an issue,
 # then run again with output.
 reuse lint -q || reuse lint
