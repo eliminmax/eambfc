@@ -45,24 +45,34 @@ reuse lint -q || reuse lint
 # validate that a POSIX-compliant make can parse the Makefile properly
 pdpmake -n clean all test multibuild >/dev/null
 
+sh_lints () {
+    shellcheck "$file"
+    checkbashisms -f "$file"
+}
+
 for file; do
-    if head -c128 "$file" | grep -q '^#! */bin/sh'; then
-        shellcheck "$file"
-        checkbashisms -f "$file"
-    else case "$file" in *.[ch])
-
-        # check that C source and header files meet proper style guides
-        clang-format-16 -n -Werror "$file"
-
-        # invoke the cppcheck static analysis tool
-        cppcheck -q --std=c99 --platform=unspecified --enable=all \
-            --disable=missingInclude,unusedFunction \
-            --suppress=checkersReport --suppress=unusedStructMember \
-            --check-level=exhaustive --error-exitcode=1 "$file"
-        ;;
-    esac; fi
     # Find typos in the code
     # Learned about this tool from Lasse Colin's writeup of the xz backdoor.
     codespell "$file"
+
+    case "$file" in
+        # check that C header files have proper formatting
+        *.h) clang-format-16 -n -Werror "$file" ;;
+
+        # check that C source files have proper formatting and run some
+        # static analysis checks
+        *.c)
+            clang-format-16 -n -Werror "$file"
+            cppcheck -q --std=c99 --platform=unspecified --enable=all \
+                --disable=missingInclude,unusedFunction --error-exitcode=1 \
+                --check-level=exhaustive --suppress=checkersReport "$file"
+        ;;
+
+        *.sh) sh_lints ;;
+
+        *) if head -c128 "$file" | grep -q '^#! */bin/sh'; then sh_lints; fi ;;
+
+    esac
+
 done
 

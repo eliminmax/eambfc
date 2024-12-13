@@ -81,12 +81,13 @@ make clean
 
 # first, some linting
 ./run-lints.sh ./*.[ch] ./*.sh .githooks/*
+
 # run codespell on files not included in those globs
 codespell --skip='.git','*.sh','.githooks','*.[ch]'
-# check for unused functions and struct members - not done with run-lints.sh, as
-# it lacks context if not looking at every file
-cppcheck -q --enable=unusedFunction,unusedStructMember \
-    --suppress=checkersReport ./*.[ch]
+
+# check for unused functions - this was not done with run-lints.sh, as it lacks
+# context if not looking at every file
+cppcheck -q --enable=unusedFunction --suppress=checkersReport ./*.c
 
 # use scan-build to test for potential issues
 scan-build-16 --status-bugs make && make clean
