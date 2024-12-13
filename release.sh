@@ -117,12 +117,12 @@ xz -9 -k "releases/$src_tarball_name"
 
 
 build_dir="$(mktemp -d "/tmp/eambfc-$version-build-XXXXXXXXXX")"
-cp releases/"eambfc-$version-src.tar" "$build_dir"
+cp releases/"$src_tarball_name" "$build_dir"
 
 old_pwd="$PWD"
 cd "$build_dir"
 
-tar --strip-components=1 -xf "eambfc-$version-src.tar"
+tar --strip-components=1 -xf "$src_tarball_name"
 # multibuild.sh fails if any compilers are skipped and env var is non-empty
 NO_SKIP_MULTIBUILD=yep make CC=gcc all_tests
 
@@ -166,7 +166,7 @@ env PATH="$PWD/.utils:$PATH" make clean eambfc test
 
 make clean
 # move config.h back in place for real build
-mv config.h-real config.h
+mv version.h-real version.h
 
 # if none of the previous tests failed, it's time for the actual build
 make CC=gcc CFLAGS="-O2 -std=c99 -flto" LDFLAGS="-flto"
