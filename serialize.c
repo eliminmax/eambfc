@@ -22,7 +22,7 @@ size_t serialize16le(u16 v16, void *dest) {
 
 /* serialize a 16-bit value in v16 into 2 bytes in dest, in MSB order
  * return value is the number of bytes written. */
-size_t serialize16be(u32 v16, void *dest) {
+size_t serialize16be(u16 v16, void *dest) {
     size_t size = 0;
     char *p = dest;
     p[size++] = (v16 >> 8);
