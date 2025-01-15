@@ -9,7 +9,7 @@
 
 # Dependencies:
 # this script uses commands from the following Debian 12 (Bookworm) packages:
-# * clang-format-16
+# * clang-format-19
 # * codespell
 # * coreutils
 # * devscripts
@@ -57,12 +57,12 @@ for file; do
 
     case "$file" in
         # check that C header files have proper formatting
-        *.h) clang-format-16 -n -Werror "$file" ;;
+        *.h) clang-format-19 -n -Werror "$file" ;;
 
         # check that C source files have proper formatting and run some
         # static analysis checks
         *.c)
-            clang-format-16 -n -Werror "$file"
+            clang-format-19 -n -Werror "$file"
             cppcheck -q --std=c99 --platform=unspecified --enable=all \
                 --disable=missingInclude,unusedFunction --error-exitcode=1 \
                 --check-level=exhaustive --suppress=checkersReport "$file"

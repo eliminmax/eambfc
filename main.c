@@ -238,10 +238,12 @@ static run_cfg parse_args(int argc, char *argv[]) {
                 any_match(optarg, 4, "x86_64", "x64", "amd64", "x86-64")) {
                 rc.inter = &X86_64_INTER;
             } else if (EAMBFC_TARGET_ARM64 &&
-                    any_match(optarg, 2, "arm64", "aarch64")) {
+                       any_match(optarg, 2, "arm64", "aarch64")) {
                 rc.inter = &ARM64_INTER;
             } else if (EAMBFC_TARGET_S390X &&
-                    any_match(optarg, 3, "s390x", "s390", "z/architecture")) {
+                       any_match(
+                           optarg, 3, "s390x", "s390", "z/architecture"
+                       )) {
                 rc.inter = &S390X_INTER;
             } else {
                 param_err(

@@ -19,12 +19,12 @@
 # * tar
 # * valgrind
 # * xz-utils
-# * clang-tools-16
+# * clang-tools-19
 #
 # The static analyses and linting done with run-lints.sh depend on the following
 # additional packages:
 #
-# * clang-format-16
+# * clang-format-19
 # * codespell
 # * devscripts
 # * findutils
@@ -40,7 +40,7 @@
 # * gcc-aarch64-linux-gnu
 # * musl-tools
 # * gawk
-# * clang
+# * clang-19 (clang-19 command is symlinked into path as clang)
 # * libubsan1
 # * libasan6
 # * tcc
@@ -90,7 +90,7 @@ codespell --skip='.git','*.sh','.githooks','*.[ch]'
 cppcheck -q --enable=unusedFunction --suppress=checkersReport ./*.c
 
 # use scan-build to test for potential issues
-scan-build-16 --status-bugs make && make clean
+scan-build-19 --status-bugs make && make clean
 
 version="$(cat version)"
 

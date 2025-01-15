@@ -143,8 +143,7 @@
  * The following macro can initialize an array for any of the three, and the
  * appropriately-sized serialize{16,32}be function can be used for the actual
  * immediate value after initializing the array. */
-#define ENCODE_RI_OP(op, reg) \
-    { (op) >> 4, ((reg) << 4) | ((op)&0xf) }
+#define ENCODE_RI_OP(op, reg) {(op) >> 4, ((reg) << 4) | ((op) & 0xf)}
 
 /* return a call-clobbered register to use as a temporary auxiliary register */
 static u8 aux_reg(u8 reg) {
