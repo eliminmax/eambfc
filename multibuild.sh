@@ -88,10 +88,10 @@ gcc_clang_test musl-gcc
 gcc_clang_test clang
 gcc_clang_test zig cc
 
-test_for_triple i686 linux gnu # 32-bit le
-test_for_triple aarch64 linux gnu # 64-bit le
-test_for_triple mips linux gnu # 32-bit be
-test_for_triple s390x linux gnu # 64-bit be
+test_for_triple i686 linux gnu # 32-bit little-endian
+test_for_triple aarch64 linux gnu # 64-bit little-endian
+test_for_triple mips linux gnu # 32-bit big-endian
+test_for_triple s390x linux gnu # 64-bit big-endian
 
 build_with tcc
 
