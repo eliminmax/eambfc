@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024-2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -275,64 +275,6 @@ static void instr_merge(sized_buf *ir) {
     mgr_free(new_str);
 }
 
-#ifdef OPTIMIZE_STANDALONE
-/* C99 */
-#include <stdlib.h> /* exit, EXIT_* */
-/* POSIX */
-#include <fcntl.h> /* O_RDONLY */
-
-/* used for testing purposes
- * inspired by Python's `if __name__ == "__main__" idiom
- * compile with flag -D OPTIMIZE_STANDALONE to enable this and compile a
- * standalone program that provides insight into the optimization process. */
-int main(int argc, char *argv[]) {
-    /* register atexit function to clean up any open files or memory allocations
-     * left behind. */
-    register_mgr();
-    if (argc < 2) {
-        fputs("Not enough arguments.\n", stderr);
-        return EXIT_FAILURE;
-    }
-    int fd = mgr_open(argv[1], O_RDONLY);
-
-    sized_buf ir = read_to_sized_buf(fd);
-    /* Exit if a read failed */
-    if (ir.buf == NULL) return EXIT_FAILURE;
-
-    puts("Stage 1:");
-    filter_non_bf(&ir);
-    if (ir.buf == NULL) {
-        fputs("Stage 1 came back null.\n", stderr);
-        return EXIT_FAILURE;
-    }
-    puts(ir.buf);
-
-    puts("Stage 2:");
-    if (!loops_match(ir.buf)) {
-        mgr_free(ir.buf);
-        fputs("Mismatched [ and ]; refusing to continue.\n", stderr);
-        return EXIT_FAILURE;
-    }
-
-    strip_dead(&ir);
-    if (ir.buf == NULL) {
-        fputs("Stage 2 came back null.\n", stderr);
-        return EXIT_FAILURE;
-    }
-    puts(ir.buf);
-
-    puts("Stage 3:");
-    instr_merge(&ir);
-    if (ir.buf == NULL) {
-        fputs("Stage 3 came back null.\n", stderr);
-        return EXIT_FAILURE;
-    }
-    puts(ir.buf);
-
-    mgr_close(fd);
-    mgr_free(ir.buf);
-}
-#else /* OPTIMIZE_STANDALONE */
 /* Reads the content of the file fd, and returns a string containing optimized
  * internal intermediate representation of that file's code.
  * fd must be open for reading already, no check is performed.
@@ -359,4 +301,3 @@ bool to_ir(sized_buf *src) {
     src->sz = strlen(src->buf) + 1;
     return true;
 }
-#endif /* OPTIMIZE_STANDALONE */

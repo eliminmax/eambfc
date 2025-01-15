@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+# SPDX-FileCopyrightText: 2024-2025 Eli Array Minkoff
 #
 # SPDX-License-Identifier: GPL-3.0-only
 .POSIX:
@@ -40,7 +40,7 @@ UNIBUILD_FILES = serialize.c compile.c optimize.c err.c util.c resource_mgr.c \
 .c.o:
 	$(CC) $(CFLAGS) $(POSIX_CFLAG) -c -o $@ $<
 
-all: eambfc optimize
+all: eambfc
 
 eambfc: $(EAMBFC_DEPS)
 	$(CC) $(POSIX_CFLAG) $(LDFLAGS) -o eambfc $(EAMBFC_DEPS) $(LDLIBS)
@@ -90,10 +90,6 @@ multibuild:
 multibuild_test: can_run_linux_amd64
 	./multibuild.sh
 
-optimize: optimize.c util.h err.o util.o resource_mgr.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(POSIX_CFLAG) -D OPTIMIZE_STANDALONE \
-		-o $@ optimize.c err.o util.o resource_mgr.o
-
 strict: can_run_linux_amd64
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE!\n' >&2
@@ -119,6 +115,6 @@ all_tests: test multibuild_test strict ubsan int_torture_test
 
 # remove eambfc and the objects it's built from, then remove test artifacts
 clean:
-	rm -rf $(EAMBFC_DEPS) eambfc alt-builds optimize \
-	    create_mini_elf.o create_mini_elf mini_elf can_run_linux_amd64
+	rm -rf $(EAMBFC_DEPS) eambfc alt-builds create_mini_elf.o \
+	    create_mini_elf mini_elf can_run_linux_amd64
 	(cd tests; make clean)
