@@ -64,17 +64,14 @@ static bool reg_arith(u8 reg, i64 imm, arith_op op, sized_buf *dst_buf) {
          * register, MOV the 64-bit immediate to that register, ADD/SUB that
          * register to the target register, then POP that temporary register, to
          * restore its original value. */
-        /* the temporary register shouldn't be the target register */
-        u8 tmp_reg = (reg != 0) ? 0 : 1;
+        /* the temporary register shouldn't be the target register, so use RCX,
+         * which is a volatile register not used anywhere else in eambfc */
+        const u8 TMP_REG = 1;
         u8 instr_bytes[] = {
-            /* PUSH tmp_reg */
-            INSTRUCTION(0x50 + tmp_reg),
             /* MOV tmp_reg, 0x0000000000000000 (will replace with imm64) */
-            INSTRUCTION(0x48, 0xb8 + tmp_reg, IMM64_PADDING),
+            INSTRUCTION(0x48, 0xb8 + TMP_REG, IMM64_PADDING),
             /* (ADD||SUB) reg, tmp_reg */
-            INSTRUCTION(0x48, op - 0xbf, 0xc0 + (tmp_reg << 3) + reg),
-            /* POP tmp_reg */
-            INSTRUCTION(0x58 + tmp_reg),
+            INSTRUCTION(0x48, op - 0xbf, 0xc0 + (TMP_REG << 3) + reg),
         };
         /* replace 0x0000000000000000 with imm64 */
         if (serialize64le(imm, &(instr_bytes[3])) != 8) return false;
