@@ -68,14 +68,14 @@ static bool reg_arith(u8 reg, i64 imm, arith_op op, sized_buf *dst_buf) {
          * which is a volatile register not used anywhere else in eambfc */
         const u8 TMP_REG = 1;
         u8 instr_bytes[] = {
-            /* MOV tmp_reg, 0x0000000000000000 (will replace with imm64) */
+            /* MOV TMP_REG, 0x0000000000000000 (will replace with imm64) */
             INSTRUCTION(0x48, 0xb8 + TMP_REG, IMM64_PADDING),
             /* (ADD||SUB) reg, tmp_reg */
             INSTRUCTION(0x48, op - 0xbf, 0xc0 + (TMP_REG << 3) + reg),
         };
         /* replace 0x0000000000000000 with imm64 */
-        if (serialize64le(imm, &(instr_bytes[3])) != 8) return false;
-        return append_obj(dst_buf, &instr_bytes, 15);
+        if (serialize64le(imm, &(instr_bytes[2])) != 8) return false;
+        return append_obj(dst_buf, &instr_bytes, 13);
     }
 }
 
