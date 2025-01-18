@@ -145,10 +145,8 @@
  * immediate value after initializing the array. */
 #define ENCODE_RI_OP(op, reg) {(op) >> 4, ((reg) << 4) | ((op) & 0xf)}
 
-/* return a call-clobbered register to use as a temporary auxiliary register */
-static u8 aux_reg(u8 reg) {
-    return (reg == 4) ? UINT8_C(5) : UINT8_C(4);
-}
+/* a call-clobbered register to use as a temporary scratch register */
+static const u8 TMP_REG = UINT8_C(5);
 
 static bool store_to_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
     /* STC aux, 0(reg) {RX-a} */
@@ -156,9 +154,9 @@ static bool store_to_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
     return append_obj(dst_buf, &i_bytes, 4);
 }
 
-static bool load_from_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
-    /* LLGC aux, 0(reg) {RXY-a} */
-    u8 i_bytes[6] = {0xe3, (aux << 4) | reg, 0x00, 0x00, 0x00, 0x90};
+static bool load_from_byte(u8 reg, sized_buf *dst_buf) {
+    /* LLGC TMP_REG, 0(reg) {RXY-a} */
+    u8 i_bytes[6] = {0xe3, (TMP_REG << 4) | reg, 0x00, 0x00, 0x00, 0x90};
     return append_obj(dst_buf, &i_bytes, 6);
 }
 
@@ -270,9 +268,8 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
      * addressing individual bytes, so instead load the byte of interest into
      * an auxiliary register and compare with that, much like the ARM
      * implementation. */
-    u8 aux = aux_reg(reg);
     /* load the value to compare with into the auxiliary register */
-    bool ret = load_from_byte(reg, aux, dst);
+    bool ret = load_from_byte(reg, dst);
     /* set condition code according to contents of the auxiliary register, then
      * conditionally branch if the condition code's corresponding mask bit is
      * set to one.
@@ -283,7 +280,7 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
      * That's according to page "C-2" of the Principles of Operation.
      *
      * in pseudocode:
-     * | switch (aux) {
+     * | switch (TMP_REG) {
      * |   case 0: condition_code = 0b1000;
      * |   case i if i < 0: condition_code = 0b0100;
      * |   case i if i > 0: condition_code = 0b0010;
@@ -295,8 +292,11 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
      *
      * */
 
-    /* CFI aux, 0 {RIL-a}; BRCL mask, offset; */
-    u8 i_bytes[2][6] = {ENCODE_RI_OP(0xc2d, aux), ENCODE_RI_OP(0xc04, mask)};
+    /* CFI TMP_REG, 0 {RIL-a}; BRCL mask, offset; */
+    u8 i_bytes[2][6] = {
+        ENCODE_RI_OP(0xc2d, TMP_REG),
+        ENCODE_RI_OP(0xc04, mask),
+    };
     /* no need to serialize the immediate in the first instruction, as it's
      * already initialized to zero. The offset, on the other hand, still needs
      * to be set. Cast offset to u64 to avoid portability issues with signed
@@ -376,18 +376,16 @@ static bool dec_reg(u8 reg, sized_buf *dst_buf) {
 }
 
 static bool add_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
-    u8 aux = aux_reg(reg);
-    bool ret = load_from_byte(reg, aux, dst_buf);
-    ret &= add_reg(aux, imm8, dst_buf);
-    ret &= store_to_byte(reg, aux, dst_buf);
+    bool ret = load_from_byte(reg, dst_buf);
+    ret &= add_reg(TMP_REG, imm8, dst_buf);
+    ret &= store_to_byte(reg, TMP_REG, dst_buf);
     return ret;
 }
 
 static bool sub_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
-    u8 aux = aux_reg(reg);
-    bool ret = load_from_byte(reg, aux, dst_buf);
-    ret &= add_reg(aux, -imm8, dst_buf);
-    ret &= store_to_byte(reg, aux, dst_buf);
+    bool ret = load_from_byte(reg, dst_buf);
+    ret &= add_reg(TMP_REG, -imm8, dst_buf);
+    ret &= store_to_byte(reg, TMP_REG, dst_buf);
     return ret;
 }
 
