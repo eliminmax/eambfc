@@ -68,6 +68,7 @@ static char *json_str(char *str) {
         default:
             /* would prefer a pure switch statement, but `case a ... d` is
              * a non-standard (though common) extension to C, and is not
+             * portable.
              * Using this `if`-within-a-`switch` instead. */
             if ((unsigned char)(*p) < 040) { /* control chars are 000 to 037 */
                 /* cppcheck complains that hhx is for unsigned types unless
