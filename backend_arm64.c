@@ -152,7 +152,7 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
 /* MOV x.dst, x.src
  * technically an alias for ORR x.dst, XZR, x.src */
 static bool reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
-    return append_obj(dst_buf, (u8[]){0xe0 | dst, 0x01, src, 0xaa}, 4);
+    return append_obj(dst_buf, (u8[]){0xe0 | dst, 0x03, src, 0xaa}, 4);
 }
 
 /* SVC 0 */
