@@ -200,7 +200,7 @@ static bool sub_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
 
 static bool zero_byte(u8 reg, sized_buf *dst_buf) {
     /* MOV byte [reg], 0 */
-    return append_obj(dst_buf, (u8[]){INSTRUCTION(0x67, 0xc6, reg, 0x00)}, 4);
+    return append_obj(dst_buf, (u8[]){INSTRUCTION(0xc6, reg, 0x00)}, 3);
 }
 
 static const arch_funcs FUNCS = {
