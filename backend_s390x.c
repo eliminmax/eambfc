@@ -220,7 +220,7 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         } else {
             /* need to set the full upper word, with Insert Immediate (high) */
             /* IIHF reg, imm {RIL-a} */
-            u8 i_bytes[6] = ENCODE_RI_OP(0xc09, reg);
+            u8 i_bytes[6] = ENCODE_RI_OP(0xc08, reg);
             ret &= serialize32be(upper_imm, &i_bytes[2]) == 4 &&
                    append_obj(dst_buf, &i_bytes, 6);
         }
