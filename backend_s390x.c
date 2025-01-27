@@ -359,12 +359,10 @@ static bool add_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
 
 static bool sub_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     /* there are not equivalent sub instructions to any of the add instructions
-     * used, so just check that "-imm" won't cause problems, then call add_reg
-     * with negative imm. */
-    if (imm <= INT64_MIN) {
-        return add_reg(reg, -INT64_MAX, dst_buf) && add_reg(reg, -1, dst_buf);
-    }
-    return add_reg(reg, -imm, dst_buf);
+     * used, so take advantage of the fact that adding and subtracting INT64_MIN
+     * have the same effect except for the possible effect on overflow flags
+     * which eambfc never checks. */
+    return add_reg(reg, (imm > INT64_MIN) ? -imm : imm, dst_buf);
 }
 
 static bool inc_reg(u8 reg, sized_buf *dst_buf) {
