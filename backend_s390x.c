@@ -319,34 +319,24 @@ static bool nop_loop_open(sized_buf *dst_buf) {
     return append_obj(dst_buf, &i_bytes, 18);
 }
 
-static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return branch_cond(reg, offset, MASK_EQ, dst_buf);
-}
-
-static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return branch_cond(reg, offset, MASK_NE, dst_buf);
-}
-
-static bool add_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static bool add_reg_signed(u8 reg, i64 imm, sized_buf *dst_buf) {
     if (imm >= INT16_MIN && imm <= INT16_MAX) {
         /* if imm fits within a halfword, a shorter instruction can be used. */
         /* AGHI reg, imm {RI-a} */
         u8 i_bytes[4] = ENCODE_RI_OP(0xa7b, reg);
         return serialize16be(imm, &i_bytes[2]) == 2 &&
                append_obj(dst_buf, &i_bytes, 4);
-    } else if ((imm >= INT32_MIN && imm <= INT32_MAX)) {
+    } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
         /* If imm fits within a word, then use a normal add immediate */
         /* AFGI reg, imm {RIL-a} */
         u8 i_bytes[6] = ENCODE_RI_OP(0xc28, reg);
         return serialize32be(imm, &i_bytes[2]) == 4 &&
                append_obj(dst_buf, &i_bytes, 6);
     } else {
-        bool ret = true;
-        if ((i32)imm != 0) {
-            /* if the lower 32 bits are non-zero, call this function recursively
-             * to add to them */
-            ret = add_reg(reg, (i32)imm, dst_buf);
-        }
+        /* if the lower 32 bits are non-zero, call this function recursively
+         * to add to them */
+        bool ret = ((i32)imm == 0) || add_reg_signed(reg, (i32)imm, dst_buf);
+
         /* add the higher 32 bits */
         /* AIH reg, imm {RIL-a} */
         u8 i_bytes[6] = ENCODE_RI_OP(0xcc8, reg);
@@ -357,32 +347,46 @@ static bool add_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     }
 }
 
-static bool sub_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
+    return branch_cond(reg, offset, MASK_EQ, dst_buf);
+}
+
+static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
+    return branch_cond(reg, offset, MASK_NE, dst_buf);
+}
+
+static bool add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+    return add_reg_signed(reg, imm, dst_buf);
+}
+
+static bool sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
     /* there are not equivalent sub instructions to any of the add instructions
      * used, so take advantage of the fact that adding and subtracting INT64_MIN
      * have the same effect except for the possible effect on overflow flags
      * which eambfc never checks. */
-    return add_reg(reg, (imm > INT64_MIN) ? -imm : imm, dst_buf);
+    i64 imm_s = imm;
+    if (imm_s != INT64_MIN) { imm_s = -imm_s; }
+    return add_reg_signed(reg, imm_s, dst_buf);
 }
 
 static bool inc_reg(u8 reg, sized_buf *dst_buf) {
-    return add_reg(reg, 1, dst_buf);
+    return add_reg_signed(reg, 1, dst_buf);
 }
 
 static bool dec_reg(u8 reg, sized_buf *dst_buf) {
-    return add_reg(reg, -1, dst_buf);
+    return add_reg_signed(reg, -1, dst_buf);
 }
 
-static bool add_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
+static bool add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     bool ret = load_from_byte(reg, dst_buf);
-    ret &= add_reg(TMP_REG, imm8, dst_buf);
+    ret &= add_reg_signed(TMP_REG, imm8, dst_buf);
     ret &= store_to_byte(reg, TMP_REG, dst_buf);
     return ret;
 }
 
-static bool sub_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
+static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     bool ret = load_from_byte(reg, dst_buf);
-    ret &= add_reg(TMP_REG, -imm8, dst_buf);
+    ret &= add_reg_signed(TMP_REG, -imm8, dst_buf);
     ret &= store_to_byte(reg, TMP_REG, dst_buf);
     return ret;
 }
@@ -392,7 +396,7 @@ static bool inc_byte(u8 reg, sized_buf *dst_buf) {
 }
 
 static bool dec_byte(u8 reg, sized_buf *dst_buf) {
-    return add_byte(reg, -1, dst_buf);
+    return sub_byte(reg, 1, dst_buf);
 }
 
 static bool zero_byte(u8 reg, sized_buf *dst_buf) {

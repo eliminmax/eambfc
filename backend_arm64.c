@@ -275,11 +275,11 @@ static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
 
 /* add_reg, sub_reg, inc_reg, and dec_reg are all simple wrappers around
  * add_sub. */
-static bool add_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static bool add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
     return add_sub(reg, A64_OP_ADD, imm, dst_buf);
 }
 
-static bool sub_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static bool sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
     return add_sub(reg, A64_OP_SUB, imm, dst_buf);
 }
 
@@ -319,13 +319,12 @@ static bool dec_byte(u8 reg, sized_buf *dst_buf) {
 
 /* similar to add_sub_reg, but operating on an auxiliary register, after loading
  * from byte and before restoring to that byte, much like inc_dec_byte */
-static bool add_sub_byte(u8 reg, i8 imm8, arith_op op, sized_buf *dst_buf) {
-    u8 imm = imm8;
+static bool add_sub_byte(u8 reg, u8 imm8, arith_op op, sized_buf *dst_buf) {
     u8 aux = aux_reg(reg);
     u8 instr_bytes[12] = {
         PAD_INSTRUCTION,
         /* set middle instruction to (ADD|SUB) x.aux, x.aux, imm */
-        INSTRUCTION(aux | (aux << 5), (imm << 2) | (aux >> 3), imm >> 6, op),
+        INSTRUCTION(aux | (aux << 5), (imm8 << 2) | (aux >> 3), imm8 >> 6, op),
         PAD_INSTRUCTION,
     };
     /* load the byte in address stored in x.reg into x.aux */
@@ -337,11 +336,11 @@ static bool add_sub_byte(u8 reg, i8 imm8, arith_op op, sized_buf *dst_buf) {
 
 /* now, the last few thin wrapper functions */
 
-static bool add_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
+static bool add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     return add_sub_byte(reg, imm8, A64_OP_ADD, dst_buf);
 }
 
-static bool sub_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
+static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     return add_sub_byte(reg, imm8, A64_OP_SUB, dst_buf);
 }
 

@@ -47,13 +47,13 @@ static bool test_jcc(char tttn, u8 reg, i64 offset, sized_buf *dst_buf) {
     return append_obj(dst_buf, &i_bytes, 9);
 }
 
-static bool reg_arith(u8 reg, i64 imm, arith_op op, sized_buf *dst_buf) {
+static bool reg_arith(u8 reg, u64 imm, arith_op op, sized_buf *dst_buf) {
     if (imm == 0) {
         return true;
-    } else if (imm >= INT8_MIN && imm <= INT8_MAX) {
+    } else if (imm <= INT8_MAX) {
         /* ADD/SUB reg, byte imm */
         return append_obj(dst_buf, (u8[]){0x83, op + reg, imm}, 3);
-    } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
+    } else if (imm <= INT32_MAX) {
         /* ADD/SUB reg, imm */
         u8 i_bytes[6] = {INSTRUCTION(0x81, op + reg, IMM32_PADDING)};
         if (serialize32le(imm, &(i_bytes[2])) != 4) return false;
@@ -180,20 +180,20 @@ static bool dec_byte(u8 reg, sized_buf *dst_buf) {
     return x86_offset(0x8, 0x0, reg, dst_buf);
 }
 
-static bool add_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static bool add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
     return reg_arith(reg, imm, X64_OP_ADD, dst_buf);
 }
 
-static bool sub_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static bool sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
     return reg_arith(reg, imm, X64_OP_SUB, dst_buf);
 }
 
-static bool add_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
+static bool add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     /* ADD byte [reg], imm8 */
     return append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, reg, imm8)}, 3);
 }
 
-static bool sub_byte(u8 reg, i8 imm8, sized_buf *dst_buf) {
+static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     /* SUB byte [reg], imm8 */
     return append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, 0x28 + reg, imm8)}, 3);
 }
