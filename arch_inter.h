@@ -137,24 +137,24 @@ typedef const struct arch_funcs_struct {
     /* Write instruction/s to dst_buf to add imm to register reg.
      *
      * Used to implement sequences of consecutive `>` brainfuck instructions. */
-    bool (*const add_reg)(u8 reg, i64 imm, sized_buf *dst_buf);
+    bool (*const add_reg)(u8 reg, u64 imm, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to subtract imm from register reg.
      *
      * Used to implement sequences of consecutive `<` brainfuck instructions. */
-    bool (*const sub_reg)(u8 reg, i64 imm, sized_buf *dst_buf);
+    bool (*const sub_reg)(u8 reg, u64 imm, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to add imm8 to byte stored at address in
      * register reg.
      *
      * Used to implement sequences of consecutive `+` brainfuck instructions. */
-    bool (*const add_byte)(u8 reg, i8 imm8, sized_buf *dst_buf);
+    bool (*const add_byte)(u8 reg, u8 imm8, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to subtract imm8 from byte stored at
      * address in register reg.
      *
      * Used to implement sequences of consecutive `-` brainfuck instructions. */
-    bool (*const sub_byte)(u8 reg, i8 imm8, sized_buf *dst_buf);
+    bool (*const sub_byte)(u8 reg, u8 imm8, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to set the value of byte stored at address
      * in register reg to 0.
