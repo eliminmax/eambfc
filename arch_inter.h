@@ -41,7 +41,7 @@
  * ARM64 and AARCH64 identifiers out for your backend, for the sake of
  * consistency. */
 
-typedef const struct arch_registers_struct {
+typedef const struct {
     /* register Linux checks for system call number */
     u8 sc_num;
     /* registers for first 3 Linux argument registers */
@@ -55,14 +55,14 @@ typedef const struct arch_registers_struct {
     u8 bf_ptr;
 } arch_registers;
 
-typedef const struct arch_sc_nums_struct {
+typedef const struct {
     /* system call numbers target platform uses for each of these. */
     i64 read;
     i64 write;
     i64 exit;
 } arch_sc_nums;
 
-typedef const struct arch_funcs_struct {
+typedef const struct {
     /* This struct contains function pointers to the functions that are actually
      * used to implement the backend.
      *
@@ -165,7 +165,7 @@ typedef const struct arch_funcs_struct {
 
 /* This struct contains all architecture-specific information needed for eambfc,
  * and can be passed as an argument to functions. */
-typedef const struct arch_inter_struct {
+typedef const struct {
     arch_funcs *FUNCS;
     arch_sc_nums *SC_NUMS;
     arch_registers *REGS;
