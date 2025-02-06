@@ -8,7 +8,7 @@
 #ifndef EAMBFC_POST_CONFIG_H
 #define EAMBFC_POST_CONFIG_H 1
 #ifndef EAMBFC_PREPROC_POST_CONFIG
-#error post_config.h should only be #included by config.h
+#error "post_config.h should only be #included by config.h"
 #endif /* EAMBFC_PREPROC_POST_CONFIG */
 
 /* Validate that at least one target is enabled */
