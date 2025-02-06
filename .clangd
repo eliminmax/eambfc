@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2025 Eli Array Minkoff
+#
+# SPDX-License-Identifier: 0BSD
+
+---
+CompileFlags:
+  Add:
+    - "-Wall"
+    - "-Wextra"
+    - "-Wpedantic"
+    - "-xc"
+    - "-std=c99"
+    - "-D_POSIX_C_SOURCE=200908L"
+  Compiler: clang
+
+---
+If:
+  PathMatch: .*\.h
+CompileFlags:
+  Add:
+    - "-Wno-empty-translation-unit"
+---
+If:
+  PathMatch: post_config.h
+CompileFlags:
+  Add:
+    - "-DEAMBFC_PREPROC_POST_CONFIG"
+    - "-DEAMBFC_TARGET_ARM64=1"
+    - "-DEAMBFC_TARGET_S390X=1"
+    - "-DEAMBFC_TARGET_X86_64=1"
+    - "-DEAMBFC_DEFAULT_TARGET=EM_X86_64"
+
+# vi: ft=yaml ts=2 sts=2 sw=2 et
