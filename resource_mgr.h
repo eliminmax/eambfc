@@ -22,7 +22,7 @@
 #ifndef EAMBFC_RESOURCE_MGR_H
 #define EAMBFC_RESOURCE_MGR_H 1
 /* internal */
-#include "types.h" /* mode_t, size_t, bool */
+#include "types.h" /* mode_t, size_t */
 
 /* MUST BE CALLED to register the internal cleanup function with atexit.
  *
