@@ -7,13 +7,12 @@
  * OPTIMIZE_STANDALONE macro is defined at compile time. */
 
 /* C99 */
-#include <stdio.h> /* sprintf, puts */
-#include <string.h> /* memmove, memset, strchr, strcpy, strlen, strstr */
+#include <string.h> /* memmove, strchr, strlen, strstr */
 /* internal */
-#include "err.h" /* basic_err, instr_err */
-#include "resource_mgr.h" /* register_mgr, mgr_malloc */
-#include "types.h" /* bool, uint, {U,}INT64_MAX, [iu]{8,16,32,64}, sized_buf */
-#include "util.h" /* append_obj, read_to_sized_buf */
+#include "err.h" /* instr_err */
+#include "resource_mgr.h" /* mgr_malloc */
+#include "types.h" /* bool, uint, u8, sized_buf */
+#include "util.h" /* append_obj */
 
 /* filter out the non-bf characters from code->buf */
 static void filter_non_bf(sized_buf *code) {
@@ -146,140 +145,29 @@ static void strip_dead(sized_buf *ir) {
     ir->sz = strlen(str) + 1;
 }
 
-/* condense a sequence of identical instructions into an IR operation. */
-static size_t condense(char instr, u64 consec_ct, char *dest) {
-    char opcode;
-#if SIZE_MAX < UINT64_MAX
-    if (consec_ct > SIZE_MAX) {
-        instr_err(
-            "TOO_MANY_INSTRUCTIONS",
-            "More than SIZE_MAX consecutive identical instructions. Somehow.",
-            instr
-        );
-        return 0;
-    }
-#endif /* SIZE_MAX < UINT64_MAX */
-    if (consec_ct == 1) {
-        *dest = instr;
-        return 1;
-    } else {
-        switch (instr) {
-        case '.':
-        case ',':
-        case ']':
-        case '[': memset(dest, instr, consec_ct); return (size_t)consec_ct;
-        case '>':
-            if (consec_ct <= INT64_MAX) {
-                opcode = '}';
-            } else {
-                instr_err(
-                    "TOO_MANY_INSTRUCTIONS",
-                    "Over 8192 Pebibytes of '>' in a row.",
-                    '>'
-                );
-                return 0;
-            }
-            break;
-        case '<':
-            if (consec_ct <= INT64_MAX) {
-                opcode = '{';
-            } else {
-                instr_err(
-                    "TOO_MANY_INSTRUCTIONS",
-                    "Over 8192 Pebibytes of '<' in a row.",
-                    '<'
-                );
-                return 0;
-            }
-            break;
-        /* for + and -, assume that consec_ct is less than 256, as a larger
-         * value would have been optimized down. */
-        case '+': opcode = '#'; break;
-        case '-': opcode = '='; break;
-        default: return 0; break;
-        }
-    }
-    return (size_t)sprintf(dest, "%c%" PRIx64, opcode, consec_ct);
-}
-
-/* Substitute instructions
- *
- * SUBSTITUTIONS:
- *
- * N consecutive `>` instructions are replaced with `}N`.
- * N consecutive `<` instructions are replaced with `{N`.
- * N consecutive `+` instructions are replaced with `#N`.
- * N consecutive `-` instructions are replaced with `=N`.
- *
- * single `+`, `-`, `<`, and `>` instructions are left as is.
- *
- * `[+]` and `[-]` both get replaced with `@`.
- *
- * all `,` and `.` instructions are left unchanged, as are any `[` or `]`
- * instructions not part of the two sequences that are replaced with `@`. */
-static void instr_merge(sized_buf *ir) {
+/* Merge `[-]` and `[+]` into `@` */
+static void merge_set_zero(sized_buf *ir) {
     char *str = ir->buf;
-    char prev_mode = *str;
-    char *new_str = mgr_malloc(ir->sz);
-    if (new_str == NULL) {
-        alloc_err();
-        return;
-    }
-    char *p = new_str;
-    u64 consec_ct = 1;
-    size_t i;
-    size_t skip;
-    /* condese consecutive identical instructions */
-    for (i = 1; i < ir->sz; i++) {
-        char current_mode = *(str + i);
-        if (current_mode != prev_mode) {
-            if (!((skip = condense(prev_mode, consec_ct, p)))) {
-                mgr_free(new_str);
-                instr_err(
-                    "INTERNAL_ERROR",
-                    "Failed to condense consecutive instructions",
-                    prev_mode
-                );
-                return;
-            }
-            p += skip;
-            consec_ct = 1;
-            prev_mode = current_mode;
-        } else {
-            if (consec_ct == UINT64_MAX) {
-                instr_err(
-                    "TOO_MANY_INSTRUCTIONS",
-                    "More than 16384 PiB of identical instructions in a row.",
-                    prev_mode
-                );
-                return;
-            } else {
-                consec_ct++;
-            }
-        }
-    }
-    *p = '\0'; /* NULL terminate the new string */
+    char *p;
 
     /* handle [-] */
-    while ((p = strstr(new_str, "[-]"))) {
+    while ((p = strstr(str, "[-]"))) {
         *p = '@';
         memmove(p + 1, p + 3, strlen(p + 3) + 1);
     }
     /* handle [+] */
-    while ((p = strstr(new_str, "[+]"))) {
+    while ((p = strstr(str, "[+]"))) {
         *p = '@';
         memmove(p + 1, p + 3, strlen(p + 3) + 1);
     }
-    strcpy(str, new_str);
     ir->sz = strlen(str);
-    mgr_free(new_str);
 }
 
 /* Reads the content of the file fd, and returns a string containing optimized
  * internal intermediate representation of that file's code.
  * fd must be open for reading already, no check is performed.
  * Calling function is responsible for `mgr_free`ing the returned string. */
-bool to_ir(sized_buf *src) {
+bool filter_dead(sized_buf *src) {
     filter_non_bf(src);
     if (src->buf == NULL) {
         mgr_free(src->buf);
@@ -297,7 +185,6 @@ bool to_ir(sized_buf *src) {
         src->buf = NULL;
         return false;
     }
-    instr_merge(src);
-    src->sz = strlen(src->buf) + 1;
+    merge_set_zero(src);
     return true;
 }

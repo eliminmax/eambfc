@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -26,5 +26,5 @@
  *
  * all `,` and `.` instructions are left unchanged, as are any `[` or `]`
  * instructions not part of the two sequences that are replaced with `@`. */
-bool to_ir(sized_buf *src);
+bool filter_dead(sized_buf *src);
 #endif /* EAMBFC_OPTIMIZE_H */

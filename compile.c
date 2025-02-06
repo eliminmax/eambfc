@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -14,7 +14,7 @@
 #include "arch_inter.h" /* arch_registers, arch_sc_nums, arch_inter */
 #include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr, ELFDATA2[LM]SB */
 #include "err.h" /* *_err */
-#include "optimize.h" /* to_ir */
+#include "optimize.h" /* filter_dead */
 #include "resource_mgr.h" /* mgr_* */
 #include "serialize.h" /* serialize_*hdr64_[bl]e */
 #include "types.h" /* bool, [iu]{8,16,32,64}, SCNx64, sized_buf */
@@ -364,48 +364,53 @@ static bool comp_instr(char c, sized_buf *obj_code, const arch_inter *inter) {
 
 /* similar to the above COMPILE_WITH, but with an extra parameter passed to the
  * function, so that can't be reused. */
-#define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, ct, obj_code)
+#define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, count, obj_code)
 
 /* Compile an ir instruction */
 static bool comp_ir_instr(
-    const char *p, sized_buf *obj_code, int *skip_ct_p, const arch_inter *inter
+    char instr, size_t count, sized_buf *obj_code, const arch_inter *inter
 ) {
-    u64 ct;
-    *skip_ct_p = 0;
-    switch (*p) {
+    /* if there's only one (non-'@') instruction, compile it normally */
+    if (count == 1 && instr != '@') return comp_instr(instr, obj_code, inter);
+    switch (instr) {
     /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
-    case '+':
-    case '-':
-    case '<':
-    case '>':
     case '.':
     case ',':
     case '[':
     case ']':
-        return comp_instr(*p, obj_code, inter);
-        /* if it's @, then zero the byte pointed to by bf_ptr */
+        for (size_t i = 0; i < count; i++) {
+            if (!comp_instr(instr, obj_code, inter)) return false;
+        }
+        return true;
+    /* if it's @, then zero the byte pointed to by bf_ptr */
     case '@': return inter->FUNCS->zero_byte(inter->REGS->bf_ptr, obj_code);
-    default:
-        /* if not one of the standalone instructions, parse out the number of
-         * consecutive instructions, and compile it with the appropriate
-         * function. */
-        if (sscanf(p + 1, "%" SCNx64 "%n", &ct, skip_ct_p) != 1) {
-            internal_err(
-                "IR_FAILED_SCAN", "Failed to get count for EAMBFC-IR op."
-            );
-            return false;
+    case '+': return IR_COMPILE_WITH(inter->FUNCS->add_byte);
+    case '-': return IR_COMPILE_WITH(inter->FUNCS->sub_byte);
+    case '>': return IR_COMPILE_WITH(inter->FUNCS->add_reg);
+    case '<': return IR_COMPILE_WITH(inter->FUNCS->sub_reg);
+    default: internal_err("INVALID_IR", "Invalid IR Opcode"); return false;
+    }
+}
+
+static bool compile_condensed(
+    const char *src_code, sized_buf *obj_code, const arch_inter *inter
+) {
+    /* return early when there are no instructions to compile */
+    if (*src_code == '\0') return true;
+    bool ret = true;
+    size_t count = 1;
+    char prev_instr = *(src_code);
+
+    while (*(++src_code)) {
+        if (*src_code == prev_instr) {
+            count++;
         } else {
-            switch (*p) {
-            case '#': return IR_COMPILE_WITH(inter->FUNCS->add_byte);
-            case '=': return IR_COMPILE_WITH(inter->FUNCS->sub_byte);
-            case '}': return IR_COMPILE_WITH(inter->FUNCS->add_reg);
-            case '{': return IR_COMPILE_WITH(inter->FUNCS->sub_reg);
-            default:
-                internal_err("INVALID_IR", "Invalid IR Opcode");
-                return false;
-            }
+            ret &= comp_ir_instr(prev_instr, count, obj_code, inter);
+            count = 1;
+            prev_instr = *(src_code);
         }
     }
+    return ret & comp_ir_instr(prev_instr, count, obj_code, inter);
 }
 
 /* Compile code in source file to destination file.
@@ -446,17 +451,11 @@ bool bf_compile(
 
     /* compile the actual source code to object code */
     if (optimize) {
-        if (!to_ir(&src_code)) {
+        if (!filter_dead(&src_code)) {
             mgr_free(jump_stack.locations);
             return false;
         }
-
-        char *p = src_code.buf;
-        int skip_ct;
-        while (*p) {
-            ret &= comp_ir_instr(p++, &obj_code, &skip_ct, inter);
-            p += skip_ct;
-        }
+        ret &= compile_condensed(src_code.buf, &obj_code, inter);
     } else {
         for (size_t i = 0; i < src_code.sz; i++) {
             ret &= comp_instr(((char *)src_code.buf)[i], &obj_code, inter);
