@@ -86,7 +86,7 @@ static bool loops_match(const char *code) {
 #define REPSTR256(s) REPSTR64(s) REPSTR64(s) REPSTR64(s) REPSTR64(s)
 
 /* remove redundant instruction sequences like `<>` */
-static void strip_dead(sized_buf *ir) {
+static void remove_dead(sized_buf *ir) {
     /* code constructs that do nothing - either 2 adjacent instructions that
      * cancel each other out, or 256 consecutive `+` or `-` instructions that
      * loop the current cell back to its current value */
@@ -179,7 +179,7 @@ bool filter_dead(sized_buf *src) {
         src->buf = NULL;
         return false;
     }
-    strip_dead(src);
+    remove_dead(src);
     if (src->buf == NULL) {
         mgr_free(src->buf);
         src->buf = NULL;
