@@ -226,7 +226,7 @@ void param_err(const char *id, const char *proto, const char *arg) {
 
 void internal_err(const char *id, const char *msg) {
     char ice_id[64] = "ICE:";
-    char ice_msg[128] = "Internal Compiler Error: ";
+    char ice_msg[156] = "Internal Compiler Error: ";
     /* Ensure buffers have capacity
      * 64 - (strlen("ICE:") + 1) is 59
      * 128 - (strlen("Internal Compiler Error: " + 1) is 102 */
@@ -234,9 +234,9 @@ void internal_err(const char *id, const char *msg) {
         strcpy(ice_id + 4, "ICE_PARAMS_TOO_LONG");
         strcpy(
             ice_msg + 25,
-            "An ICE occurred, but id or msg was too long, resulting in this ICE"
+            "An internal compiler error occurred, but id or msg was too long, "
+            "resulting in a second internal compiler error when displaying it."
         );
-        return;
     } else {
         strcpy(ice_id + 4, id);
         strcpy(ice_msg + 25, msg);
