@@ -53,7 +53,7 @@
  * beginning of the machine code. */
 #define PAD_SZ (START_PADDR - (PHTB_SIZE + EHDR_SIZE))
 
-static uint _line, _col;
+static uint line, col;
 
 /* Write the ELF header to the file descriptor fd. */
 static bool write_ehdr(int fd, u64 tape_blocks, const arch_inter *inter) {
@@ -274,8 +274,8 @@ static bool bf_jump_open(sized_buf *obj_code, const arch_inter *inter) {
         );
     }
     /* push the current address onto the stack */
-    jump_stack.locations[jump_stack.index].src_line = _line;
-    jump_stack.locations[jump_stack.index].src_col = _col;
+    jump_stack.locations[jump_stack.index].src_line = line;
+    jump_stack.locations[jump_stack.index].src_col = col;
     jump_stack.locations[jump_stack.index].dst_loc = obj_code->sz;
     jump_stack.index++;
     /* fill space jump open will take with NOP instructions of the same length,
@@ -292,11 +292,7 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
     /* ensure that the current index is in bounds */
     if (jump_stack.index == 0) {
         position_err(
-            "UNMATCHED_CLOSE",
-            "Found ']' without matching '['.",
-            ']',
-            _line,
-            _col
+            "UNMATCHED_CLOSE", "Found ']' without matching '['.", ']', line, col
         );
         return false;
     }
@@ -333,7 +329,7 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
 static bool comp_instr(char c, sized_buf *obj_code, const arch_inter *inter) {
-    _col++;
+    col++;
     switch (c) {
     /* start with the simple cases handled with COMPILE_WITH */
     /* decrement the tape pointer register */
@@ -354,8 +350,8 @@ static bool comp_instr(char c, sized_buf *obj_code, const arch_inter *inter) {
     case ']': return bf_jump_close(obj_code, inter);
     /* on a newline, add 1 to the line number and reset the column */
     case '\n':
-        _line++;
-        _col = 0;
+        line++;
+        col = 0;
         return true;
     /* any other characters are comments, so silently continue. */
     default: return true;
@@ -443,8 +439,8 @@ bool bf_compile(
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
 
     /* reset the current line and column */
-    _line = 1;
-    _col = 0;
+    line = 1;
+    col = 0;
 
     /* set the bf_ptr register to the address of the start of the tape */
     ret &= inter->FUNCS->set_reg(inter->REGS->bf_ptr, TAPE_ADDRESS, &obj_code);

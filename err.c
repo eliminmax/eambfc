@@ -11,27 +11,27 @@
 /* internal */
 #include "types.h" /* bool, uint */
 
-static bool _quiet;
-static bool _json;
+static bool quiet;
+static bool json;
 
 /* the only external access to the variables is through these functions. */
 void quiet_mode(void) {
-    _quiet = true;
+    quiet = true;
 }
 
 void json_mode(void) {
-    _json = true;
+    json = true;
 }
 
 /* avoid using json_str for this special case, as malloc may fail again,
  * causing a loop of failures to generate json error messages properly. */
 void alloc_err(void) {
-    if (_json) {
+    if (json) {
         puts(
             "{\"errorId:\":\"ALLOC_FAILED\","
             "\"message\":\"A call to malloc or realloc returned NULL.\"}"
         );
-    } else if (!_quiet) {
+    } else if (!quiet) {
         fputs(
             "Error ALLOC_FAILED: A call to malloc or realloc returned NULL.\n",
             stderr
@@ -113,9 +113,9 @@ static void basic_jerr(const char *id, const char *msg) {
 }
 
 void basic_err(const char *id, const char *msg) {
-    if (_json)
+    if (json)
         basic_jerr(id, msg);
-    else if (!_quiet)
+    else if (!quiet)
         fprintf(stderr, "Error %s: %s\n", id, msg);
 }
 
@@ -152,9 +152,9 @@ static void pos_jerr(
 void position_err(
     const char *id, const char *msg, char instr, uint line, uint col
 ) {
-    if (_json)
+    if (json)
         pos_jerr(id, msg, instr, line, col);
-    else if (!_quiet) {
+    else if (!quiet) {
         fprintf(
             stderr,
             "Error %s when compiling '%c' at line %u, column %u: %s\n",
@@ -193,9 +193,9 @@ static void instr_jerr(const char *id, const char *msg, char instr) {
 }
 
 void instr_err(const char *id, const char *msg, char instr) {
-    if (_json)
+    if (json)
         instr_jerr(id, msg, instr);
-    else if (!_quiet) {
+    else if (!quiet) {
         fprintf(stderr, "Error %s when compiling '%c: %s'.\n", id, instr, msg);
     }
 }
