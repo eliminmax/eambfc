@@ -131,7 +131,7 @@ NO_SKIP_MULTIBUILD=yep make CC=gcc all_tests
 # generate a wrapper script to run test suite under valgrind's watchful eye.
 # shellcheck disable=SC2016 # this shouldn't be expanded here
 printf > valgrind-eambfc.sh '#!/bin/sh
-exec valgrind "$(dirname "$(realpath "$0")")"/eambfc "$@"\n'
+exec valgrind -q "$(dirname "$(realpath "$0")")"/eambfc "$@"\n'
 chmod +x valgrind-eambfc.sh
 
 test_for_arch() {
