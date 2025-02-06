@@ -4,8 +4,8 @@
 
 ---
 CompileFlags:
-  # clang with strict warnings, to help ensure C99 and POSIX 2008 compliance
   Add:
+    # strict warnings, to help ensure C99 and POSIX 2008 compliance
     - "-Wall"
     - "-Wextra"
     - "-Wpedantic"
@@ -19,6 +19,15 @@ Diagnostics:
     # Avoid false positives for unused header-checks from indirect includes
     # from types.h and compat/eambfc_inttypes.h
     IgnoreHeader: .*types\.h
+
+---
+If:
+  PathExclude: compat/elf\.h
+CompileFlags:
+  Add:
+    # Warn on reserved identifiers outside of elf.h
+    - "-Wreserved-identifier"
+    - "-Wreserved-macro-identifier"
 ---
 # headers are not complete translation units on their own, so the
 # empty-translation-unit check is prone to false positives if run on headers
