@@ -14,7 +14,6 @@
 #include <unistd.h> /* getopt, optopt */
 /* internal */
 #include "arch_inter.h" /* arch_inter, *_INTER */
-#include "compat/elf.h" /* EM_* */
 #include "compile.h" /* bf_compile */
 #include "config.h" /* EAMBFC_DEFAULT_*, EAMBFC_TARGET_* */
 #include "err.h" /* *_err */
