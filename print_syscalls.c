@@ -10,13 +10,10 @@
 #include <stdio.h>
 /* POSIX */
 #include <sys/syscall.h>
-#include <unistd.h>
-
-#define PRINT_SCNUM(sc_name) printf(#sc_name ":\t%d\n", __NR_##sc_name)
 
 int main(void) {
-    PRINT_SCNUM(read);
-    PRINT_SCNUM(write);
-    PRINT_SCNUM(exit);
+    printf("read:\t%d\n", SYS_read);
+    printf("write:\t%d\n", SYS_write);
+    printf("exit:\t%d\n", SYS_exit);
     return (0);
 }
