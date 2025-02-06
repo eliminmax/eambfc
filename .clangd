@@ -15,7 +15,9 @@ CompileFlags:
 
 Diagnostics:
   Includes:
-    AnalyzeAngledIncludes: true
+    # Avoid false positives for unused header-checks from indirect includes
+    # from types.h and compat/eambfc_inttypes.h
+    IgnoreHeader: .*types\.h
 ---
 If:
   PathMatch: .*\.h
