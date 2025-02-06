@@ -13,6 +13,9 @@ CompileFlags:
     - "-D_POSIX_C_SOURCE=200908L"
   Compiler: clang
 
+Diagnostics:
+  Includes:
+    AnalyzeAngledIncludes: true
 ---
 If:
   PathMatch: .*\.h
