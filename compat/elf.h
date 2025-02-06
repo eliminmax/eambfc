@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 1995-2022 Free Software Foundation, Inc.
+/* SPDX-FileCopyrightText: 1995 - 2022 Free Software Foundation, Inc.
  * SPDX-FileCopyrightText: 2024 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
