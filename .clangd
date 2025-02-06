@@ -4,6 +4,7 @@
 
 ---
 CompileFlags:
+  # clang with strict warnings, to help ensure C99 and POSIX 2008 compliance
   Add:
     - "-Wall"
     - "-Wextra"
@@ -19,17 +20,25 @@ Diagnostics:
     # from types.h and compat/eambfc_inttypes.h
     IgnoreHeader: .*types\.h
 ---
+# headers are not complete translation units on their own, so the
+# empty-translation-unit check is prone to false positives if run on headers
 If:
   PathMatch: .*\.h
 CompileFlags:
   Add:
     - "-Wno-empty-translation-unit"
 ---
+# post_config.h is an odd one that needs special treatment if edited directly
 If:
   PathMatch: post_config.h
 CompileFlags:
   Add:
+    # throws an error if this macro isn't defined, as it's only meant to be
+    # included by config.h for post-config validation and processing
     - "-DEAMBFC_PREPROC_POST_CONFIG"
+    # enable all architectures and set default architecture - this is needed to
+    # avoid some of the post-config validation `#error` macros triggering due to
+    # a missing or disabled default architecture selection
     - "-DEAMBFC_TARGET_ARM64=1"
     - "-DEAMBFC_TARGET_S390X=1"
     - "-DEAMBFC_TARGET_X86_64=1"
