@@ -50,7 +50,31 @@ sh_lints () {
     checkbashisms -f "$file"
 }
 
+# Check if copyright info includes current year
+# Due to the possibility that it's intentional, allow bypassing this check with
+# the ALLOW_SUSPECT_COPYRIGHTS variable
+copyright_check () {
+    if [ -n "$ALLOW_SUSPECT_COPYRIGHTS" ]; then
+        return 0
+    fi
+    if [ -e "$1.license" ]; then
+        to_check="$1.license"
+    else
+        to_check="$1"
+    fi
+    if ! grep -q "$(date '+SPDX-FileCopyrightText:.*%Y')" "$to_check"; then
+        printf '\033[1;31m%s\033[22m may need copyright updated\n' "$1" >&2
+        printf '\033[39;2mSet the ALLOW_SUSPECT_COPYRIGHTS environment ' >&2
+        printf 'variable to a non-empty value to bypass this value if ' >&2
+        printf 'it'\''s as it should be.\033[m\n' >&2
+        return 1
+    fi
+}
+
+
+
 for file; do
+    copyright_check "$file"
     # Find typos in the code
     # Learned about this tool from Lasse Colin's writeup of the xz backdoor.
     codespell "$file"

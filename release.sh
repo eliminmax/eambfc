@@ -79,8 +79,9 @@ fi
 
 make clean
 
-# first, some linting
-./run-lints.sh ./*.[ch] ./*.sh .githooks/*
+# first, some linting - bypass copyright check as older files are still checked
+# even if not changed this year
+ALLOW_SUSPECT_COPYRIGHTS=y ./run-lints.sh ./*.[ch] ./*.sh .githooks/*
 
 # run codespell on files not included in those globs
 codespell --skip='.git','*.sh','.githooks','*.[ch]'
