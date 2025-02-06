@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -18,12 +18,14 @@ void json_mode(void);
 /* functions to display error messages, depending on the current error mode. */
 
 /* print a generic error message */
-void basic_err(const char *id, char *msg);
+void basic_err(const char *id, const char *msg);
 /* an error message related to a specific instruction */
-void instr_err(const char *id, char *msg, char instr);
+void instr_err(const char *id, const char *msg, char instr);
 
 /* an error message related to a specific instruction at a specific location */
-void position_err(const char *id, char *msg, char instr, uint line, uint col);
+void position_err(
+    const char *id, const char *msg, char instr, uint line, uint col
+);
 
 /* replaces first instance of "{}" within proto with arg, then passes it as msg
  * to basic_err */

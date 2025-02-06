@@ -48,10 +48,10 @@ void alloc_err(void) {
 
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
-static char *json_str(char *str) {
+static char *json_str(const char *str) {
     size_t bufsz = 4096; /* 16 for padding, more added as needed */
     size_t used = 0;
-    char *p = str;
+    const char *p = str;
     char *reallocator;
     char *json_escaped = malloc(bufsz);
     if (json_escaped == NULL) return NULL;
@@ -101,17 +101,18 @@ static char *json_str(char *str) {
 
 #undef BS_ESCAPE_APPEND
 
-static void basic_jerr(const char *id, char *msg) {
+static void basic_jerr(const char *id, const char *msg) {
     /* assume error id is json-safe, but don't assume that for msg. */
-    if ((msg = json_str(msg)) == NULL) {
+    char *json_msg;
+    if ((json_msg = json_str(msg)) == NULL) {
         alloc_err();
     } else {
-        printf("{\"errorId\":\"%s\",\"message\":\"%s\"}\n", id, msg);
-        free(msg);
+        printf("{\"errorId\":\"%s\",\"message\":\"%s\"}\n", id, json_msg);
+        free(json_msg);
     }
 }
 
-void basic_err(const char *id, char *msg) {
+void basic_err(const char *id, const char *msg) {
     if (_json)
         basic_jerr(id, msg);
     else if (!_quiet)
@@ -119,17 +120,18 @@ void basic_err(const char *id, char *msg) {
 }
 
 static void pos_jerr(
-    const char *id, char *msg, char instr, uint line, uint col
+    const char *id, const char *msg, char instr, uint line, uint col
 ) {
     /* Assume id needs no escaping, but msg and instr might. */
     /* First, convert instr into a string, then serialize that string. */
-    char instr_str[2] = {instr, '\0'};
+    const char instr_str[2] = {instr, '\0'};
     char *instr_json;
     if ((instr_json = json_str(instr_str)) == NULL) {
         alloc_err();
         return;
     }
-    if ((msg = json_str(msg)) == NULL) {
+    char *json_msg;
+    if ((json_msg = json_str(msg)) == NULL) {
         free(instr_json);
         alloc_err();
         return;
@@ -138,16 +140,18 @@ static void pos_jerr(
         "{\"errorId\":\"%s\",\"message\":\"%s\",\"instruction\":\"%s\","
         "\"line\":%u,\"column\":%u}\n",
         id,
-        msg,
+        json_msg,
         instr_json,
         line,
         col
     );
-    free(msg);
+    free(json_msg);
     free(instr_json);
 }
 
-void position_err(const char *id, char *msg, char instr, uint line, uint col) {
+void position_err(
+    const char *id, const char *msg, char instr, uint line, uint col
+) {
     if (_json)
         pos_jerr(id, msg, instr, line, col);
     else if (!_quiet) {
@@ -163,16 +167,17 @@ void position_err(const char *id, char *msg, char instr, uint line, uint col) {
     }
 }
 
-static void instr_jerr(const char *id, char *msg, char instr) {
+static void instr_jerr(const char *id, const char *msg, char instr) {
     /* Assume id needs no escaping, but msg and instr might. */
     /* First, convert instr into a string, then serialize that string. */
-    char instr_str[2] = {instr, '\0'};
+    const char instr_str[2] = {instr, '\0'};
     char *instr_json;
     if ((instr_json = json_str(instr_str)) == NULL) {
         alloc_err();
         return;
     }
-    if ((msg = json_str(msg)) == NULL) {
+    char *json_msg;
+    if ((json_msg = json_str(msg)) == NULL) {
         alloc_err();
         free(instr_json);
         return;
@@ -183,11 +188,11 @@ static void instr_jerr(const char *id, char *msg, char instr) {
         msg,
         instr_json
     );
-    free(msg);
+    free(json_msg);
     free(instr_json);
 }
 
-void instr_err(const char *id, char *msg, char instr) {
+void instr_err(const char *id, const char *msg, char instr) {
     if (_json)
         instr_jerr(id, msg, instr);
     else if (!_quiet) {
