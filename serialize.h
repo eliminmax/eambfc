@@ -1,11 +1,11 @@
-/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * This file declares the interface to the serialize functions in serialize.c */
 
-#ifndef EAMBFC_SERIALIZE_H
-#define EAMBFC_SERIALIZE_H 1
+#ifndef BFC_SERIALIZE_H
+#define BFC_SERIALIZE_H 1
 /* internal */
 #include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr */
 #include "types.h" /* [iu]{8,16,32,64} */
@@ -28,4 +28,4 @@ size_t serialize32be(u32 v32, void *dest);
 size_t serialize64be(u64 v64, void *dest);
 size_t serialize_ehdr64_be(Elf64_Ehdr *ehdr, void *dest); /* Elf64_Ehdr */
 size_t serialize_phdr64_be(const Elf64_Phdr *phdr, void *dest); /* Elf64_Phdr */
-#endif /* EAMBFC_SERIALIZE_H */
+#endif /* BFC_SERIALIZE_H */

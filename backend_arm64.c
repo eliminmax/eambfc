@@ -8,11 +8,11 @@
 /* internal */
 #include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
 #include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
-#include "config.h" /* EAMBFC_TARGET_ARM64 */
+#include "config.h" /* BFC_TARGET_ARM64 */
 #include "err.h" /* basic_err */
 #include "types.h" /* [iu]{8,32,64}, bool, off_t, size_t, UINT64_C, sized_buf */
 #include "util.h" /* append_obj */
-#if EAMBFC_TARGET_ARM64
+#if BFC_TARGET_ARM64
 
 /* mark a series of bytes within a u8 array as being a single instruction,
  * mostly to prevent automated code formatting from splitting them up */
@@ -394,4 +394,4 @@ const arch_inter ARM64_INTER = {
     .ELF_ARCH = EM_AARCH64,
     .ELF_DATA = ELFDATA2LSB,
 };
-#endif /* EAMBFC_TARGEET_ARM64 */
+#endif /* BFC_TARGEET_ARM64 */

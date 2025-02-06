@@ -9,13 +9,13 @@
 /* internal */
 #include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter}  */
 #include "compat/elf.h" /* EM_S390, ELFDATA2MSB */
-#include "config.h" /* EAMBFC_TARGET_S390X */
+#include "config.h" /* BFC_TARGET_S390X */
 #include "err.h" /* basic_err */
 #include "serialize.h" /* serialize* */
 #include "types.h" /* [iu]{8,16,32,64}, bool, off_t, size_t, INT*_{MAX, MIN} */
 #include "util.h" /* append_obj */
 
-#if EAMBFC_TARGET_S390X
+#if BFC_TARGET_S390X
 
 /* The z/Architecture Principles of Operation comprehensively documents the
  * z/Architecture ISA, and its 14th edition was the main source for information
@@ -448,4 +448,4 @@ const arch_inter S390X_INTER = {
     .ELF_ARCH = EM_S390,
     .ELF_DATA = ELFDATA2MSB,
 };
-#endif /* EAMBFC_TARGET_S390X */
+#endif /* BFC_TARGET_S390X */

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -47,8 +47,8 @@
  *
  * Phew. That rant took much longer to write than the rest of this file. */
 
-#ifndef EAMBFC_INTTYPES_H
-#define EAMBFC_INTTYPES_H 1
+#ifndef BFC_INTTYPES_H
+#define BFC_INTTYPES_H 1
 /* inttypes.h #includes <stdint.h> and provides printf and scanf macros. */
 /* C99 */
 #include <inttypes.h>
@@ -72,4 +72,4 @@ typedef unsigned long long int uint64_t;
 #define int64_t __int128
 #define uint64_t unsigned __int128
 #endif /* INT_TORTURE_TEST */
-#endif /* EAMBFC_INTTYPES_H */
+#endif /* BFC_INTTYPES_H */

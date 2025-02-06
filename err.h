@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * Functions and data storage to handle error messages */
-#ifndef EAMBFC_ERR_H
-#define EAMBFC_ERR_H 1
+#ifndef BFC_ERR_H
+#define BFC_ERR_H 1
 /* internal */
 #include "types.h" /* uint */
 
@@ -44,4 +44,4 @@ void alloc_err(void);
  * Calls exit(EXIT_FAILURE) */
 void internal_err(const char *id, const char *msg);
 
-#endif /* EAMBFC_ERR_H */
+#endif /* BFC_ERR_H */

@@ -44,13 +44,13 @@ CompileFlags:
   Add:
     # throws an error if this macro isn't defined, as it's only meant to be
     # included by config.h for post-config validation and processing
-    - "-DEAMBFC_PREPROC_POST_CONFIG"
+    - "-DBFC_PREPROC_POST_CONFIG"
     # enable all architectures and set default architecture - this is needed to
     # avoid some of the post-config validation `#error` macros triggering due to
     # a missing or disabled default architecture selection
-    - "-DEAMBFC_TARGET_ARM64=1"
-    - "-DEAMBFC_TARGET_S390X=1"
-    - "-DEAMBFC_TARGET_X86_64=1"
-    - "-DEAMBFC_DEFAULT_TARGET=EM_X86_64"
+    - "-DBFC_TARGET_ARM64=1"
+    - "-DBFC_TARGET_S390X=1"
+    - "-DBFC_TARGET_X86_64=1"
+    - "-DBFC_DEFAULT_TARGET=EM_X86_64"
 
 # vi: ft=yaml ts=2 sts=2 sw=2 et

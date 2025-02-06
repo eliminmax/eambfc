@@ -10,7 +10,7 @@
 #include "serialize.h" /* serialize* */
 #include "types.h" /* [iu]{8,16,32,64}, bool, size_t, off_t */
 #include "util.h" /* append_obj */
-#if EAMBFC_TARGET_X86_64
+#if BFC_TARGET_X86_64
 
 /* If there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
  * functions, the common lines dealing with writing machine code should
@@ -239,4 +239,4 @@ const arch_inter X86_64_INTER = {
     .ELF_ARCH = EM_X86_64,
     .ELF_DATA = ELFDATA2LSB,
 };
-#endif /* EAMBFC_TARGET_X86_64 */
+#endif /* BFC_TARGET_X86_64 */

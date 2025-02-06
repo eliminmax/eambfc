@@ -1,10 +1,10 @@
-/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * Types used throughout the eambfc codebase. */
-#ifndef EAMBFC_TYPES_H
-#define EAMBFC_TYPES_H 1
+#ifndef BFC_TYPES_H
+#define BFC_TYPES_H 1
 /* C99 */
 #include <stdbool.h> /* bool, true, false */
 /* POSIX */
@@ -39,4 +39,4 @@ typedef struct sized_buf {
     size_t capacity; /* amount of space allocated for buffer */
     void *buf;
 } sized_buf;
-#endif /* EAMBFC_TYPES_H */
+#endif /* BFC_TYPES_H */

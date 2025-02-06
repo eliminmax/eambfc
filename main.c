@@ -15,11 +15,11 @@
 /* internal */
 #include "arch_inter.h" /* arch_inter, *_INTER */
 #include "compile.h" /* bf_compile */
-#include "config.h" /* EAMBFC_DEFAULT_*, EAMBFC_TARGET_* */
+#include "config.h" /* BFC_DEFAULT_*, BFC_TARGET_* */
 #include "err.h" /* *_err */
 #include "resource_mgr.h" /* mgr_*, register_mgr */
 #include "types.h" /* bool, u64, UINT64_MAX */
-#include "version.h" /* EAMBFC_VERSION, EAMBFC_COMMIT */
+#include "version.h" /* BFC_VERSION, BFC_COMMIT */
 
 /* print the help message to outfile. progname should be argv[0]. */
 static void show_help(FILE *outfile, const char *progname) {
@@ -42,7 +42,7 @@ static void show_help(FILE *outfile, const char *progname) {
         "             (This program will remove this at the end of the input\n"
         "             file to create the output file name)\n"
         " -a arch   - compile for the specified architecture\n"
-        "             (defaults to " EAMBFC_DEFAULT_ARCH_STR
+        "             (defaults to " BFC_DEFAULT_ARCH_STR
         " if not specified)**\n"
         " -A        - list supported architectures and exit\n"
         "\n"
@@ -136,26 +136,26 @@ static run_cfg parse_args(int argc, char *argv[]) {
                 "Build information:\n"
                 " * %s\n", /* git info or message stating git not used. */
                 argv[0],
-                EAMBFC_VERSION,
-                EAMBFC_COMMIT
+                BFC_VERSION,
+                BFC_COMMIT
             );
             exit(EXIT_SUCCESS);
         case 'A':
             printf(
                 "This build of %s supports the following architectures:\n\n"
 /* __BACKENDS__ */
-#if EAMBFC_TARGET_X86_64
+#if BFC_TARGET_X86_64
                 "- x86_64 (aliases: x64, amd64, x86-64)\n"
-#endif /* EAMBFC_TARGET_X86_64 */
-#if EAMBFC_TARGET_ARM64
+#endif /* BFC_TARGET_X86_64 */
+#if BFC_TARGET_ARM64
                 "- arm64 (aliases: aarch64)\n"
-#endif /* EAMBFC_TARGET_ARM64 */
-#if EAMBFC_TARGET_S390X
+#endif /* BFC_TARGET_ARM64 */
+#if BFC_TARGET_S390X
                 "- s390x (aliases: s390, s390x, z/architecture)\n"
-#endif /* EAMBFC_TARGET_S390X */
+#endif /* BFC_TARGET_S390X */
 
                 "\nIf no architecture is specified, it defaults "
-                "to " EAMBFC_DEFAULT_ARCH_STR " .\n",
+                "to " BFC_DEFAULT_ARCH_STR " .\n",
                 argv[0]
             );
             exit(EXIT_SUCCESS);
@@ -233,13 +233,13 @@ static run_cfg parse_args(int argc, char *argv[]) {
              * Instead, use the macros and trust the compiler to optimize out
              * the constant check, and optimize out any disabled blocks. */
             /* __BACKENDS__ add a block here */
-            if (EAMBFC_TARGET_X86_64 &&
+            if (BFC_TARGET_X86_64 &&
                 any_match(optarg, 4, "x86_64", "x64", "amd64", "x86-64")) {
                 rc.inter = &X86_64_INTER;
-            } else if (EAMBFC_TARGET_ARM64 &&
+            } else if (BFC_TARGET_ARM64 &&
                        any_match(optarg, 2, "arm64", "aarch64")) {
                 rc.inter = &ARM64_INTER;
-            } else if (EAMBFC_TARGET_S390X &&
+            } else if (BFC_TARGET_S390X &&
                        any_match(
                            optarg, 3, "s390x", "s390", "z/architecture"
                        )) {
@@ -281,7 +281,7 @@ static run_cfg parse_args(int argc, char *argv[]) {
     if (rc.tape_blocks == 0) rc.tape_blocks = 8;
 
     /* if no architecture was specified, default to default value set above */
-    if (rc.inter == NULL) rc.inter = &EAMBFC_DEFAULT_INTER;
+    if (rc.inter == NULL) rc.inter = &BFC_DEFAULT_INTER;
     return rc;
 }
 

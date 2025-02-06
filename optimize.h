@@ -4,8 +4,8 @@
  *
  * Provides a function that returns EAMBFC IR from an open FD */
 
-#ifndef EAMBFC_OPTIMIZE_H
-#define EAMBFC_OPTIMIZE_H 1
+#ifndef BFC_OPTIMIZE_H
+#define BFC_OPTIMIZE_H 1
 /* internal */
 #include "types.h" /* sized_buf */
 
@@ -27,4 +27,4 @@
  * all `,` and `.` instructions are left unchanged, as are any `[` or `]`
  * instructions not part of the two sequences that are replaced with `@`. */
 bool filter_dead(sized_buf *src);
-#endif /* EAMBFC_OPTIMIZE_H */
+#endif /* BFC_OPTIMIZE_H */

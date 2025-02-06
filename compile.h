@@ -1,11 +1,11 @@
-/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * This file provides an interface to compile.c. */
 
-#ifndef EAMBFC_COMPILE_H
-#define EAMBFC_COMPILE_H 1
+#ifndef BFC_COMPILE_H
+#define BFC_COMPILE_H 1
 /* internal */
 #include "arch_inter.h" /* arch_inter */
 #include "types.h" /* bool, u64 */
@@ -41,4 +41,4 @@ bool bf_compile(
     u64 tape_blocks
 );
 
-#endif /* EAMBFC_COMPILE_H */
+#endif /* BFC_COMPILE_H */

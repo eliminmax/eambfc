@@ -5,10 +5,10 @@
  * This file contains typedefs of structs used to provide the interface to
  * architectures, and declares all supported backends at the end. */
 
-#ifndef EAMBFC_ARCH_INTER_H
-#define EAMBFC_ARCH_INTER_H 1
+#ifndef BFC_ARCH_INTER_H
+#define BFC_ARCH_INTER_H 1
 /* internal */
-#include "config.h" /* EAMBFC_TARGET* */
+#include "config.h" /* BFC_TARGET* */
 #include "types.h" /* [iu]{8,16,32,64}, bool, sized_buf */
 
 /* This defines the interface for the architecture. It is written around
@@ -24,10 +24,10 @@
  * 1. Add a target for that backend to the Makefile
  * 2. Near the top of the Makefile, add it to the BACKENDS variable
  * 3. Add the backend source file to the UNIBUILD_FILES variable in the Makefile
- * 4. In config.template.h, define a macro starting with EAMBFC_TARGET_ to act
- *    as a feature switch for your backend. To disable by default, set it to 0.
+ * 4. In config.template.h, define a macro starting with BFC_TARGET_ to act as a
+ *    feature switch for your backend. To disable by default, set it to 0.
  * 5. At the bottom of this file, add a block which declares your interface if
- *    your EAMBFC_TARGET_ macro is set to a non-zero value.
+ *    your BFC_TARGET_ macro is set to a non-zero value.
  * 6. Add your backend to the validation block at the start of main.c.
  * 7. Add arguments to select your architecture to the help text and the
  *    argument parsing logic, both in main.c
@@ -181,14 +181,14 @@ typedef const struct {
 /* __BACKENDS__ */
 /* this is where the actual interfaces defined in the backend_* files are made
  * available in other files. */
-#if EAMBFC_TARGET_X86_64
+#if BFC_TARGET_X86_64
 extern const arch_inter X86_64_INTER;
-#endif /* EAMBFC_TARGET_X86_64 */
-#if EAMBFC_TARGET_ARM64
+#endif /* BFC_TARGET_X86_64 */
+#if BFC_TARGET_ARM64
 extern const arch_inter ARM64_INTER;
-#endif /* EAMBFC_TARGET_ARM64 */
-#if EAMBFC_TARGET_S390X
+#endif /* BFC_TARGET_ARM64 */
+#if BFC_TARGET_S390X
 extern const arch_inter S390X_INTER;
-#endif /* EAMBFC_TARGET_S390X */
+#endif /* BFC_TARGET_S390X */
 
-#endif /* EAMBFC_ARCH_INTER_H */
+#endif /* BFC_ARCH_INTER_H */

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+# SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
@@ -15,12 +15,12 @@ fi;
 
 cat >version.h <<EOF
 /* generated header file with version information */
-#ifndef EAMBFC_VERSION_H
-#define EAMBFC_VERSION_H 1
+#ifndef BFC_VERSION_H
+#define BFC_VERSION_H 1
 
-#define EAMBFC_VERSION "$(cat version)"
+#define BFC_VERSION "$(cat version)"
 
-#define EAMBFC_COMMIT "$git_str"
+#define BFC_COMMIT "$git_str"
 
-#endif /* EAMBFC_VERSION_H */
+#endif /* BFC_VERSION_H */
 EOF
