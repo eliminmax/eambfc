@@ -56,11 +56,11 @@ version.h: version gen_version_h.sh
 
 resource_mgr.o: resource_mgr.c
 serialize.o: serialize.c
-compile.o: util.h backend_x86_64.o compile.c
+compile.o: compile.c
 main.o: version.h main.c
 err.o: err.c
-util.o: util.h util.c
-optimize.o: err.o util.h util.o optimize.c
+util.o: util.c
+optimize.o: optimize.c
 # __BACKENDS__
 backend_arm64.o: backend_arm64.c
 backend_s390x.o: backend_s390x.c
