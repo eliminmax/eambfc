@@ -109,8 +109,9 @@ Some Makefile targets are not portable - they use `gcc`-specific flags and
 features, and are hard-coded to call `gcc` rather than the user-specified C
 compiler.
 
-The `release.sh` script has a large number of extra dependencies which it
-documents, used for extra testing and linting, and for building source tarballs.
+The `release.sh` and `run_lints.sh` scripts have a large number of extra
+dependencies which they document, used for extra testing and linting, and for
+building source tarballs.
 
 All files in the main branch comply with version 3.3 of the REUSE specification
 for licensing information.
