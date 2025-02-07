@@ -107,7 +107,7 @@ rm -rf releases/"$build_name"*
 # generate version.h
 make -s clean version.h
 
-# change the git commit in config.h to reflect that it's a source tarball build
+# change the git commit in version.h to reflect that it's a source tarball build
 sed '/git commit: /s/"/"source tarball from /' -i version.h
 
 git archive HEAD --format=tar      \
@@ -160,7 +160,7 @@ done
 
 # portability test - can a minimal, public domain POSIX make implementation
 # complete the clean, eambfc, and test targets?
-# move config.h out of the way so that it isn't clobbered by pdpmake
+# move version.h out of the way so that it isn't clobbered by pdpmake
 mv version.h version.h-real
 # ensure that recursive calls use the right make by putting it first in $PATH
 mkdir -p .utils
@@ -168,7 +168,7 @@ ln -sfv "$(command -v pdpmake)" .utils/make
 env PATH="$PWD/.utils:$PATH" make clean eambfc test
 
 make clean
-# move config.h back in place for real build
+# move version.h back in place for real build
 mv version.h-real version.h
 
 # if none of the previous tests failed, it's time for the actual build
