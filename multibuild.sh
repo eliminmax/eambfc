@@ -6,7 +6,7 @@
 #
 set -e
 cd "$(dirname "$0")"
-[ -d alt-builds ] || mkdir alt-builds
+mkdir -p alt-builds
 # during setup, errors are fatal. Setup is over, errors are no longer fatal.
 set +e
 
