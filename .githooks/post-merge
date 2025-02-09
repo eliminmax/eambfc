@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+#
+# SPDX-License-Identifier: 0BSD
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+# regenerate version.h for the new commit
+./gen_version_h.sh
