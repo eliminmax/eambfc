@@ -87,7 +87,7 @@ make PREFIX="$HOME/.local" install
 I have a dev branch and a main branch. When I feel like it, and all of the tests
 pass, I merge the dev branch into the main branch. The main branch is guaranteed
 to have passed the full test suite on Debian 12 amd64, Debian 12 arm64 with
-qemu-binfmt, and FreeBSD 14.1 amd64 with Linux binary support. Features that are
+qemu-binfmt, and FreeBSD 14.2 amd64 with Linux binary support. Features that are
 documented and exposed via command-line flags are tested, working, and complete,
 though code that's part of WIP features may be present, but not activated.
 
@@ -146,3 +146,4 @@ repository is my own original work.
 All licenses used in any part of this repository are in the LICENSES/ directory,
 and every file has an SPDX License header identifying the license(s) it's under,
 either near the top of the file, or in an associated `.license` file.
+
