@@ -9,6 +9,7 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 # ensure that the version file is not associated with an existing version
 if [ "$(git tag --list "v$(cat version)" | wc -c)" -gt 0 ]; then
     printf 'ERROR! Version file corresponds to an existing tag!\n'
+    exit 1
 fi
 
 # requires GNU xargs -0 option to be supported
