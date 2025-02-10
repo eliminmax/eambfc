@@ -74,6 +74,14 @@ copyright_check () {
 
 
 for file; do
+    if ! [ -e "$file" ]; then
+        if [ -e "$file.license" ]; then
+            printf '\033[1;31m%s\033[22 has a leftover REUSE' "$file" >&2
+            printf 'license file.\033[m\n' >&2
+            exit 1
+        fi
+        continue
+    fi
     copyright_check "$file"
     # Find typos in the code
     # Learned about this tool from Lasse Colin's writeup of the xz backdoor.
