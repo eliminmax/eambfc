@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+# SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
 #
 # SPDX-License-Identifier: 0BSD
 
@@ -9,12 +9,8 @@ version.h
 eambfc
 *.o
 
-# some test assets and tools that are generated locally
+# directory containing alternate builds for testing
 alt-builds/
-create_mini_elf
-mini_elf
-can_run_linux_amd64
-optimize
 
 # ctags tag file
 tags

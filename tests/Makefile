@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+# SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
 #
 # SPDX-License-Identifier: 0BSD
 # vi: noet sw=4 ts=4 sts=4 cc=81
@@ -17,6 +17,15 @@ EAMBFC_ARGS = -Ok
 # build test assets
 build_all: hello loop wrap wrap2 colortest truthmachine dead_code piped_in \
 	unmatched_close unmatched_open unseekable alternative_extension rw null
+
+# __BACKENDS__
+test_all:
+	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a arm64" clean build_all
+	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a arm64
+	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a s390x" clean build_all
+	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a s390x
+	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a x86_64" clean build_all
+	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a x86_64
 
 test: clean build_all
 	./test.sh $(EAMBFC) $(EAMBFC_ARGS)

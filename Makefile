@@ -68,53 +68,61 @@ backend_x86_64.o: backend_x86_64.c
 
 # for testing
 #
-# can we run x86-64 Linux binaries properly?
-# not enough to check the architecture and kernel, because other systems might
-# be able to emulate the architecture and/or system call interface.
+# can we run the compiled Linux binaries properly?
+# It's not enough to check the architecture and kernel, because other systems
+# might be able to emulate the architecture and/or system call interface.
 # For an example of the former, see Linux on 64-bit ARM with qemu + binfmt_misc
 # For an example of the latter, see FreeBSD's Linux syscall emulation.
-# `make test` works in both of those example cases
-create_mini_elf.o: create_mini_elf.c
-create_mini_elf: create_mini_elf.o compile.o $(COMPILE_DEPS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(POSIX_CFLAG)\
-		$(COMPILE_DEPS) compile.o $@.o $(LDLIBS)
-mini_elf: create_mini_elf
-	./create_mini_elf
-can_run_linux_amd64: mini_elf
-	./mini_elf && touch $@
-test: can_run_linux_amd64 eambfc
+# `make test` works in both of those example cases.
+#
+# These mini binaries each attempt to call the exit(0) syscall for the target
+# architectures.
+# These binaries were hand-made in a minimal hex editor, so they are their own
+# source code.
+#
+# The execfmt_support directory has a Python script that can be used to help
+# audit the binaries, in case anyone is concerned by their presence.
+# That script has comments throughout to explain how to further audit them.
+can_run_x86_64:
+	execfmt_support/x86_64
+
+# __BACKENDS__
+can_run_all:
+	execfmt_support/arm64 && \
+	execfmt_support/s390x && \
+	execfmt_support/x86_64
+
+test: can_run_x86_64 eambfc
 	(cd tests; make clean test)
 
-multibuild:
+multibuild: config.h
 	env SKIP_TEST=y ./multibuild.sh
-multibuild_test: can_run_linux_amd64
+multibuild_test: can_run_all config.h
 	./multibuild.sh
 
-strict: can_run_linux_amd64
+strict: config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE!\n' >&2
 	gcc $(GCC_STRICT_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
 		-o alt-builds/eambfc-$@
-	(cd tests; make clean test EAMBFC=../alt-builds/eambfc-$@)
 
-ubsan: can_run_linux_amd64 config.h
+ubsan: can_run_all config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE AT ALL!\n' >&2
 	gcc $(GCC_UBSAN_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
 		-o alt-builds/eambfc-$@
-	(cd tests; make EAMBFC=../alt-builds/eambfc-$@ clean test)
+	(cd tests; make EAMBFC=../alt-builds/eambfc-$@ test_all)
 
-int_torture_test: can_run_linux_amd64 config.h
+int_torture_test: can_run_all config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE AT ALL!\n' >&2
 	gcc $(GCC_INT_TORTURE_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
 		-o alt-builds/eambfc-$@
-	(cd tests; make EAMBFC=../alt-builds/eambfc-$@ clean test)
+	(cd tests; make EAMBFC=../alt-builds/eambfc-$@ test_all)
 
 all_tests: test multibuild_test strict ubsan int_torture_test
 
-# remove eambfc and the objects it's built from, then remove test artifacts
+# remove eambfc and the objects it's built from, and remove test artifacts
 clean:
-	rm -rf $(EAMBFC_DEPS) eambfc alt-builds create_mini_elf.o \
-	    create_mini_elf mini_elf can_run_linux_amd64
+	rm -rf $(EAMBFC_DEPS) eambfc alt-builds
 	(cd tests; make clean)
