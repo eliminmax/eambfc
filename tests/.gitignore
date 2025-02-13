@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+# SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
 #
 # SPDX-License-Identifier: 0BSD
 
@@ -22,3 +22,4 @@ dead_code
 unseekable_f
 piped_in
 piped_in.bf
+hello.elf

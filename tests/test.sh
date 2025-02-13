@@ -1,5 +1,5 @@
 #!/bin/sh
-# SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+# SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
@@ -88,7 +88,8 @@ test_simple wrap2 '1742477431 4'
 
 
 # identical to the hello world program, but something is different about the
-# source file
+# source file or flags
+test_simple hello.elf '1639980005 14' # added extension
 test_simple alternative_extension '1639980005 14' # self-explanatory
 test_simple unseekable '1639980005 14' # output is a FIFO, can't be seeked
 test_simple piped_in '1639980005 14' # input is a FIFO, can't be seeked
@@ -113,6 +114,8 @@ test_arg_error NO_TAPE 'tape size is set to 0 blocks' \
     "$@" -t0 hello.bf
 test_arg_error TAPE_TOO_LARGE 'tape size large enough to cause an overflow' \
     "$@" -t9223372036854775807
+test_arg_error MULTIPLE_OUTPUT_EXTENSIONS 'multiple output extensions' \
+    "$@" -s .elf -s .out
 
 # some permission issues
 chmod 'u-r' 'hello.bf'

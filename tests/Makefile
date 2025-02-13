@@ -16,7 +16,8 @@ EAMBFC_ARGS = -Ok
 
 # build test assets
 build_all: hello loop wrap wrap2 colortest truthmachine dead_code piped_in \
-	unmatched_close unmatched_open unseekable alternative_extension rw null
+	unmatched_close unmatched_open unseekable alternative_extension rw null \
+	hello.elf
 
 # __BACKENDS__
 test_all:
@@ -41,7 +42,16 @@ truthmachine: truthmachine.bf
 too_many_nested_loops: too_many_nested_loops.bf
 unmatched_close: unmatched_close.bf
 unmatched_open: unmatched_open.bf
-# test error from unseekable outputs
+
+# test handling of provided output suffixes
+hello.elf: hello.bf
+	$(EAMBFC) -j $(EAMBFC_ARGS) -s .elf hello.bf >.$@.build_err
+	if [ "$$(wc -c .$@.build_err | awk '{print $$1}')" -eq 0 ]; then\
+		rm .$@.build_err; else false;\
+	fi
+	test -e "$@"
+
+# test handling of unseekable outputs
 unseekable:
 	# make a fifo (named pipe) that will be written to
 	mkfifo $@
@@ -73,4 +83,4 @@ clean:
 	rm -f .*.build_err hello rw loop null wrap wrap2 colortest \
 		truthmachine too_many_nested_loops unmatched_close \
 		unmatched_open unseekable alternative_extension unseekable_f \
-		piped_in piped_in.bf dead_code
+		piped_in piped_in.bf dead_code hello.elf
