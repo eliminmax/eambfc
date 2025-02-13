@@ -42,6 +42,8 @@ Usage: eambfc [options] <program.bf> [<program2.bf> ...]
              file to create the output file name)
  -a arch   - compile for the specified architecture
              (defaults to x86_64 if not specified)**
+ -s ext    - (only provide once) use 'ext' as the extension for
+             compiled binaries (empty if not specified)
  -A        - list supported architectures and exit
 
 * -q and -j will not affect arguments passed before they were.
