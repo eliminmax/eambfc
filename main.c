@@ -190,6 +190,8 @@ static run_cfg parse_args(int argc, char *argv[]) {
                 basic_err(
                     "MULTIPLE_OUTPUT_EXTENSIONS", "passed -s multiple times."
                 );
+                SHOW_HINT();
+                exit(EXIT_FAILURE);
             }
             rc.out_ext = optarg;
             break;
