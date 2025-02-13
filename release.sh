@@ -104,8 +104,9 @@ mkdir -p releases/
 # remove existing build artifacts with the current build name
 rm -rf releases/"$build_name"*
 
+make -s clean
 # generate version.h
-make -s clean version.h
+./gen_version_h.sh
 
 # change the git commit in version.h to reflect that it's a source tarball build
 sed '/git commit: /s/"/"source tarball from /' -i version.h
