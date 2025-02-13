@@ -44,6 +44,8 @@ static void show_help(FILE *outfile, const char *progname) {
         " -a arch   - compile for the specified architecture\n"
         "             (defaults to " BFC_DEFAULT_ARCH_STR
         " if not specified)**\n"
+        " -s ext    - (only provide once) use 'ext' as the extension for\n"
+        "             compiled binaries (empty if not specified)\n"
         " -A        - list supported architectures and exit\n"
         "\n"
         "* -q and -j will not affect arguments passed before they were.\n"
@@ -92,6 +94,7 @@ static bool rm_ext(char *str, const char *ext) {
 typedef struct {
     arch_inter *inter;
     char *ext;
+    char *out_ext;
     u64 tape_blocks;
     /* use bitfield booleans here */
     bool quiet    : 1;
@@ -113,6 +116,7 @@ static run_cfg parse_args(int argc, char *argv[]) {
     run_cfg rc = {
         .inter = NULL,
         .ext = NULL,
+        .out_ext = NULL,
         .tape_blocks = 0,
         .quiet = false,
         .optimize = false,
@@ -121,7 +125,7 @@ static run_cfg parse_args(int argc, char *argv[]) {
         .json = false,
     };
 
-    while ((opt = getopt(argc, argv, ":hVqjOkmAa:e:t:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hVqjOkmAa:e:t:s:")) != -1) {
         switch (opt) {
         case 'h': show_help(stdout, argv[0]); exit(EXIT_SUCCESS);
         case 'V':
@@ -179,6 +183,15 @@ static run_cfg parse_args(int argc, char *argv[]) {
                 exit(EXIT_FAILURE);
             }
             rc.ext = optarg;
+            break;
+        case 's':
+            /* Print an error if out_ext was already set. */
+            if (rc.out_ext != NULL) {
+                basic_err(
+                    "MULTIPLE_OUTPUT_EXTENSIONS", "passed -s multiple times."
+                );
+            }
+            rc.out_ext = optarg;
             break;
         case 't':
             /* Print an error if tape_blocks has already been set */
@@ -289,6 +302,7 @@ static run_cfg parse_args(int argc, char *argv[]) {
 static bool compile_file(const char *filename, const run_cfg *rc) {
     char *outname = mgr_malloc(strlen(filename) + 1);
     strcpy(outname, filename);
+
     if (!rm_ext(outname, rc->ext)) {
         param_err(
             "BAD_EXTENSION",
@@ -298,6 +312,12 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
         mgr_free(outname);
         return false;
     }
+    if (rc->out_ext != NULL) {
+        size_t outname_sz = strlen(outname);
+        outname = mgr_realloc(outname, outname_sz + strlen(rc->out_ext) + 1);
+        strcat(outname, rc->out_ext);
+    }
+
     int src_fd = mgr_open(filename, O_RDONLY);
     if (src_fd < 0) {
         param_err("OPEN_R_FAILED", "Failed to open {} for reading.", filename);
