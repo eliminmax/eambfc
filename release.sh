@@ -44,7 +44,7 @@
 # * libubsan1
 # * libasan6
 # * tcc
-# * qemu-user-static (backport version, as stable segfaults sometimes for s390x)
+# * qemu-user-binfmt (backport version, as stable segfaults sometimes for s390x)
 #
 # Lastly, a few tools not packaged for Debian are required - here's a list, with
 # URLS and info on how I installed them.
