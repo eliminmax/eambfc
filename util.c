@@ -14,7 +14,7 @@
 #include "resource_mgr.h" /* mgr_malloc, mgr_realloc, mgr_free */
 #include "types.h" /* ssize_t, size_t, off_t */
 
-extern u8 trailing_0s(uintmax_t val) {
+extern u8 trailing_0s(u64 val) {
     u8 counter = 0;
     while (!(val & 1)) {
         val >>= 1;
@@ -24,23 +24,23 @@ extern u8 trailing_0s(uintmax_t val) {
 }
 
 /* Return true if unsigned val fits within bits */
-bool bit_fits_u(uintmax_t val, u8 bits) {
-    return val < UINTMAX_C(1) << bits;
+bool bit_fits_u(u64 val, u8 bits) {
+    return val < UINT64_C(1) << bits;
 }
 
 /* Return true if signed val fits within bits */
-bool bit_fits_s(intmax_t val, u8 bits) {
-    intmax_t max = INTMAX_C(1) << (bits - 1);
-    intmax_t min = -max;
+bool bit_fits_s(i64 val, u8 bits) {
+    int64_t max = INT64_C(1) << (bits - 1);
+    int64_t min = -max;
     return val >= min && val < max;
 }
 
 /* return the least significant bits of val sign-extended */
-intmax_t sign_extend(intmax_t val, u8 bits) {
-    u8 shift_amount = (sizeof(intmax_t) * 8) - bits;
+i64 sign_extend(i64 val, u8 bits) {
+    u8 shift_amount = (sizeof(i64) * 8) - bits;
     /* shifting into the sign bit is undefined behavior, so cast it to unsigned,
      * then assign it back. */
-    intmax_t lshifted = ((uintmax_t)val << shift_amount);
+    i64 lshifted = ((u64)val << shift_amount);
     return lshifted >> shift_amount;
 }
 

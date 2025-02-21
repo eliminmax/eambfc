@@ -5,10 +5,10 @@
  * Miscellaneous utility functions used throughout the eambfc codebase. */
 #ifndef BFC_UTIL_H
 #define BFC_UTIL_H 1
-#include "types.h" /* off_t, size_t, sized_buf, uintmax_t, intmax_t */
+#include "types.h" /* off_t, size_t, sized_buf, u64, i64 */
 
 /* return the number of trailing zeroes in val */
-inline u8 trailing_0s(uintmax_t val) {
+inline u8 trailing_0s(u64 val) {
     u8 counter = 0;
     while (!(val & 1)) {
         val >>= 1;
@@ -18,13 +18,13 @@ inline u8 trailing_0s(uintmax_t val) {
 }
 
 /* Return true if unsigned val fits within bits */
-bool bit_fits_u(uintmax_t val, u8 bits);
+bool bit_fits_u(u64 val, u8 bits);
 
 /* Return true if signed val fits within bits */
-bool bit_fits_s(intmax_t val, u8 bits);
+bool bit_fits_s(i64 val, u8 bits);
 
 /* return the least significant bits of val sign-extended */
-intmax_t sign_extend(intmax_t val, u8 bits);
+i64 sign_extend(i64 val, u8 bits);
 
 /* Passes arguments to write, and checks if bytes written is equal to ct.
  * If it is, returns true. otherwise, outputs a FAILED_WRITE error and
