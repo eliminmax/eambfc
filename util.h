@@ -7,6 +7,16 @@
 #define BFC_UTIL_H 1
 #include "types.h" /* off_t, size_t, sized_buf, uintmax_t, intmax_t */
 
+/* return the number of trailing zeroes in val */
+inline u8 trailing_0s(uintmax_t val) {
+    u8 counter = 0;
+    while (!(val & 1)) {
+        val >>= 1;
+        counter += 1;
+    }
+    return counter;
+}
+
 /* Return true if unsigned val fits within bits */
 bool bit_fits_u(uintmax_t val, u8 bits);
 
