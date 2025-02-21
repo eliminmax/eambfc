@@ -13,6 +13,9 @@ bool bit_fits_u(uintmax_t val, u8 bits);
 /* Return true if signed val fits within bits */
 bool bit_fits_s(intmax_t val, u8 bits);
 
+/* return the least significant bits of val sign-extended */
+intmax_t sign_extend(intmax_t val, u8 bits);
+
 /* Passes arguments to write, and checks if bytes written is equal to ct.
  * If it is, returns true. otherwise, outputs a FAILED_WRITE error and
  * returns false. If ct is more than SSIZE_MAX, it will print an error and

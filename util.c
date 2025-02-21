@@ -26,6 +26,15 @@ bool bit_fits_s(intmax_t val, u8 bits) {
     return val >= min && val < max;
 }
 
+/* return the least significant bits of val sign-extended */
+intmax_t sign_extend(intmax_t val, u8 bits) {
+    u8 shift_amount = (sizeof(intmax_t) * 8) - bits;
+    /* shifting into the sign bit is undefined behavior, so cast it to unsigned,
+     * then assign it back. */
+    intmax_t lshifted = ((uintmax_t)val << shift_amount);
+    return lshifted >> shift_amount;
+}
+
 /* Wrapper around write.3POSIX that returns true if all bytes were written, and
  * prints an error and returns false otherwise or if ct is too large to
  * validate. */
