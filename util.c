@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -13,6 +13,18 @@
 #include "err.h" /* basic_err */
 #include "resource_mgr.h" /* mgr_malloc, mgr_realloc, mgr_free */
 #include "types.h" /* ssize_t, size_t, off_t */
+
+/* Return true if unsigned val fits within bits */
+bool bit_fits_u(uintmax_t val, u8 bits) {
+    return val < UINTMAX_C(1) << bits;
+}
+
+/* Return true if signed val fits within bits */
+bool bit_fits_s(intmax_t val, u8 bits) {
+    intmax_t max = INTMAX_C(1) << (bits - 1);
+    intmax_t min = -max;
+    return val >= min && val < max;
+}
 
 /* Wrapper around write.3POSIX that returns true if all bytes were written, and
  * prints an error and returns false otherwise or if ct is too large to

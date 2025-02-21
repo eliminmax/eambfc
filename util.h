@@ -5,7 +5,14 @@
  * Miscellaneous utility functions used throughout the eambfc codebase. */
 #ifndef BFC_UTIL_H
 #define BFC_UTIL_H 1
-#include "types.h" /* off_t, size_t, sized_buf */
+#include "types.h" /* off_t, size_t, sized_buf, uintmax_t, intmax_t */
+
+/* Return true if unsigned val fits within bits */
+bool bit_fits_u(uintmax_t val, u8 bits);
+
+/* Return true if signed val fits within bits */
+bool bit_fits_s(intmax_t val, u8 bits);
+
 /* Passes arguments to write, and checks if bytes written is equal to ct.
  * If it is, returns true. otherwise, outputs a FAILED_WRITE error and
  * returns false. If ct is more than SSIZE_MAX, it will print an error and
