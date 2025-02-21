@@ -1,5 +1,5 @@
-/* SPDX-FileCopyrightText: 1995 - 2022 Free Software Foundation, Inc.
- * SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+ * SPDX-FileCopyrightText: 1995 - 2022 Free Software Foundation, Inc.
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -113,6 +113,7 @@ typedef struct {
 #define EM_S390       22   /* IBM S390 */
 #define EM_X86_64     62   /* AMD x86-64 architecture */
 #define EM_AARCH64   183   /* ARM AARCH64 */
+#define EM_RISCV     243   /* RISC-V */
 
 /* value used for e_version (version).  */
 #define EV_CURRENT    1    /* Current version */
