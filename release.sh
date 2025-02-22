@@ -152,7 +152,7 @@ test_for_arch() {
 for o_lvl in 0 1 2 3 s fast g z; do
     make CC=gcc CFLAGS="-O$o_lvl" clean ubsan strict eambfc;
     cd tests
-    # __BACKENDS__
+    # __BACKENDS__ add a test rule for the new architecture
     test_for_arch x86_64
     test_for_arch s390x
     test_for_arch arm64

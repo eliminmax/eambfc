@@ -147,7 +147,7 @@ static run_cfg parse_args(int argc, char *argv[]) {
         case 'A':
             printf(
                 "This build of %s supports the following architectures:\n\n"
-/* __BACKENDS__ */
+/* __BACKENDS__ add backend and any aliases in a block here*/
 #if BFC_TARGET_X86_64
                 "- x86_64 (aliases: x64, amd64, x86-64)\n"
 #endif /* BFC_TARGET_X86_64 */

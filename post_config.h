@@ -17,7 +17,7 @@
 #error "No backends are enabled"
 #endif
 
-/* __BACKENDS__
+/* __BACKENDS__ add a block for the new backend
  * Each listed backend should first check if it's enabled, and result in a
  * compile-time error if it isn't. After that check, it should define the
  * BFC_DEFAULT_INTER and BFC_DEFAULT_ARCH_STR macros to appropriate values
@@ -32,14 +32,14 @@
 #elif BFC_DEFAULT_TARGET == EM_AARCH64
 #if !BFC_TARGET_ARM64
 #error "BFC_DEFAULT_TARGET is EM_AARCH64, but BFC_TARGET_ARM64 is off."
-#endif /* BFC_TARGET_ARM64 == 0 */
+#endif /* !BFC_TARGET_ARM64 */
 #define BFC_DEFAULT_INTER ARM64_INTER
 #define BFC_DEFAULT_ARCH_STR "arm64"
 
 #elif BFC_DEFAULT_TARGET == EM_S390
 #if !BFC_TARGET_S390X
 #error "BFC_DEFAULT_TARGET is EM_S390, but BFC_TARGET_S390X is off."
-#endif /* BFC_TARGET_S390X == 0 */
+#endif /* !BFC_TARGET_S390X */
 #define BFC_DEFAULT_INTER S390X_INTER
 #define BFC_DEFAULT_ARCH_STR "s390x"
 

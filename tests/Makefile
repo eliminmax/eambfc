@@ -19,7 +19,7 @@ build_all: hello loop wrap wrap2 colortest truthmachine dead_code piped_in \
 	unmatched_close unmatched_open unseekable alternative_extension rw null \
 	hello.elf
 
-# __BACKENDS__
+# __BACKENDS__ add a test for the new architecture
 test_all:
 	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a arm64" clean build_all
 	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a arm64
