@@ -23,13 +23,8 @@ extern u8 trailing_0s(u64 val) {
     return counter;
 }
 
-/* Return true if unsigned val fits within bits */
-bool bit_fits_u(u64 val, u8 bits) {
-    return val < UINT64_C(1) << bits;
-}
-
-/* Return true if signed val fits within bits */
-bool bit_fits_s(i64 val, u8 bits) {
+/* Return true if signed `val` fits within specified number of bits */
+bool bit_fits(i64 val, u8 bits) {
     int64_t max = INT64_C(1) << (bits - 1);
     int64_t min = -max;
     return val >= min && val < max;

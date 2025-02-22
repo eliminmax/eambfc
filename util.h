@@ -17,11 +17,8 @@ inline u8 trailing_0s(u64 val) {
     return counter;
 }
 
-/* Return true if unsigned val fits within bits */
-bool bit_fits_u(u64 val, u8 bits);
-
-/* Return true if signed val fits within bits */
-bool bit_fits_s(i64 val, u8 bits);
+/* Return true if signed `val` fits within specified number of bits */
+bool bit_fits(i64 val, u8 bits);
 
 /* return the least significant bits of val sign-extended */
 i64 sign_extend(i64 val, u8 bits);

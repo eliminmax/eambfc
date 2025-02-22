@@ -39,9 +39,9 @@
 bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
     u8 i_bytes[4];
     u32 lo12 = sign_extend(val, 12);
-    if (bit_fits_s(val, 32)) {
+    if (bit_fits(val, 32)) {
         i32 hi20 = sign_extend(((u64)val + 0x800) >> 12, 20);
-        if (hi20 && bit_fits_s(hi20, 6)) {
+        if (hi20 && bit_fits(hi20, 6)) {
             u16 instr =
                 0x6001 | (((hi20 & 0x20) | reg) << 7) | ((hi20 & 0x1f) << 2);
             serialize16le(instr, &i_bytes);
@@ -51,7 +51,7 @@ bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
             if (!append_obj(code_buf, &i_bytes, 4)) return false;
         }
         if (lo12 || !hi20) {
-            if (bit_fits_s((i32)lo12, 6)) {
+            if (bit_fits((i32)lo12, 6)) {
                 /* if n == 0: `C.LI reg, lo6`
                  * else: `ADDIW reg, reg, lo6` */
                 u16 instr = (hi20 ? 0x2001 : 0x4001) |
@@ -76,8 +76,8 @@ bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
 
     /* If the remaining bits don't fit in 12 bits, we might be able to reduce
      * the shift amount in order to use LUI which will zero the lower 12 bits */
-    if (shift > 12 && (!bit_fits_s(hi52, 12)) &&
-        bit_fits_s(((u64)hi52 << 12), 32)) {
+    if (shift > 12 && (!bit_fits(hi52, 12)) &&
+        bit_fits(((u64)hi52 << 12), 32)) {
         shift -= 12;
         hi52 = ((u64)hi52) << 12;
     }
@@ -88,7 +88,7 @@ bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
         serialize16le(instr, &i_bytes);
         if (!append_obj(code_buf, i_bytes, 2)) return false;
     }
-    if (lo12 && bit_fits_s((i16)lo12, 6)) {
+    if (lo12 && bit_fits((i16)lo12, 6)) {
         /* C.ADDI reg, reg, lo12 */
         u16 instr =
             0x0001 | (((lo12 & 0x20) | reg) << 7) | ((lo12 & 0x1f) << 2);
@@ -135,7 +135,7 @@ static bool cond_jump(u8 reg, i64 distance, bool eq, sized_buf *dst_buf) {
      * distances and always compare their operand register against the zero
      * register, but they only work with a specific subset of registers, all of
      * which are non-volatile. */
-    if (!bit_fits_s(distance, 21)) {
+    if (!bit_fits(distance, 21)) {
         basic_err(
             "JUMP_TOO_LONG",
             "offset is outside the range of possible 21-bit signed values"
@@ -235,14 +235,14 @@ static bool dec_byte(u8 reg, sized_buf *dst_buf) {
 
 static bool add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
     if (!imm) return true;
-    if (bit_fits_s(imm, 6)) {
+    if (bit_fits(imm, 6)) {
         /* c.addi reg, imm */
         u16 c_addi = (((imm & 0x20) | reg) << 7) | ((imm & 0x1f) << 2) | 1;
         return append_obj(
             dst_buf, (u8[]){c_addi & 0xff, (c_addi & 0xff00) >> 8}, 2
         );
     }
-    if (bit_fits_s(imm, 12)) {
+    if (bit_fits(imm, 12)) {
         /* addi reg, reg, imm */
         u8 i_bytes[4];
         serialize32le(
@@ -273,7 +273,7 @@ static bool add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     uint sz;
     i8 imm_s = imm8;
     serialize32le(load_from_byte(reg), i_bytes);
-    if (bit_fits_s(imm_s, 6)) {
+    if (bit_fits(imm_s, 6)) {
         sz = 10;
         /* c.addi TEMP_REG, imm8 */
         serialize16le(
@@ -299,7 +299,7 @@ static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     uint sz;
     i8 imm_s = -((i16)imm8);
     serialize32le(load_from_byte(reg), i_bytes);
-    if (bit_fits_s(imm_s, 6)) {
+    if (bit_fits(imm_s, 6)) {
         sz = 10;
         /* c.addi TEMP_REG, imm8 */
         serialize16le(
