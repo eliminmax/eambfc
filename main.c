@@ -112,6 +112,12 @@ static bool select_inter(const char *arch_arg, arch_inter **inter) {
         return true;
     }
 #endif /* BFC_TARGET_X86_64 */
+#if BFC_TARGET_RISCV64
+    if (any_match(optarg, 2, "riscv64", "riscv")) {
+        *inter = &RISCV64_INTER;
+        return true;
+    }
+#endif /* BFC_TARGET_RISCV64 */
 #if BFC_TARGET_ARM64
     if (any_match(arch_arg, 2, "arm64", "aarch64")) {
         *inter = &ARM64_INTER;
@@ -178,6 +184,9 @@ static run_cfg parse_args(int argc, char *argv[]) {
 #if BFC_TARGET_ARM64
                 "- arm64 (aliases: aarch64)\n"
 #endif /* BFC_TARGET_ARM64 */
+#if BFC_TARGET_RISCV64
+                "- riscv64 (aliases: riscv)\n"
+#endif /* BFC_TARGET_RISCV64 */
 #if BFC_TARGET_S390X
                 "- s390x (aliases: s390, s390x, z/architecture)\n"
 #endif /* BFC_TARGET_S390X */

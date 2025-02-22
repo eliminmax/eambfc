@@ -12,6 +12,7 @@
 /* __BACKENDS__ when adding a backend, add a macro here */
 /* set to 0 if you don't want it included in the eambfc build. */
 #define BFC_TARGET_ARM64 1
+#define BFC_TARGET_RISCV64 1
 #define BFC_TARGET_S390X 1
 #define BFC_TARGET_X86_64 1
 /* The target architecture - should be the same as the ELF e_machine value for

@@ -9,7 +9,7 @@ PREFIX = /usr/local
 POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
 # __BACKENDS__ add backend object file to BACKENDS
-BACKENDS = backend_arm64.o backend_s390x.o backend_x86_64.o
+BACKENDS = backend_arm64.o backend_riscv64.o backend_s390x.o backend_x86_64.o
 
 COMPILE_DEPS = serialize.o $(BACKENDS) optimize.o err.o util.o resource_mgr.o
 EAMBFC_DEPS = compile.o $(COMPILE_DEPS) main.o
@@ -32,7 +32,8 @@ GCC_INT_TORTURE_FLAGS = -D INT_TORTURE_TEST=1 $(GCC_STRICT_FLAGS) -Wno-format \
 
 # __BACKENDS__ add backend source file to UNIBUILD_FILES
 UNIBUILD_FILES = serialize.c compile.c optimize.c err.c util.c resource_mgr.c \
-			backend_arm64.c backend_s390x.c backend_x86_64.c main.c
+			backend_arm64.c backend_riscv64.c backend_s390x.c \
+			backend_x86_64.c main.c
 
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
 # overridden if CFLAGS are passed as an argument to make.
@@ -63,6 +64,7 @@ util.o: util.c
 optimize.o: optimize.c
 # __BACKENDS__ add target for backend object file
 backend_arm64.o: backend_arm64.c
+backend_riscv64.o: backend_riscv64.c
 backend_s390x.o: backend_s390x.c
 backend_x86_64.o: backend_x86_64.c
 
@@ -89,6 +91,7 @@ can_run_x86_64:
 # __BACKENDS__ create execfmt_support binary for target in and add it here
 can_run_all:
 	execfmt_support/arm64 && \
+	execfmt_support/riscv64 && \
 	execfmt_support/s390x && \
 	execfmt_support/x86_64
 

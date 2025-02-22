@@ -187,6 +187,9 @@ extern const arch_inter X86_64_INTER;
 #if BFC_TARGET_ARM64
 extern const arch_inter ARM64_INTER;
 #endif /* BFC_TARGET_ARM64 */
+#if BFC_TARGET_RISCV64
+extern const arch_inter RISCV64_INTER;
+#endif /* BFC_TARGET_RISCV64 */
 #if BFC_TARGET_S390X
 extern const arch_inter S390X_INTER;
 #endif /* BFC_TARGET_S390X */
