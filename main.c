@@ -104,6 +104,30 @@ typedef struct {
     bool json     : 1;
 } run_cfg;
 
+static bool select_inter(const char *arch_arg, arch_inter **inter) {
+    /* __BACKENDS__ add a block here */
+#if BFC_TARGET_X86_64
+    if (any_match(arch_arg, 4, "x86_64", "x64", "amd64", "x86-64")) {
+        *inter = &X86_64_INTER;
+        return true;
+    }
+#endif /* BFC_TARGET_X86_64 */
+#if BFC_TARGET_ARM64
+    if (any_match(arch_arg, 2, "arm64", "aarch64")) {
+        *inter = &ARM64_INTER;
+        return true;
+    }
+#endif /* BFC_TARGET_ARM64 */
+#if BFC_TARGET_S390X
+    if (any_match(arch_arg, 3, "s390x", "s390", "z/architecture")) {
+        *inter = &S390X_INTER;
+        return true;
+    }
+#endif /* BFC_TARGET_S390X */
+    param_err("UNKNOWN_ARCH", "{} is not a recognized architecture", arch_arg);
+    return false;
+}
+
 /* macro for use in parse_args function only.
  * SHOW_HINT:
  *  * unless -q or -j was passed, write the help text to stderr. */
@@ -243,28 +267,7 @@ static run_cfg parse_args(int argc, char *argv[]) {
                 SHOW_HINT();
                 exit(EXIT_FAILURE);
             }
-            /* either a bunch of #if preprocessor stuff or this, and the former
-             * would need to have an `if (false)` to make sure it's valid.
-             * Instead, use the macros and trust the compiler to optimize out
-             * the constant check, and optimize out any disabled blocks. */
-            /* __BACKENDS__ add a block here */
-            if (BFC_TARGET_X86_64 &&
-                any_match(optarg, 4, "x86_64", "x64", "amd64", "x86-64")) {
-                rc.inter = &X86_64_INTER;
-            } else if (BFC_TARGET_ARM64 &&
-                       any_match(optarg, 2, "arm64", "aarch64")) {
-                rc.inter = &ARM64_INTER;
-            } else if (BFC_TARGET_S390X &&
-                       any_match(
-                           optarg, 3, "s390x", "s390", "z/architecture"
-                       )) {
-                rc.inter = &S390X_INTER;
-            } else {
-                param_err(
-                    "UNKNOWN_ARCH",
-                    "{} is not a recognized architecture",
-                    optarg
-                );
+            if (!select_inter(optarg, &rc.inter)) {
                 SHOW_HINT();
                 exit(EXIT_FAILURE);
             }
