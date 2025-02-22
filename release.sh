@@ -88,7 +88,7 @@ codespell --skip='.git','*.sh','.githooks','*.[ch]'
 
 # check for unused functions - this was not done with run-lints.sh, as it lacks
 # context if not looking at every file
-cppcheck -q --enable=unusedFunction \
+cppcheck -q --std=c99 --error-exitcode=1 --enable=unusedFunction \
     --suppress=checkersReport \
     --check-level=exhaustive ./*.c
 
