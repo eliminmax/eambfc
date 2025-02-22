@@ -40,7 +40,7 @@
 # * gcc-aarch64-linux-gnu
 # * musl-tools
 # * gawk
-# * clang-19 (clang-19 command is symlinked into path as clang)
+# * clang-19 (with /usr/lib/llvm-19/bin in $PATH, so it's invoked as clang)
 # * libubsan1
 # * libasan6
 # * tcc
