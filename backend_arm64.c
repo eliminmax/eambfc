@@ -394,4 +394,4 @@ const arch_inter ARM64_INTER = {
     .ELF_ARCH = EM_AARCH64,
     .ELF_DATA = ELFDATA2LSB,
 };
-#endif /* BFC_TARGEET_ARM64 */
+#endif /* BFC_TARGET_ARM64 */
