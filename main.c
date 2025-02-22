@@ -154,6 +154,9 @@ static run_cfg parse_args(int argc, char *argv[]) {
 #if BFC_TARGET_ARM64
                 "- arm64 (aliases: aarch64)\n"
 #endif /* BFC_TARGET_ARM64 */
+#if BFC_TARGET_RISCV64
+                "- riscv64 (aliases: riscv)\n"
+#endif /* BFC_TARGET_RISCV64 */
 #if BFC_TARGET_S390X
                 "- s390x (aliases: s390, s390x, z/architecture)\n"
 #endif /* BFC_TARGET_S390X */
@@ -251,6 +254,9 @@ static run_cfg parse_args(int argc, char *argv[]) {
             if (BFC_TARGET_X86_64 &&
                 any_match(optarg, 4, "x86_64", "x64", "amd64", "x86-64")) {
                 rc.inter = &X86_64_INTER;
+            } else if (BFC_TARGET_RISCV64 &&
+                       any_match(optarg, 2, "riscv64", "riscv")) {
+                rc.inter = &RISCV64_INTER;
             } else if (BFC_TARGET_ARM64 &&
                        any_match(optarg, 2, "arm64", "aarch64")) {
                 rc.inter = &ARM64_INTER;

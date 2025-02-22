@@ -13,7 +13,10 @@
 
 /* Validate that at least one target is enabled */
 /* __BACKENDS__ each backend should be added to this check */
-#if !(BFC_TARGET_X86_64 || BFC_TARGET_ARM64 || BFC_TARGET_S390X)
+#if !( \
+    BFC_TARGET_X86_64 || BFC_TARGET_ARM64 || BFC_TARGET_RISCV64 || \
+    BFC_TARGET_S390X \
+)
 #error "No backends are enabled"
 #endif
 
@@ -34,6 +37,13 @@
 #error "BFC_DEFAULT_TARGET is EM_AARCH64, but BFC_TARGET_ARM64 is off."
 #endif /* !BFC_TARGET_ARM64 */
 #define BFC_DEFAULT_INTER ARM64_INTER
+#define BFC_DEFAULT_ARCH_STR "arm64"
+
+#elif BFC_DEFAULT_TARGET == EM_RISCV
+#if !BFC_TARGET_RISCV64
+#error "BFC_DEFAULT_TARGET is EM_RISCV, but BFC_TARGET_RISCV64 is off."
+#endif /* !BFC_TARGET_ARM64 */
+#define BFC_DEFAULT_INTER RISCV64_INTER
 #define BFC_DEFAULT_ARCH_STR "arm64"
 
 #elif BFC_DEFAULT_TARGET == EM_S390

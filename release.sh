@@ -156,6 +156,7 @@ for o_lvl in 0 1 2 3 s fast g z; do
     test_for_arch x86_64
     test_for_arch s390x
     test_for_arch arm64
+    test_for_arch riscv64
     cd ..
 done
 

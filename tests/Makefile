@@ -23,6 +23,8 @@ build_all: hello loop wrap wrap2 colortest truthmachine dead_code piped_in \
 test_all:
 	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a arm64" clean build_all
 	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a arm64
+	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a riscv64" clean build_all
+	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a riscv64
 	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a s390x" clean build_all
 	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a s390x
 	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a x86_64" clean build_all
