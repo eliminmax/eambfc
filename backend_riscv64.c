@@ -204,7 +204,7 @@ static bool add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
         /* addi reg, reg, imm */
         u8 i_bytes[4];
         serialize32le(
-            (((u32)imm) << 20) | (((u32)reg) << 16) | (((u32)reg) << 7) | 0x13,
+            (((u32)imm) << 20) | (((u32)reg) << 15) | (((u32)reg) << 7) | 0x13,
             &i_bytes
         );
         return append_obj(dst_buf, i_bytes, 4);
@@ -268,7 +268,7 @@ static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
         sz = 12;
         /* addi TEMP_REG, TEMP_REG, imm8 */
         serialize32le(
-            (((u32)imm_s) << 20) | (((u32)TEMP_REG) << 16) |
+            (((u32)imm_s) << 20) | (((u32)TEMP_REG) << 15) |
                 (((u32)TEMP_REG) << 7) | 0x13,
             &i_bytes[4]
         );
@@ -278,7 +278,7 @@ static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
 }
 
 static bool zero_byte(u8 reg, sized_buf *dst_buf) {
-    u32 instr = 0x13 | (((u32)reg) << 15);
+    u32 instr = 0x23 | (((u32)reg) << 15);
     u8 i_bytes[4];
     serialize32le(instr, i_bytes);
     return append_obj(dst_buf, i_bytes, 4);
