@@ -123,6 +123,48 @@ static u32 load_from_byte(u8 addr) {
     return (((u32)addr) << 15) | (((u32)TEMP_REG) << 7) | 0x03;
 }
 
+static bool cond_jump(u8 reg, i64 distance, bool eq, sized_buf *dst_buf) {
+    /* there are 2 types of instructions used here for control flow - branches,
+     * which can conditionally move up to 4 KiB away, and jumps, which
+     * unconditionally move up to 1MiB away. The former is too short, and the
+     * latter is unconditional, so the solution is to use an inverted branch
+     * condition and set it to branch over the unconditional jump. Ugly, but it
+     * works.
+     *
+     * There are C.BNEZ and C.BEQZ instructions that could branch smaller
+     * distances and always compare their operand register against the zero
+     * register, but they only work with a specific subset of registers, all of
+     * which are non-volatile. */
+    if (!bit_fits_s(distance, 21)) {
+        basic_err(
+            "JUMP_TOO_LONG",
+            "offset is outside the range of possible 21-bit signed values"
+        );
+        return false;
+    }
+    if ((distance % 2) != 0) {
+        internal_err(
+            "INVALID_JUMP_ADDRESS",
+            "offset is an invalid address offset (offset % 2 != 0)"
+        );
+        /* internal_err never returns, so this will not run */
+        return false;
+    }
+    u8 i_bytes[12];
+    u32 jump_dist = distance + 4;
+    serialize32le(load_from_byte(reg), i_bytes);
+    // `BNEZ t1, 8` if comp_type == Eq, otherwise `BEQZ t1, 8`
+    serialize32le(eq ? 0x31463 : 0x30463, &i_bytes[4]);
+    /* J-type is a variant of U-type with the bits scrambled around to simplify
+     * hardware implementation at the expense of compiler/assembler
+     * implementation. */
+    u32 encoded_dist = ((jump_dist & (1 << 20)) << 11) |
+                       ((jump_dist & 0x7fe) << 20) |
+                       ((jump_dist & (1 << 11)) << 9) | (jump_dist & 0xff000);
+    serialize32le(encoded_dist | 0x6f, &i_bytes[8]);
+    return append_obj(dst_buf, i_bytes, 12);
+}
+
 static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     return encode_li(dst_buf, reg, imm);
 }
@@ -146,11 +188,11 @@ static bool nop_loop_open(sized_buf *dst_buf) {
 }
 
 static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return false;
+    return cond_jump(reg, offset, true, dst_buf);
 }
 
 static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return false;
+    return cond_jump(reg, offset, false, dst_buf);
 }
 
 static bool inc_reg(u8 reg, sized_buf *dst_buf) {
