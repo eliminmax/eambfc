@@ -15,10 +15,11 @@ success=0
 failed=0
 skipped=0
 
-interface_files='backend_arm64.c backend_x86_64.c backend_s390x.c'
-misc_src_files='serialize.c compile.c err.c util.c optimize.c resource_mgr.c'
-src_files="$interface_files $misc_src_files main.c"
-unset interface_files misc_src_files
+src_files='serialize.c compile.c err.c util.c optimize.c resource_mgr.c'
+# __BACKENDS__ add backend source file here
+src_files="$src_files backend_arm64.c backend_x86_64.c backend_s390x.c "
+src_files="$src_files backend_riscv64.c"
+src_files="$src_files main.c"
 
 posix_flag='-D _POSIX_C_SOURCE=200809L'
 
