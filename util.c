@@ -74,7 +74,7 @@ void *sb_reserve(sized_buf *sb, size_t nbytes) {
      * space requirements, then allocate it. */
     if (sb->sz + nbytes > sb->capacity) {
         /* will reallocate with 0x1000 to 0x2000 bytes of extra space */
-        size_t needed_cap = (sb->sz + 0x1000) & (~0xfff);
+        size_t needed_cap = (sb->sz + nbytes + 0x1000) & (~0xfff);
         if (needed_cap < sb->capacity) {
             basic_err(
                 "BUF_TOO_LARGE",
