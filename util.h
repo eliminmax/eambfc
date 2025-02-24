@@ -31,6 +31,11 @@ i64 sign_extend(i64 val, u8 bits);
  * See write.3POSIX for more information on arguments. */
 bool write_obj(int fd, const void *buf, size_t ct);
 
+/* reserve nbytes bytes at the end of dst, and returns a pointer to the
+ * beginning of them - it's assumed that the caller will populate them, so the
+ * sized_buf will consider them used */
+void *sb_reserve(sized_buf *sb, size_t nbytes);
+
 /* Appends first bytes_sz of bytes to dst, reallocating dst as needed. */
 bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz);
 

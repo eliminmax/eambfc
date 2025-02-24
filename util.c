@@ -14,6 +14,7 @@
 #include "resource_mgr.h" /* mgr_malloc, mgr_realloc, mgr_free */
 #include "types.h" /* ssize_t, size_t, off_t */
 
+/* return the number of trailing zeroes in val */
 extern u8 trailing_0s(u64 val) {
     u8 counter = 0;
     while (!(val & 1)) {
@@ -56,6 +57,41 @@ bool write_obj(int fd, const void *buf, size_t ct) {
         return false;
     }
     return true;
+}
+
+/* reserve nbytes bytes at the end of dst, and returns a pointer to the
+ * beginning of them - it's assumed that the caller will populate them, so the
+ * sized_buf will consider them used */
+void *sb_reserve(sized_buf *sb, size_t nbytes) {
+    if (sb->buf == NULL) {
+        internal_err(
+            "APPEND_OBJ_TO_NULL", "sb_reserve called with dst->buf set to NULL"
+        );
+        /* will never return, as internal_err calls exit(EXIT_FAILURE) */
+        return NULL;
+    }
+    /* if more space is needed, ensure no overflow occurs when calculating new
+     * space requirements, then allocate it. */
+    if (sb->sz + nbytes > sb->capacity) {
+        /* will reallocate with 0x1000 to 0x2000 bytes of extra space */
+        size_t needed_cap = (sb->sz + 0x1000) & (~0xfff);
+        if (needed_cap < sb->capacity) {
+            basic_err(
+                "BUF_TOO_LARGE",
+                "Out of room, but extending buffer would cause overflow"
+            );
+            mgr_free(sb->buf);
+            sb->capacity = 0;
+            sb->sz = 0;
+            sb->buf = NULL;
+            return NULL;
+        }
+        /* reallocate to new capacity */
+        sb->buf = mgr_realloc(sb->buf, needed_cap);
+        sb->capacity = needed_cap;
+    }
+    sb->sz += nbytes;
+    return (char *)sb->buf + sb->sz - nbytes;
 }
 
 /* Append bytes to dst, handling reallocs as needed.
