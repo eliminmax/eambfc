@@ -9,6 +9,7 @@
 #include <stdlib.h> /* malloc, realloc, free */
 #include <string.h> /* strlen, strcpy, strstr, memmove, memcpy */
 /* internal */
+#include "attributes.h"
 #include "types.h" /* bool, uint */
 
 static bool quiet;
@@ -25,7 +26,7 @@ void json_mode(void) {
 
 /* avoid using json_str for this special case, as malloc may fail again,
  * causing a loop of failures to generate json error messages properly. */
-void alloc_err(void) {
+noreturn void alloc_err(void) {
     if (json) {
         puts(
             "{\"errorId:\":\"ALLOC_FAILED\","
@@ -48,13 +49,13 @@ void alloc_err(void) {
 
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
-static char *json_str(const char *str) {
+nonnull_ret nonnull_args static char *json_str(const char *str) {
     size_t bufsz = 4096; /* 16 for padding, more added as needed */
     size_t used = 0;
     const char *p = str;
     char *reallocator;
     char *json_escaped = malloc(bufsz);
-    if (json_escaped == NULL) return NULL;
+    if (json_escaped == NULL) alloc_err();
     char *outp = json_escaped;
     while (*p) {
         switch (*p) {
@@ -89,7 +90,7 @@ static char *json_str(const char *str) {
             reallocator = realloc(json_escaped, bufsz);
             if (reallocator == NULL) {
                 free(json_escaped);
-                return NULL;
+                alloc_err();
             }
             json_escaped = reallocator;
         }
@@ -101,40 +102,34 @@ static char *json_str(const char *str) {
 
 #undef BS_ESCAPE_APPEND
 
-static void basic_jerr(const char *id, const char *msg) {
+nonnull_args static void basic_jerr(const char *id, const char *msg) {
     /* assume error id is json-safe, but don't assume that for msg. */
     char *json_msg;
-    if ((json_msg = json_str(msg)) == NULL) {
-        alloc_err();
-    } else {
-        printf("{\"errorId\":\"%s\",\"message\":\"%s\"}\n", id, json_msg);
-        free(json_msg);
+    if ((json_msg = json_str(msg)) == NULL) alloc_err();
+    printf("{\"errorId\":\"%s\",\"message\":\"%s\"}\n", id, json_msg);
+    free(json_msg);
+}
+
+nonnull_args void basic_err(const char *id, const char *msg) {
+    if (json) {
+        basic_jerr(id, msg);
+    } else if (!quiet) {
+        fprintf(stderr, "Error %s: %s\n", id, msg);
     }
 }
 
-void basic_err(const char *id, const char *msg) {
-    if (json)
-        basic_jerr(id, msg);
-    else if (!quiet)
-        fprintf(stderr, "Error %s: %s\n", id, msg);
-}
-
-static void pos_jerr(
+nonnull_args static void pos_jerr(
     const char *id, const char *msg, char instr, uint line, uint col
 ) {
     /* Assume id needs no escaping, but msg and instr might. */
     /* First, convert instr into a string, then serialize that string. */
     const char instr_str[2] = {instr, '\0'};
     char *instr_json;
-    if ((instr_json = json_str(instr_str)) == NULL) {
-        alloc_err();
-        return;
-    }
+    if ((instr_json = json_str(instr_str)) == NULL) alloc_err();
     char *json_msg;
     if ((json_msg = json_str(msg)) == NULL) {
         free(instr_json);
         alloc_err();
-        return;
     }
     printf(
         "{\"errorId\":\"%s\",\"message\":\"%s\",\"instruction\":\"%s\","
@@ -149,7 +144,7 @@ static void pos_jerr(
     free(instr_json);
 }
 
-void position_err(
+nonnull_args void position_err(
     const char *id, const char *msg, char instr, uint line, uint col
 ) {
     if (json)
@@ -167,32 +162,31 @@ void position_err(
     }
 }
 
-static void instr_jerr(const char *id, const char *msg, char instr) {
+nonnull_args static void instr_jerr(
+    const char *id, const char *msg, char instr
+) {
     /* Assume id needs no escaping, but msg and instr might. */
     /* First, convert instr into a string, then serialize that string. */
     const char instr_str[2] = {instr, '\0'};
     char *instr_json;
-    if ((instr_json = json_str(instr_str)) == NULL) {
-        alloc_err();
-        return;
-    }
+    if ((instr_json = json_str(instr_str)) == NULL) { alloc_err(); }
     char *json_msg;
     if ((json_msg = json_str(msg)) == NULL) {
-        alloc_err();
         free(instr_json);
-        return;
+        alloc_err();
+    } else {
+        printf(
+            "{\"errorId\":\"%s\",\"message\":\"%s\",\"instruction\":\"%s\"}\n",
+            id,
+            msg,
+            instr_json
+        );
+        free(json_msg);
+        free(instr_json);
     }
-    printf(
-        "{\"errorId\":\"%s\",\"message\":\"%s\",\"instruction\":\"%s\"}\n",
-        id,
-        msg,
-        instr_json
-    );
-    free(json_msg);
-    free(instr_json);
 }
 
-void instr_err(const char *id, const char *msg, char instr) {
+nonnull_args void instr_err(const char *id, const char *msg, char instr) {
     if (json)
         instr_jerr(id, msg, instr);
     else if (!quiet) {
@@ -200,7 +194,9 @@ void instr_err(const char *id, const char *msg, char instr) {
     }
 }
 
-void param_err(const char *id, const char *proto, const char *arg) {
+nonnull_args void param_err(
+    const char *id, const char *proto, const char *arg
+) {
     char *inj_point;
     size_t proto_sz = strlen(proto);
     size_t arg_sz = strlen(arg);
@@ -229,7 +225,7 @@ void param_err(const char *id, const char *proto, const char *arg) {
     free(msg);
 }
 
-void internal_err(const char *id, const char *msg) {
+noreturn nonnull_args void internal_err(const char *id, const char *msg) {
     char ice_id[64] = "ICE:";
     char ice_msg[156] = "Internal Compiler Error: ";
     /* Ensure buffers have capacity

@@ -7,6 +7,7 @@
 #ifndef BFC_OPTIMIZE_H
 #define BFC_OPTIMIZE_H 1
 /* internal */
+#include "attributes.h"
 #include "types.h" /* sized_buf */
 
 /* Replaces the content of the buffer with a null-terminated string containing
@@ -26,5 +27,5 @@
  *
  * all `,` and `.` instructions are left unchanged, as are any `[` or `]`
  * instructions not part of the two sequences that are replaced with `@`. */
-bool filter_dead(sized_buf *src);
+nonnull_args bool filter_dead(sized_buf *src);
 #endif /* BFC_OPTIMIZE_H */

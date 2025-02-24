@@ -9,13 +9,14 @@
 /* C99 */
 #include <string.h> /* memmove, strchr, strlen, strstr */
 /* internal */
+#include "attributes.h"
 #include "err.h" /* instr_err */
 #include "resource_mgr.h" /* mgr_malloc */
 #include "types.h" /* bool, uint, u8, sized_buf */
 #include "util.h" /* append_obj */
 
 /* filter out the non-bf characters from code->buf */
-static void filter_non_bf(sized_buf *code) {
+static nonnull_args void filter_non_bf(sized_buf *code) {
     sized_buf tmp = {.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
     char instr;
     for (size_t i = 0; i < code->sz; i++) {
@@ -40,7 +41,7 @@ static void filter_non_bf(sized_buf *code) {
 
 /* A function that skips past a matching ].
  * loop_start is a pointer to the [ at the start of the loop */
-static const char *find_loop_end(const char *loop_start) {
+static const nonnull_args char *find_loop_end(const char *loop_start) {
     uint nest_level = 1;
     const char *p = loop_start;
     while (*(++p)) {
@@ -56,7 +57,7 @@ static const char *find_loop_end(const char *loop_start) {
 }
 
 /* return true if the loops are balanced, false otherwise */
-static bool loops_match(const char *code) {
+static nonnull_args bool loops_match(const char *code) {
     const char *open_p = strchr(code, '[');
     const char *close_p = strchr(code, ']');
     /* if none are found, it's fine. */
@@ -86,7 +87,7 @@ static bool loops_match(const char *code) {
 #define REPSTR256(s) REPSTR64(s) REPSTR64(s) REPSTR64(s) REPSTR64(s)
 
 /* remove redundant instruction sequences like `<>` */
-static void remove_dead(sized_buf *ir) {
+static nonnull_args void remove_dead(sized_buf *ir) {
     /* code constructs that do nothing - either 2 adjacent instructions that
      * cancel each other out, or 256 consecutive `+` or `-` instructions that
      * loop the current cell back to its current value */
@@ -146,7 +147,7 @@ static void remove_dead(sized_buf *ir) {
 }
 
 /* Merge `[-]` and `[+]` into `@` */
-static void merge_set_zero(sized_buf *ir) {
+static nonnull_args void merge_set_zero(sized_buf *ir) {
     char *str = ir->buf;
     char *p;
 
@@ -167,7 +168,7 @@ static void merge_set_zero(sized_buf *ir) {
  * internal intermediate representation of that file's code.
  * fd must be open for reading already, no check is performed.
  * Calling function is responsible for `mgr_free`ing the returned string. */
-bool filter_dead(sized_buf *src) {
+nonnull_args bool filter_dead(sized_buf *src) {
     filter_non_bf(src);
     if (src->buf == NULL) {
         mgr_free(src->buf);

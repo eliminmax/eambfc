@@ -22,6 +22,7 @@
 #ifndef BFC_RESOURCE_MGR_H
 #define BFC_RESOURCE_MGR_H 1
 /* internal */
+#include "attributes.h"
 #include "types.h" /* mode_t, size_t */
 
 /* MUST BE CALLED to register the internal cleanup function with atexit.
@@ -46,7 +47,7 @@ void register_mgr(void);
  *  - if internal call to malloc fails, calls alloc_err
  *
  * Because it calls alloc_err on failure, it never returns NULL. */
-void *mgr_malloc(size_t size);
+nonnull_ret void *mgr_malloc(size_t size);
 
 /* mgr_realloc has the same semantics as realloc, assuming it succeeds, but it
  * exits on failure. Because of that, `p = mgr_realloc(p, size);` is not a bug.
@@ -57,7 +58,7 @@ void *mgr_malloc(size_t size);
  *  - if internal call to realloc fails, frees ptr then calls alloc_err
  *
  * Because it calls alloc_err on failure, it never returns NULL. */
-void *mgr_realloc(void *ptr, size_t size);
+nonnull_args nonnull_ret void *mgr_realloc(void *ptr, size_t size);
 
 /* mgr_free has the same semantics as free, but unregisters the tracked
  * allocation.
@@ -81,8 +82,8 @@ void mgr_free(void *ptr);
  * Fatal Error Calls:
  *  - if called with 16 file descriptors already registered, call internal_err
  *    with error code `TOO_MANY_OPENS`. */
-int mgr_open_m(const char *pathname, int flags, mode_t mode);
-int mgr_open(const char *pathname, int flags);
+nonnull_args int mgr_open_m(const char *pathname, int flags, mode_t mode);
+nonnull_args int mgr_open(const char *pathname, int flags);
 
 /* mgr_close has the same semantics as close, but unregisters the tracked file
  * descriptor.

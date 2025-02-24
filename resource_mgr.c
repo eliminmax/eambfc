@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  * provides wrappers around various functions that need cleanup at the end of
@@ -11,6 +11,7 @@
 #include <fcntl.h> /* open */
 #include <unistd.h> /* close */
 /* internal */
+#include "attributes.h"
 #include "err.h" /* internal_err, alloc_err */
 #include "types.h" /* ifast_8, bool, mode_t, size_t */
 
@@ -36,14 +37,13 @@ static ifast_8 alloc_index(const void *ptr) {
     return -1;
 }
 
-void *mgr_malloc(size_t size) {
+nonnull_ret void *mgr_malloc(size_t size) {
     if (resources.alloc_i > MAX_ALLOCS - 1) {
         internal_err(
             "TOO_MANY_ALLOCS",
             "Allocated too many times for resource_mgr to track."
         );
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
-        return NULL;
     }
 
     void *result = malloc(size);
@@ -74,7 +74,7 @@ void mgr_free(void *ptr) {
     );
 }
 
-void *mgr_realloc(void *ptr, size_t size) {
+nonnull_args nonnull_ret void *mgr_realloc(void *ptr, size_t size) {
     ifast_8 index = alloc_index(ptr);
     if (index == -1) {
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
@@ -82,19 +82,17 @@ void *mgr_realloc(void *ptr, size_t size) {
             "MGR_REALLOC_UNKNOWN",
             "mgr_realloc called with an unregistered *ptr value"
         );
-        return NULL;
     }
     void *new_ptr = realloc(ptr, size);
     if (new_ptr == NULL) {
         free(resources.allocs[index]);
         alloc_err();
-        return NULL;
     }
     resources.allocs[index] = new_ptr;
     return new_ptr;
 }
 
-static int mgr_open_handler(
+static nonnull_args int mgr_open_handler(
     const char *pathname, int flags, mode_t mode, bool with_mode
 ) {
     if (resources.fd_i > MAX_FDS - 1) {
@@ -116,12 +114,12 @@ static int mgr_open_handler(
 }
 
 /* same semantics as open with a specified mode */
-int mgr_open_m(const char *pathname, int flags, mode_t mode) {
+nonnull_args int mgr_open_m(const char *pathname, int flags, mode_t mode) {
     return mgr_open_handler(pathname, flags, mode, true);
 }
 
 /* same semantics as open without a specified mode */
-int mgr_open(const char *pathname, int flags) {
+nonnull_args int mgr_open(const char *pathname, int flags) {
     return mgr_open_handler(pathname, flags, 0, false);
 }
 
@@ -140,11 +138,11 @@ int mgr_close(int fd) {
             "mgr_close called with an unregistered fd value"
         );
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
-        return -1;
+    } else {
+        /* remove fd from resources */
+        size_t to_move = ((resources.fd_i--) - index) * sizeof(int);
+        memmove(&(resources.fds[index]), &(resources.fds[index + 1]), to_move);
     }
-    /* remove fd from resources */
-    size_t to_move = ((resources.fd_i--) - index) * sizeof(int);
-    memmove(&(resources.fds[index]), &(resources.fds[index + 1]), to_move);
     return close(fd);
 }
 

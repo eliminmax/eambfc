@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -7,12 +7,13 @@
 /* C99 */
 #include <stddef.h> /* size_t */
 /* internal */
+#include "attributes.h"
 #include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr */
 #include "types.h" /* [iu]{8,16,32,64} */
 
 /* serialize a 16-bit value in v16 into 2 bytes in dest, in LSB order
  * return value is the number of bytes written. */
-size_t serialize16le(u16 v16, void *dest) {
+nonnull_args size_t serialize16le(u16 v16, void *dest) {
     size_t size = 0;
     char *p = dest;
     p[size++] = v16;
@@ -22,7 +23,7 @@ size_t serialize16le(u16 v16, void *dest) {
 
 /* serialize a 16-bit value in v16 into 2 bytes in dest, in MSB order
  * return value is the number of bytes written. */
-size_t serialize16be(u16 v16, void *dest) {
+nonnull_args size_t serialize16be(u16 v16, void *dest) {
     size_t size = 0;
     char *p = dest;
     p[size++] = (v16 >> 8);
@@ -32,7 +33,7 @@ size_t serialize16be(u16 v16, void *dest) {
 
 /* serialize a 32-bit value in v32 into 4 bytes in dest, in LSB order
  * return value is the number of bytes written. */
-size_t serialize32le(u32 v32, void *dest) {
+nonnull_args size_t serialize32le(u32 v32, void *dest) {
     size_t size = serialize16le(v32, dest);
     size += serialize16le(v32 >> 16, (char *)dest + size);
     return size;
@@ -40,7 +41,7 @@ size_t serialize32le(u32 v32, void *dest) {
 
 /* serialize a 32-bit value in v32 into 4 bytes in dest, in MSB order
  * return value is the number of bytes written. */
-size_t serialize32be(u32 v32, void *dest) {
+nonnull_args size_t serialize32be(u32 v32, void *dest) {
     size_t size = serialize16be(v32 >> 16, dest);
     size += serialize16be(v32, (char *)dest + size);
     return size;
@@ -48,7 +49,7 @@ size_t serialize32be(u32 v32, void *dest) {
 
 /* serialize a 64-bit value in v64 into 8 bytes in dest, in LSB order
  * return value is the number of bytes written. */
-size_t serialize64le(u64 v64, char *dest) {
+nonnull_args size_t serialize64le(u64 v64, char *dest) {
     size_t size = serialize32le(v64, dest);
     size += serialize32le(v64 >> 32, (char *)dest + size);
     return size;
@@ -56,14 +57,14 @@ size_t serialize64le(u64 v64, char *dest) {
 
 /* serialize a 64-bit value in v64 into 8 bytes in dest, in MSB order
  * return value is the number of bytes written. */
-size_t serialize64be(u64 v64, char *dest) {
+nonnull_args size_t serialize64be(u64 v64, char *dest) {
     size_t size = serialize32be(v64 >> 32, dest);
     size += serialize32be(v64, (char *)dest + size);
     return size;
 }
 
 /* serialize a 64-bit Ehdr into a byte sequence, in LSB order */
-size_t serialize_ehdr64_le(Elf64_Ehdr *ehdr, void *dest) {
+nonnull_args size_t serialize_ehdr64_le(Elf64_Ehdr *ehdr, void *dest) {
     size_t i;
     char *p = dest;
     /* first 16 bytes are easy - it's a series of literal byte values */
@@ -85,7 +86,7 @@ size_t serialize_ehdr64_le(Elf64_Ehdr *ehdr, void *dest) {
 }
 
 /* serialize a 64-bit Ehdr into a byte sequence, in MSB order */
-size_t serialize_ehdr64_be(Elf64_Ehdr *ehdr, void *dest) {
+nonnull_args size_t serialize_ehdr64_be(Elf64_Ehdr *ehdr, void *dest) {
     size_t i;
     char *p = dest;
     /* first 16 bytes are easy - it's a series of literal byte values */
@@ -107,7 +108,7 @@ size_t serialize_ehdr64_be(Elf64_Ehdr *ehdr, void *dest) {
 }
 
 /* serialize a 64-bit Phdr into a byte sequence, in LSB order */
-size_t serialize_phdr64_le(const Elf64_Phdr *phdr, void *dest) {
+nonnull_args size_t serialize_phdr64_le(const Elf64_Phdr *phdr, void *dest) {
     size_t i = 0;
     char *p = dest;
     i += serialize32le(phdr->p_type, p + i);
@@ -122,7 +123,7 @@ size_t serialize_phdr64_le(const Elf64_Phdr *phdr, void *dest) {
 }
 
 /* serialize a 64-bit Phdr into a byte sequence, in MSB order */
-size_t serialize_phdr64_be(const Elf64_Phdr *phdr, void *dest) {
+nonnull_args size_t serialize_phdr64_be(const Elf64_Phdr *phdr, void *dest) {
     size_t i = 0;
     char *p = dest;
     i += serialize32be(phdr->p_type, p + i);

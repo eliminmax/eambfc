@@ -10,12 +10,13 @@
 /* POSIX */
 #include <unistd.h> /* read, write */
 /* internal */
+#include "attributes.h"
 #include "err.h" /* basic_err */
 #include "resource_mgr.h" /* mgr_malloc, mgr_realloc, mgr_free */
 #include "types.h" /* ssize_t, size_t, off_t */
 
 /* return the number of trailing zeroes in val */
-extern u8 trailing_0s(u64 val) {
+extern const_fn u8 trailing_0s(u64 val) {
     u8 counter = 0;
     while (!(val & 1)) {
         val >>= 1;
@@ -25,14 +26,14 @@ extern u8 trailing_0s(u64 val) {
 }
 
 /* Return true if signed `val` fits within specified number of bits */
-bool bit_fits(i64 val, u8 bits) {
+extern const_fn bool bit_fits(i64 val, u8 bits) {
     int64_t max = INT64_C(1) << (bits - 1);
     int64_t min = -max;
     return val >= min && val < max;
 }
 
 /* return the least significant bits of val sign-extended */
-i64 sign_extend(i64 val, u8 bits) {
+const_fn i64 sign_extend(i64 val, u8 bits) {
     u8 shift_amount = (sizeof(i64) * 8) - bits;
     /* shifting into the sign bit is undefined behavior, so cast it to unsigned,
      * then assign it back. */
@@ -43,7 +44,7 @@ i64 sign_extend(i64 val, u8 bits) {
 /* Wrapper around write.3POSIX that returns true if all bytes were written, and
  * prints an error and returns false otherwise or if ct is too large to
  * validate. */
-bool write_obj(int fd, const void *buf, size_t ct) {
+nonnull_args bool write_obj(int fd, const void *buf, size_t ct) {
     if (ct > SSIZE_MAX) {
         basic_err(
             "WRITE_TOO_LARGE",
@@ -62,13 +63,12 @@ bool write_obj(int fd, const void *buf, size_t ct) {
 /* reserve nbytes bytes at the end of dst, and returns a pointer to the
  * beginning of them - it's assumed that the caller will populate them, so the
  * sized_buf will consider them used */
-void *sb_reserve(sized_buf *sb, size_t nbytes) {
+nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
     if (sb->buf == NULL) {
         internal_err(
             "APPEND_OBJ_TO_NULL", "sb_reserve called with dst->buf set to NULL"
         );
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
-        return NULL;
     }
     /* if more space is needed, ensure no overflow occurs when calculating new
      * space requirements, then allocate it. */
@@ -84,7 +84,7 @@ void *sb_reserve(sized_buf *sb, size_t nbytes) {
             sb->capacity = 0;
             sb->sz = 0;
             sb->buf = NULL;
-            return NULL;
+            alloc_err();
         }
         /* reallocate to new capacity */
         sb->buf = mgr_realloc(sb->buf, needed_cap);
@@ -96,7 +96,9 @@ void *sb_reserve(sized_buf *sb, size_t nbytes) {
 
 /* Append bytes to dst, handling reallocs as needed.
  * Assumes that dst has been allocated with resource_mgr. */
-bool append_obj(sized_buf *dst, const void *bytes, size_t bytes_sz) {
+nonnull_args bool append_obj(
+    sized_buf *dst, const void *bytes, size_t bytes_sz
+) {
     /* if more space is needed, ensure no overflow occurs when calculating new
      * space requirements, then allocate it.
      *
