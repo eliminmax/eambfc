@@ -10,9 +10,97 @@
 #include <unistd.h>
 /* internal */
 #include "attributes.h"
+#include "config.h"
 #include "err.h"
 #include "parse_args.h"
 #include "version.h"
+
+#if BFC_GNU_ARGS
+/* GNU C */
+#include <getopt.h>
+const struct option longopts[] = {
+    {"help", no_argument, 0, 'h'},
+    {"version", no_argument, 0, 'V'},
+    {"quiet", no_argument, 0, 'q'},
+    {"json", no_argument, 0, 'j'},
+    {"optimize", no_argument, 0, 'O'},
+    {"keep-failed", no_argument, 0, 'k'},
+    {"moveahead", no_argument, 0, 'm'},
+    {"list-targets", no_argument, 0, 'A'},
+    {"target-arch", required_argument, 0, 'a'},
+    {"tape-size", required_argument, 0, 't'},
+    {"source-suffix", required_argument, 0, 'e'},
+    {"output-suffix", required_argument, 0, 's'},
+    {0, 0, 0, 0},
+};
+
+/* ignored but need a non-null pointer to this*/
+static int arg_index = 0;
+#define getopt(c, v, opts) getopt_long(c, v, opts, longopts, &arg_index)
+#endif /* BFC_GNU_ARGS */
+
+static const char *HELP_TEMPLATE =
+    "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
+#if BFC_GNU_ARGS
+    " --help, -h             - display this help text and exit\n"
+    " --version, -V          - print version information and exit\n"
+    " --json, -j             - print errors in JSON format* "
+    "(assumes file names are UTF-8-encoded.)\n"
+    " --quiet, -q            - don't print errors unless -j was passed*\n"
+    " --optimize, -O         - enable optimization**.\n"
+    " --keep-failed, -k      - keep files that failed to compile (for "
+    "debugging)\n"
+    " --moveahead, -m        - continue to the next file instead of quitting "
+    "if a "
+    "file fails to compile\n"
+    " --list-targets, -A     - list supported architectures and exit\n"
+    " --                     - stop argument parsing, treat remaining "
+    "arguments as "
+    "source files.\n"
+    "\n"
+    "* -q and -j will not affect arguments passed before they were.\n"
+    "\n"
+    "** Optimization can make error reporting less precise.\n"
+    "\n"
+    "\n"
+    "PARAMETER OPTIONS (provide at most once each)\n"
+    " --tape-size count, -t count        - use <count> 4-KiB blocks for the "
+    "tape.\n"
+    " --source-extension ext, -e ext     - use 'ext' as the source extension\n"
+    " --target-arch arch, -a arch        - compile for the specified "
+    "architecture\n"
+    " --output-suffix suf, -s suf        -  append 'suf' to output file names\n"
+#else /* BFC_GNU_ARGS (help text) */
+    " -h     - display this help text and exit\n"
+    " -V     - print version information and exit\n"
+    " -j     - print errors in JSON format* "
+    "(assumes file names are UTF-8-encoded.)\n"
+    " -q     - don't print errors unless -j was passed*\n"
+    " -O     - enable optimization**.\n"
+    " -k     - keep files that failed to compile (for debugging)\n"
+    " -m     - continue to the next file instead of quitting if a file fails "
+    "to compile\n"
+    " -A     - list supported architectures and exit\n"
+    " --     - stop argument parsing, treat remaining arguments as source "
+    "files.\n"
+    "\n"
+    "* -q and -j will not affect arguments passed before they were.\n"
+    "\n"
+    "** Optimization can make error reporting less precise.\n"
+    "\n"
+    "PARAMETER OPTIONS (provide at most once each)\n"
+    " -t count   - use <count> 4-KiB blocks for the tape.\n"
+    " -e ext     - use 'ext' as the source extension\n"
+    " -a arch    - compile for the specified architecture\n"
+    " -s suf     -  append 'suf' to output file names\n"
+#endif /* BFC_GNU_ARGS (help text) */
+    "\n"
+    "If not provided, it falls back to 8 as the tape-size count, \".bf\" as "
+    "the source extension, " BFC_DEFAULT_ARCH_STR
+    " as the target-arch, and an empty output-suffix\n"
+    "\n"
+    "Remaining options are treated as source file names. If they don't "
+    "end with the right extension, the program will raise an error.\n";
 
 /* returns true if strcmp matches s to any strings in its argument,
  * and false otherwise.
@@ -63,44 +151,6 @@ nonnull_args static bool select_inter(
     return false;
 }
 
-/* print the help message to outfile. progname should be argv[0]. */
-static nonnull_args void show_help(FILE *outfile, const char *progname) {
-    fprintf(
-        outfile,
-        "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
-        " -h        - display this help text and exit\n"
-        " -V        - print version information and exit\n"
-        " -j        - print errors in JSON format*\n"
-        "             (assumes file names are UTF-8-encoded.)\n"
-        " -q        - don't print errors unless -j was passed*\n"
-        " -O        - enable optimization**.\n"
-        " -k        - keep files that failed to compile (for debugging)\n"
-        " -c        - continue to the next file instead of quitting if a\n"
-        "             file fails to compile\n"
-        " -t count  - (only provide once) allocate <count> 4-KiB blocks for\n"
-        "             the tape. (defaults to 8 if not specified)\n"
-        " -e ext    - (only provide once) use 'ext' as the extension for\n"
-        "             source files instead of '.bf'\n"
-        "             (This program will remove this at the end of the input\n"
-        "             file to create the output file name)\n"
-        " -a arch   - compile for the specified architecture\n"
-        "             (defaults to " BFC_DEFAULT_ARCH_STR
-        " if not specified)**\n"
-        " -s ext    - (only provide once) use 'ext' as the extension for\n"
-        "             compiled binaries (empty if not specified)\n"
-        " -A        - list supported architectures and exit\n"
-        "\n"
-        "* -q and -j will not affect arguments passed before they were.\n"
-        "\n"
-        "** Optimization can make error reporting less precise.\n"
-        "\n"
-        "Remaining options are treated as source file names. If they don't\n"
-        "end with '.bf' (or the extension specified with '-e'), the program\n"
-        "will raise an error.\n",
-        progname
-    );
-}
-
 static noreturn nonnull_args inline void report_version(const char *progname) {
     printf(
         "%s: eambfc version " BFC_VERSION
@@ -142,11 +192,14 @@ static noreturn nonnull_args inline void list_arches(const char *progname) {
     exit(EXIT_SUCCESS);
 }
 
-/* macro for use in parse_args function only.
+/* macros for use in parse_args function only.
+ * PROGNAME:
+ *  * argv[0], but fall back to "eambfc" if !argc
  * SHOW_HINT:
  *  * unless -q or -j was passed, write the help text to stderr. */
+#define PROGNAME argc ? argv[0] : "eambfc"
 #define SHOW_HINT() \
-    if (!(rc.quiet || rc.json)) show_help(stderr, argc ? argv[0] : "eambfc")
+    if (!(rc.quiet || rc.json)) fprintf(stderr, HELP_TEMPLATE, PROGNAME)
 
 run_cfg parse_args(int argc, char *argv[]) {
     int opt;
@@ -165,7 +218,7 @@ run_cfg parse_args(int argc, char *argv[]) {
 
     while ((opt = getopt(argc, argv, ":hVqjOkmAa:e:t:s:")) != -1) {
         switch (opt) {
-        case 'h': show_help(stdout, argv[0]); exit(EXIT_SUCCESS);
+        case 'h': printf(HELP_TEMPLATE, PROGNAME); exit(EXIT_SUCCESS);
         case 'V': report_version(argc ? argv[0] : "eambfc");
         case 'A': list_arches(argc ? argv[0] : "eambfc");
         case 'q':
@@ -284,3 +337,4 @@ run_cfg parse_args(int argc, char *argv[]) {
 }
 
 #undef SHOW_HINT
+#undef PROGNAME
