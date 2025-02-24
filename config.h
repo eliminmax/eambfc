@@ -36,7 +36,7 @@
 #endif /* BFC_DEFAULT_TARGET */
 
 /* runs some preprocessor validation that the above settings are sane, and
- * defines some macros based on the configured default value */
+ * defines some macros based on the configured default target architecture */
 #define BFC_PREPROC_POST_CONFIG
 #include "post_config.h"
 #undef BFC_PREPROC_POST_CONFIG
