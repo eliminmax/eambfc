@@ -9,6 +9,10 @@
 /* internal */
 #include "compat/elf.h" /* EM_* */
 
+/* whether or not to support GNU argument parsing - requires _GNU_SOURCE to be
+ * defined if enabled */
+#define BFC_GNU_ARGS 0
+
 /* __BACKENDS__ when adding a backend, add a macro here */
 /* set to 0 if you don't want it included in the eambfc build. */
 #define BFC_TARGET_ARM64 1
