@@ -88,9 +88,9 @@ codespell --skip='.git','*.sh','.githooks','*.[ch]'
 
 # check for unused functions - this was not done with run-lints.sh, as it lacks
 # context if not looking at every file
-cppcheck -q --std=c99 --error-exitcode=1 --enable=unusedFunction \
-    --suppress=checkersReport \
-    --check-level=exhaustive ./*.c
+cppcheck -q --std=c99 --library=.norets.cfg --enable=unusedFunction \
+    --error-exitcode=1 --suppress=checkersReport --check-level=exhaustive \
+    -DBFC_NOATTRIBUTES ./*.c
 
 # use scan-build to test for potential issues
 scan-build-19 --status-bugs make && make clean
