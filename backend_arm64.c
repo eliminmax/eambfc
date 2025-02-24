@@ -85,20 +85,19 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     }
     /* skip to the first part with non-default imm16 values. */
     int i;
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < 4; i++) {
         if (parts[i].imm16 != default_val) break;
-    u8 instr_bytes[4];
+    }
+    u8 *instr_bytes = sb_reserve(dst_buf, 4);
     /* check if the end was reached without finding a non-default value */
     if (i == 4) {
         /* all are the default value, so use this fallback instruction */
         /* (MOVZ|MOVN) x.reg, default_val */
         mov(lead_mt, default_val, A64_SL_NO_SHIFT, reg, instr_bytes);
-        if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
     } else {
         /* at least one needs to be set */
         /* (MOVZ|MOVN) x.reg, lead_imm{, lsl lead_shift} */
         mov(lead_mt, parts[i].imm16, parts[i].shift, reg, instr_bytes);
-        if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
         for (++i; i < 4; i++)
             if (parts[i].imm16 != default_val) {
                 /*  MOVK x[reg], imm16{, lsl shift} */
@@ -106,8 +105,7 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
                     parts[i].imm16,
                     parts[i].shift,
                     reg,
-                    instr_bytes);
-                if (!append_obj(dst_buf, &instr_bytes, 4)) return false;
+                    sb_reserve(dst_buf, 4));
             }
     }
     return true;
@@ -151,14 +149,14 @@ static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
         return false;
     }
     u32 off_val = ((offset >> 2) + 1) & 0x7ffff;
-    u8 test_and_branch[12];
+    u8 *test_and_branch = sb_reserve(dst_buf, 12);
     /* LDRB w17, x.reg */
     load_from_byte(reg, test_and_branch);
     /* TST x17, 0xff */
     serialize32le(0xf2401e3f, &test_and_branch[4]);
     /* B.cond offset */
     serialize32le(0x54000000 | cond | (off_val << 5), &test_and_branch[8]);
-    return append_obj(dst_buf, test_and_branch, 12);
+    return true;
 }
 
 /* LDRB w17, x.reg; TST w17, 0xff; B.NE offset */
@@ -185,13 +183,12 @@ static bool add_sub_imm(
     /* align the immediate bits */
     u32 aligned = shift ? (imm >> 2) : (imm << 10);
     /* (ADD|SUB) x.reg, x.reg, imm{, lsl12} */
-    u8 i_bytes[4];
     serialize32le(
         (op << 24) | aligned | (shift ? (1 << 22) : 0) | (reg << 5) | reg,
-        i_bytes
+        sb_reserve(dst_buf, 4)
     );
 
-    return append_obj(dst_buf, &i_bytes, 4);
+    return true;
 }
 
 static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
@@ -216,11 +213,11 @@ static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
         /* set register x17 to the target value */
         if (!set_reg(TEMP_REG, (i64)imm, dst_buf)) return false;
         /* either ADD x.reg, x.reg, x17 or SUB x.reg, x.reg, x17 */
-        u8 instr_bytes[4];
         serialize32le(
-            op_byte << 24 | TEMP_REG << 16 | reg | reg << 5, instr_bytes
+            op_byte << 24 | TEMP_REG << 16 | reg | reg << 5,
+            sb_reserve(dst_buf, 4)
         );
-        return append_obj(dst_buf, &instr_bytes, 4);
+        return true;
     }
     /* over the 64-bit signed int limit, so print an error and return false. */
     const char err_char_str[2] = {(op == A64_OP_ADD) ? '>' : '<', '\0'};
@@ -256,12 +253,10 @@ static bool dec_reg(u8 reg, sized_buf *dst_buf) {
 typedef bool (*inc_dec_fn)(u8 reg, sized_buf *dst_buf);
 
 static bool inc_dec_byte(u8 reg, sized_buf *dst_buf, inc_dec_fn inner_fn) {
-    u8 i_bytes[4];
-    load_from_byte(reg, i_bytes);
-    if (!append_obj(dst_buf, &i_bytes, 4)) return false;
+    load_from_byte(reg, sb_reserve(dst_buf, 4));
     if (!inner_fn(TEMP_REG, dst_buf)) return false;
-    store_to_byte(reg, i_bytes);
-    return append_obj(dst_buf, &i_bytes, 4);
+    store_to_byte(reg, sb_reserve(dst_buf, 4));
+    return true;
 }
 
 /* next, some thin wrappers around the inc_dec_byte function that can be used in
@@ -277,21 +272,20 @@ static bool dec_byte(u8 reg, sized_buf *dst_buf) {
 /* similar to add_sub_reg, but operating on an auxiliary register, after loading
  * from byte and before restoring to that byte, much like inc_dec_byte */
 static bool add_sub_byte(u8 reg, u8 imm8, arith_op op, sized_buf *dst_buf) {
-    u8 i_bytes[12];
+    u8 *i_bytes = sb_reserve(dst_buf, 12);
     /* load the byte in address stored in x.reg into x17 */
     load_from_byte(reg, i_bytes);
     /* (ADD|SUB) x.17, x.17, imm8 */
     serialize32le((op << 24) | (imm8 << 10) | 0x231, &i_bytes[4]);
     /* store the lowest byte in x17 back to the address in x.reg */
     store_to_byte(reg, &i_bytes[8]);
-    return append_obj(dst_buf, i_bytes, 12);
+    return true;
 }
 
 /* a function to zero out a memory address. */
 static bool zero_byte(u8 reg, sized_buf *dst_buf) {
-    u8 i_bytes[4];
-    serialize32le(0x3800041f | reg << 5, i_bytes);
-    return append_obj(dst_buf, &i_bytes, 4);
+    serialize32le(0x3800041f | reg << 5, sb_reserve(dst_buf, 4));
+    return true;
 }
 
 /* now, the last few thin wrapper functions */
