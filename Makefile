@@ -127,6 +127,9 @@ int_torture_test: can_run_all config.h
 
 all_tests: test multibuild_test strict ubsan int_torture_test
 
+all_arch_test: can_run_all eambfc
+	(cd tests; make -s test_all)
+
 # remove eambfc and the objects it's built from, and remove test artifacts
 clean:
 	rm -rf $(EAMBFC_DEPS) eambfc alt-builds
