@@ -205,7 +205,7 @@ static noreturn nonnull_args inline void list_arches(const char *progname) {
  *  * argv[0], but fall back to "eambfc" if !argc
  * SHOW_HINT:
  *  * unless -q or -j was passed, write the help text to stderr. */
-#define PROGNAME argc ? argv[0] : "eambfc"
+#define PROGNAME (argc && argv[0] != NULL) ? argv[0] : "eambfc"
 #define SHOW_HINT() \
     if (!(rc.quiet || rc.json)) fprintf(stderr, HELP_TEMPLATE, PROGNAME)
 
@@ -227,8 +227,8 @@ run_cfg parse_args(int argc, char *argv[]) {
     while ((opt = getopt(argc, argv, ":hVqjOkmAa:e:t:s:")) != -1) {
         switch (opt) {
         case 'h': printf(HELP_TEMPLATE, PROGNAME); exit(EXIT_SUCCESS);
-        case 'V': report_version(argc ? argv[0] : "eambfc");
-        case 'A': list_arches(argc ? argv[0] : "eambfc");
+        case 'V': report_version(PROGNAME);
+        case 'A': list_arches(PROGNAME);
         case 'q':
             rc.quiet = true;
             quiet_mode();
