@@ -7,7 +7,7 @@
 #define BFC_ERR_H 1
 /* internal */
 #include "attributes.h"
-#include "types.h" /* uint */
+#include "types.h"
 
 /* enable quiet mode - this does not print error messages to stderr. Does not
  * affect JSON messages printed to stdout. */

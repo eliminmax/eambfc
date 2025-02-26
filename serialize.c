@@ -5,11 +5,11 @@
  * This defines functions to convert 64-bit ELF structs into char arrays. */
 
 /* C99 */
-#include <stddef.h> /* size_t */
+#include <stddef.h>
 /* internal */
 #include "attributes.h"
-#include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr */
-#include "types.h" /* [iu]{8,16,32,64} */
+#include "compat/elf.h"
+#include "types.h"
 
 /* serialize a 16-bit value in v16 into 2 bytes in dest, in LSB order
  * return value is the number of bytes written. */

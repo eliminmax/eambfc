@@ -7,13 +7,13 @@
  * OPTIMIZE_STANDALONE macro is defined at compile time. */
 
 /* C99 */
-#include <string.h> /* memmove, strchr, strlen, strstr */
+#include <string.h>
 /* internal */
 #include "attributes.h"
-#include "err.h" /* instr_err */
-#include "resource_mgr.h" /* mgr_malloc */
-#include "types.h" /* bool, uint, u8, sized_buf */
-#include "util.h" /* append_obj */
+#include "err.h"
+#include "resource_mgr.h"
+#include "types.h"
+#include "util.h"
 
 /* filter out the non-bf characters from code->buf */
 static nonnull_args void filter_non_bf(sized_buf *code) {

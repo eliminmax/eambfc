@@ -4,7 +4,7 @@
 
 #ifndef BFC_PARSE_ARGS
 #define BFC_PARSE_ARGS 1
-#include "arch_inter.h" /* arch_inter, *_INTER */
+#include "arch_inter.h"
 
 typedef struct {
     const arch_inter *inter;

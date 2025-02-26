@@ -6,7 +6,7 @@
 #ifndef BFC_UTIL_H
 #define BFC_UTIL_H 1
 #include "attributes.h"
-#include "types.h" /* off_t, size_t, sized_buf, u64, i64 */
+#include "types.h"
 
 /* return the number of trailing zeroes in val */
 const_fn inline u8 trailing_0s(u64 val) {

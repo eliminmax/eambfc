@@ -5,15 +5,15 @@
  * the process, and calls the cleanup functions as needed if the end was reached
  * improperly */
 /* C99 */
-#include <stdlib.h> /* {m,re}alloc, free, atexit */
-#include <string.h> /* memmove */
+#include <stdlib.h>
+#include <string.h>
 /* POSIX */
-#include <fcntl.h> /* open */
-#include <unistd.h> /* close */
+#include <fcntl.h>
+#include <unistd.h>
 /* internal */
 #include "attributes.h"
-#include "err.h" /* internal_err, alloc_err */
-#include "types.h" /* ifast_8, bool, mode_t, size_t */
+#include "err.h"
+#include "types.h"
 
 #define MAX_ALLOCS 64
 #define MAX_FDS 16

@@ -4,12 +4,12 @@
  *
  * This file provides the arch_inter for the x86_64 architecture. */
 /* internal */
-#include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
-#include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
-#include "err.h" /* basic_err */
-#include "serialize.h" /* serialize* */
-#include "types.h" /* [iu]{8,16,32,64}, bool, size_t, off_t */
-#include "util.h" /* append_obj */
+#include "arch_inter.h"
+#include "compat/elf.h"
+#include "err.h"
+#include "serialize.h"
+#include "types.h"
+#include "util.h"
 #if BFC_TARGET_X86_64
 
 /* If there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ

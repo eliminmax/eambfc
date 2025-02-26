@@ -5,18 +5,18 @@
  * A Brainfuck to x86_64 Linux ELF compiler. */
 
 /* C99 */
-#include <stdio.h> /* FILE, stderr, stdout, printf, fprintf */
-#include <stdlib.h> /* malloc, free, EXIT_*, strtoull */
-#include <string.h> /* strncmp, strlen, strcpy */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 /* POSIX */
-#include <fcntl.h> /* O_*, mode_t */
-#include <unistd.h> /* getopt, optopt */
+#include <fcntl.h>
+#include <unistd.h>
 /* internal */
-#include "compile.h" /* bf_compile */
-#include "err.h" /* *_err */
+#include "compile.h"
+#include "err.h"
 #include "parse_args.h"
-#include "resource_mgr.h" /* mgr_*, register_mgr */
-#include "types.h" /* bool, u64, UINT64_MAX */
+#include "resource_mgr.h"
+#include "types.h"
 
 /* remove ext from end of str. If str doesn't end with ext, return false. */
 static bool rm_ext(char *str, const char *ext) {

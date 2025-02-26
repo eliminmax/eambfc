@@ -7,8 +7,8 @@
 #ifndef BFC_COMPILE_H
 #define BFC_COMPILE_H 1
 /* internal */
-#include "arch_inter.h" /* arch_inter */
-#include "types.h" /* bool, u64 */
+#include "arch_inter.h"
+#include "types.h"
 
 /* Compile code in source file to destination file.
  * Parameters:

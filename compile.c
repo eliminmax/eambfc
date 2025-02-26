@@ -6,19 +6,19 @@
  * It is by far the most significant part of the EAMBFC codebase. */
 
 /* C99 */
-#include <stdio.h> /* sscanf */
-#include <string.h> /* memcpy */
+#include <stdio.h>
+#include <string.h>
 /* POSIX */
-#include <unistd.h> /* off_t, read, write, STD*_FILENO*/
+#include <unistd.h>
 /* internal */
-#include "arch_inter.h" /* arch_registers, arch_sc_nums, arch_inter */
-#include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr, ELFDATA2[LM]SB */
-#include "err.h" /* *_err */
-#include "optimize.h" /* filter_dead */
-#include "resource_mgr.h" /* mgr_* */
-#include "serialize.h" /* serialize_*hdr64_[bl]e */
-#include "types.h" /* bool, [iu]{8,16,32,64}, SCNx64, sized_buf */
-#include "util.h" /* read_to_sized_buf, write_obj */
+#include "arch_inter.h"
+#include "compat/elf.h"
+#include "err.h"
+#include "optimize.h"
+#include "resource_mgr.h"
+#include "serialize.h"
+#include "types.h"
+#include "util.h"
 
 /* virtual memory address of the tape - cannot overlap with the machine code.
  * 0 is invalid as it's the null address, so this is an arbitrarily-chosen

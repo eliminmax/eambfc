@@ -8,8 +8,8 @@
 #ifndef BFC_ARCH_INTER_H
 #define BFC_ARCH_INTER_H 1
 /* internal */
-#include "config.h" /* BFC_TARGET* */
-#include "types.h" /* [iu]{8,16,32,64}, bool, sized_buf */
+#include "config.h"
+#include "types.h"
 
 /* This defines the interface for the architecture. It is written around
  * assumptions that are true about Linux, namely that the system call number and

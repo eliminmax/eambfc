@@ -5,15 +5,15 @@
  * Miscellaneous utility functions used throughout the eambfc codebase. */
 
 /* C99 */
-#include <limits.h> /* SSIZE_MAX */
-#include <string.h> /* memcpy */
+#include <limits.h>
+#include <string.h>
 /* POSIX */
-#include <unistd.h> /* read, write */
+#include <unistd.h>
 /* internal */
 #include "attributes.h"
-#include "err.h" /* basic_err */
-#include "resource_mgr.h" /* mgr_malloc, mgr_realloc, mgr_free */
-#include "types.h" /* ssize_t, size_t, off_t */
+#include "err.h"
+#include "resource_mgr.h"
+#include "types.h"
 
 /* return the number of trailing zeroes in val */
 extern const_fn u8 trailing_0s(u64 val) {

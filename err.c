@@ -5,12 +5,12 @@
  * Handle error messages */
 
 /* C99 */
-#include <stdio.h> /* puts, fputs, *printf */
-#include <stdlib.h> /* malloc, realloc, free */
-#include <string.h> /* strlen, strcpy, strstr, memmove, memcpy */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 /* internal */
 #include "attributes.h"
-#include "types.h" /* bool, uint */
+#include "types.h"
 
 static bool quiet;
 static bool json;

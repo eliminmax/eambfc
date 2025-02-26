@@ -6,13 +6,13 @@
  * Unlike the x86_64 backend, this is based on the Rust implementation, rather
  * than the other way around. */
 /* internal */
-#include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
-#include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
-#include "config.h" /* BFC_TARGET_ARM64 */
-#include "err.h" /* basic_err */
+#include "arch_inter.h"
+#include "compat/elf.h"
+#include "config.h"
+#include "err.h"
 #include "serialize.h"
-#include "types.h" /* [iu]{8,32,64}, bool, off_t, size_t, UINT64_C, sized_buf */
-#include "util.h" /* append_obj */
+#include "types.h"
+#include "util.h"
 #if BFC_TARGET_ARM64
 
 /* in MOVK, MOVZ, and MOVN instructions, these correspond to the bits used

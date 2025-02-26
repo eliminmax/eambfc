@@ -23,7 +23,7 @@
 #define BFC_RESOURCE_MGR_H 1
 /* internal */
 #include "attributes.h"
-#include "types.h" /* mode_t, size_t */
+#include "types.h"
 
 /* MUST BE CALLED to register the internal cleanup function with atexit.
  *

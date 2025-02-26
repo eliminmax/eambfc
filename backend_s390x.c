@@ -7,13 +7,13 @@
  * are properly supported. */
 
 /* internal */
-#include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter}  */
-#include "compat/elf.h" /* EM_S390, ELFDATA2MSB */
-#include "config.h" /* BFC_TARGET_S390X */
-#include "err.h" /* basic_err */
-#include "serialize.h" /* serialize* */
-#include "types.h" /* [iu]{8,16,32,64}, bool, off_t, size_t, INT*_{MAX, MIN} */
-#include "util.h" /* append_obj */
+#include "arch_inter.h"
+#include "compat/elf.h"
+#include "config.h"
+#include "err.h"
+#include "serialize.h"
+#include "types.h"
+#include "util.h"
 
 #if BFC_TARGET_S390X
 
