@@ -37,70 +37,78 @@ const struct option longopts[] = {
 /* ignored but need a non-null pointer to this*/
 static int arg_index = 0;
 #define getopt(c, v, opts) getopt_long(c, v, opts, longopts, &arg_index)
-#endif /* BFC_GNU_ARGS */
+#define HELP_TEMPLATE \
+    "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n" \
+    " --help, -h             - display this help text and exit\n" \
+    " --version, -V          - print version information and exit\n" \
+    " --json, -j             - print errors in JSON format* " \
+    "(assumes file names are UTF-8-encoded.)\n" \
+    " --quiet, -q            - don't print errors unless -j was passed*\n" \
+    " --optimize, -O         - enable optimization**.\n" \
+    " --keep-failed, -k      - keep files that failed to compile (for " \
+    "debugging)\n" \
+    " --moveahead, -m        - continue to the next file instead of quitting " \
+    "if a " \
+    "file fails to compile\n" \
+    " --list-targets, -A     - list supported architectures and exit\n" \
+    " --                     - stop argument parsing, treat remaining " \
+    "arguments as " \
+    "source files.\n" \
+    "\n" \
+    "* -q and -j will not affect arguments passed before they were.\n" \
+    "\n" \
+    "** Optimization can make error reporting less precise.\n" \
+    "\n" \
+    "\n" \
+    "PARAMETER OPTIONS (provide at most once each)\n" \
+    " --tape-size count, -t count       - use <count> 4-KiB blocks for the " \
+    "tape.\n" \
+    " --source-extension ext, -e ext    - use 'ext' as the source extension\n" \
+    " --target-arch arch, -a arch       - compile for the specified " \
+    "architecture\n" \
+    " --output-suffix suf, -s suf       -  append 'suf' to output file " \
+    "names\n" \
+    "\n" \
+    "If not provided, it falls back to 8 as the tape-size count, \".bf\" as " \
+    "the source extension, " BFC_DEFAULT_ARCH_STR \
+    " as the target-arch, and an empty output-suffix\n" \
+    "\n" \
+    "Remaining options are treated as source file names. If they don't " \
+    "end with the right extension, the program will raise an error.\n"
 
-static const char *HELP_TEMPLATE =
-    "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n"
-#if BFC_GNU_ARGS
-    " --help, -h             - display this help text and exit\n"
-    " --version, -V          - print version information and exit\n"
-    " --json, -j             - print errors in JSON format* "
-    "(assumes file names are UTF-8-encoded.)\n"
-    " --quiet, -q            - don't print errors unless -j was passed*\n"
-    " --optimize, -O         - enable optimization**.\n"
-    " --keep-failed, -k      - keep files that failed to compile (for "
-    "debugging)\n"
-    " --moveahead, -m        - continue to the next file instead of quitting "
-    "if a "
-    "file fails to compile\n"
-    " --list-targets, -A     - list supported architectures and exit\n"
-    " --                     - stop argument parsing, treat remaining "
-    "arguments as "
-    "source files.\n"
-    "\n"
-    "* -q and -j will not affect arguments passed before they were.\n"
-    "\n"
-    "** Optimization can make error reporting less precise.\n"
-    "\n"
-    "\n"
-    "PARAMETER OPTIONS (provide at most once each)\n"
-    " --tape-size count, -t count        - use <count> 4-KiB blocks for the "
-    "tape.\n"
-    " --source-extension ext, -e ext     - use 'ext' as the source extension\n"
-    " --target-arch arch, -a arch        - compile for the specified "
-    "architecture\n"
-    " --output-suffix suf, -s suf        -  append 'suf' to output file names\n"
-#else /* BFC_GNU_ARGS (help text) */
-    " -h     - display this help text and exit\n"
-    " -V     - print version information and exit\n"
-    " -j     - print errors in JSON format* "
-    "(assumes file names are UTF-8-encoded.)\n"
-    " -q     - don't print errors unless -j was passed*\n"
-    " -O     - enable optimization**.\n"
-    " -k     - keep files that failed to compile (for debugging)\n"
-    " -m     - continue to the next file instead of quitting if a file fails "
-    "to compile\n"
-    " -A     - list supported architectures and exit\n"
-    " --     - stop argument parsing, treat remaining arguments as source "
-    "files.\n"
-    "\n"
-    "* -q and -j will not affect arguments passed before they were.\n"
-    "\n"
-    "** Optimization can make error reporting less precise.\n"
-    "\n"
-    "PARAMETER OPTIONS (provide at most once each)\n"
-    " -t count   - use <count> 4-KiB blocks for the tape.\n"
-    " -e ext     - use 'ext' as the source extension\n"
-    " -a arch    - compile for the specified architecture\n"
-    " -s suf     -  append 'suf' to output file names\n"
-#endif /* BFC_GNU_ARGS (help text) */
-    "\n"
-    "If not provided, it falls back to 8 as the tape-size count, \".bf\" as "
-    "the source extension, " BFC_DEFAULT_ARCH_STR
-    " as the target-arch, and an empty output-suffix\n"
-    "\n"
-    "Remaining options are treated as source file names. If they don't "
-    "end with the right extension, the program will raise an error.\n";
+#else /* BFC_GNU_ARGS */
+#define HELP_TEMPLATE \
+    "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n" \
+    " -h     - display this help text and exit\n" \
+    " -V     - print version information and exit\n" \
+    " -j     - print errors in JSON format* " \
+    "(assumes file names are UTF-8-encoded.)\n" \
+    " -q     - don't print errors unless -j was passed*\n" \
+    " -O     - enable optimization**.\n" \
+    " -k     - keep files that failed to compile (for debugging)\n" \
+    " -m     - continue to the next file instead of quitting if a file fails " \
+    "to compile\n" \
+    " -A     - list supported architectures and exit\n" \
+    " --     - stop argument parsing, treat remaining arguments as source " \
+    "files.\n" \
+    "\n" \
+    "* -q and -j will not affect arguments passed before they were.\n" \
+    "\n" \
+    "** Optimization can make error reporting less precise.\n" \
+    "\n" \
+    "PARAMETER OPTIONS (provide at most once each)\n" \
+    " -t count   - use <count> 4-KiB blocks for the tape.\n" \
+    " -e ext     - use 'ext' as the source extension\n" \
+    " -a arch    - compile for the specified architecture\n" \
+    " -s suf     -  append 'suf' to output file names\n" \
+    "\n" \
+    "If not provided, it falls back to 8 as the tape-size count, \".bf\" as " \
+    "the source extension, " BFC_DEFAULT_ARCH_STR \
+    " as the target-arch, and an empty output-suffix\n" \
+    "\n" \
+    "Remaining options are treated as source file names. If they don't " \
+    "end with the right extension, the program will raise an error.\n"
+#endif /* BFC_GNU_ARGS */
 
 /* returns true if strcmp matches s to any strings in its argument,
  * and false otherwise.
