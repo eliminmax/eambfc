@@ -43,7 +43,7 @@ cd "$(dirname "$(realpath "$0")")"
 reuse lint -q || reuse lint
 
 # validate that a POSIX-compliant make can parse the Makefile properly
-pdpmake -n clean all test multibuild >/dev/null
+pdpmake -n clean all test >/dev/null
 
 sh_lints () {
     shellcheck "$file"

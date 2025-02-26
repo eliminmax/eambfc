@@ -100,11 +100,6 @@ can_run_all:
 test: can_run_x86_64 eambfc
 	(cd tests; make clean test)
 
-multibuild: config.h
-	env SKIP_TEST=y ./multibuild.sh
-multibuild_test: can_run_all config.h
-	./multibuild.sh
-
 strict: config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE!\n' >&2
@@ -125,7 +120,7 @@ int_torture_test: can_run_all config.h
 		-o alt-builds/eambfc-$@
 	(cd tests; make EAMBFC=../alt-builds/eambfc-$@ test_all)
 
-all_tests: test multibuild_test strict ubsan int_torture_test
+all_tests: test strict ubsan int_torture_test
 
 all_arch_test: can_run_all eambfc
 	(cd tests; make -s test_all)
