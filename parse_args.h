@@ -7,9 +7,9 @@
 #include "arch_inter.h" /* arch_inter, *_INTER */
 
 typedef struct {
-    arch_inter *inter;
-    char *ext;
-    char *out_ext;
+    const arch_inter *inter;
+    const char *ext;
+    const char *out_ext;
     u64 tape_blocks;
     /* use bitfield booleans here */
     bool quiet    : 1;
