@@ -26,7 +26,7 @@ static bool rm_ext(char *str, const char *ext) {
     if (strsz <= extsz) return false;
     /* because of the above check, distance is known to be a positive value. */
     size_t distance = strsz - extsz;
-    /* return 0 if str does not end in extsz*/
+    /* return 0 if str does not end in ext */
     if (strncmp(str + distance, ext, extsz) != 0) return false;
     /* set the beginning of the match to the null byte, to end str early */
     str[distance] = false;
