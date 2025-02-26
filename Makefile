@@ -84,18 +84,19 @@ backend_x86_64.o: backend_x86_64.c
 # These binaries were hand-made in a minimal hex editor, so they are their own
 # source code.
 #
-# The execfmt_support directory has a Python script that can be used to help
-# audit the binaries, in case anyone is concerned by their presence.
-# That script has comments throughout to explain how to further audit them.
+# The tools/execfmt_support directory has a Python script that can be used to
+# help audit the binaries, in case anyone is concerned by their presence. It can
+# validate that the headers are what they claim to be, and has instructions on
+# how to validate the machine code itself using an external disassembler.
 can_run_x86_64:
-	execfmt_support/x86_64
+	./tools/execfmt_support/x86_64
 
 # __BACKENDS__ create execfmt_support binary for target in and add it here
 can_run_all:
-	execfmt_support/arm64 && \
-	execfmt_support/riscv64 && \
-	execfmt_support/s390x && \
-	execfmt_support/x86_64
+	./tools/execfmt_support/arm64 && \
+	./tools/execfmt_support/riscv64 && \
+	./tools/execfmt_support/s390x && \
+	./tools/execfmt_support/x86_64
 
 test: can_run_x86_64 eambfc
 	(cd tests; make clean test)
