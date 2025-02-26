@@ -159,7 +159,7 @@ nonnull_args static bool select_inter(
     return false;
 }
 
-static noreturn nonnull_args inline void report_version(const char *progname) {
+static noreturn nonnull_args void report_version(const char *progname) {
     printf(
         "%s: eambfc version " BFC_VERSION
         "\n\n"
@@ -176,7 +176,7 @@ static noreturn nonnull_args inline void report_version(const char *progname) {
     exit(EXIT_SUCCESS);
 }
 
-static noreturn nonnull_args inline void list_arches(const char *progname) {
+static noreturn nonnull_args void list_arches(const char *progname) {
     printf(
         "This build of %s supports the following architectures:\n\n"
 /* __BACKENDS__ add backend and any aliases in a block here*/
