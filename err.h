@@ -9,6 +9,65 @@
 #include "attributes.h"
 #include "types.h"
 
+typedef enum {
+    BF_ERR_APPEND_TO_NULL,
+    BF_ERR_BAD_EXTENSION,
+    BF_ERR_BUF_TOO_LARGE,
+    BF_ERR_FAILED_READ,
+    BF_ERR_FAILED_WRITE,
+    BF_ERR_ICE_PARAMS_TOO_LONG,
+    BF_ERR_IMMEDIATE_TOO_LARGE,
+    BF_ERR_INVALID_IR,
+    BF_ERR_INVALID_JUMP_ADDRESS,
+    BF_ERR_JUMP_TOO_LONG,
+    BF_ERR_MGR_ATEXIT_FAILED,
+    BF_ERR_MGR_CLOSE_UNKNOWN,
+    BF_ERR_MGR_FREE_UNKNOWN,
+    BF_ERR_MGR_REALLOC_UNKNOWN,
+    BF_ERR_MISSING_OPERAND,
+    BF_ERR_MULTIPLE_ARCHES,
+    BF_ERR_MULTIPLE_EXTENSIONS,
+    BF_ERR_MULTIPLE_OUTPUT_EXTENSIONS,
+    BF_ERR_MULTIPLE_TAPE_BLOCK_COUNTS,
+    BF_ERR_NO_CMDLINE_ARGS,
+    BF_ERR_NO_SOURCE_FILES,
+    BF_ERR_NO_TAPE,
+    BF_ERR_NOT_NUMERIC,
+    BF_ERR_OPEN_R_FAILED,
+    BF_ERR_OPEN_W_FAILED,
+    BF_ERR_PARAMETER_ERROR_ERROR,
+    BF_ERR_TAPE_TOO_LARGE,
+    BF_ERR_TOO_MANY_ALLOCS,
+    BF_ERR_TOO_MANY_INSTRUCTIONS,
+    BF_ERR_TOO_MANY_NESTED_LOOPS,
+    BF_ERR_TOO_MANY_OPENS,
+    BF_ERR_UNKNOWN_ARCH,
+    BF_ERR_UNKNOWN_ARG,
+    BF_ERR_UNMATCHED_CLOSE,
+    BF_ERR_UNMATCHED_OPEN,
+    BF_ERR_WRITE_TOO_LARGE,
+} bf_err_id;
+
+typedef struct {
+    const char *msg;
+    size_t line;
+    size_t col;
+    bf_err_id err_id;
+    char instr;
+} bf_comp_err;
+
+typedef nonnull_args void (*err_printer)(bf_comp_err e);
+
+typedef struct {
+    err_printer *e;
+    sized_buf *msgs;
+    bf_comp_err *errs;
+    size_t capacity;
+    size_t count;
+    bool quiet: 1;
+    bool json : 1;
+} bf_err_list;
+
 /* enable quiet mode - this does not print error messages to stderr. Does not
  * affect JSON messages printed to stdout. */
 void quiet_mode(void);
