@@ -15,6 +15,7 @@
 #include "parse_args.h"
 #include "version.h"
 
+#define OPTLINE(l) l
 #if BFC_GNU_ARGS
 /* GNU C */
 #include <getopt.h>
@@ -37,78 +38,95 @@ const struct option longopts[] = {
 /* ignored but need a non-null pointer to this*/
 static int arg_index = 0;
 #define getopt(c, v, opts) getopt_long(c, v, opts, longopts, &arg_index)
-#define HELP_TEMPLATE \
-    "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n" \
-    " --help, -h             - display this help text and exit\n" \
-    " --version, -V          - print version information and exit\n" \
-    " --json, -j             - print errors in JSON format* " \
-    "(assumes file names are UTF-8-encoded.)\n" \
-    " --quiet, -q            - don't print errors unless -j was passed*\n" \
-    " --optimize, -O         - enable optimization**.\n" \
-    " --keep-failed, -k      - keep files that failed to compile (for " \
-    "debugging)\n" \
-    " --moveahead, -m        - continue to the next file instead of quitting " \
-    "if a " \
-    "file fails to compile\n" \
-    " --list-targets, -A     - list supported architectures and exit\n" \
-    " --                     - stop argument parsing, treat remaining " \
-    "arguments as " \
-    "source files.\n" \
-    "\n" \
-    "* -q and -j will not affect arguments passed before they were.\n" \
-    "\n" \
-    "** Optimization can make error reporting less precise.\n" \
-    "\n" \
-    "\n" \
-    "PARAMETER OPTIONS (provide at most once each)\n" \
-    " --tape-size count, -t count       - use <count> 4-KiB blocks for the " \
-    "tape.\n" \
-    " --source-extension ext, -e ext    - use 'ext' as the source extension\n" \
-    " --target-arch arch, -a arch       - compile for the specified " \
-    "architecture\n" \
-    " --output-suffix suf, -s suf       -  append 'suf' to output file " \
-    "names\n" \
-    "\n" \
-    "If not provided, it falls back to 8 as the tape-size count, \".bf\" as " \
-    "the source extension, " BFC_DEFAULT_ARCH_STR \
-    " as the target-arch, and an empty output-suffix\n" \
-    "\n" \
-    "Remaining options are treated as source file names. If they don't " \
-    "end with the right extension, the program will raise an error.\n"
+#define OPTION(l, s, pad, msg) " --" l ", " pad "-" s ":   " msg
+#define PARAM_OPT(l, s, a, spad, lpad, msg) \
+    " --" l "=" a ", " lpad " -" s " " a ":    " spad msg
+#else
+#define OPTION(l, s, pad, msg) " -" s "    " msg
+#define PARAM_OPT(l, s, a, spad, lpad, msg) " -" s " " a spad "    " msg
+#endif
 
-#else /* BFC_GNU_ARGS */
+/* this macro hell defines the help template. If using GNU longopts, pads with
+ * the provided padding string to keep descriptions even, and for the parameter
+ * options, uses the second padding string to pad out the parameter argument. */
+#define OPTION_HELP \
+    OPTION("help", "h", "        ", "display this help text and exit")
+#define OPTION_VERSION \
+    OPTION("version", "V", "     ", "print version information and exit")
+#define OPTION_JSON \
+    OPTION("json", "j", "        ", "print errors in JSON format*")
+#define OPTION_QUIET OPTION("quiet", "q", "       ", "don't print any errors*")
+#define OPTION_OPTIMIZE OPTION("optimize", "O", "    ", "enable optimization**")
+#define OPTION_MOVEAHEAD \
+    OPTION("moveahead", "m", "   ", "continue to the next file on failure")
+#define OPTION_LIST_TARGETS \
+    OPTION("list-targets", "A", "", "list supported targets and exit")
+#define OPTION_KEEP_FAILED \
+    OPTION("keep-failed", "k", " ", "keep files that failed to compile")
+#define OPTIONS \
+    OPTION_HELP "\n" OPTION_VERSION "\n" OPTION_JSON "\n" OPTION_QUIET \
+                "\n" OPTION_OPTIMIZE "\n" OPTION_MOVEAHEAD \
+                "\n" OPTION_LIST_TARGETS "\n" OPTION_KEEP_FAILED "\n"
+
+#define PARAM_OPT_TAPE_SIZE \
+    PARAM_OPT( \
+        "tape-size", \
+        "t", \
+        "count", \
+        "", \
+        "     ", \
+        "use <count> 4-KiB blocks for the tape" \
+    )
+#define PARAM_OPT_SRC_EXT \
+    PARAM_OPT( \
+        "source-extension", \
+        "e", \
+        "ext", \
+        "  ", \
+        "", \
+        "use 'ext' as the source extension" \
+    )
+#define PARAM_OPT_TARGET_ARCH \
+    PARAM_OPT( \
+        "target-arch", \
+        "a", \
+        "arch", \
+        " ", \
+        "    ", \
+        "compile for the specified architecture" \
+    )
+#define PARAM_OPT_OUT_SUFFIX \
+    PARAM_OPT( \
+        "output-suffix", \
+        "s", \
+        "suf", \
+        "  ", \
+        "   ", \
+        "append 'suf' to output file names" \
+    )
+#define PARAM_OPTS \
+    PARAM_OPT_TAPE_SIZE "\n" PARAM_OPT_SRC_EXT "\n" PARAM_OPT_TARGET_ARCH \
+                        "\n" PARAM_OPT_OUT_SUFFIX "\n"
+
 #define HELP_TEMPLATE \
-    "Usage: %s [options] <program.bf> [<program2.bf> ...]\n\n" \
-    " -h     - display this help text and exit\n" \
-    " -V     - print version information and exit\n" \
-    " -j     - print errors in JSON format* " \
-    "(assumes file names are UTF-8-encoded.)\n" \
-    " -q     - don't print errors unless -j was passed*\n" \
-    " -O     - enable optimization**.\n" \
-    " -k     - keep files that failed to compile (for debugging)\n" \
-    " -m     - continue to the next file instead of quitting if a file fails " \
-    "to compile\n" \
-    " -A     - list supported architectures and exit\n" \
-    " --     - stop argument parsing, treat remaining arguments as source " \
-    "files.\n" \
+    "Usage: %s [options] <program.bf> [<program2.bf> ...]\n" \
     "\n" \
-    "* -q and -j will not affect arguments passed before they were.\n" \
+    "" OPTIONS \
+    "\n* -q and -j will not affect arguments passed before they were.\n" \
     "\n" \
     "** Optimization can make error reporting less precise.\n" \
     "\n" \
     "PARAMETER OPTIONS (provide at most once each)\n" \
-    " -t count   - use <count> 4-KiB blocks for the tape.\n" \
-    " -e ext     - use 'ext' as the source extension\n" \
-    " -a arch    - compile for the specified architecture\n" \
-    " -s suf     -  append 'suf' to output file names\n" \
+    "" PARAM_OPTS \
     "\n" \
-    "If not provided, it falls back to 8 as the tape-size count, \".bf\" as " \
-    "the source extension, " BFC_DEFAULT_ARCH_STR \
-    " as the target-arch, and an empty output-suffix\n" \
+    "If not provided, it falls back to 8 as the tape-size count, \".bf\" " \
+    "as the source extension, " BFC_DEFAULT_ARCH_STR \
+    " as the target-arch, and an empty output-suffix.\n" \
     "\n" \
     "Remaining options are treated as source file names. If they don't " \
-    "end with the right extension, the program will raise an error.\n"
-#endif /* BFC_GNU_ARGS */
+    "end with the right extension, the program will raise an error.\n" \
+    "Additionally, passing \"--\" as a standalone argument will stop " \
+    "argument parsing, and treat remaining arguments as source file names.\n"
 
 /* returns true if strcmp matches s to any strings in its argument,
  * and false otherwise.
