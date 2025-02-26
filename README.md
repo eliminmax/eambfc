@@ -25,34 +25,32 @@ maintained feature parity between them.
 ```
 Usage: eambfc [options] <program.bf> [<program2.bf> ...]
 
- -h        - display this help text and exit
- -V        - print version information and exit
- -j        - print errors in JSON format*
-             (assumes file names are UTF-8-encoded.)
- -q        - don't print errors unless -j was passed*
- -O        - enable optimization**.
- -k        - keep files that failed to compile (for debugging)
- -c        - continue to the next file instead of quitting if a
-             file fails to compile
- -t count  - (only provide once) allocate <count> 4-KiB blocks for
-             the tape. (defaults to 8 if not specified)
- -e ext    - (only provide once) use 'ext' as the extension for
-             source files instead of '.bf'
-             (This program will remove this at the end of the input
-             file to create the output file name)
- -a arch   - compile for the specified architecture
-             (defaults to x86_64 if not specified)**
- -s ext    - (only provide once) use 'ext' as the extension for
-             compiled binaries (empty if not specified)
- -A        - list supported architectures and exit
+ -h    display this help text and exit
+ -V    print version information and exit
+ -j    print errors in JSON format*
+ -q    don't print any errors*
+ -O    enable optimization**
+ -m    continue to the next file on failure
+ -A    list supported targets and exit
+ -k    keep files that failed to compile
 
 * -q and -j will not affect arguments passed before they were.
 
 ** Optimization can make error reporting less precise.
 
-Remaining options are treated as source file names. If they don't
-end with '.bf' (or the extension specified with '-e'), the program
-will raise an error.
+PARAMETER OPTIONS (provide at most once each)
+ -t count    use <count> 4-KiB blocks for the tape
+ -e ext      use 'ext' as the source extension
+ -a arch     compile for the specified architecture
+ -s suf      append 'suf' to output file names
+
+If not provided, it falls back to 8 as the tape-size count, ".bf" as the source
+extension, x86_64 as the target-arch, and an empty output-suffix.
+
+Remaining options are treated as source file names. If they don't end with the
+right extension, the program will raise an error.
+Additionally, passing "--" as a standalone argument will stop argument parsing,
+and treat remaining arguments as source file names.
 ```
 
 ## Supported platforms
