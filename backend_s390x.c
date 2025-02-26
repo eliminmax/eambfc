@@ -179,14 +179,14 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         /* if it fits in a halfword, use Load Halfword Immediate (64 <- 16) */
         /* LGHI r.reg, imm {RI-a} */
         u8 i_bytes[4] = ENCODE_RI_OP(0xa79, reg);
-        return serialize16be(imm, &i_bytes[2]) == 2 &&
-               append_obj(dst_buf, &i_bytes, 4);
+        serialize16be(imm, &i_bytes[2]);
+        return append_obj(dst_buf, &i_bytes, 4);
     } else if (imm <= INT32_MAX && imm >= INT32_MIN) {
         /* if it fits within a word, use Load Immediate (64 <- 32). */
         /* LGFI r.reg, imm {RIL-a} */
         u8 i_bytes[6] = ENCODE_RI_OP(0xc01, reg);
-        return serialize32be(imm, &i_bytes[2]) == 4 &&
-               append_obj(dst_buf, &i_bytes, 6);
+        serialize32be(imm, &i_bytes[2]);
+        return append_obj(dst_buf, &i_bytes, 6);
     } else {
         /* if it does not fit within 32 bits, then the lower 32 bits need to be
          * set as normal, then the higher 32 bits need to be set. Cast imm to
@@ -209,20 +209,20 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
             /* sets bits 16-31 of the register to the immediate */
             /* IIHL reg, upper_imm {RI-a} */
             u8 i_bytes[4] = ENCODE_RI_OP(0xa51, reg);
-            ret &= serialize16be(upper_imm, &i_bytes[2]) == 2 &&
-                   append_obj(dst_buf, &i_bytes, 4);
+            serialize16be(upper_imm, &i_bytes[2]);
+            ret &= append_obj(dst_buf, &i_bytes, 4);
         } else if ((i16)upper_imm == default_val) {
             /* sets bits 0-15 of the register to the immediate. */
             /* IIHH reg, upper_imm {RI-a} */
             u8 i_bytes[4] = ENCODE_RI_OP(0xa50, reg);
-            ret &= serialize16be(upper_imm, &i_bytes[2]) == 2 &&
-                   append_obj(dst_buf, &i_bytes, 4);
+            serialize16be(upper_imm, &i_bytes[2]);
+            ret &= append_obj(dst_buf, &i_bytes, 4);
         } else {
             /* need to set the full upper word, with Insert Immediate (high) */
             /* IIHF reg, imm {RIL-a} */
             u8 i_bytes[6] = ENCODE_RI_OP(0xc08, reg);
-            ret &= serialize32be(upper_imm, &i_bytes[2]) == 4 &&
-                   append_obj(dst_buf, &i_bytes, 6);
+            serialize32be(upper_imm, &i_bytes[2]);
+            ret &= append_obj(dst_buf, &i_bytes, 6);
         }
         return ret;
     }
@@ -301,8 +301,8 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
      * already initialized to zero. The offset, on the other hand, still needs
      * to be set. Cast offset to u64 to avoid portability issues with signed
      * bit shifts. */
-    ret &= serialize32be(((u64)offset >> 1), &i_bytes[1][2]) == 4 &&
-           append_obj(dst, &i_bytes, 12);
+    serialize32be(((u64)offset >> 1), &i_bytes[1][2]);
+    ret &= append_obj(dst, &i_bytes, 12);
 
     return ret;
 }
@@ -324,14 +324,14 @@ static bool add_reg_signed(u8 reg, i64 imm, sized_buf *dst_buf) {
         /* if imm fits within a halfword, a shorter instruction can be used. */
         /* AGHI reg, imm {RI-a} */
         u8 i_bytes[4] = ENCODE_RI_OP(0xa7b, reg);
-        return serialize16be(imm, &i_bytes[2]) == 2 &&
-               append_obj(dst_buf, &i_bytes, 4);
+        serialize16be(imm, &i_bytes[2]);
+        return append_obj(dst_buf, &i_bytes, 4);
     } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
         /* If imm fits within a word, then use a normal add immediate */
         /* AFGI reg, imm {RIL-a} */
         u8 i_bytes[6] = ENCODE_RI_OP(0xc28, reg);
-        return serialize32be(imm, &i_bytes[2]) == 4 &&
-               append_obj(dst_buf, &i_bytes, 6);
+        serialize32be(imm, &i_bytes[2]);
+        return append_obj(dst_buf, &i_bytes, 6);
     } else {
         /* if the lower 32 bits are non-zero, call this function recursively
          * to add to them */
@@ -341,8 +341,8 @@ static bool add_reg_signed(u8 reg, i64 imm, sized_buf *dst_buf) {
         /* AIH reg, imm {RIL-a} */
         u8 i_bytes[6] = ENCODE_RI_OP(0xcc8, reg);
         /* cast to u64 to avoid portability issues */
-        ret &= serialize32be(((u64)imm >> 32), &i_bytes[2]) == 4 &&
-               append_obj(dst_buf, &i_bytes, 6);
+        serialize32be(((u64)imm >> 32), &i_bytes[2]);
+        ret &= append_obj(dst_buf, &i_bytes, 6);
         return ret;
     }
 }
