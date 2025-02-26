@@ -14,53 +14,51 @@
 /* serialize a 16-bit value in v16 into 2 bytes in dest, in LSB order
  * return value is the number of bytes written. */
 nonnull_args size_t serialize16le(u16 v16, void *dest) {
-    size_t size = 0;
     char *p = dest;
-    p[size++] = v16;
-    p[size++] = (v16 >> 8);
-    return size;
+    p[0] = v16;
+    p[1] = (v16 >> 8);
+    return 2;
 }
 
 /* serialize a 16-bit value in v16 into 2 bytes in dest, in MSB order
  * return value is the number of bytes written. */
 nonnull_args size_t serialize16be(u16 v16, void *dest) {
-    size_t size = 0;
     char *p = dest;
-    p[size++] = (v16 >> 8);
-    p[size++] = v16;
-    return size;
+    p[0] = (v16 >> 8);
+    p[1] = v16;
+    return 2;
 }
 
 /* serialize a 32-bit value in v32 into 4 bytes in dest, in LSB order
  * return value is the number of bytes written. */
 nonnull_args size_t serialize32le(u32 v32, void *dest) {
-    size_t size = serialize16le(v32, dest);
-    size += serialize16le(v32 >> 16, (char *)dest + size);
-    return size;
+    serialize16le(v32, dest);
+    serialize16le(v32 >> 16, (char *)dest + 2);
+    return 4;
 }
 
 /* serialize a 32-bit value in v32 into 4 bytes in dest, in MSB order
  * return value is the number of bytes written. */
 nonnull_args size_t serialize32be(u32 v32, void *dest) {
-    size_t size = serialize16be(v32 >> 16, dest);
-    size += serialize16be(v32, (char *)dest + size);
-    return size;
+    serialize16be(v32 >> 16, dest);
+    serialize16be(v32, (char *)dest + 2);
+    return 4;
 }
 
 /* serialize a 64-bit value in v64 into 8 bytes in dest, in LSB order
  * return value is the number of bytes written. */
 nonnull_args size_t serialize64le(u64 v64, char *dest) {
-    size_t size = serialize32le(v64, dest);
-    size += serialize32le(v64 >> 32, (char *)dest + size);
-    return size;
+    serialize32le(v64, dest);
+    serialize32le(v64 >> 32, (char *)dest + 4);
+    return 8;
 }
 
 /* serialize a 64-bit value in v64 into 8 bytes in dest, in MSB order
  * return value is the number of bytes written. */
 nonnull_args size_t serialize64be(u64 v64, char *dest) {
-    size_t size = serialize32be(v64 >> 32, dest);
-    size += serialize32be(v64, (char *)dest + size);
-    return size;
+    serialize32be(v64 >> 32, dest);
+    serialize32be(v64, (char *)dest + 4);
+    return 8;
 }
 
 /* serialize a 64-bit Ehdr into a byte sequence, in LSB order */
