@@ -27,6 +27,7 @@ BinPackArguments: false
 BinPackParameters: false
 BitFieldColonSpacing: After
 BreakBeforeTernaryOperators: false
+DeriveLineEnding: false
 DerivePointerAlignment: false
 IncludeCategories:
   - Regex: ^<\(std.*\|string\|inttypes\)*\.h>
@@ -58,4 +59,3 @@ StatementMacros:
   - OPTLINE
   - PARAM_OPT
 TabWidth: 4
-DeriveLineEnding: false
