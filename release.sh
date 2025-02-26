@@ -15,6 +15,7 @@
 # * git
 # * gzip
 # * make
+# * parallel
 # * sed
 # * tar
 # * valgrind
@@ -78,6 +79,8 @@ if [ -z "$FORCE_RELEASE" ] && [ -n "$(git status --short)" ]; then
 fi
 
 make clean
+# generate version.h
+./gen_version_h.sh
 
 # first, some linting - bypass copyright check as older files are still checked
 # even if not changed this year
@@ -85,7 +88,6 @@ ALLOW_SUSPECT_COPYRIGHTS=y ./run-lints.sh ./*.[ch] ./*.sh .githooks/*
 
 # run codespell on files not included in those globs
 codespell --skip='.git','*.sh','.githooks','*.[ch]'
-
 # check for unused functions - this was not done with run-lints.sh, as it lacks
 # context if not looking at every file
 cppcheck -q --std=c99 --library=.norets.cfg --enable=unusedFunction \
@@ -93,32 +95,28 @@ cppcheck -q --std=c99 --library=.norets.cfg --enable=unusedFunction \
     -DBFC_NOATTRIBUTES ./*.c
 
 # use scan-build to test for potential issues
-scan-build-19 --status-bugs make && make clean
+scan-build-19 --status-bugs make CFLAGS=-O2 && make clean
 
 version="$(cat version)"
 
 build_name="eambfc-$(git describe --tags)"
+if [ -n "$(git status --short)" ]; then build_name="$build_name-localchg"; fi
 
 src_tarball_name="$build_name-src.tar"
+
 mkdir -p releases/
 # remove existing build artifacts with the current build name
 rm -rf releases/"$build_name"*
 
-make -s clean
-# generate version.h
-./gen_version_h.sh
-
 # change the git commit in version.h to reflect that it's a source tarball build
 sed '/git commit: /s/"/"source tarball from /' -i version.h
 
-git archive HEAD --format=tar      \
-    --prefix="$build_name-src"/    \
-    --add-file=version.h           \
-    --output=releases/"$src_tarball_name"
+git ls-files -coz --exclude-standard ':!:.githooks'':!:*/.gitignore' | \
+    xargs -0 tar --xform="s#^#$build_name-src/#" \
+        -cf "releases/$src_tarball_name" version.h
 
 gzip -9 -k "releases/$src_tarball_name"
 xz -9 -k "releases/$src_tarball_name"
-
 
 build_dir="$(mktemp -d "/tmp/eambfc-$version-build-XXXXXXXXXX")"
 cp releases/"$src_tarball_name" "$build_dir"
@@ -127,53 +125,61 @@ old_pwd="$PWD"
 cd "$build_dir"
 
 tar --strip-components=1 -xf "$src_tarball_name"
-# multibuild.sh fails if any compilers are skipped and env var is non-empty
-NO_SKIP_MULTIBUILD=yep make CC=gcc all_tests
 
-# generate a wrapper script to run test suite under valgrind's watchful eye.
-# shellcheck disable=SC2016 # this shouldn't be expanded here
-printf > valgrind-eambfc.sh '#!/bin/sh
-exec valgrind -q "$(dirname "$(realpath "$0")")"/eambfc "$@"\n'
-chmod +x valgrind-eambfc.sh
+# copy version.h so that it's not overwritten before the real build
+cp version.h version.h-real
 
-test_for_arch() {
-    # run test suite with and without EAMBFC optimization mode with ubsan
-    # to try to catch undefined behavior
-    make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-kOa$1" clean test
-    SKIP_DEAD_CODE=1 \
-        make EAMBFC=../alt-builds/eambfc-ubsan EAMBFC_ARGS="-ka$1" clean test
-    # do the same with the valgrind wrapper script
-    make EAMBFC=../valgrind-eambfc.sh EAMBFC_ARGS="-kOa$1" clean test
-    SKIP_DEAD_CODE=1 \
-        make EAMBFC=../valgrind-eambfc.sh EAMBFC_ARGS="-ka$1" clean test
-}
+make CC=gcc all_tests
 
-# ensure strict and ubsan builds work at all gcc optimization levels
+# ensure strict and ubsan builds work at all gcc optimization levels, and
+# valgrind finds no issues
 for o_lvl in 0 1 2 3 s fast g z; do
-    make CC=gcc CFLAGS="-O$o_lvl" clean ubsan strict eambfc;
-    cd tests
-    # __BACKENDS__ add a test rule for the new architecture
-    test_for_arch x86_64
-    test_for_arch s390x
-    test_for_arch arm64
-    test_for_arch riscv64
-    cd ..
+    make CC=gcc CFLAGS="-O$o_lvl" clean ubsan strict int_torture_test
+    SKIP_DEAD_CODE=1 make \
+        EAMBFC_ARGS=-k EAMBFC=../alt-builds/eambfc-ubsan all_arch_test
 done
 
-# portability test - can a minimal, public domain POSIX make implementation
-# complete the clean, eambfc, and test targets?
-# move version.h out of the way so that it isn't clobbered by pdpmake
-mv version.h version.h-real
+printf '%s\n' 0 1 2 3 s fast g z | \
+    EAMBFC_VALGRIND=1 parallel -I_olvl ./tools/test-build.sh \
+        "$src_tarball_name" gcc -O_olvl
+
+# try with a mix of compilers
+for o_lvl in 0 1 2 3; do
+    printf 'gcc\nmusl-gcc\nclang\nzig cc\n' |\
+        parallel -I_cc ./tools/test-build.sh "$src_tarball_name" \
+            _cc "-O$o_lvl" -Wall -Werror -Wextra -pedantic -std=c99
+done
+
+# build for specific architectures now - the four were chosen to catch any bugs
+# that are specific to 32-bit or 64-bit systems, and/or endianness-specific.
+for o_lvl in 0 1 2 3; do
+    printf '%s-linux-gnu-gcc\n' i686 aarch64 mips s390x |\
+        LDFLAGS=-static parallel -I_cc ./tools/test-build.sh \
+            "$src_tarball_name" \
+            _cc "-O$o_lvl" -Wall -Werror -Wextra -pedantic -std=c99 -static
+done
+
+# this has caught loss of *const qualifier that the big league compilers did not
+./tools/test-build.sh "$src_tarball_name" \
+    tcc -Wall -Wwrite-strings -Wunsupported -Werror
+
+# test GNU longopts builds
+for olvl in 0 1 2 3; do
+    make CFLAGS="-D_GNU_SOURCE -DBFC_GNU_ARGS=1 -O$olvl" clean strict ubsan
+done
+
+# portability test - ensure a minimal, public domain POSIX make implementation
+# can complete the clean, eambfc, and test targets
+
 # ensure that recursive calls use the right make by putting it first in $PATH
+make -s clean
 mkdir -p .utils
 ln -sfv "$(command -v pdpmake)" .utils/make
 env PATH="$PWD/.utils:$PATH" make clean eambfc test
 
-make clean
-# move version.h back in place for real build
-mv version.h-real version.h
-
 # if none of the previous tests failed, it's time for the actual build
+make -s clean
+mv version.h-real version.h
 make CC=gcc CFLAGS="-O2 -std=c99 -flto" LDFLAGS="-flto"
 strip eambfc
 mv eambfc "$old_pwd/releases/eambfc-$version"
