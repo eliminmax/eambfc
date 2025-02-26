@@ -78,13 +78,6 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
 int main(int argc, char *argv[]) {
     /* register atexit function to clean up any open files or memory allocations
      * left behind. */
-    if (!argc) {
-        basic_err(
-            "NO_CMDLINE_ARGS",
-            "main called with argc=0, so something's wrong here"
-        );
-        return EXIT_FAILURE;
-    }
 #ifndef SKIP_RESOURCE_MGR
     register_mgr();
 #endif /* SKIP_RESOURCE_MGR */
