@@ -25,6 +25,9 @@ GCC_STRICT_FLAGS = -Wall -Wextra -Wpedantic -Werror -std=c99 -fanalyzer        \
 		-Wtrampolines -Wlogical-op -Winit-self -Wcast-qual -Wundef     \
 		$(POSIX_CFLAG) $(CFLAGS)
 
+# if these are changed, rebuild everything
+COMMON_HEADERS = err.h types.h config.h
+
 GCC_UBSAN_FLAGS = -std=c99 -fanalyzer -fsanitize=address,undefined \
 		-fno-sanitize-recover=all $(POSIX_CFLAG) $(CFLAGS)
 
@@ -56,19 +59,19 @@ install: eambfc
 version.h: version gen_version_h.sh
 	./gen_version_h.sh
 
-resource_mgr.o: resource_mgr.c
-serialize.o: serialize.c
-compile.o: compile.c
-parse_args.o: version.h config.h parse_args.c
-main.o: main.c
-err.o: err.c
-util.o: util.c
-optimize.o: optimize.c
+resource_mgr.o: resource_mgr.c $(COMMON_HEADERS)
+serialize.o: serialize.c $(COMMON_HEADERS)
+compile.o: compile.c $(COMMON_HEADERS)
+parse_args.o: parse_args.c version.h $(COMMON_HEADERS)
+main.o: main.c $(COMMON_HEADERS)
+err.o: err.c $(COMMON_HEADERS)
+util.o: util.c $(COMMON_HEADERS)
+optimize.o: optimize.c $(COMMON_HEADERS)
 # __BACKENDS__ add target for backend object file
-backend_arm64.o: backend_arm64.c
-backend_riscv64.o: backend_riscv64.c
-backend_s390x.o: backend_s390x.c
-backend_x86_64.o: backend_x86_64.c
+backend_arm64.o: backend_arm64.c $(COMMON_HEADERS)
+backend_riscv64.o: backend_riscv64.c $(COMMON_HEADERS)
+backend_s390x.o: backend_s390x.c $(COMMON_HEADERS)
+backend_x86_64.o: backend_x86_64.c $(COMMON_HEADERS)
 
 # for testing
 #
