@@ -280,13 +280,6 @@ run_cfg parse_args(int argc, char *argv[]) {
                 );
                 SHOW_HINT();
             }
-            if (rc.out_ext != NULL && strcmp(rc.out_ext, optarg) == 0) {
-                basic_err(
-                    BF_ERR_INPUT_IS_OUTPUT,
-                    "Extension can't be the same as output suffix"
-                );
-                exit(EXIT_FAILURE);
-            }
             rc.ext = optarg;
             break;
         case 's':
@@ -297,13 +290,6 @@ run_cfg parse_args(int argc, char *argv[]) {
                     "passed -s multiple times."
                 );
                 SHOW_HINT();
-            }
-            if (rc.ext != NULL && strcmp(rc.ext, optarg) == 0) {
-                basic_err(
-                    BF_ERR_INPUT_IS_OUTPUT,
-                    "Extension can't be the same as output suffix"
-                );
-                exit(EXIT_FAILURE);
             }
             rc.out_ext = optarg;
             break;
@@ -364,13 +350,21 @@ run_cfg parse_args(int argc, char *argv[]) {
             SHOW_HINT();
         }
     }
+    /* if no extension was provided, use .bf */
+    if (rc.ext == NULL) rc.ext = ".bf";
+
+    if (rc.out_ext != NULL && strcmp(rc.out_ext, rc.ext) == 0) {
+        basic_err(
+            BF_ERR_INPUT_IS_OUTPUT,
+            "Extension can't be the same as output suffix"
+        );
+        exit(EXIT_FAILURE);
+    }
+
     if (optind == argc) {
         basic_err(BF_ERR_NO_SOURCE_FILES, "No source files provided.");
         SHOW_HINT();
     }
-
-    /* if no extension was provided, use .bf */
-    if (rc.ext == NULL) rc.ext = ".bf";
 
     /* if no tape size was specified, default to 8. */
     if (rc.tape_blocks == 0) rc.tape_blocks = 8;
