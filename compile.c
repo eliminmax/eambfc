@@ -478,7 +478,7 @@ bool bf_compile(
 
     /* compile the actual source code to object code */
     if (optimize) {
-        if (!filter_dead(&src_code)) {
+        if (!filter_dead(&src_code, in_name)) {
             mgr_free(jump_stack.locations);
             return false;
         }

@@ -27,5 +27,5 @@
  *
  * all `,` and `.` instructions are left unchanged, as are any `[` or `]`
  * instructions not part of the two sequences that are replaced with `@`. */
-nonnull_args bool filter_dead(sized_buf *src);
+nonnull_args bool filter_dead(sized_buf *src, const char *in_name);
 #endif /* BFC_OPTIMIZE_H */
