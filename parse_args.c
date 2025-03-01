@@ -311,14 +311,15 @@ run_cfg parse_args(int argc, char *argv[]) {
             /* if the full opt_arg wasn't consumed, it's not a numeric value. */
             if (*endptr != '\0') {
                 basic_err(
-                    BF_ERR_NOT_NUMERIC,
+                    BF_ERR_TAPE_SIZE_NOT_NUMERIC,
                     "tape size could not be parsed as a numeric value"
                 );
                 SHOW_HINT();
             }
             if (holder == 0) {
                 basic_err(
-                    BF_ERR_NO_TAPE, "Tape value for -t must be at least 1"
+                    BF_ERR_TAPE_SIZE_ZERO,
+                    "Tape value for -t must be at least 1"
                 );
                 SHOW_HINT();
             }

@@ -262,7 +262,7 @@ static bool bf_jump_open(sized_buf *obj_code, const arch_inter *inter) {
             jump_stack.loc_sz += JUMP_CHUNK_SZ;
         } else {
             basic_err(
-                BF_ERR_TOO_MANY_NESTED_LOOPS,
+                BF_ERR_NESTED_TOO_DEEP,
                 "Extending jump stack any more would cause an overflow."
             );
             return false;
