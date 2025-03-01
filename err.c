@@ -15,7 +15,7 @@
 
 /* to keep the order consistent with the bf_err_id enum, do non-ICE errors then
  * ICEs, with each group sorted alphabetically */
-const char ERR_IDS[][32] = {
+const char *ERR_IDS[] = {
     "BadSourceExtension",
     "BufferTooLarge",
     "FailedRead",
