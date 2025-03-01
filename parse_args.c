@@ -369,10 +369,13 @@ run_cfg parse_args(int argc, char *argv[]) {
     if (rc.ext == NULL) rc.ext = ".bf";
 
     if (rc.out_ext != NULL && strcmp(rc.out_ext, rc.ext) == 0) {
-        basic_err(
-            BF_ERR_INPUT_IS_OUTPUT,
-            "Extension can't be the same as output suffix"
-        );
+        display_err((bf_comp_err){
+            .id = BF_ERR_INPUT_IS_OUTPUT,
+            .msg = "Extension can't be the same as output suffix",
+            .file = NULL,
+            .has_instr = false,
+            .has_location = false,
+        });
         exit(EXIT_FAILURE);
     }
 
