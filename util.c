@@ -44,17 +44,29 @@ const_fn i64 sign_extend(i64 val, u8 bits) {
 /* Wrapper around write.3POSIX that returns true if all bytes were written, and
  * prints an error and returns false otherwise or if ct is too large to
  * validate. */
-nonnull_args bool write_obj(int fd, const void *buf, size_t ct) {
+nonnull_args bool write_obj(
+    int fd, const void *buf, size_t ct, const char *out_name
+) {
     if (ct > SSIZE_MAX) {
-        basic_err(
-            BF_ERR_WRITE_TOO_LARGE,
-            "Didn't write because write is too large to properly validate."
-        );
+        display_err((bf_comp_err){
+            .id = BF_ERR_WRITE_TOO_LARGE,
+            .msg =
+                "Didn't write because write is too large to properly validate.",
+            .has_location = false,
+            .has_instr = false,
+            .file = out_name,
+        });
         return false;
     }
     ssize_t written = write(fd, buf, ct);
     if (written != (ssize_t)ct) {
-        basic_err(BF_ERR_FAILED_WRITE, "Failed to write to file");
+        display_err((bf_comp_err){
+            .id = BF_ERR_FAILED_WRITE,
+            .msg = "Failed to write to file",
+            .has_location = false,
+            .has_instr = false,
+            .file = out_name,
+        });
         return false;
     }
     return true;

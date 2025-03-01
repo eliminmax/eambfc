@@ -73,8 +73,15 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
         mgr_free(outname);
         return false;
     }
-    bool result =
-        bf_compile(rc->inter, src_fd, dst_fd, rc->optimize, rc->tape_blocks);
+    bool result = bf_compile(
+        rc->inter,
+        filename,
+        outname,
+        src_fd,
+        dst_fd,
+        rc->optimize,
+        rc->tape_blocks
+    );
     if ((!result) && (!rc->keep)) remove(outname);
     mgr_close(src_fd);
     mgr_close(dst_fd);

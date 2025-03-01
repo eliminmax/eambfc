@@ -56,7 +56,9 @@
 static uint line, col;
 
 /* Write the ELF header to the file descriptor fd. */
-static bool write_ehdr(int fd, u64 tape_blocks, const arch_inter *inter) {
+static bool write_ehdr(
+    int fd, u64 tape_blocks, const arch_inter *inter, const char *out_name
+) {
     /* The format of the ELF header is well-defined and well-documented
      * elsewhere. The struct for it is defined in compat/elf.h, as are most
      * of the values used in here. */
@@ -142,13 +144,17 @@ static bool write_ehdr(int fd, u64 tape_blocks, const arch_inter *inter) {
         serialize_ehdr64_be(&header, header_bytes);
     }
 
-    return write_obj(fd, header_bytes, EHDR_SIZE);
+    return write_obj(fd, header_bytes, EHDR_SIZE, out_name);
 }
 
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
 static bool write_phtb(
-    int fd, size_t code_sz, u64 tape_blocks, const arch_inter *inter
+    int fd,
+    size_t code_sz,
+    u64 tape_blocks,
+    const arch_inter *inter,
+    const char *out_name
 ) {
     Elf64_Phdr phdr_table[PHNUM];
     char phdr_table_bytes[PHTB_SIZE];
@@ -203,7 +209,7 @@ static bool write_phtb(
         }
     }
 
-    return write_obj(fd, phdr_table_bytes, PHTB_SIZE);
+    return write_obj(fd, phdr_table_bytes, PHTB_SIZE, out_name);
 }
 
 /* The brainfuck instructions "." and "," are similar from an implementation
@@ -255,16 +261,22 @@ static struct jump_stack {
  * doesn't actually write to the file yet, as the address of `]` is unknown.
  *
  * If too many nested loops are encountered, it exteds the jump stack. */
-static bool bf_jump_open(sized_buf *obj_code, const arch_inter *inter) {
+static bool bf_jump_open(
+    sized_buf *obj_code, const arch_inter *inter, const char *in_name
+) {
     /* ensure that there are no more than the maximum nesting level */
     if (jump_stack.next_index + 1 == jump_stack.loc_sz) {
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
             jump_stack.loc_sz += JUMP_CHUNK_SZ;
         } else {
-            basic_err(
-                BF_ERR_NESTED_TOO_DEEP,
-                "Extending jump stack any more would cause an overflow."
-            );
+            display_err((bf_comp_err){
+                .id = BF_ERR_NESTED_TOO_DEEP,
+                .msg = "Extending jump stack any more would cause an overflow",
+                .file = in_name,
+                .instr = '[',
+                .has_location = false,
+                .has_instr = true,
+            });
             return false;
         }
 
@@ -335,7 +347,9 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
-static bool comp_instr(char c, sized_buf *obj_code, const arch_inter *inter) {
+static bool comp_instr(
+    char c, sized_buf *obj_code, const arch_inter *inter, const char *in_name
+) {
     col++;
     switch (c) {
     /* start with the simple cases handled with COMPILE_WITH */
@@ -353,7 +367,7 @@ static bool comp_instr(char c, sized_buf *obj_code, const arch_inter *inter) {
     /* read from stdin */
     case ',': return bf_io(obj_code, STDIN_FILENO, inter->SC_NUMS->read, inter);
     /* `[` and `]` do their own error handling. */
-    case '[': return bf_jump_open(obj_code, inter);
+    case '[': return bf_jump_open(obj_code, inter, in_name);
     case ']': return bf_jump_close(obj_code, inter);
     /* on a newline, add 1 to the line number and reset the column */
     case '\n':
@@ -371,10 +385,15 @@ static bool comp_instr(char c, sized_buf *obj_code, const arch_inter *inter) {
 
 /* Compile an ir instruction */
 static bool comp_ir_instr(
-    char instr, size_t count, sized_buf *obj_code, const arch_inter *inter
+    char instr,
+    size_t count,
+    sized_buf *obj_code,
+    const arch_inter *inter,
+    const char *in_name
 ) {
     /* if there's only one (non-'@') instruction, compile it normally */
-    if (count == 1 && instr != '@') return comp_instr(instr, obj_code, inter);
+    if (count == 1 && instr != '@')
+        return comp_instr(instr, obj_code, inter, in_name);
     switch (instr) {
     /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
     case '.':
@@ -382,7 +401,7 @@ static bool comp_ir_instr(
     case '[':
     case ']':
         for (size_t i = 0; i < count; i++) {
-            if (!comp_instr(instr, obj_code, inter)) return false;
+            if (!comp_instr(instr, obj_code, inter, in_name)) return false;
         }
         return true;
     /* if it's @, then zero the byte pointed to by bf_ptr */
@@ -396,7 +415,10 @@ static bool comp_ir_instr(
 }
 
 static bool compile_condensed(
-    const char *src_code, sized_buf *obj_code, const arch_inter *inter
+    const char *src_code,
+    sized_buf *obj_code,
+    const arch_inter *inter,
+    const char *in_name
 ) {
     /* return early when there are no instructions to compile */
     if (*src_code == '\0') return true;
@@ -408,12 +430,12 @@ static bool compile_condensed(
         if (*src_code == prev_instr) {
             count++;
         } else {
-            ret &= comp_ir_instr(prev_instr, count, obj_code, inter);
+            ret &= comp_ir_instr(prev_instr, count, obj_code, inter, in_name);
             count = 1;
             prev_instr = *(src_code);
         }
     }
-    return ret & comp_ir_instr(prev_instr, count, obj_code, inter);
+    return ret & comp_ir_instr(prev_instr, count, obj_code, inter, in_name);
 }
 
 /* Compile code in source file to destination file.
@@ -428,6 +450,8 @@ static bool compile_condensed(
  * Returns true if compilation was successful, and false otherwise. */
 bool bf_compile(
     const arch_inter *inter,
+    const char *in_name,
+    const char *out_name,
     int in_fd,
     int out_fd,
     bool optimize,
@@ -458,10 +482,12 @@ bool bf_compile(
             mgr_free(jump_stack.locations);
             return false;
         }
-        ret &= compile_condensed(src_code.buf, &obj_code, inter);
+        ret &= compile_condensed(src_code.buf, &obj_code, inter, in_name);
     } else {
         for (size_t i = 0; i < src_code.sz; i++) {
-            ret &= comp_instr(((char *)src_code.buf)[i], &obj_code, inter);
+            ret &= comp_instr(
+                ((char *)src_code.buf)[i], &obj_code, inter, in_name
+            );
         }
     }
 
@@ -476,18 +502,18 @@ bool bf_compile(
     ret &= inter->FUNCS->syscall(&obj_code);
 
     /* now, obj_code size is known, so we can write the headers and padding */
-    ret &= write_ehdr(out_fd, tape_blocks, inter);
-    ret &= write_phtb(out_fd, obj_code.sz, tape_blocks, inter);
+    ret &= write_ehdr(out_fd, tape_blocks, inter, out_name);
+    ret &= write_phtb(out_fd, obj_code.sz, tape_blocks, inter, out_name);
     const char padding[PAD_SZ] = {0};
-    ret &= write_obj(out_fd, padding, PAD_SZ);
+    ret &= write_obj(out_fd, padding, PAD_SZ, out_name);
     /* finally, write the code itself. */
-    ret &= write_obj(out_fd, obj_code.buf, obj_code.sz);
+    ret &= write_obj(out_fd, obj_code.buf, obj_code.sz, out_name);
 
     /* check if any unmatched loop openings were left over. */
     for (size_t i = 0; i < jump_stack.next_index; i++) {
         display_err((bf_comp_err){
             .id = BF_ERR_UNMATCHED_OPEN,
-            .file = NULL,
+            .file = in_name,
             .msg = "Reached the end of the file with an unmatched '['.",
             .instr = '[',
             .line = jump_stack.locations[i].src_line,

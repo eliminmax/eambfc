@@ -40,7 +40,9 @@ const_fn inline i64 sign_extend(i64 val, u8 bits) {
  * return false immediately, as it's too big to validate.
  *
  * See write.3POSIX for more information on arguments. */
-nonnull_args bool write_obj(int fd, const void *buf, size_t ct);
+nonnull_args bool write_obj(
+    int fd, const void *buf, size_t ct, const char *outname
+);
 
 /* reserve nbytes bytes at the end of dst, and returns a pointer to the
  * beginning of them - it's assumed that the caller will populate them, so the

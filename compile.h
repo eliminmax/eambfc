@@ -35,6 +35,8 @@
  * amount. */
 bool bf_compile(
     const arch_inter *inter,
+    const char *in_name,
+    const char *out_name,
     int in_fd,
     int out_fd,
     bool optimize,
