@@ -246,7 +246,7 @@ typedef struct jump_loc {
 } jump_loc;
 
 static struct jump_stack {
-    size_t index;
+    size_t next_index;
     size_t loc_sz;
     jump_loc *locations;
 } jump_stack;
@@ -257,7 +257,7 @@ static struct jump_stack {
  * If too many nested loops are encountered, it exteds the jump stack. */
 static bool bf_jump_open(sized_buf *obj_code, const arch_inter *inter) {
     /* ensure that there are no more than the maximum nesting level */
-    if (jump_stack.index + 1 == jump_stack.loc_sz) {
+    if (jump_stack.next_index + 1 == jump_stack.loc_sz) {
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
             jump_stack.loc_sz += JUMP_CHUNK_SZ;
         } else {
@@ -270,14 +270,14 @@ static bool bf_jump_open(sized_buf *obj_code, const arch_inter *inter) {
 
         jump_stack.locations = mgr_realloc(
             jump_stack.locations,
-            (jump_stack.index + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
+            (jump_stack.next_index + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
         );
     }
     /* push the current address onto the stack */
-    jump_stack.locations[jump_stack.index].src_line = line;
-    jump_stack.locations[jump_stack.index].src_col = col;
-    jump_stack.locations[jump_stack.index].dst_loc = obj_code->sz;
-    jump_stack.index++;
+    jump_stack.locations[jump_stack.next_index].src_line = line;
+    jump_stack.locations[jump_stack.next_index].src_col = col;
+    jump_stack.locations[jump_stack.next_index].dst_loc = obj_code->sz;
+    jump_stack.next_index++;
     /* fill space jump open will take with NOP instructions of the same length,
      * so that obj_code->sz remains properly sized. */
     return inter->FUNCS->nop_loop_open(obj_code);
@@ -290,7 +290,7 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
     i32 distance;
 
     /* ensure that the current index is in bounds */
-    if (jump_stack.index == 0) {
+    if (jump_stack.next_index == 0) {
         position_err(
             BF_ERR_UNMATCHED_CLOSE,
             "Found ']' without matching '['.",
@@ -301,7 +301,7 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
         return false;
     }
     /* pop the matching `[` instruction's location */
-    open_addr = jump_stack.locations[--jump_stack.index].dst_loc;
+    open_addr = jump_stack.locations[--jump_stack.next_index].dst_loc;
     distance = obj_code->sz - open_addr;
 
     /* This is messy, but cuts down the number of allocations massively.
@@ -438,7 +438,7 @@ bool bf_compile(
     bool ret = true;
 
     /* reset the jump stack for the new file */
-    jump_stack.index = 0;
+    jump_stack.next_index = 0;
     jump_stack.locations = mgr_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
 
@@ -481,13 +481,13 @@ bool bf_compile(
     ret &= write_obj(out_fd, obj_code.buf, obj_code.sz);
 
     /* check if any unmatched loop openings were left over. */
-    if (jump_stack.index-- > 0) {
+    for (size_t i = 0; i < jump_stack.next_index; i++) {
         position_err(
             BF_ERR_UNMATCHED_OPEN,
             "Reached the end of the file with an unmatched '['.",
             '[',
-            jump_stack.locations[jump_stack.index].src_line,
-            jump_stack.locations[jump_stack.index].src_col
+            jump_stack.locations[i].src_line,
+            jump_stack.locations[i].src_col
         );
         ret = false;
     }
