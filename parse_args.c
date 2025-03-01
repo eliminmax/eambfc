@@ -26,7 +26,7 @@ const struct option longopts[] = {
     {"json", no_argument, 0, 'j'},
     {"optimize", no_argument, 0, 'O'},
     {"keep-failed", no_argument, 0, 'k'},
-    {"moveahead", no_argument, 0, 'm'},
+    {"continue", no_argument, 0, 'c'},
     {"list-targets", no_argument, 0, 'A'},
     {"target-arch", required_argument, 0, 'a'},
     {"tape-size", required_argument, 0, 't'},
@@ -58,7 +58,7 @@ static int arg_index = 0;
 #define OPTION_QUIET OPTION("quiet", "q", "       ", "don't print any errors*")
 #define OPTION_OPTIMIZE OPTION("optimize", "O", "    ", "enable optimization**")
 #define OPTION_MOVEAHEAD \
-    OPTION("moveahead", "m", "   ", "continue to the next file on failure")
+    OPTION("continue", "c", "    ", "continue to the next file on failure")
 #define OPTION_LIST_TARGETS \
     OPTION("list-targets", "A", "", "list supported targets and exit")
 #define OPTION_KEEP_FAILED \
@@ -238,11 +238,11 @@ run_cfg parse_args(int argc, char *argv[]) {
         .quiet = false,
         .optimize = false,
         .keep = false,
-        .moveahead = false,
+        .cont_on_fail = false,
         .json = false,
     };
 
-    while ((opt = getopt(argc, argv, ":hVqjOkmAa:e:t:s:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hVqjOkmcAa:e:t:s:")) != -1) {
         switch (opt) {
         case 'h': printf(HELP_TEMPLATE, PROGNAME); exit(EXIT_SUCCESS);
         case 'V': report_version(PROGNAME);
@@ -257,7 +257,8 @@ run_cfg parse_args(int argc, char *argv[]) {
             break;
         case 'O': rc.optimize = true; break;
         case 'k': rc.keep = true; break;
-        case 'm': rc.moveahead = true; break;
+        case 'm':
+        case 'c': rc.cont_on_fail = true; break;
         case 'e':
             /* Print an error if ext was already set. */
             if (rc.ext != NULL) {

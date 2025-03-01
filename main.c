@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
     for (int i = optind; i < argc; i++) {
         if (compile_file(argv[i], &rc)) continue;
         ret = EXIT_FAILURE;
-        if (!rc.moveahead) break;
+        if (!rc.cont_on_fail) break;
     }
 
     return ret;
