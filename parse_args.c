@@ -280,6 +280,13 @@ run_cfg parse_args(int argc, char *argv[]) {
                 );
                 SHOW_HINT();
             }
+            if (rc.out_ext != NULL && strcmp(rc.out_ext, optarg) == 0) {
+                basic_err(
+                    BF_ERR_INPUT_IS_OUTPUT,
+                    "Extension can't be the same as output suffix"
+                );
+                exit(EXIT_FAILURE);
+            }
             rc.ext = optarg;
             break;
         case 's':
@@ -290,6 +297,13 @@ run_cfg parse_args(int argc, char *argv[]) {
                     "passed -s multiple times."
                 );
                 SHOW_HINT();
+            }
+            if (rc.ext != NULL && strcmp(rc.ext, optarg) == 0) {
+                basic_err(
+                    BF_ERR_INPUT_IS_OUTPUT,
+                    "Extension can't be the same as output suffix"
+                );
+                exit(EXIT_FAILURE);
             }
             rc.out_ext = optarg;
             break;

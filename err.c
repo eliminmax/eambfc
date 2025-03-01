@@ -21,6 +21,7 @@ const char *ERR_IDS[] = {
     "FailedRead",
     "FailedWrite",
     "ImmediateTooLarge",
+    "InputIsOutput",
     "JumpTooLong",
     "MgrRegisterFailed",
     "MissingOperand",
