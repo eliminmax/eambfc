@@ -79,14 +79,6 @@ void display_err(bf_comp_err e);
 #define basic_err(i, m) \
     display_err((bf_comp_err \
     ){.id = (i), .msg = (m), .has_location = false, .has_instr = false})
-#define position_err(i, m, in, l, c) \
-    display_err((bf_comp_err){.id = (i), \
-                              .msg = (m), \
-                              .has_instr = true, \
-                              .has_location = true, \
-                              .instr = (in), \
-                              .line = (l), \
-                              .col = (c)})
 
 /* special handling for malloc/realloc failure error messages, which avoids any
  * further use of malloc/realloc for purposes like generating JSON-escaped

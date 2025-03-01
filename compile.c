@@ -291,13 +291,16 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
 
     /* ensure that the current index is in bounds */
     if (jump_stack.next_index == 0) {
-        position_err(
-            BF_ERR_UNMATCHED_CLOSE,
-            "Found ']' without matching '['.",
-            ']',
-            line,
-            col
-        );
+        display_err((bf_comp_err){
+            .id = BF_ERR_UNMATCHED_CLOSE,
+            .file = NULL,
+            .msg = "Found ']' without matching '['.",
+            .has_instr = true,
+            .has_location = true,
+            .instr = ']',
+            .line = line,
+            .col = col,
+        });
         return false;
     }
     /* pop the matching `[` instruction's location */
@@ -482,13 +485,16 @@ bool bf_compile(
 
     /* check if any unmatched loop openings were left over. */
     for (size_t i = 0; i < jump_stack.next_index; i++) {
-        position_err(
-            BF_ERR_UNMATCHED_OPEN,
-            "Reached the end of the file with an unmatched '['.",
-            '[',
-            jump_stack.locations[i].src_line,
-            jump_stack.locations[i].src_col
-        );
+        display_err((bf_comp_err){
+            .id = BF_ERR_UNMATCHED_OPEN,
+            .file = NULL,
+            .msg = "Reached the end of the file with an unmatched '['.",
+            .instr = '[',
+            .line = jump_stack.locations[i].src_line,
+            .col = jump_stack.locations[i].src_col,
+            .has_instr = true,
+            .has_location = true,
+        });
         ret = false;
     }
 
