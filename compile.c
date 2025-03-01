@@ -457,7 +457,7 @@ bool bf_compile(
     bool optimize,
     u64 tape_blocks
 ) {
-    sized_buf src_code = read_to_sized_buf(in_fd);
+    sized_buf src_code = read_to_sized_buf(in_fd, in_name);
     /* Return immediately if a read failed */
     if (src_code.buf == NULL) return false;
     sized_buf obj_code = {.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};

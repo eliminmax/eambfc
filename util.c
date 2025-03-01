@@ -88,10 +88,6 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
         /* will reallocate with 0x1000 to 0x2000 bytes of extra space */
         size_t needed_cap = (sb->sz + nbytes + 0x1000) & (~0xfff);
         if (needed_cap < sb->capacity) {
-            basic_err(
-                BF_ERR_BUF_TOO_LARGE,
-                "Out of room, but extending buffer would cause overflow"
-            );
             mgr_free(sb->buf);
             sb->capacity = 0;
             sb->sz = 0;
@@ -120,23 +116,17 @@ nonnull_args bool append_obj(
      * implementation will be returning NULL well before this is relevant. */
     if ((bytes_sz > (SIZE_MAX - 0x8000)) ||
         (dst->capacity > (SIZE_MAX - (bytes_sz + 0x8000)))) {
-        basic_err(
-            BF_ERR_BUF_TOO_LARGE,
-            "Extending buffer would put size within 8 KiB of SIZE_MAX"
-        );
         mgr_free(dst->buf);
         dst->capacity = 0;
         dst->sz = 0;
         dst->buf = NULL;
-        return false;
+        alloc_err();
     }
 
     if (dst->buf == NULL) {
         internal_err(
             BF_ICE_APPEND_TO_NULL, "append_obj called with dst->buf set to NULL"
         );
-        /* will never return, as internal_err calls exit(EXIT_FAILURE) */
-        return false;
     }
     /* how much capacity is needed */
     size_t needed_cap = bytes_sz + dst->sz;
@@ -161,7 +151,7 @@ nonnull_args bool append_obj(
 
 /* Reads the contents of fd into sb. If a read error occurs, frees what's
  * already been read, and sets sb to {0, 0, NULL}. */
-sized_buf read_to_sized_buf(int fd) {
+sized_buf read_to_sized_buf(int fd, const char *in_name) {
     sized_buf sb = {.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
     /* read into sb in 4096-byte chunks */
     char chunk[4096];
@@ -170,7 +160,13 @@ sized_buf read_to_sized_buf(int fd) {
         if (count >= 0) {
             append_obj(&sb, &chunk, count);
         } else {
-            basic_err(BF_ERR_FAILED_READ, "Failed to read from file");
+            display_err((bf_comp_err){
+                .file = in_name,
+                .id = BF_ERR_FAILED_READ,
+                .msg = "Failed to read file into buffer",
+                .has_instr = false,
+                .has_location = false,
+            });
             mgr_free(sb.buf);
             sb.sz = 0;
             sb.capacity = 0;
