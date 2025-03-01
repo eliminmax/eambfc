@@ -176,10 +176,9 @@ static bool add_sub_imm(
     /* The immediate can be a 12-bit immediate or a 24-bit immediate with the
      * lower 12 bits set to zero, in which case shift should be set to true. */
     if ((shift && (imm & ~0xfff000) != 0) || (!shift && (imm & ~0xfff) != 0)) {
-        basic_err(
-            BF_ERR_IMMEDIATE_TOO_LARGE, "value is invalid for shift level."
+        internal_err(
+            BF_ICE_IMMEDIATE_TOO_LARGE, "value is invalid for shift level."
         );
-        return false;
     }
     /* align the immediate bits */
     u32 aligned = shift ? (imm >> 2) : (imm << 10);

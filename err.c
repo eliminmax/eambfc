@@ -20,7 +20,6 @@ const char *ERR_IDS[] = {
     "BufferTooLarge",
     "FailedRead",
     "FailedWrite",
-    "ImmediateTooLarge",
     "InputIsOutput",
     "JumpTooLong",
     "MgrRegisterFailed",
@@ -44,6 +43,7 @@ const char *ERR_IDS[] = {
     "WriteTooLarge",
     /* ICE divider */
     "ICE:AppendToNull",
+    "ICE:ImmediateTooLarge",
     "ICE:InvalidIr",
     "ICE:InvalidJump",
     "ICE:MgrCloseUnmanagedFd",
