@@ -227,80 +227,87 @@ static noreturn nonnull_args void list_arches(const char *progname) {
     exit(EXIT_SUCCESS);
 }
 
-/* macros for use in parse_args function only.
- * PROGNAME:
- *  * use argv[0], but fall back to "eambfc" if argc == 0 or if argv[0] is NULL
- * SHOW_HINT:
- *  * unless -q or -j was passed, write the help text to stderr. */
-#define PROGNAME (argc && argv[0] != NULL) ? argv[0] : "eambfc"
-#define SHOW_HINT() \
-    do { \
-        if (!(rc.quiet || rc.json)) fprintf(stderr, HELP_TEMPLATE, PROGNAME); \
-        exit(EXIT_FAILURE); \
-    } while (false)
+static noreturn nonnull_args void bad_arg(
+    const char *progname, bf_err_id id, const char *msg, bool show_hint
+) {
+    display_err((bf_comp_err){
+        .id = id,
+        .msg = msg,
+        .file = NULL,
+        .has_instr = false,
+        .has_location = false,
+    });
+    if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
+    exit(EXIT_FAILURE);
+}
 
 run_cfg parse_args(int argc, char *argv[]) {
     int opt;
     char missing_op_msg[34] = "% requires an additional argument";
     char unknown_arg_msg[20] = "Unknown argument: %";
+    bool show_hint = true;
     run_cfg rc = {
         .inter = NULL,
         .ext = NULL,
         .out_ext = NULL,
         .tape_blocks = 0,
-        .quiet = false,
         .optimize = false,
         .keep = false,
         .cont_on_fail = false,
-        .json = false,
     };
+
+    const char *progname = (argc && argv[0] != NULL) ? argv[0] : "eambfc";
 
     while ((opt = getopt(argc, argv, ":hVqjOkmcAa:e:t:s:")) != -1) {
         switch (opt) {
-        case 'h': printf(HELP_TEMPLATE, PROGNAME); exit(EXIT_SUCCESS);
-        case 'V': report_version(PROGNAME);
-        case 'A': list_arches(PROGNAME);
+        case 'h': printf(HELP_TEMPLATE, progname); exit(EXIT_SUCCESS);
+        case 'V': report_version(progname);
+        case 'A': list_arches(progname);
         case 'q':
-            rc.quiet = true;
+            show_hint = false;
             quiet_mode();
             break;
         case 'j':
-            rc.json = true;
+            show_hint = false;
             json_mode();
             break;
         case 'O': rc.optimize = true; break;
         case 'k': rc.keep = true; break;
-        case 'm':
+        case 'm': /* undocumented legacy alias for 'c' */
         case 'c': rc.cont_on_fail = true; break;
         case 'e':
             /* Print an error if ext was already set. */
             if (rc.ext != NULL) {
-                basic_err(
-                    BF_ERR_MULTIPLE_EXTENSIONS, "passed -e multiple times."
+                bad_arg(
+                    progname,
+                    BF_ERR_MULTIPLE_EXTENSIONS,
+                    "passed -e multiple times.",
+                    show_hint
                 );
-                SHOW_HINT();
             }
             rc.ext = optarg;
             break;
         case 's':
             /* Print an error if out_ext was already set. */
             if (rc.out_ext != NULL) {
-                basic_err(
+                bad_arg(
+                    progname,
                     BF_ERR_MULTIPLE_OUTPUT_EXTENSIONS,
-                    "passed -s multiple times."
+                    "passed -s multiple times.",
+                    show_hint
                 );
-                SHOW_HINT();
             }
             rc.out_ext = optarg;
             break;
         case 't':
             /* Print an error if tape_blocks has already been set */
             if (rc.tape_blocks != 0) {
-                basic_err(
+                bad_arg(
+                    progname,
                     BF_ERR_MULTIPLE_TAPE_BLOCK_COUNTS,
-                    "passed -t multiple times."
+                    "passed -t multiple times.",
+                    show_hint
                 );
-                SHOW_HINT();
             }
             char *endptr;
             /* casting unsigned long long instead of using scanf as scanf can
@@ -309,47 +316,55 @@ run_cfg parse_args(int argc, char *argv[]) {
             unsigned long long int holder = strtoull(optarg, &endptr, 10);
             /* if the full opt_arg wasn't consumed, it's not a numeric value. */
             if (*endptr != '\0') {
-                basic_err(
+                bad_arg(
+                    progname,
                     BF_ERR_TAPE_SIZE_NOT_NUMERIC,
-                    "tape size could not be parsed as a numeric value"
+                    "tape size could not be parsed as a numeric value",
+                    show_hint
                 );
-                SHOW_HINT();
             }
             if (holder == 0) {
-                basic_err(
+                bad_arg(
+                    progname,
                     BF_ERR_TAPE_SIZE_ZERO,
-                    "Tape value for -t must be at least 1"
+                    "Tape value for -t must be at least 1",
+                    show_hint
                 );
-                SHOW_HINT();
             }
             /* if it's any larger than this, the tape size would exceed the
              * 64-bit integer limit. */
             if (holder >= (UINT64_MAX >> 12)) {
-                basic_err(
+                bad_arg(
+                    progname,
                     BF_ERR_TAPE_TOO_LARGE,
-                    "tape size too large to avoid overflow"
+                    "tape size too large to avoid overflow",
+                    show_hint
                 );
-                SHOW_HINT();
             }
             rc.tape_blocks = (u64)holder;
             break;
         case 'a':
             if (rc.inter != NULL) {
-                basic_err(BF_ERR_MULTIPLE_ARCHES, "passed -a multiple times.");
-                SHOW_HINT();
+                bad_arg(
+                    progname,
+                    BF_ERR_MULTIPLE_ARCHES,
+                    "passed -a multiple times.",
+                    show_hint
+                );
             }
-            if (!select_inter(optarg, &rc.inter)) { SHOW_HINT(); }
+            if (!select_inter(optarg, &rc.inter)) exit(EXIT_FAILURE);
             break;
         case ':': /* one of -a, -e, or -t is missing an argument */
             missing_op_msg[0] = optopt;
-            basic_err(BF_ERR_MISSING_OPERAND, missing_op_msg);
-            SHOW_HINT();
+            bad_arg(
+                progname, BF_ERR_MISSING_OPERAND, missing_op_msg, show_hint
+            );
         case '?': /* unknown argument */
             unknown_arg_msg[18] = optopt;
-            basic_err(BF_ERR_UNKNOWN_ARG, unknown_arg_msg);
-            SHOW_HINT();
+            bad_arg(progname, BF_ERR_UNKNOWN_ARG, unknown_arg_msg, show_hint);
         }
     }
+
     /* if no extension was provided, use .bf */
     if (rc.ext == NULL) rc.ext = ".bf";
 
@@ -362,8 +377,12 @@ run_cfg parse_args(int argc, char *argv[]) {
     }
 
     if (optind == argc) {
-        basic_err(BF_ERR_NO_SOURCE_FILES, "No source files provided.");
-        SHOW_HINT();
+        bad_arg(
+            progname,
+            BF_ERR_NO_SOURCE_FILES,
+            "No source files provided.",
+            show_hint
+        );
     }
 
     /* if no tape size was specified, default to 8. */
@@ -375,4 +394,3 @@ run_cfg parse_args(int argc, char *argv[]) {
 }
 
 #undef SHOW_HINT
-#undef PROGNAME
