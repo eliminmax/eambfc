@@ -208,7 +208,7 @@ static noreturn nonnull_args void list_arches(const char *progname) {
         "- riscv64 (aliases: riscv)\n"
 #endif /* BFC_TARGET_RISCV64 */
 #if BFC_TARGET_S390X
-        "- s390x (aliases: s390, s390x, z/architecture)\n"
+        "- s390x (aliases: s390, z/architecture)\n"
 #endif /* BFC_TARGET_S390X */
 
         "\nIf no architecture is specified, it defaults "
