@@ -179,7 +179,7 @@ static void normal_eprint(bf_comp_err err) {
     if (err.file != NULL) {
         fprintf(
             stderr,
-            "Error %s in file %s %s: %s\n",
+            "Error %s in file %s%s: %s\n",
             ERR_IDS[err.id],
             err.file,
             extra_info,
@@ -187,7 +187,7 @@ static void normal_eprint(bf_comp_err err) {
         );
     } else {
         fprintf(
-            stderr, "Error %s %s: %s\n", ERR_IDS[err.id], extra_info, err.msg
+            stderr, "Error %s%s: %s\n", ERR_IDS[err.id], extra_info, err.msg
         );
     }
 }
