@@ -34,8 +34,9 @@ const struct option longopts[] = {
     {0, 0, 0, 0},
 };
 
-/* ignored but need a non-null pointer to this*/
+/* ignored but need a non-null pointer to pass to getopt_long */
 static int arg_index = 0;
+/* use this macro in place of normal getopt */
 #define getopt(c, v, opts) getopt_long(c, v, opts, longopts, &arg_index)
 #define OPTION(l, s, pad, msg) " --" l ", " pad "-" s ":   " msg
 #define PARAM_OPT(l, s, a, spad, lpad, msg) \
