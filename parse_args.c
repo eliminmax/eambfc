@@ -15,7 +15,6 @@
 #include "parse_args.h"
 #include "version.h"
 
-#define OPTLINE(l) l
 #if BFC_GNU_ARGS
 /* GNU C */
 #include <getopt.h>
