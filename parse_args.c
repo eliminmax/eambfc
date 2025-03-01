@@ -212,7 +212,7 @@ static noreturn nonnull_args void list_arches(const char *progname) {
 #endif /* BFC_TARGET_S390X */
 
         "\nIf no architecture is specified, it defaults "
-        "to " BFC_DEFAULT_ARCH_STR " .\n",
+        "to " BFC_DEFAULT_ARCH_STR ".\n",
         progname
     );
     exit(EXIT_SUCCESS);
