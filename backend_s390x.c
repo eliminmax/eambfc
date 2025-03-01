@@ -250,8 +250,8 @@ typedef enum {
 static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
     /* jumps are done by Halfwords, not bytes, so must ensure it's valid. */
     if ((offset % 2) != 0) {
-        basic_err(
-            "INVALID_JUMP_ADDRESS", "offset is not on a halfword boundary"
+        internal_err(
+            BF_ICE_INVALID_JUMP_ADDRESS, "offset is not on a halfword boundary"
         );
         return false;
     }
@@ -260,7 +260,7 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
      * signed (2's complement) integer */
     if (offset < -0x10000 || offset > 0xffff) {
         basic_err(
-            "JUMP_TOO_LONG", "offset is out-of-range for this architecture"
+            BF_ERR_JUMP_TOO_LONG, "offset is out-of-range for this architecture"
         );
         return false;
     }

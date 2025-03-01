@@ -39,11 +39,14 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
     strcpy(outname, filename);
 
     if (!rm_ext(outname, rc->ext)) {
-        param_err(
-            "BAD_EXTENSION",
-            "File {} does not end with expected extension.",
-            filename
-        );
+        bf_comp_err e = {
+            .file = filename,
+            .msg = "File does not end with proper extension",
+            .id = BF_ERR_BAD_EXTENSION,
+            .has_location = false,
+            .has_instr = false,
+        };
+        display_err(e);
         mgr_free(outname);
         return false;
     }
@@ -55,13 +58,17 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
 
     int src_fd = mgr_open(filename, O_RDONLY);
     if (src_fd < 0) {
-        param_err("OPEN_R_FAILED", "Failed to open {} for reading.", filename);
+        display_err((bf_comp_err){.file = filename,
+                                  .id = BF_ERR_OPEN_R_FAILED,
+                                  .msg = "Failed to open file for reading"});
         mgr_free(outname);
         return false;
     }
     int dst_fd = mgr_open_m(outname, O_WRONLY | O_CREAT | O_TRUNC, 0755);
     if (dst_fd < 0) {
-        param_err("OPEN_W_FAILED", "Failed to open {} for writing.", outname);
+        display_err((bf_comp_err){.file = outname,
+                                  .id = BF_ERR_OPEN_W_FAILED,
+                                  .msg = "Failed to open file for writing"});
         mgr_close(src_fd);
         mgr_free(outname);
         return false;

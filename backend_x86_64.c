@@ -32,7 +32,7 @@ typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
 static bool test_jcc(char tttn, u8 reg, i64 offset, sized_buf *dst_buf) {
     if (offset > INT32_MAX || offset < INT32_MIN) {
         basic_err(
-            "JUMP_TOO_LONG",
+            BF_ERR_JUMP_TOO_LONG,
             "offset is outside the range of possible 32-bit signed values"
         );
         return false;

@@ -172,7 +172,16 @@ nonnull_args static bool select_inter(
         return true;
     }
 #endif /* BFC_TARGET_S390X */
-    param_err("UNKNOWN_ARCH", "{} is not a recognized architecture", arch_arg);
+    char unknown_msg[64];
+    if (sprintf(unknown_msg, "%32s", arch_arg) == 32 && unknown_msg[31]) {
+        strcat(unknown_msg, "...");
+    }
+    strcat(unknown_msg, " is not a recognized target");
+    display_err((bf_comp_err){.file = NULL,
+                              .has_instr = false,
+                              .has_location = false,
+                              .id = BF_ERR_UNKNOWN_ARCH,
+                              .msg = unknown_msg});
     return false;
 }
 
@@ -219,16 +228,20 @@ static noreturn nonnull_args void list_arches(const char *progname) {
 
 /* macros for use in parse_args function only.
  * PROGNAME:
- *  * argv[0], but fall back to "eambfc" if !argc
+ *  * use argv[0], but fall back to "eambfc" if argc == 0 or if argv[0] is NULL
  * SHOW_HINT:
  *  * unless -q or -j was passed, write the help text to stderr. */
 #define PROGNAME (argc && argv[0] != NULL) ? argv[0] : "eambfc"
 #define SHOW_HINT() \
-    if (!(rc.quiet || rc.json)) fprintf(stderr, HELP_TEMPLATE, PROGNAME)
+    do { \
+        if (!(rc.quiet || rc.json)) fprintf(stderr, HELP_TEMPLATE, PROGNAME); \
+        exit(EXIT_FAILURE); \
+    } while (false)
 
 run_cfg parse_args(int argc, char *argv[]) {
     int opt;
-    char char_str_buf[2] = "";
+    char missing_op_msg[34] = "% requires an additional argument";
+    char unknown_arg_msg[20] = "Unknown argument: %";
     run_cfg rc = {
         .inter = NULL,
         .ext = NULL,
@@ -261,7 +274,9 @@ run_cfg parse_args(int argc, char *argv[]) {
         case 'e':
             /* Print an error if ext was already set. */
             if (rc.ext != NULL) {
-                basic_err("MULTIPLE_EXTENSIONS", "passed -e multiple times.");
+                basic_err(
+                    BF_ERR_MULTIPLE_EXTENSIONS, "passed -e multiple times."
+                );
                 SHOW_HINT();
                 exit(EXIT_FAILURE);
             }
@@ -271,7 +286,8 @@ run_cfg parse_args(int argc, char *argv[]) {
             /* Print an error if out_ext was already set. */
             if (rc.out_ext != NULL) {
                 basic_err(
-                    "MULTIPLE_OUTPUT_EXTENSIONS", "passed -s multiple times."
+                    BF_ERR_MULTIPLE_OUTPUT_EXTENSIONS,
+                    "passed -s multiple times."
                 );
                 SHOW_HINT();
                 exit(EXIT_FAILURE);
@@ -282,10 +298,10 @@ run_cfg parse_args(int argc, char *argv[]) {
             /* Print an error if tape_blocks has already been set */
             if (rc.tape_blocks != 0) {
                 basic_err(
-                    "MULTIPLE_TAPE_BLOCK_COUNTS", "passed -t multiple times."
+                    BF_ERR_MULTIPLE_TAPE_BLOCK_COUNTS,
+                    "passed -t multiple times."
                 );
                 SHOW_HINT();
-                exit(EXIT_FAILURE);
             }
             char *endptr;
             /* casting unsigned long long instead of using scanf as scanf can
@@ -294,61 +310,49 @@ run_cfg parse_args(int argc, char *argv[]) {
             unsigned long long int holder = strtoull(optarg, &endptr, 10);
             /* if the full opt_arg wasn't consumed, it's not a numeric value. */
             if (*endptr != '\0') {
-                param_err(
-                    "NOT_NUMERIC",
-                    "{} could not be parsed as a numeric value",
-                    optarg
+                basic_err(
+                    BF_ERR_NOT_NUMERIC,
+                    "tape size could not be parsed as a numeric value"
                 );
                 SHOW_HINT();
-                exit(EXIT_FAILURE);
             }
             if (holder == 0) {
-                basic_err("NO_TAPE", "Tape value for -t must be at least 1");
+                basic_err(
+                    BF_ERR_NO_TAPE, "Tape value for -t must be at least 1"
+                );
                 SHOW_HINT();
-                exit(EXIT_FAILURE);
             }
             /* if it's any larger than this, the tape size would exceed the
              * 64-bit integer limit. */
             if (holder >= (UINT64_MAX >> 12)) {
-                param_err(
-                    "TAPE_TOO_LARGE",
-                    "{} * 0x1000 exceeds the 64-bit integer limit.",
-                    optarg
+                basic_err(
+                    BF_ERR_TAPE_TOO_LARGE,
+                    "tape size too large to avoid overflow"
                 );
                 SHOW_HINT();
-                exit(EXIT_FAILURE);
             }
             rc.tape_blocks = (u64)holder;
             break;
         case 'a':
             if (rc.inter != NULL) {
-                basic_err("MULTIPLE_ARCHES", "passed -a multiple times.");
+                basic_err(BF_ERR_MULTIPLE_ARCHES, "passed -a multiple times.");
                 SHOW_HINT();
-                exit(EXIT_FAILURE);
             }
-            if (!select_inter(optarg, &rc.inter)) {
-                SHOW_HINT();
-                exit(EXIT_FAILURE);
-            }
+            if (!select_inter(optarg, &rc.inter)) { SHOW_HINT(); }
             break;
         case ':': /* one of -a, -e, or -t is missing an argument */
-            char_str_buf[0] = (char)optopt;
-            param_err(
-                "MISSING_OPERAND",
-                "{} requires an additional argument",
-                char_str_buf
-            );
-            exit(EXIT_FAILURE);
+            missing_op_msg[0] = optopt;
+            basic_err(BF_ERR_MISSING_OPERAND, missing_op_msg);
+            SHOW_HINT();
         case '?': /* unknown argument */
-            char_str_buf[0] = (char)optopt;
-            param_err("UNKNOWN_ARG", "Unknown argument: {}.", char_str_buf);
-            exit(EXIT_FAILURE);
+            unknown_arg_msg[18] = optopt;
+            basic_err(BF_ERR_UNKNOWN_ARG, unknown_arg_msg);
+            SHOW_HINT();
         }
     }
     if (optind == argc) {
-        basic_err("NO_SOURCE_FILES", "No source files provided.");
+        basic_err(BF_ERR_NO_SOURCE_FILES, "No source files provided.");
         SHOW_HINT();
-        exit(EXIT_FAILURE);
     }
 
     /* if no extension was provided, use .bf */

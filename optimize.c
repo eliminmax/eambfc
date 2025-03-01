@@ -39,6 +39,18 @@ static nonnull_args void filter_non_bf(sized_buf *code) {
     code->buf = tmp.buf;
 }
 
+static void instr_err(bf_err_id id, const char *msg, char instr) {
+    bf_comp_err e = {
+        .id = id,
+        .msg = msg,
+        .instr = instr,
+        .has_instr = true,
+        .has_location = false,
+        .file = NULL,
+    };
+    display_err(e);
+}
+
 /* A function that skips past a matching ].
  * loop_start is a pointer to the [ at the start of the loop */
 static const nonnull_args char *find_loop_end(const char *loop_start) {
@@ -52,7 +64,9 @@ static const nonnull_args char *find_loop_end(const char *loop_start) {
         }
     }
     /* The above loop only terminates if an '[' was unmatched. */
-    instr_err("UNMATCHED_OPEN", "Could not optimize due to unmatched '['", '[');
+    instr_err(
+        BF_ERR_UNMATCHED_OPEN, "Could not optimize due to unmatched '['", '['
+    );
     return NULL;
 }
 
@@ -65,13 +79,17 @@ static nonnull_args bool loops_match(const char *code) {
     /* if only one is found, that's a mismatch */
     if ((open_p == NULL) && !(close_p == NULL)) {
         instr_err(
-            "UNMATCHED_CLOSE", "Could not optimize due to unmatched ']'", ']'
+            BF_ERR_UNMATCHED_CLOSE,
+            "Could not optimize due to unmatched ']'",
+            ']'
         );
         return false;
     }
     if ((close_p == NULL) && !(open_p == NULL)) {
         instr_err(
-            "UNMATCHED_OPEN", "Could not optimize due to unmatched '['", '['
+            BF_ERR_UNMATCHED_OPEN,
+            "Could not optimize due to unmatched '['",
+            '['
         );
         return false;
     }

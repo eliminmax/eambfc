@@ -10,63 +10,59 @@
 #include "types.h"
 
 typedef enum {
-    BF_ERR_APPEND_TO_NULL,
     BF_ERR_BAD_EXTENSION,
     BF_ERR_BUF_TOO_LARGE,
     BF_ERR_FAILED_READ,
     BF_ERR_FAILED_WRITE,
-    BF_ERR_ICE_PARAMS_TOO_LONG,
     BF_ERR_IMMEDIATE_TOO_LARGE,
-    BF_ERR_INVALID_IR,
-    BF_ERR_INVALID_JUMP_ADDRESS,
     BF_ERR_JUMP_TOO_LONG,
     BF_ERR_MGR_ATEXIT_FAILED,
-    BF_ERR_MGR_CLOSE_UNKNOWN,
-    BF_ERR_MGR_FREE_UNKNOWN,
-    BF_ERR_MGR_REALLOC_UNKNOWN,
     BF_ERR_MISSING_OPERAND,
     BF_ERR_MULTIPLE_ARCHES,
     BF_ERR_MULTIPLE_EXTENSIONS,
     BF_ERR_MULTIPLE_OUTPUT_EXTENSIONS,
     BF_ERR_MULTIPLE_TAPE_BLOCK_COUNTS,
-    BF_ERR_NO_CMDLINE_ARGS,
+    BF_ERR_NOT_NUMERIC,
     BF_ERR_NO_SOURCE_FILES,
     BF_ERR_NO_TAPE,
-    BF_ERR_NOT_NUMERIC,
     BF_ERR_OPEN_R_FAILED,
     BF_ERR_OPEN_W_FAILED,
-    BF_ERR_PARAMETER_ERROR_ERROR,
     BF_ERR_TAPE_TOO_LARGE,
-    BF_ERR_TOO_MANY_ALLOCS,
     BF_ERR_TOO_MANY_INSTRUCTIONS,
     BF_ERR_TOO_MANY_NESTED_LOOPS,
-    BF_ERR_TOO_MANY_OPENS,
     BF_ERR_UNKNOWN_ARCH,
     BF_ERR_UNKNOWN_ARG,
     BF_ERR_UNMATCHED_CLOSE,
     BF_ERR_UNMATCHED_OPEN,
     BF_ERR_WRITE_TOO_LARGE,
+    /* ICE divider */
+    BF_ICE_APPEND_TO_NULL,
+    BF_ICE_INVALID_IR,
+    BF_ICE_INVALID_JUMP_ADDRESS,
+    BF_ICE_MGR_CLOSE_UNKNOWN,
+    BF_ICE_MGR_FREE_UNKNOWN,
+    BF_ICE_MGR_REALLOC_UNKNOWN,
+    BF_ICE_PARAMS_TOO_LONG,
+    BF_ICE_TOO_MANY_ALLOCS,
+    BF_ICE_TOO_MANY_OPENS,
 } bf_err_id;
+
+typedef enum {
+    OUTMODE_QUIET = 0,
+    OUTMODE_NORMAL = 1,
+    OUTMODE_JSON = 2,
+} out_mode;
 
 typedef struct {
     const char *msg;
+    const char *file;
     size_t line;
     size_t col;
-    bf_err_id err_id;
+    bf_err_id id;
     char instr;
+    bool has_instr   : 1;
+    bool has_location: 1;
 } bf_comp_err;
-
-typedef nonnull_args void (*err_printer)(bf_comp_err e);
-
-typedef struct {
-    err_printer *e;
-    sized_buf *msgs;
-    bf_comp_err *errs;
-    size_t capacity;
-    size_t count;
-    bool quiet: 1;
-    bool json : 1;
-} bf_err_list;
 
 /* enable quiet mode - this does not print error messages to stderr. Does not
  * affect JSON messages printed to stdout. */
@@ -76,32 +72,30 @@ void quiet_mode(void);
 void json_mode(void);
 
 /* functions to display error messages, depending on the current error mode. */
+void display_err(bf_comp_err e);
 
-/* print a generic error message */
-nonnull_args void basic_err(const char *id, const char *msg);
-/* an error message related to a specific instruction */
-nonnull_args void instr_err(const char *id, const char *msg, char instr);
-
-/* an error message related to a specific instruction at a specific location */
-nonnull_args void position_err(
-    const char *id, const char *msg, char instr, uint line, uint col
-);
-
-/* replaces first instance of "{}" within proto with arg, then passes it as msg
- * to basic_err */
-nonnull_args void param_err(const char *id, const char *proto, const char *arg);
-
-/* FATAL ERRORS
- * these each call exit(EXIT_FAILURE) after printing the message. */
+/* compatibility macros to ease transition to updated error handling system */
+#define basic_err(i, m) \
+    display_err((bf_comp_err \
+    ){.id = (i), .msg = (m), .has_location = false, .has_instr = false})
+#define position_err(i, m, in, l, c) \
+    display_err((bf_comp_err){.id = (i), \
+                              .msg = (m), \
+                              .has_instr = true, \
+                              .has_location = true, \
+                              .instr = (in), \
+                              .line = (l), \
+                              .col = (c)})
 
 /* special handling for malloc/realloc failure error messages, which avoids any
  * further use of malloc/realloc for purposes like generating JSON-escaped
- * strings. */
+ * strings.
+ * calls exit(EXIT_FAILURE) */
 noreturn void alloc_err(void);
 
 /* an alternative to basic_err that marks error as an internal compiler error,
  * for use when an error can only trigger if another bug was mishandled.
  * Calls exit(EXIT_FAILURE) */
-noreturn nonnull_args void internal_err(const char *id, const char *msg);
+noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg);
 
 #endif /* BFC_ERR_H */

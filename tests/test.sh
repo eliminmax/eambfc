@@ -37,7 +37,7 @@ test_simple () {
     fi
 }
 
-errid_pat='s/.*"errorId":"\([^"]*\).*/\1/'
+errid_pat='s/.*"errorId": *"\([^"]*\).*/\1/'
 # a lot like test_simple, but this time, instead of testing the binary, check
 # that the error message matches the expectation
 test_error () {

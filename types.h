@@ -13,6 +13,8 @@
 #include "compat/eambfc_inttypes.h"
 
 typedef unsigned int uint;
+typedef unsigned char uchar;
+typedef signed char schar;
 
 typedef int8_t i8;
 typedef int16_t i16;

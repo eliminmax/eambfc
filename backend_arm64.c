@@ -131,11 +131,10 @@ static bool nop_loop_open(sized_buf *dst_buf) {
 /* LDRB w17, x.reg; TST w17, 0xff; B.cond offset */
 static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
     if ((offset % 4) != 0) {
-        basic_err(
-            "INVALID_JUMP_ADDRESS",
+        internal_err(
+            BF_ICE_INVALID_JUMP_ADDRESS,
             "offset is an invalid address offset (offset % 4 != 0)"
         );
-        return false;
     }
     /* use some bit shifts to check if the value is in range
      * (19 immediate bits are used, but as it must be a multiple of 4, it treats
@@ -143,7 +142,7 @@ static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
      * within the range of possible 21-bit 2's complement values. */
     if (!bit_fits(offset, 21)) {
         basic_err(
-            "JUMP_TOO_LONG",
+            BF_ERR_JUMP_TOO_LONG,
             "offset is outside the range of possible 21-bit signed values"
         );
         return false;
@@ -177,7 +176,9 @@ static bool add_sub_imm(
     /* The immediate can be a 12-bit immediate or a 24-bit immediate with the
      * lower 12 bits set to zero, in which case shift should be set to true. */
     if ((shift && (imm & ~0xfff000) != 0) || (!shift && (imm & ~0xfff) != 0)) {
-        basic_err("IMMEDIATE_TOO_LARGE", "value is invalid for shift level.");
+        basic_err(
+            BF_ERR_IMMEDIATE_TOO_LARGE, "value is invalid for shift level."
+        );
         return false;
     }
     /* align the immediate bits */
@@ -207,7 +208,7 @@ static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
             ret &= add_sub_imm(reg, imm & 0xfff, false, op, dst_buf);
         }
         return ret;
-    } else if (imm < UINT64_C(0x7fffffffffffffff)) {
+    } else {
         /* different byte values are needed than normal here */
         u8 op_byte = (op == A64_OP_ADD) ? 0x8b : 0xcb;
         /* set register x17 to the target value */
@@ -219,14 +220,6 @@ static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
         );
         return true;
     }
-    /* over the 64-bit signed int limit, so print an error and return false. */
-    const char err_char_str[2] = {(op == A64_OP_ADD) ? '>' : '<', '\0'};
-    param_err(
-        "TOO_MANY_INSTRUCTIONS",
-        "Over 8192 PiB of consecutive `{}` instructions",
-        err_char_str
-    );
-    return false;
 }
 
 /* add_reg, sub_reg, inc_reg, and dec_reg are all simple wrappers around

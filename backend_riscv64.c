@@ -137,14 +137,14 @@ static bool cond_jump(u8 reg, i64 distance, bool eq, sized_buf *dst_buf) {
      * which are non-volatile. */
     if (!bit_fits(distance, 21)) {
         basic_err(
-            "JUMP_TOO_LONG",
+            BF_ERR_JUMP_TOO_LONG,
             "offset is outside the range of possible 21-bit signed values"
         );
         return false;
     }
     if ((distance % 2) != 0) {
         internal_err(
-            "INVALID_JUMP_ADDRESS",
+            BF_ICE_INVALID_JUMP_ADDRESS,
             "offset is an invalid address offset (offset % 2 != 0)"
         );
         /* internal_err never returns, so this will not run */

@@ -47,14 +47,14 @@ const_fn i64 sign_extend(i64 val, u8 bits) {
 nonnull_args bool write_obj(int fd, const void *buf, size_t ct) {
     if (ct > SSIZE_MAX) {
         basic_err(
-            "WRITE_TOO_LARGE",
+            BF_ERR_WRITE_TOO_LARGE,
             "Didn't write because write is too large to properly validate."
         );
         return false;
     }
     ssize_t written = write(fd, buf, ct);
     if (written != (ssize_t)ct) {
-        basic_err("FAILED_WRITE", "Failed to write to file");
+        basic_err(BF_ERR_FAILED_WRITE, "Failed to write to file");
         return false;
     }
     return true;
@@ -66,7 +66,7 @@ nonnull_args bool write_obj(int fd, const void *buf, size_t ct) {
 nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
     if (sb->buf == NULL) {
         internal_err(
-            "APPEND_OBJ_TO_NULL", "sb_reserve called with dst->buf set to NULL"
+            BF_ICE_APPEND_TO_NULL, "sb_reserve called with dst->buf set to NULL"
         );
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
     }
@@ -77,7 +77,7 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
         size_t needed_cap = (sb->sz + nbytes + 0x1000) & (~0xfff);
         if (needed_cap < sb->capacity) {
             basic_err(
-                "BUF_TOO_LARGE",
+                BF_ERR_BUF_TOO_LARGE,
                 "Out of room, but extending buffer would cause overflow"
             );
             mgr_free(sb->buf);
@@ -109,7 +109,7 @@ nonnull_args bool append_obj(
     if ((bytes_sz > (SIZE_MAX - 0x8000)) ||
         (dst->capacity > (SIZE_MAX - (bytes_sz + 0x8000)))) {
         basic_err(
-            "BUF_TOO_LARGE",
+            BF_ERR_BUF_TOO_LARGE,
             "Extending buffer would put size within 8 KiB of SIZE_MAX"
         );
         mgr_free(dst->buf);
@@ -121,7 +121,7 @@ nonnull_args bool append_obj(
 
     if (dst->buf == NULL) {
         internal_err(
-            "APPEND_OBJ_TO_NULL", "append_obj called with dst->buf set to NULL"
+            BF_ICE_APPEND_TO_NULL, "append_obj called with dst->buf set to NULL"
         );
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
         return false;
@@ -158,7 +158,7 @@ sized_buf read_to_sized_buf(int fd) {
         if (count >= 0) {
             append_obj(&sb, &chunk, count);
         } else {
-            basic_err("FAILED_READ", "Failed to read from file");
+            basic_err(BF_ERR_FAILED_READ, "Failed to read from file");
             mgr_free(sb.buf);
             sb.sz = 0;
             sb.capacity = 0;

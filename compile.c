@@ -262,7 +262,7 @@ static bool bf_jump_open(sized_buf *obj_code, const arch_inter *inter) {
             jump_stack.loc_sz += JUMP_CHUNK_SZ;
         } else {
             basic_err(
-                "TOO_MANY_NESTED_LOOPS",
+                BF_ERR_TOO_MANY_NESTED_LOOPS,
                 "Extending jump stack any more would cause an overflow."
             );
             return false;
@@ -292,7 +292,11 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
     /* ensure that the current index is in bounds */
     if (jump_stack.index == 0) {
         position_err(
-            "UNMATCHED_CLOSE", "Found ']' without matching '['.", ']', line, col
+            BF_ERR_UNMATCHED_CLOSE,
+            "Found ']' without matching '['.",
+            ']',
+            line,
+            col
         );
         return false;
     }
@@ -384,7 +388,7 @@ static bool comp_ir_instr(
     case '-': return IR_COMPILE_WITH(inter->FUNCS->sub_byte);
     case '>': return IR_COMPILE_WITH(inter->FUNCS->add_reg);
     case '<': return IR_COMPILE_WITH(inter->FUNCS->sub_reg);
-    default: internal_err("INVALID_IR", "Invalid IR Opcode"); return false;
+    default: internal_err(BF_ICE_INVALID_IR, "Invalid IR Opcode"); return false;
     }
 }
 
@@ -479,7 +483,7 @@ bool bf_compile(
     /* check if any unmatched loop openings were left over. */
     if (jump_stack.index-- > 0) {
         position_err(
-            "UNMATCHED_OPEN",
+            BF_ERR_UNMATCHED_OPEN,
             "Reached the end of the file with an unmatched '['.",
             '[',
             jump_stack.locations[jump_stack.index].src_line,

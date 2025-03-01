@@ -40,7 +40,7 @@ static ifast_8 alloc_index(const void *ptr) {
 nonnull_ret void *mgr_malloc(size_t size) {
     if (resources.alloc_i > MAX_ALLOCS - 1) {
         internal_err(
-            "TOO_MANY_ALLOCS",
+            BF_ICE_TOO_MANY_ALLOCS,
             "Allocated too many times for resource_mgr to track."
         );
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
@@ -61,7 +61,7 @@ void mgr_free(void *ptr) {
     ifast_8 index = alloc_index(ptr);
     if (index == -1) {
         internal_err(
-            "MGR_FREE_UNKNOWN",
+            BF_ICE_MGR_FREE_UNKNOWN,
             "mgr_free called with an unregistered *ptr value"
         );
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
@@ -79,7 +79,7 @@ nonnull_args nonnull_ret void *mgr_realloc(void *ptr, size_t size) {
     if (index == -1) {
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
         internal_err(
-            "MGR_REALLOC_UNKNOWN",
+            BF_ICE_MGR_REALLOC_UNKNOWN,
             "mgr_realloc called with an unregistered *ptr value"
         );
     }
@@ -97,7 +97,8 @@ static nonnull_args int mgr_open_handler(
 ) {
     if (resources.fd_i > MAX_FDS - 1) {
         internal_err(
-            "TOO_MANY_OPENS", "Opened too many files for resource_mgr to track."
+            BF_ICE_TOO_MANY_OPENS,
+            "Opened too many files for resource_mgr to track."
         );
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
         return -1;
@@ -134,7 +135,7 @@ int mgr_close(int fd) {
     }
     if (index == -1) {
         internal_err(
-            "MGR_CLOSE_UNKNOWN",
+            BF_ICE_MGR_CLOSE_UNKNOWN,
             "mgr_close called with an unregistered fd value"
         );
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
@@ -158,7 +159,7 @@ void register_mgr(void) {
     /* atexit returns 0 on success, and a nonzero value otherwise. */
     if (atexit(cleanup)) {
         internal_err(
-            "MGR_ATEXIT_FAILED",
+            BF_ERR_MGR_ATEXIT_FAILED,
             "Failed to register cleanup function with atexit"
         );
     } else {
