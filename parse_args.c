@@ -34,10 +34,8 @@ const struct option longopts[] = {
     {0, 0, 0, 0},
 };
 
-/* ignored but need a non-null pointer to pass to getopt_long */
-static int arg_index = 0;
 /* use this macro in place of normal getopt */
-#define getopt(c, v, opts) getopt_long(c, v, opts, longopts, &arg_index)
+#define getopt(c, v, opts) getopt_long(c, v, opts, longopts, NULL)
 #define OPTION(l, s, pad, msg) " --" l ", " pad "-" s ":   " msg
 #define PARAM_OPT(l, s, a, spad, lpad, msg) \
     " --" l "=" a ", " lpad " -" s " " a ":    " spad msg
@@ -243,8 +241,12 @@ static noreturn nonnull_args void bad_arg(
 
 run_cfg parse_args(int argc, char *argv[]) {
     int opt;
-    char missing_op_msg[34] = "% requires an additional argument";
-    char unknown_arg_msg[20] = "Unknown argument: %";
+    char missing_op_msg[35] = "-% requires an additional argument";
+#if BFC_GNU_ARGS
+    char *unknown_arg_msg;
+#else
+    char unknown_arg_msg[21] = "Unknown argument: -%";
+#endif
     bool show_hint = true;
     run_cfg rc = {
         .inter = NULL,
@@ -355,13 +357,36 @@ run_cfg parse_args(int argc, char *argv[]) {
             if (!select_inter(optarg, &rc.inter)) exit(EXIT_FAILURE);
             break;
         case ':': /* one of -a, -e, or -t is missing an argument */
-            missing_op_msg[0] = optopt;
+            missing_op_msg[1] = optopt;
             bad_arg(
                 progname, BF_ERR_MISSING_OPERAND, missing_op_msg, show_hint
             );
         case '?': /* unknown argument */
-            unknown_arg_msg[18] = optopt;
+#if BFC_GNU_ARGS
+            unknown_arg_msg =
+                malloc(optopt ? 21 : 20 + strlen(argv[optind - 1]));
+            if (unknown_arg_msg == NULL) alloc_err();
+            strcpy(unknown_arg_msg, "Unknown argument: -%");
+            if (optopt) {
+                unknown_arg_msg[19] = optopt;
+            } else {
+                strcpy(&unknown_arg_msg[18], argv[optind - 1]);
+            }
+            /* can't just use bad_arg as unknown_arg_msg won't be freed. */
+            display_err((bf_comp_err){
+                .id = BF_ERR_UNKNOWN_ARG,
+                .msg = unknown_arg_msg,
+                .file = NULL,
+                .has_instr = false,
+                .has_location = false,
+            });
+            if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
+            free(unknown_arg_msg);
+            exit(EXIT_FAILURE);
+#else
+            unknown_arg_msg[19] = optopt;
             bad_arg(progname, BF_ERR_UNKNOWN_ARG, unknown_arg_msg, show_hint);
+#endif
         }
     }
 
