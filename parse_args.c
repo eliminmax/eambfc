@@ -40,8 +40,8 @@ const struct option longopts[] = {
 #define PARAM_OPT(l, s, a, spad, lpad, msg) \
     " --" l "=" a ", " lpad " -" s " " a ":    " spad msg
 #else
-#define OPTION(l, s, pad, msg) " -" s "    " msg
-#define PARAM_OPT(l, s, a, spad, lpad, msg) " -" s " " a spad "    " msg
+#define OPTION(l, s, pad, msg) " -" s ":   " msg
+#define PARAM_OPT(l, s, a, spad, lpad, msg) " -" s " " spad a ":   " msg
 #endif
 
 /* this macro hell defines the help template. If using GNU longopts, pads with
