@@ -114,7 +114,7 @@ const struct option longopts[] = {
     "\n" \
     "** Optimization can make error reporting less precise.\n" \
     "\n" \
-    "PARAMETER OPTIONS (provide at most once each)\n" \
+    "PARAMETER OPTIONS (provide at most once each):\n" \
     "" PARAM_OPTS \
     "\n" \
     "If not provided, it falls back to 8 as the tape-size count, \".bf\" " \
