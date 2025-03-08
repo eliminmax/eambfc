@@ -48,7 +48,9 @@ CompileFlags:
     # enable all architectures and set default architecture - this is needed to
     # avoid some of the post-config validation `#error` macros triggering due to
     # a missing or disabled default architecture selection
+    # __BACKENDS__ add backend to this list
     - "-DBFC_TARGET_ARM64=1"
+    - "-DBFC_TARGET_RISCV64=1"
     - "-DBFC_TARGET_S390X=1"
     - "-DBFC_TARGET_X86_64=1"
     - "-DBFC_DEFAULT_TARGET=EM_X86_64"
