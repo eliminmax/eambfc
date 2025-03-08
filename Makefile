@@ -11,10 +11,8 @@ POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 # __BACKENDS__ add backend object file to BACKENDS
 BACKENDS = backend_arm64.o backend_riscv64.o backend_s390x.o backend_x86_64.o
 
-
 EAMBFC_DEPS = serialize.o $(BACKENDS) optimize.o err.o util.o resource_mgr.o \
 	      compile.o parse_args.o main.o
-
 
 # flags for some of the more specialized, non-portable builds
 GCC_STRICT_FLAGS = -Wall -Wextra -Wpedantic -Werror -std=c99 -fanalyzer        \
@@ -34,10 +32,14 @@ GCC_UBSAN_FLAGS = -std=c99 -fanalyzer -fsanitize=address,undefined \
 GCC_INT_TORTURE_FLAGS = -D INT_TORTURE_TEST=1 $(GCC_STRICT_FLAGS) -Wno-format \
 			-Wno-pedantic -fsanitize=address,undefined
 
-# __BACKENDS__ add backend source file to UNIBUILD_FILES
-UNIBUILD_FILES = serialize.c compile.c optimize.c err.c util.c resource_mgr.c \
-			backend_arm64.c backend_riscv64.c backend_s390x.c \
-			backend_x86_64.c parse_args.c main.c
+# __BACKENDS__ add backend source file to BACKEND_FILES
+BACKEND_FILES = backend_arm64.c backend_riscv64.c backend_s390x.c \
+		backend_x86_64.c
+
+UNIBUILD_DEPS = serialize.c compile.c optimize.c err.c util.c resource_mgr.c \
+			$(BACKEND_FILES) parse_args.c
+
+UNIBUILD_FILES = $(UNIBUILD_DEPS) main.c
 
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
 # overridden if CFLAGS are passed as an argument to make.
@@ -48,7 +50,7 @@ UNIBUILD_FILES = serialize.c compile.c optimize.c err.c util.c resource_mgr.c \
 all: eambfc
 
 eambfc: $(EAMBFC_DEPS)
-	$(CC) $(POSIX_CFLAG) $(LDFLAGS) -o eambfc $(EAMBFC_DEPS) $(LDLIBS)
+	$(CC) $(POSIX_CFLAG) $(LDFLAGS) -o $@ $(EAMBFC_DEPS) $(LDLIBS)
 
 install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
@@ -129,7 +131,14 @@ all_tests: all_arch_test strict ubsan int_torture_test
 all_arch_test: can_run_all eambfc
 	(cd tests; make -s test_all)
 
+unit_test: $(UNIBUILD_DEPS) unit_test.c
+	$(CC) $(POSIX_CFLAG) $(LDFLAGS) -DBFC_TEST=1 -o $@ \
+	    unit_test.c $(UNIBUILD_DEPS) $(LDLIBS) -lcunit -lm
+	if ! ./$@; then rm $@ && exit 1; fi
+
+
+
 # remove eambfc and the objects it's built from, and remove test artifacts
 clean:
-	rm -rf $(EAMBFC_DEPS) eambfc alt-builds
+	rm -rf $(EAMBFC_DEPS) eambfc alt-builds unit_test
 	(cd tests; make clean)

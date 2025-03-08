@@ -12,6 +12,7 @@ CompileFlags:
     - "-xc"
     - "-std=c99"
     - "-D_POSIX_C_SOURCE=200908L"
+    - "-DBFC_TEST"
   Compiler: clang
 
 Diagnostics:
