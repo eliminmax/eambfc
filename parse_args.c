@@ -208,29 +208,40 @@ static noreturn nonnull_args void report_version(const char *progname) {
     exit(EXIT_SUCCESS);
 }
 
-static noreturn nonnull_args void list_arches(const char *progname) {
-    printf(
-        "This build of %s supports the following architectures:\n\n"
+#if BFC_NUM_BACKENDS == 1
+#define ARCH_LIST_START \
+    "This build of eambfc only supports the following architecture:\n\n"
+#define ARCH_LIST_END
+#else /* BFC_NUM_BACKENDS */
+#define ARCH_LIST_START \
+    "This build of eambfc supports the following architectures:\n\n"
+#define ARCH_LIST_END \
+    "\nIf no architectures is specified, it defaults to " BFC_DEFAULT_ARCH_STR \
+    "."
+#endif /* BFC_NUM_BACKENDS */
+
+static noreturn nonnull_args void list_arches(void) {
+    puts(ARCH_LIST_START
 /* __BACKENDS__ add backend and any aliases in a block here*/
 #if BFC_TARGET_X86_64
-        "- x86_64 (aliases: x64, amd64, x86-64)\n"
+         "- x86_64 (aliases: x64, amd64, x86-64)\n"
 #endif /* BFC_TARGET_X86_64 */
 #if BFC_TARGET_ARM64
-        "- arm64 (aliases: aarch64)\n"
+         "- arm64 (aliases: aarch64)\n"
 #endif /* BFC_TARGET_ARM64 */
 #if BFC_TARGET_RISCV64
-        "- riscv64 (aliases: riscv)\n"
+         "- riscv64 (aliases: riscv)\n"
 #endif /* BFC_TARGET_RISCV64 */
 #if BFC_TARGET_S390X
-        "- s390x (aliases: s390, z/architecture)\n"
+         "- s390x (aliases: s390, z/architecture)\n"
 #endif /* BFC_TARGET_S390X */
 
-        "\nIf no architecture is specified, it defaults "
-        "to " BFC_DEFAULT_ARCH_STR ".\n",
-        progname
-    );
+         ARCH_LIST_END);
     exit(EXIT_SUCCESS);
 }
+
+#undef ARCH_LIST_START
+#undef ARCH_LIST_END
 
 static noreturn nonnull_args void bad_arg(
     const char *progname, bf_err_id id, const char *msg, bool show_hint
@@ -271,7 +282,7 @@ run_cfg parse_args(int argc, char *argv[]) {
         switch (opt) {
         case 'h': printf(HELP_TEMPLATE, progname); exit(EXIT_SUCCESS);
         case 'V': report_version(progname);
-        case 'A': list_arches(progname);
+        case 'A': list_arches();
         case 'q':
             show_hint = false;
             quiet_mode();
