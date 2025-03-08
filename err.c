@@ -110,43 +110,43 @@ nonnull_args static int char_esc(char c, char *dest) {
 nonnull_ret nonnull_args static char *json_str(const char *str) {
     size_t bufsz = 4096;
     const char *p = str;
-    char *json_escaped = malloc(bufsz);
-    if (json_escaped == NULL) alloc_err();
-    char *outp = json_escaped;
+    char *escaped = malloc(bufsz);
+    if (escaped == NULL) alloc_err();
+    size_t index = 0;
     while (*p) {
         switch (*p) {
-        case '\n': outp += sprintf(outp, "\\n"); break;
-        case '\r': outp += sprintf(outp, "\\r"); break;
-        case '\f': outp += sprintf(outp, "\\f"); break;
-        case '\t': outp += sprintf(outp, "\\t"); break;
-        case '\b': outp += sprintf(outp, "\\b"); break;
-        case '\\': outp += sprintf(outp, "\\\\"); break;
-        case '\"': outp += sprintf(outp, "\\\""); break;
+        case '\n': index += sprintf(&escaped[index], "\\n"); break;
+        case '\r': index += sprintf(&escaped[index], "\\r"); break;
+        case '\f': index += sprintf(&escaped[index], "\\f"); break;
+        case '\t': index += sprintf(&escaped[index], "\\t"); break;
+        case '\b': index += sprintf(&escaped[index], "\\b"); break;
+        case '\\': index += sprintf(&escaped[index], "\\\\"); break;
+        case '\"': index += sprintf(&escaped[index], "\\\""); break;
         default:
             /* would prefer a pure switch statement, but `case a ... d` is
              * a non-standard (though common) extension to C, and is not
              * portable.
              * Using this `if`-within-a-`switch` instead. */
             if ((uchar)(*p) < 040) { /* control chars are 000 to 037 */
-                outp += sprintf(outp, "\\u%04hhx", (uchar)*p);
+                index += sprintf(&escaped[index], "\\u%04hhx", (uchar)*p);
             }
             /* the true default case. Character needs no escaping. */
-            *(outp++) = *p;
+            escaped[index++] = *p;
         }
         /* If less than 8 chars are left before overflow, allocate more space */
-        if ((size_t)outp - (size_t)json_escaped > bufsz - 8) {
+        if (index > bufsz - 8) {
             bufsz += 4096;
-            char *reallocator = realloc(json_escaped, bufsz);
+            char *reallocator = realloc(escaped, bufsz);
             if (reallocator == NULL) {
-                free(json_escaped);
+                free(escaped);
                 alloc_err();
             }
-            json_escaped = reallocator;
+            escaped = reallocator;
         }
         p++;
     }
-    *outp = 0;
-    return json_escaped;
+    escaped[index] = 0;
+    return escaped;
 }
 
 static void normal_eprint(bf_comp_err err) {

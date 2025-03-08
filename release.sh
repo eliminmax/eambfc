@@ -85,6 +85,11 @@ make clean
 # generate version.h
 ./gen_version_h.sh
 
+# make sure version output copyright info includes the current year
+make eambfc
+./eambfc -V | grep -q "$(date +'Copyright (c) .*%Y')"
+make clean
+
 # first, some linting - bypass copyright check as older files are still checked
 # even if not changed this year
 ALLOW_SUSPECT_COPYRIGHTS=y ./run-lints.sh ./*.[ch] ./*.sh .githooks/*
