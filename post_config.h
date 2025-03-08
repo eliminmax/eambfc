@@ -10,14 +10,14 @@
 #error "post_config.h should only be #included by config.h"
 #endif /* BFC_PREPROC_POST_CONFIG */
 
+/* __BACKENDS__ each backend should be added to this macro */
+#define BFC_NUM_BACKENDS \
+    BFC_TARGET_ARM64 + BFC_TARGET_RISCV64 + BFC_TARGET_S390X + BFC_TARGET_X86_64
+
 /* Validate that at least one target is enabled */
-/* __BACKENDS__ each backend should be added to this check */
-#if !( \
-    BFC_TARGET_X86_64 || BFC_TARGET_ARM64 || BFC_TARGET_RISCV64 || \
-    BFC_TARGET_S390X \
-)
+#if BFC_NUM_BACKENDS == 0
 #error "No backends are enabled"
-#endif
+#endif /* BFC_NUM_BACKENDS */
 
 /* __BACKENDS__ add a block for the new backend
  * Each listed backend should first check if it's enabled, and result in a
