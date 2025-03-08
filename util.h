@@ -8,8 +8,16 @@
 #include "attributes.h"
 #include "types.h"
 
+/* by defining BFC_UTIL_C in util.c, needing duplicate definitions of
+ * these functions is avoided */
+#ifdef BFC_UTIL_C
+#define inline_impl extern
+#else
+#define inline_impl inline
+#endif /* BFC_UTIL_C */
+
 /* return the number of trailing zeroes in val */
-const_fn inline u8 trailing_0s(u64 val) {
+const_fn inline_impl u8 trailing_0s(u64 val) {
     u8 counter = 0;
     while (!(val & 1)) {
         val >>= 1;
@@ -19,14 +27,14 @@ const_fn inline u8 trailing_0s(u64 val) {
 }
 
 /* Return true if signed `val` fits within specified number of bits */
-const_fn inline bool bit_fits(i64 val, u8 bits) {
+const_fn inline_impl bool bit_fits(i64 val, u8 bits) {
     int64_t max = INT64_C(1) << (bits - 1);
     int64_t min = -max;
     return val >= min && val < max;
 }
 
 /* return the least significant bits of val sign-extended */
-const_fn inline i64 sign_extend(i64 val, u8 bits) {
+const_fn inline_impl i64 sign_extend(i64 val, u8 bits) {
     u8 shift_amount = (sizeof(i64) * 8) - bits;
     /* shifting into the sign bit is undefined behavior, so cast it to unsigned,
      * then assign it back. */

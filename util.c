@@ -15,32 +15,8 @@
 #include "resource_mgr.h"
 #include "types.h"
 
-/* return the number of trailing zeroes in val */
-extern const_fn u8 trailing_0s(u64 val) {
-    if (!val) return UINT8_MAX;
-    u8 counter = 0;
-    while (!(val & 1)) {
-        val >>= 1;
-        counter += 1;
-    }
-    return counter;
-}
-
-/* Return true if signed `val` fits within specified number of bits */
-extern const_fn bool bit_fits(i64 val, u8 bits) {
-    int64_t max = INT64_C(1) << (bits - 1);
-    int64_t min = -max;
-    return val >= min && val < max;
-}
-
-/* return the least significant bits of val sign-extended */
-const_fn i64 sign_extend(i64 val, u8 bits) {
-    u8 shift_amount = (sizeof(i64) * 8) - bits;
-    /* shifting into the sign bit is undefined behavior, so cast it to unsigned,
-     * then assign it back. */
-    i64 lshifted = ((u64)val << shift_amount);
-    return lshifted >> shift_amount;
-}
+#define BFC_UTIL_C
+#include "util.h"
 
 /* Wrapper around write.3POSIX that returns true if all bytes were written, and
  * prints an error and returns false otherwise or if ct is too large to
