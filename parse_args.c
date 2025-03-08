@@ -15,7 +15,7 @@
 #include "parse_args.h"
 #include "version.h"
 
-#if BFC_GNU_ARGS
+#if BFC_LONGOPTS
 /* GNU C */
 #include <getopt.h>
 const struct option longopts[] = {
@@ -242,7 +242,7 @@ static noreturn nonnull_args void bad_arg(
 run_cfg parse_args(int argc, char *argv[]) {
     int opt;
     char missing_op_msg[35] = "-% requires an additional argument";
-#if BFC_GNU_ARGS
+#if BFC_LONGOPTS
     char *unknown_arg_msg;
 #else
     char unknown_arg_msg[21] = "Unknown argument: -%";
@@ -362,7 +362,7 @@ run_cfg parse_args(int argc, char *argv[]) {
                 progname, BF_ERR_MISSING_OPERAND, missing_op_msg, show_hint
             );
         case '?': /* unknown argument */
-#if BFC_GNU_ARGS
+#if BFC_LONGOPTS
             unknown_arg_msg =
                 malloc(optopt ? 21 : 20 + strlen(argv[optind - 1]));
             if (unknown_arg_msg == NULL) alloc_err();
