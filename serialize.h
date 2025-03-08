@@ -18,7 +18,7 @@
 #define inline_impl extern
 #else
 #define inline_impl inline
-#endif /* BFC_SERIALIZE_H */
+#endif /* BFC_SERIALIZE_C */
 
 /* given an unsigned integer of a given size and destination pointer, these
  * write the bytes of the value to that pointer in LSB order.
