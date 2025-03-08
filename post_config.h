@@ -56,8 +56,8 @@
 #error "BFC_DEFAULT_TARGET is not set to a recognized value."
 #endif /* BFC_DEFAULT_TARGET */
 
-#if BFC_GNU_ARGS && !defined _GNU_SOURCE
-#error "BFC_GNU_ARGS requires _GNU_SOURCE"
+#if BFC_LONGOPTS && !defined _GNU_SOURCE
+#error "BFC_LONGOPTS requires _GNU_SOURCE"
 #endif
 
 #endif /* BFC_POST_CONFIG_H */

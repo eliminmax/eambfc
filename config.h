@@ -11,9 +11,9 @@
 
 /* whether or not to support GNU argument parsing - requires _GNU_SOURCE to be
  * defined if enabled */
-#ifndef BFC_GNU_ARGS
-#define BFC_GNU_ARGS 0
-#endif /* BFC_GNU_ARGS */
+#ifndef BFC_LONGOPTS
+#define BFC_LONGOPTS 0
+#endif /* BFC_LONGOPTS */
 
 /* __BACKENDS__ when adding a backend, add a macro here */
 /* set to 0 if you don't want it included in the eambfc build. */

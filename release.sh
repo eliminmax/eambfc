@@ -165,7 +165,7 @@ done
 
 # test GNU longopts builds
 for olvl in 0 1 2 3; do
-    make CFLAGS="-D_GNU_SOURCE -DBFC_GNU_ARGS=1 -O$olvl" clean strict ubsan
+    make CFLAGS="-D_GNU_SOURCE -DBFC_LONGOPTS=1 -O$olvl" clean strict ubsan
 done
 
 # portability test - ensure a minimal, public domain POSIX make implementation
