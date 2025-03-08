@@ -185,8 +185,12 @@ nonnull_args static bool select_inter(
 }
 
 static noreturn nonnull_args void report_version(const char *progname) {
+    /* strip leading path from progname */
+    const char *filename;
+    while ((filename = strchr(progname, '/'))) progname = filename + 1;
+
     printf(
-        "%s: eambfc version " BFC_VERSION
+        "%s%s version " BFC_VERSION
         "\n\n"
         "Copyright (c) 2024 - 2025 Eli Array Minkoff.\n"
         "License: GNU GPL version 3 "
@@ -196,7 +200,10 @@ static noreturn nonnull_args void report_version(const char *progname) {
         "There is NO WARRANTY, to the extent permitted by law.\n\n"
         "Build information:\n"
         " * " BFC_COMMIT "\n", /* git info or message stating git not used. */
-        progname
+        progname,
+        /* if progname is "eambfc", this will display "eambfc version...".
+         * if it's anything else, it'll add ": eambfc" after the progname */
+        strcmp(progname, "eambfc") ? ": eambfc" : ""
     );
     exit(EXIT_SUCCESS);
 }
