@@ -25,6 +25,9 @@ GCC_STRICT_FLAGS = -Wall -Wextra -Wpedantic -Werror -std=c99 -fanalyzer        \
 		-Wtrampolines -Wlogical-op -Winit-self -Wcast-qual -Wundef     \
 		$(POSIX_CFLAG) $(CFLAGS)
 
+# if these are changed, rebuild everything
+COMMON_HEADERS = err.h types.h config.h
+
 GCC_UBSAN_FLAGS = -std=c99 -fanalyzer -fsanitize=address,undefined \
 		-fno-sanitize-recover=all $(POSIX_CFLAG) $(CFLAGS)
 
@@ -56,19 +59,19 @@ install: eambfc
 version.h: version gen_version_h.sh
 	./gen_version_h.sh
 
-resource_mgr.o: resource_mgr.c
-serialize.o: serialize.c
-compile.o: compile.c
-parse_args.o: version.h config.h parse_args.c
-main.o: main.c
-err.o: err.c
-util.o: util.c
-optimize.o: optimize.c
+resource_mgr.o: resource_mgr.c $(COMMON_HEADERS)
+serialize.o: serialize.c $(COMMON_HEADERS)
+compile.o: compile.c $(COMMON_HEADERS)
+parse_args.o: parse_args.c parse_args.h version.h $(COMMON_HEADERS)
+main.o: main.c parse_args.h $(COMMON_HEADERS)
+err.o: err.c $(COMMON_HEADERS)
+util.o: util.c $(COMMON_HEADERS)
+optimize.o: optimize.c $(COMMON_HEADERS)
 # __BACKENDS__ add target for backend object file
-backend_arm64.o: backend_arm64.c
-backend_riscv64.o: backend_riscv64.c
-backend_s390x.o: backend_s390x.c
-backend_x86_64.o: backend_x86_64.c
+backend_arm64.o: backend_arm64.c $(COMMON_HEADERS)
+backend_riscv64.o: backend_riscv64.c $(COMMON_HEADERS)
+backend_s390x.o: backend_s390x.c $(COMMON_HEADERS)
+backend_x86_64.o: backend_x86_64.c $(COMMON_HEADERS)
 
 # for testing
 #
@@ -84,18 +87,19 @@ backend_x86_64.o: backend_x86_64.c
 # These binaries were hand-made in a minimal hex editor, so they are their own
 # source code.
 #
-# The execfmt_support directory has a Python script that can be used to help
-# audit the binaries, in case anyone is concerned by their presence.
-# That script has comments throughout to explain how to further audit them.
+# The tools/execfmt_support directory has a Python script that can be used to
+# help audit the binaries, in case anyone is concerned by their presence. It can
+# validate that the headers are what they claim to be, and has instructions on
+# how to validate the machine code itself using an external disassembler.
 can_run_x86_64:
-	execfmt_support/x86_64
+	./tools/execfmt_support/x86_64
 
 # __BACKENDS__ create execfmt_support binary for target in and add it here
 can_run_all:
-	execfmt_support/arm64 && \
-	execfmt_support/riscv64 && \
-	execfmt_support/s390x && \
-	execfmt_support/x86_64
+	./tools/execfmt_support/arm64 && \
+	./tools/execfmt_support/riscv64 && \
+	./tools/execfmt_support/s390x && \
+	./tools/execfmt_support/x86_64
 
 test: can_run_x86_64 eambfc
 	(cd tests; make clean test)

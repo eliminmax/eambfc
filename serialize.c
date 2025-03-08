@@ -2,137 +2,74 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * This defines functions to convert 64-bit ELF structs into char arrays. */
+ * This defines functions to convert sized integers and ELF structs to byte
+ * sequences, in either LSB or MSB order
+ *
+ * Given that the MSB and LSB versions are the same except for the byte order,
+ * some nasty preprocessor magic is used to implement the ELF struct functions.
+ * I'm not^H^H^H^H sorry. */
 
 /* C99 */
-#include <stddef.h> /* size_t */
+#include <stddef.h>
+#include <string.h>
 /* internal */
-#include "attributes.h"
-#include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr */
-#include "types.h" /* [iu]{8,16,32,64} */
+/* need to define before including serialize.h, so that inline functions */
+#define BFC_SERIALIZE_C
+#include "serialize.h"
 
-/* serialize a 16-bit value in v16 into 2 bytes in dest, in LSB order
- * return value is the number of bytes written. */
-nonnull_args size_t serialize16le(u16 v16, void *dest) {
-    size_t size = 0;
-    char *p = dest;
-    p[size++] = v16;
-    p[size++] = (v16 >> 8);
-    return size;
-}
-
-/* serialize a 16-bit value in v16 into 2 bytes in dest, in MSB order
- * return value is the number of bytes written. */
-nonnull_args size_t serialize16be(u16 v16, void *dest) {
-    size_t size = 0;
-    char *p = dest;
-    p[size++] = (v16 >> 8);
-    p[size++] = v16;
-    return size;
-}
-
-/* serialize a 32-bit value in v32 into 4 bytes in dest, in LSB order
- * return value is the number of bytes written. */
-nonnull_args size_t serialize32le(u32 v32, void *dest) {
-    size_t size = serialize16le(v32, dest);
-    size += serialize16le(v32 >> 16, (char *)dest + size);
-    return size;
-}
-
-/* serialize a 32-bit value in v32 into 4 bytes in dest, in MSB order
- * return value is the number of bytes written. */
-nonnull_args size_t serialize32be(u32 v32, void *dest) {
-    size_t size = serialize16be(v32 >> 16, dest);
-    size += serialize16be(v32, (char *)dest + size);
-    return size;
-}
-
-/* serialize a 64-bit value in v64 into 8 bytes in dest, in LSB order
- * return value is the number of bytes written. */
-nonnull_args size_t serialize64le(u64 v64, char *dest) {
-    size_t size = serialize32le(v64, dest);
-    size += serialize32le(v64 >> 32, (char *)dest + size);
-    return size;
-}
-
-/* serialize a 64-bit value in v64 into 8 bytes in dest, in MSB order
- * return value is the number of bytes written. */
-nonnull_args size_t serialize64be(u64 v64, char *dest) {
-    size_t size = serialize32be(v64 >> 32, dest);
-    size += serialize32be(v64, (char *)dest + size);
-    return size;
-}
+/* the function body for both serialize_ehdr64_le and serialize_ehdr64_be
+ * Did not use token pasting as treesitter does not support parsing it, which
+ * breaks syntax highlighting in Neovim, and I find it messy anyway.
+ * (https://github.com/tree-sitter/tree-sitter-c/issues/98) */
+#define IMPL_EHDR64(serialize16, serialize32, serialize64) \
+    /* first 16 bytes are easy - it's a series of literal byte values */ \
+    memcpy(dest, ehdr->e_ident, EI_NIDENT); \
+    char *p = &((char *)dest)[EI_NIDENT]; \
+    size_t i = 0; \
+    i += serialize16(ehdr->e_type, p + i); \
+    i += serialize16(ehdr->e_machine, p + i); \
+    i += serialize32(ehdr->e_version, p + i); \
+    i += serialize64(ehdr->e_entry, p + i); \
+    i += serialize64(ehdr->e_phoff, p + i); \
+    i += serialize64(ehdr->e_shoff, p + i); \
+    i += serialize32(ehdr->e_flags, p + i); \
+    i += serialize16(ehdr->e_ehsize, p + i); \
+    i += serialize16(ehdr->e_phentsize, p + i); \
+    i += serialize16(ehdr->e_phnum, p + i); \
+    i += serialize16(ehdr->e_shentsize, p + i); \
+    i += serialize16(ehdr->e_shnum, p + i); \
+    i += serialize16(ehdr->e_shstrndx, p + i); \
+    return i
 
 /* serialize a 64-bit Ehdr into a byte sequence, in LSB order */
-nonnull_args size_t serialize_ehdr64_le(Elf64_Ehdr *ehdr, void *dest) {
-    size_t i;
-    char *p = dest;
-    /* first 16 bytes are easy - it's a series of literal byte values */
-    for (i = 0; i < EI_NIDENT; i++) { p[i] = ehdr->e_ident[i]; }
-    i += serialize16le(ehdr->e_type, p + i);
-    i += serialize16le(ehdr->e_machine, p + i);
-    i += serialize32le(ehdr->e_version, p + i);
-    i += serialize64le(ehdr->e_entry, p + i);
-    i += serialize64le(ehdr->e_phoff, p + i);
-    i += serialize64le(ehdr->e_shoff, p + i);
-    i += serialize32le(ehdr->e_flags, p + i);
-    i += serialize16le(ehdr->e_ehsize, p + i);
-    i += serialize16le(ehdr->e_phentsize, p + i);
-    i += serialize16le(ehdr->e_phnum, p + i);
-    i += serialize16le(ehdr->e_shentsize, p + i);
-    i += serialize16le(ehdr->e_shnum, p + i);
-    i += serialize16le(ehdr->e_shstrndx, p + i);
-    return i;
+nonnull_args size_t serialize_ehdr64_le(const Elf64_Ehdr *ehdr, void *dest) {
+    IMPL_EHDR64(serialize16le, serialize32le, serialize64le);
 }
 
 /* serialize a 64-bit Ehdr into a byte sequence, in MSB order */
-nonnull_args size_t serialize_ehdr64_be(Elf64_Ehdr *ehdr, void *dest) {
-    size_t i;
-    char *p = dest;
-    /* first 16 bytes are easy - it's a series of literal byte values */
-    for (i = 0; i < EI_NIDENT; i++) { p[i] = ehdr->e_ident[i]; }
-    i += serialize16be(ehdr->e_type, p + i);
-    i += serialize16be(ehdr->e_machine, p + i);
-    i += serialize32be(ehdr->e_version, p + i);
-    i += serialize64be(ehdr->e_entry, p + i);
-    i += serialize64be(ehdr->e_phoff, p + i);
-    i += serialize64be(ehdr->e_shoff, p + i);
-    i += serialize32be(ehdr->e_flags, p + i);
-    i += serialize16be(ehdr->e_ehsize, p + i);
-    i += serialize16be(ehdr->e_phentsize, p + i);
-    i += serialize16be(ehdr->e_phnum, p + i);
-    i += serialize16be(ehdr->e_shentsize, p + i);
-    i += serialize16be(ehdr->e_shnum, p + i);
-    i += serialize16be(ehdr->e_shstrndx, p + i);
-    return i;
+nonnull_args size_t serialize_ehdr64_be(const Elf64_Ehdr *ehdr, void *dest) {
+    IMPL_EHDR64(serialize16be, serialize32be, serialize64be);
 }
+
+#define IMPL_PHDR64(serialize32, serialize64) \
+    size_t i = 0; \
+    char *p = dest; \
+    i += serialize32(phdr->p_type, p + i); \
+    i += serialize32(phdr->p_flags, p + i); \
+    i += serialize64(phdr->p_offset, p + i); \
+    i += serialize64(phdr->p_vaddr, p + i); \
+    i += serialize64(phdr->p_paddr, p + i); \
+    i += serialize64(phdr->p_filesz, p + i); \
+    i += serialize64(phdr->p_memsz, p + i); \
+    i += serialize64(phdr->p_align, p + i); \
+    return i
 
 /* serialize a 64-bit Phdr into a byte sequence, in LSB order */
 nonnull_args size_t serialize_phdr64_le(const Elf64_Phdr *phdr, void *dest) {
-    size_t i = 0;
-    char *p = dest;
-    i += serialize32le(phdr->p_type, p + i);
-    i += serialize32le(phdr->p_flags, p + i);
-    i += serialize64le(phdr->p_offset, p + i);
-    i += serialize64le(phdr->p_vaddr, p + i);
-    i += serialize64le(phdr->p_paddr, p + i);
-    i += serialize64le(phdr->p_filesz, p + i);
-    i += serialize64le(phdr->p_memsz, p + i);
-    i += serialize64le(phdr->p_align, p + i);
-    return i;
+    IMPL_PHDR64(serialize32le, serialize64le);
 }
 
 /* serialize a 64-bit Phdr into a byte sequence, in MSB order */
 nonnull_args size_t serialize_phdr64_be(const Elf64_Phdr *phdr, void *dest) {
-    size_t i = 0;
-    char *p = dest;
-    i += serialize32be(phdr->p_type, p + i);
-    i += serialize32be(phdr->p_flags, p + i);
-    i += serialize64be(phdr->p_offset, p + i);
-    i += serialize64be(phdr->p_vaddr, p + i);
-    i += serialize64be(phdr->p_paddr, p + i);
-    i += serialize64be(phdr->p_filesz, p + i);
-    i += serialize64be(phdr->p_memsz, p + i);
-    i += serialize64be(phdr->p_align, p + i);
-    return i;
+    IMPL_PHDR64(serialize32be, serialize64be);
 }

@@ -4,19 +4,16 @@
 
 #ifndef BFC_PARSE_ARGS
 #define BFC_PARSE_ARGS 1
-#include "arch_inter.h" /* arch_inter, *_INTER */
+#include "arch_inter.h"
 
 typedef struct {
     const arch_inter *inter;
     const char *ext;
     const char *out_ext;
     u64 tape_blocks;
-    /* use bitfield booleans here */
-    bool quiet    : 1;
-    bool optimize : 1;
-    bool keep     : 1;
-    bool moveahead: 1;
-    bool json     : 1;
+    bool keep        : 1;
+    bool cont_on_fail: 1;
+    bool optimize    : 1;
 } run_cfg;
 
 run_cfg parse_args(int argc, char *argv[]);

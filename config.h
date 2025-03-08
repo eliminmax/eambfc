@@ -7,7 +7,7 @@
 #ifndef BFC_CONFIG_H
 #define BFC_CONFIG_H 1
 /* internal */
-#include "compat/elf.h" /* EM_* */
+#include "compat/elf.h"
 
 /* whether or not to support GNU argument parsing - requires _GNU_SOURCE to be
  * defined if enabled */

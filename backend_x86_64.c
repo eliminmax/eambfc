@@ -4,12 +4,12 @@
  *
  * This file provides the arch_inter for the x86_64 architecture. */
 /* internal */
-#include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
-#include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
-#include "err.h" /* basic_err */
-#include "serialize.h" /* serialize* */
-#include "types.h" /* [iu]{8,16,32,64}, bool, size_t, off_t */
-#include "util.h" /* append_obj */
+#include "arch_inter.h"
+#include "compat/elf.h"
+#include "err.h"
+#include "serialize.h"
+#include "types.h"
+#include "util.h"
 #if BFC_TARGET_X86_64
 
 /* If there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
@@ -32,7 +32,7 @@ typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
 static bool test_jcc(char tttn, u8 reg, i64 offset, sized_buf *dst_buf) {
     if (offset > INT32_MAX || offset < INT32_MIN) {
         basic_err(
-            "JUMP_TOO_LONG",
+            BF_ERR_JUMP_TOO_LONG,
             "offset is outside the range of possible 32-bit signed values"
         );
         return false;
@@ -43,7 +43,7 @@ static bool test_jcc(char tttn, u8 reg, i64 offset, sized_buf *dst_buf) {
         /* Jcc|tttn 0x00000000 (will replace with jump offset) */
         INSTRUCTION(0x0f, 0x80 | tttn, IMM32_PADDING),
     };
-    if (serialize32le(offset, &(i_bytes[5])) != 4) return false;
+    serialize32le(offset, &(i_bytes[5]));
     return append_obj(dst_buf, &i_bytes, 9);
 }
 
@@ -56,7 +56,7 @@ static bool reg_arith(u8 reg, u64 imm, arith_op op, sized_buf *dst_buf) {
     } else if (imm <= INT32_MAX) {
         /* ADD/SUB reg, imm */
         u8 i_bytes[6] = {INSTRUCTION(0x81, op + reg, IMM32_PADDING)};
-        if (serialize32le(imm, &(i_bytes[2])) != 4) return false;
+        serialize32le(imm, &(i_bytes[2]));
         return append_obj(dst_buf, &i_bytes, 6);
     } else {
         /* There are no instructions to add or subtract a 64-bit immediate.
@@ -74,7 +74,7 @@ static bool reg_arith(u8 reg, u64 imm, arith_op op, sized_buf *dst_buf) {
             INSTRUCTION(0x48, op - 0xbf, 0xc0 + (TMP_REG << 3) + reg),
         };
         /* replace 0x0000000000000000 with imm64 */
-        if (serialize64le(imm, &(instr_bytes[2])) != 8) return false;
+        serialize64le(imm, &(instr_bytes[2]));
         return append_obj(dst_buf, &instr_bytes, 13);
     }
 }
@@ -111,12 +111,12 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
         /* MOV reg, imm32 */
         u8 instr_bytes[5] = {INSTRUCTION(0xb8 | reg, IMM32_PADDING)};
-        if (serialize32le(imm, &(instr_bytes[1])) != 4) return false;
+        serialize32le(imm, &(instr_bytes[1]));
         return append_obj(dst_buf, &instr_bytes, 5);
     } else {
         /* MOV reg, imm64 */
         u8 instr_bytes[10] = {INSTRUCTION(0x48, 0xb8 | reg, IMM64_PADDING)};
-        if (serialize64le(imm, &(instr_bytes[2])) != 8) return false;
+        serialize64le(imm, &(instr_bytes[2]));
         return append_obj(dst_buf, &instr_bytes, 10);
     }
 }

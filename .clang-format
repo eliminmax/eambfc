@@ -1,8 +1,9 @@
-# SPDX-FileCopyrightText: NONE
+# SPDX-FileCopyrightText: 2025 Eli Array Minkoff
 #
-# SPDX-License-Identifier: CC0-1.0
+# SPDX-License-Identifier: 0BSD
 #
-# generated for clang-format-16 with https://clang-format-configurator.site/
+# originally generated with https://clang-format-configurator.site/, targeting
+# clang-format version 16, since upgraded by hand. Currently targets version 19.
 
 ---
 BasedOnStyle: Google
@@ -17,10 +18,16 @@ AlignTrailingComments:
 AllowShortBlocksOnASingleLine: Always
 AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: None
+AttributeMacros:
+  - noreturn
+  - nonnull_args
+  - nonnull_ret
+  - const_fn
 BinPackArguments: false
 BinPackParameters: false
 BitFieldColonSpacing: After
 BreakBeforeTernaryOperators: false
+DeriveLineEnding: false
 DerivePointerAlignment: false
 IncludeCategories:
   - Regex: ^<\(std.*\|string\|inttypes\)*\.h>
@@ -47,5 +54,8 @@ PenaltyReturnTypeOnItsOwnLine: 10000
 PointerAlignment: Right
 SeparateDefinitionBlocks: Always
 SpacesBeforeTrailingComments: 1
+StatementMacros:
+  - OPTION
+  - OPTLINE
+  - PARAM_OPT
 TabWidth: 4
-DeriveLineEnding: false

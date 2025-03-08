@@ -1,11 +1,9 @@
-/*
- * SPDX-FileCopyrightText: 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * Macros which optionally resolve to attributes if supported, to enable better
- * static analysis and/or optimization
- */
+ * static analysis and/or optimization */
 
 #ifndef BFC_ATTRIBUTES
 #define BFC_ATTRIBUTES 1

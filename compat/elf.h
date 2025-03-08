@@ -40,7 +40,7 @@
 #ifndef _ELF_H
 #define _ELF_H 1
 
-#include "eambfc_inttypes.h" /* uint*_t */
+#include "eambfc_inttypes.h"
 
 /* Standard ELF types.  */
 

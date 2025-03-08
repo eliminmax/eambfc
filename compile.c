@@ -6,19 +6,19 @@
  * It is by far the most significant part of the EAMBFC codebase. */
 
 /* C99 */
-#include <stdio.h> /* sscanf */
-#include <string.h> /* memcpy */
+#include <stdio.h>
+#include <string.h>
 /* POSIX */
-#include <unistd.h> /* off_t, read, write, STD*_FILENO*/
+#include <unistd.h>
 /* internal */
-#include "arch_inter.h" /* arch_registers, arch_sc_nums, arch_inter */
-#include "compat/elf.h" /* Elf64_Ehdr, Elf64_Phdr, ELFDATA2[LM]SB */
-#include "err.h" /* *_err */
-#include "optimize.h" /* filter_dead */
-#include "resource_mgr.h" /* mgr_* */
-#include "serialize.h" /* serialize_*hdr64_[bl]e */
-#include "types.h" /* bool, [iu]{8,16,32,64}, SCNx64, sized_buf */
-#include "util.h" /* read_to_sized_buf, write_obj */
+#include "arch_inter.h"
+#include "compat/elf.h"
+#include "err.h"
+#include "optimize.h"
+#include "resource_mgr.h"
+#include "serialize.h"
+#include "types.h"
+#include "util.h"
 
 /* virtual memory address of the tape - cannot overlap with the machine code.
  * 0 is invalid as it's the null address, so this is an arbitrarily-chosen
@@ -56,7 +56,9 @@
 static uint line, col;
 
 /* Write the ELF header to the file descriptor fd. */
-static bool write_ehdr(int fd, u64 tape_blocks, const arch_inter *inter) {
+static bool write_ehdr(
+    int fd, u64 tape_blocks, const arch_inter *inter, const char *out_name
+) {
     /* The format of the ELF header is well-defined and well-documented
      * elsewhere. The struct for it is defined in compat/elf.h, as are most
      * of the values used in here. */
@@ -142,13 +144,17 @@ static bool write_ehdr(int fd, u64 tape_blocks, const arch_inter *inter) {
         serialize_ehdr64_be(&header, header_bytes);
     }
 
-    return write_obj(fd, header_bytes, EHDR_SIZE);
+    return write_obj(fd, header_bytes, EHDR_SIZE, out_name);
 }
 
 /* Write the Program Header Table to the file descriptor fd
  * This is a list of areas within memory to set up when starting the program. */
 static bool write_phtb(
-    int fd, size_t code_sz, u64 tape_blocks, const arch_inter *inter
+    int fd,
+    size_t code_sz,
+    u64 tape_blocks,
+    const arch_inter *inter,
+    const char *out_name
 ) {
     Elf64_Phdr phdr_table[PHNUM];
     char phdr_table_bytes[PHTB_SIZE];
@@ -203,7 +209,7 @@ static bool write_phtb(
         }
     }
 
-    return write_obj(fd, phdr_table_bytes, PHTB_SIZE);
+    return write_obj(fd, phdr_table_bytes, PHTB_SIZE, out_name);
 }
 
 /* The brainfuck instructions "." and "," are similar from an implementation
@@ -246,7 +252,7 @@ typedef struct jump_loc {
 } jump_loc;
 
 static struct jump_stack {
-    size_t index;
+    size_t next_index;
     size_t loc_sz;
     jump_loc *locations;
 } jump_stack;
@@ -255,29 +261,35 @@ static struct jump_stack {
  * doesn't actually write to the file yet, as the address of `]` is unknown.
  *
  * If too many nested loops are encountered, it exteds the jump stack. */
-static bool bf_jump_open(sized_buf *obj_code, const arch_inter *inter) {
+static bool bf_jump_open(
+    sized_buf *obj_code, const arch_inter *inter, const char *in_name
+) {
     /* ensure that there are no more than the maximum nesting level */
-    if (jump_stack.index + 1 == jump_stack.loc_sz) {
+    if (jump_stack.next_index + 1 == jump_stack.loc_sz) {
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
             jump_stack.loc_sz += JUMP_CHUNK_SZ;
         } else {
-            basic_err(
-                "TOO_MANY_NESTED_LOOPS",
-                "Extending jump stack any more would cause an overflow."
-            );
+            display_err((bf_comp_err){
+                .id = BF_ERR_NESTED_TOO_DEEP,
+                .msg = "Extending jump stack any more would cause an overflow",
+                .file = in_name,
+                .instr = '[',
+                .has_location = false,
+                .has_instr = true,
+            });
             return false;
         }
 
         jump_stack.locations = mgr_realloc(
             jump_stack.locations,
-            (jump_stack.index + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
+            (jump_stack.next_index + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
         );
     }
     /* push the current address onto the stack */
-    jump_stack.locations[jump_stack.index].src_line = line;
-    jump_stack.locations[jump_stack.index].src_col = col;
-    jump_stack.locations[jump_stack.index].dst_loc = obj_code->sz;
-    jump_stack.index++;
+    jump_stack.locations[jump_stack.next_index].src_line = line;
+    jump_stack.locations[jump_stack.next_index].src_col = col;
+    jump_stack.locations[jump_stack.next_index].dst_loc = obj_code->sz;
+    jump_stack.next_index++;
     /* fill space jump open will take with NOP instructions of the same length,
      * so that obj_code->sz remains properly sized. */
     return inter->FUNCS->nop_loop_open(obj_code);
@@ -290,14 +302,21 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
     i32 distance;
 
     /* ensure that the current index is in bounds */
-    if (jump_stack.index == 0) {
-        position_err(
-            "UNMATCHED_CLOSE", "Found ']' without matching '['.", ']', line, col
-        );
+    if (jump_stack.next_index == 0) {
+        display_err((bf_comp_err){
+            .id = BF_ERR_UNMATCHED_CLOSE,
+            .file = NULL,
+            .msg = "Found ']' without matching '['.",
+            .has_instr = true,
+            .has_location = true,
+            .instr = ']',
+            .line = line,
+            .col = col,
+        });
         return false;
     }
     /* pop the matching `[` instruction's location */
-    open_addr = jump_stack.locations[--jump_stack.index].dst_loc;
+    open_addr = jump_stack.locations[--jump_stack.next_index].dst_loc;
     distance = obj_code->sz - open_addr;
 
     /* This is messy, but cuts down the number of allocations massively.
@@ -328,7 +347,9 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
-static bool comp_instr(char c, sized_buf *obj_code, const arch_inter *inter) {
+static bool comp_instr(
+    char c, sized_buf *obj_code, const arch_inter *inter, const char *in_name
+) {
     col++;
     switch (c) {
     /* start with the simple cases handled with COMPILE_WITH */
@@ -346,7 +367,7 @@ static bool comp_instr(char c, sized_buf *obj_code, const arch_inter *inter) {
     /* read from stdin */
     case ',': return bf_io(obj_code, STDIN_FILENO, inter->SC_NUMS->read, inter);
     /* `[` and `]` do their own error handling. */
-    case '[': return bf_jump_open(obj_code, inter);
+    case '[': return bf_jump_open(obj_code, inter, in_name);
     case ']': return bf_jump_close(obj_code, inter);
     /* on a newline, add 1 to the line number and reset the column */
     case '\n':
@@ -364,10 +385,15 @@ static bool comp_instr(char c, sized_buf *obj_code, const arch_inter *inter) {
 
 /* Compile an ir instruction */
 static bool comp_ir_instr(
-    char instr, size_t count, sized_buf *obj_code, const arch_inter *inter
+    char instr,
+    size_t count,
+    sized_buf *obj_code,
+    const arch_inter *inter,
+    const char *in_name
 ) {
     /* if there's only one (non-'@') instruction, compile it normally */
-    if (count == 1 && instr != '@') return comp_instr(instr, obj_code, inter);
+    if (count == 1 && instr != '@')
+        return comp_instr(instr, obj_code, inter, in_name);
     switch (instr) {
     /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
     case '.':
@@ -375,7 +401,7 @@ static bool comp_ir_instr(
     case '[':
     case ']':
         for (size_t i = 0; i < count; i++) {
-            if (!comp_instr(instr, obj_code, inter)) return false;
+            if (!comp_instr(instr, obj_code, inter, in_name)) return false;
         }
         return true;
     /* if it's @, then zero the byte pointed to by bf_ptr */
@@ -384,12 +410,15 @@ static bool comp_ir_instr(
     case '-': return IR_COMPILE_WITH(inter->FUNCS->sub_byte);
     case '>': return IR_COMPILE_WITH(inter->FUNCS->add_reg);
     case '<': return IR_COMPILE_WITH(inter->FUNCS->sub_reg);
-    default: internal_err("INVALID_IR", "Invalid IR Opcode"); return false;
+    default: internal_err(BF_ICE_INVALID_IR, "Invalid IR Opcode"); return false;
     }
 }
 
 static bool compile_condensed(
-    const char *src_code, sized_buf *obj_code, const arch_inter *inter
+    const char *src_code,
+    sized_buf *obj_code,
+    const arch_inter *inter,
+    const char *in_name
 ) {
     /* return early when there are no instructions to compile */
     if (*src_code == '\0') return true;
@@ -401,12 +430,12 @@ static bool compile_condensed(
         if (*src_code == prev_instr) {
             count++;
         } else {
-            ret &= comp_ir_instr(prev_instr, count, obj_code, inter);
+            ret &= comp_ir_instr(prev_instr, count, obj_code, inter, in_name);
             count = 1;
             prev_instr = *(src_code);
         }
     }
-    return ret & comp_ir_instr(prev_instr, count, obj_code, inter);
+    return ret & comp_ir_instr(prev_instr, count, obj_code, inter, in_name);
 }
 
 /* Compile code in source file to destination file.
@@ -421,12 +450,14 @@ static bool compile_condensed(
  * Returns true if compilation was successful, and false otherwise. */
 bool bf_compile(
     const arch_inter *inter,
+    const char *in_name,
+    const char *out_name,
     int in_fd,
     int out_fd,
     bool optimize,
     u64 tape_blocks
 ) {
-    sized_buf src_code = read_to_sized_buf(in_fd);
+    sized_buf src_code = read_to_sized_buf(in_fd, in_name);
     /* Return immediately if a read failed */
     if (src_code.buf == NULL) return false;
     sized_buf obj_code = {.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
@@ -434,7 +465,7 @@ bool bf_compile(
     bool ret = true;
 
     /* reset the jump stack for the new file */
-    jump_stack.index = 0;
+    jump_stack.next_index = 0;
     jump_stack.locations = mgr_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
 
@@ -447,14 +478,16 @@ bool bf_compile(
 
     /* compile the actual source code to object code */
     if (optimize) {
-        if (!filter_dead(&src_code)) {
+        if (!filter_dead(&src_code, in_name)) {
             mgr_free(jump_stack.locations);
             return false;
         }
-        ret &= compile_condensed(src_code.buf, &obj_code, inter);
+        ret &= compile_condensed(src_code.buf, &obj_code, inter, in_name);
     } else {
         for (size_t i = 0; i < src_code.sz; i++) {
-            ret &= comp_instr(((char *)src_code.buf)[i], &obj_code, inter);
+            ret &= comp_instr(
+                ((char *)src_code.buf)[i], &obj_code, inter, in_name
+            );
         }
     }
 
@@ -469,22 +502,25 @@ bool bf_compile(
     ret &= inter->FUNCS->syscall(&obj_code);
 
     /* now, obj_code size is known, so we can write the headers and padding */
-    ret &= write_ehdr(out_fd, tape_blocks, inter);
-    ret &= write_phtb(out_fd, obj_code.sz, tape_blocks, inter);
+    ret &= write_ehdr(out_fd, tape_blocks, inter, out_name);
+    ret &= write_phtb(out_fd, obj_code.sz, tape_blocks, inter, out_name);
     const char padding[PAD_SZ] = {0};
-    ret &= write_obj(out_fd, padding, PAD_SZ);
+    ret &= write_obj(out_fd, padding, PAD_SZ, out_name);
     /* finally, write the code itself. */
-    ret &= write_obj(out_fd, obj_code.buf, obj_code.sz);
+    ret &= write_obj(out_fd, obj_code.buf, obj_code.sz, out_name);
 
     /* check if any unmatched loop openings were left over. */
-    if (jump_stack.index-- > 0) {
-        position_err(
-            "UNMATCHED_OPEN",
-            "Reached the end of the file with an unmatched '['.",
-            '[',
-            jump_stack.locations[jump_stack.index].src_line,
-            jump_stack.locations[jump_stack.index].src_col
-        );
+    for (size_t i = 0; i < jump_stack.next_index; i++) {
+        display_err((bf_comp_err){
+            .id = BF_ERR_UNMATCHED_OPEN,
+            .file = in_name,
+            .msg = "Reached the end of the file with an unmatched '['.",
+            .instr = '[',
+            .line = jump_stack.locations[i].src_line,
+            .col = jump_stack.locations[i].src_col,
+            .has_instr = true,
+            .has_location = true,
+        });
         ret = false;
     }
 

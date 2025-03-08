@@ -1,10 +1,10 @@
 /* SPDX-FileCopyrightText: 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only */
-#include "arch_inter.h" /* arch_{registers, sc_nums, funcs, inter} */
-#include "compat/elf.h" /* EM_X86_64, ELFDATA2LSB */
-#include "config.h" /* BFC_TARGET_ARM64 */
-#include "err.h" /* basic_err */
+#include "arch_inter.h"
+#include "compat/elf.h"
+#include "config.h"
+#include "err.h"
 #include "serialize.h"
 #include "types.h"
 #include "util.h"
@@ -137,14 +137,14 @@ static bool cond_jump(u8 reg, i64 distance, bool eq, sized_buf *dst_buf) {
      * which are non-volatile. */
     if (!bit_fits(distance, 21)) {
         basic_err(
-            "JUMP_TOO_LONG",
+            BF_ERR_JUMP_TOO_LONG,
             "offset is outside the range of possible 21-bit signed values"
         );
         return false;
     }
     if ((distance % 2) != 0) {
         internal_err(
-            "INVALID_JUMP_ADDRESS",
+            BF_ICE_INVALID_JUMP_ADDRESS,
             "offset is an invalid address offset (offset % 2 != 0)"
         );
         /* internal_err never returns, so this will not run */

@@ -6,13 +6,15 @@
 #ifndef BFC_TYPES_H
 #define BFC_TYPES_H 1
 /* C99 */
-#include <stdbool.h> /* bool, true, false */
+#include <stdbool.h>
 /* POSIX */
-#include <sys/types.h> /* size_t, ssize_t, off_t */
+#include <sys/types.h>
 /* internal */
-#include "compat/eambfc_inttypes.h" /* uint*_t, int*_t, PRI*, SCN*, and more */
+#include "compat/eambfc_inttypes.h"
 
 typedef unsigned int uint;
+typedef unsigned char uchar;
+typedef signed char schar;
 
 typedef int8_t i8;
 typedef int16_t i16;

@@ -8,7 +8,7 @@
 #define BFC_OPTIMIZE_H 1
 /* internal */
 #include "attributes.h"
-#include "types.h" /* sized_buf */
+#include "types.h"
 
 /* Replaces the content of the buffer with a null-terminated string containing
  * an internal intermediate representation of the code, and dead loops are
@@ -27,5 +27,5 @@
  *
  * all `,` and `.` instructions are left unchanged, as are any `[` or `]`
  * instructions not part of the two sequences that are replaced with `@`. */
-nonnull_args bool filter_dead(sized_buf *src);
+nonnull_args bool filter_dead(sized_buf *src, const char *in_name);
 #endif /* BFC_OPTIMIZE_H */

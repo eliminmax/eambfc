@@ -37,7 +37,7 @@ test_simple () {
     fi
 }
 
-errid_pat='s/.*"errorId":"\([^"]*\).*/\1/'
+errid_pat='s/.*"errorId": *"\([^"]*\).*/\1/'
 # a lot like test_simple, but this time, instead of testing the binary, check
 # that the error message matches the expectation
 test_error () {
@@ -97,40 +97,40 @@ test_simple piped_in '1639980005 14' # input is a FIFO, can't be seeked
 # ensure that the proper errors were encountered
 
 # argument processing error
-test_arg_error MULTIPLE_EXTENSIONS 'multiple file extensions' \
+test_arg_error MultipleExtensions 'multiple file extensions' \
     "$@" -e .brf -e .bf hello.bf
-test_arg_error MULTIPLE_TAPE_BLOCK_COUNTS 'multiple tape sizes' \
+test_arg_error MultipleTapeBlockCounts 'multiple tape sizes' \
     "$@" -t 1 -t 32
-test_arg_error MISSING_OPERAND '-e missing argument' \
+test_arg_error MissingOperand '-e missing argument' \
     "$@" -e
-test_arg_error MISSING_OPERAND '-t missing argument' \
+test_arg_error MissingOperand '-t missing argument' \
     "$@" -t
-test_arg_error UNKNOWN_ARG 'invalid argument provided' \
+test_arg_error UnknownArg 'invalid argument provided' \
     "$@" -T
-test_arg_error NO_SOURCE_FILES 'no source files provided' "$@"
-test_arg_error BAD_EXTENSION 'wrong file extension for source file' \
+test_arg_error NoSourceFiles 'no source files provided' "$@"
+test_arg_error BadSourceExtension 'wrong file extension for source file' \
     "$@" 'test.sh'
-test_arg_error NO_TAPE 'tape size is set to 0 blocks' \
+test_arg_error TapeSizeZero 'tape size is set to 0 blocks' \
     "$@" -t0 hello.bf
-test_arg_error TAPE_TOO_LARGE 'tape size large enough to cause an overflow' \
+test_arg_error TapeTooLarge 'tape size large enough to cause an overflow' \
     "$@" -t9223372036854775807
-test_arg_error MULTIPLE_OUTPUT_EXTENSIONS 'multiple output extensions' \
+test_arg_error MultipleOutputExtensions 'multiple output extensions' \
     "$@" -s .elf -s .out
 
 # some permission issues
 chmod 'u-r' 'hello.bf'
-test_arg_error OPEN_R_FAILED 'failure to open input file for reading' \
+test_arg_error OpenReadFailed 'failure to open input file for reading' \
     "$@" 'hello.bf'
 chmod 'u+r' 'hello.bf'
 touch hello.b
 chmod -w hello.b
-test_arg_error OPEN_W_FAILED 'failure to open output file for writing' \
+test_arg_error OpenWriteFailed 'failure to open output file for writing' \
     "$@" -e f hello.bf
 rm -f hello.b
 
 # compiler errors
-test_error unmatched_close UNMATCHED_CLOSE
-test_error unmatched_open UNMATCHED_OPEN
+test_error unmatched_close UnmatchedClose
+test_error unmatched_open UnmatchedOpen
 
 # lastly, some special cases that need some more work
 
