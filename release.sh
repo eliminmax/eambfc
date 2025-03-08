@@ -78,6 +78,9 @@ if [ -z "$FORCE_RELEASE" ] && [ -n "$(git status --short)" ]; then
     exit 1
 fi
 
+# make make shut up
+export MAKEFLAGS=-s
+
 make clean
 # generate version.h
 ./gen_version_h.sh
