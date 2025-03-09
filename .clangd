@@ -12,6 +12,8 @@ CompileFlags:
     - "-xc"
     - "-std=c99"
     - "-D_POSIX_C_SOURCE=200908L"
+    # flags needed for test suite
+    - "-I/usr/lib/llvm-19/include"
     - "-DBFC_TEST"
   Compiler: clang
 
