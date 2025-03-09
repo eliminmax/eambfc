@@ -18,6 +18,7 @@
 
 /* return the number of trailing zeroes in val */
 const_fn inline_impl u8 trailing_0s(u64 val) {
+    if (!val) return UINT8_MAX;
     u8 counter = 0;
     while (!(val & 1)) {
         val >>= 1;
