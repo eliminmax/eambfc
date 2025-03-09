@@ -4,6 +4,8 @@
 
 #ifndef BFC_TESTUTILS_H
 #define BFC_TESTUTILS_H 1
+/* C99 */
+#include <limits.h>
 
 /* libLLVM */
 #include <llvm-c/Disassembler.h>
@@ -23,6 +25,6 @@ unit_extern disasm_ref RISCV64_DIS;
 unit_extern disasm_ref S390X_DIS;
 unit_extern disasm_ref X86_64_DIS;
 
-char *disassemble(disasm_ref ref, sized_buf bytes);
+sized_buf disassemble(disasm_ref ref, sized_buf bytes);
 
 #endif /* BFC_TESTUTILS_H */

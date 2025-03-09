@@ -5,7 +5,6 @@
 /* C99 */
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 /* CUnit */
 #include <CUnit/Basic.h>
@@ -23,6 +22,10 @@
 #include "types.h"
 #include "util.h"
 
+CU_pSuite register_util_tests(void);
+CU_pSuite register_serialize_tests(void);
+CU_pSuite register_arm64_tests(void);
+
 /* LLVM uses some obnoxiously long identifiers. This helps mitigate that */
 #define INTEL_ASM LLVMDisassembler_Option_AsmPrinterVariant
 #define HEX_IMMS LLVMDisassembler_Option_PrintImmHex
@@ -31,33 +34,47 @@
     LLVMCreateDisasmCPUFeatures( \
         triple, "generic", features, NULL, 0, NULL, NULL \
     );
-CU_pSuite register_util_tests(void);
-CU_pSuite register_serialize_tests(void);
 
-char *disassemble(disasm_ref ref, sized_buf bytes) {
-    char disassembly[128];
+sized_buf disassemble(disasm_ref ref, sized_buf bytes) {
+    char disasm[128];
     sized_buf output = newbuf(1024);
     size_t prev_sz;
     while ((prev_sz = bytes.sz)) {
-        size_t used_sz = LLVMDisasmInstruction(
-            ref, bytes.buf, bytes.sz, 0, disassembly, 128
-        );
+        memset(disasm, 0, 128);
+        size_t used_sz =
+            LLVMDisasmInstruction(ref, bytes.buf, bytes.sz, 0, disasm, 128);
         if (!used_sz) {
             mgr_free(bytes.buf);
             mgr_free(output.buf);
+            output.buf = NULL;
+            output.sz = 0;
+            output.capacity = 0;
             fprintf(
                 stderr, "failed to decompile %ju bytes.\n", (uintmax_t)bytes.sz
             );
-            return NULL;
+            return output;
         }
         memmove(bytes.buf, (char *)bytes.buf + used_sz, bytes.sz - used_sz);
         bytes.sz -= used_sz;
-        append_obj(&output, disassembly, used_sz);
-        append_obj(&output, "\n", 1);
+        ufast_8 i;
+        /* start at 1 to skip leading '\t' */
+        /* Replace spaces with tabs. Don't need to explicitly check for the end
+         * condition because LLVMDisasmInstruction always null-terminates is
+         * output. */
+        for (i = 1; disasm[i]; i++) {
+            if (disasm[i] == '\t') disasm[i] = ' ';
+        }
+        /* replace null terminator with a newline */
+        disasm[i] = '\n';
+        /* leave `i` as-is, as the 0-based indexing and the extra '\n' cancel
+         * out, and the loop will be null-terminated at the end */
+        append_obj(&output, &disasm[1], i);
     }
+    /* null-terminate the output loop */
     char *terminator = sb_reserve(&output, 1);
     *terminator = 0;
-    return output.buf;
+    mgr_free(bytes.buf);
+    return output;
 }
 
 static void llvm_init(void) {
@@ -91,7 +108,8 @@ int main(void) {
     llvm_init();
 
     if (CU_initialize_registry() != CUE_SUCCESS ||
-        register_util_tests() == NULL || register_serialize_tests() == NULL) {
+        register_util_tests() == NULL || register_serialize_tests() == NULL ||
+        register_arm64_tests() == NULL) {
         return CU_get_error();
     }
 
