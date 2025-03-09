@@ -17,7 +17,7 @@
 
 /* filter out the non-bf characters from code->buf */
 static nonnull_args void filter_non_bf(sized_buf *code) {
-    sized_buf tmp = {.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
+    sized_buf tmp = newbuf(code->sz);
     char instr;
     for (size_t i = 0; i < code->sz; i++) {
         switch (instr = ((char *)(code->buf))[i]) {
@@ -195,24 +195,24 @@ static nonnull_args void merge_set_zero(sized_buf *ir) {
  * internal intermediate representation of that file's code.
  * fd must be open for reading already, no check is performed.
  * Calling function is responsible for `mgr_free`ing the returned string. */
-nonnull_args bool filter_dead(sized_buf *src, const char *in_name) {
-    filter_non_bf(src);
-    if (src->buf == NULL) {
-        mgr_free(src->buf);
-        src->buf = NULL;
+nonnull_args bool filter_dead(sized_buf *bf_code, const char *in_name) {
+    filter_non_bf(bf_code);
+    if (bf_code->buf == NULL) {
+        mgr_free(bf_code->buf);
+        bf_code->buf = NULL;
         return false;
     }
-    if (!loops_match(src->buf, in_name)) {
-        mgr_free(src->buf);
-        src->buf = NULL;
+    if (!loops_match(bf_code->buf, in_name)) {
+        mgr_free(bf_code->buf);
+        bf_code->buf = NULL;
         return false;
     }
-    remove_dead(src, in_name);
-    if (src->buf == NULL) {
-        mgr_free(src->buf);
-        src->buf = NULL;
+    remove_dead(bf_code, in_name);
+    if (bf_code->buf == NULL) {
+        mgr_free(bf_code->buf);
+        bf_code->buf = NULL;
         return false;
     }
-    merge_set_zero(src);
+    merge_set_zero(bf_code);
     return true;
 }

@@ -10,22 +10,9 @@
 #include "attributes.h"
 #include "types.h"
 
-/* Replaces the content of the buffer with a null-terminated string containing
- * an internal intermediate representation of the code, and dead loops are
- * removed, as are sequences of instructions that cancel out, such as `<>`.
- *
- * SUBSTITUTIONS:
- *
- * N consecutive `>` instructions are replaced with `}N`.
- * N consecutive `<` instructions are replaced with `{N`.
- * N consecutive `+` instructions are replaced with `#N`.
- * N consecutive `-` instructions are replaced with `=N`.
- *
- * single `+`, `-`, `<`, and `>` instructions are left as is.
- *
- * `[+]` and `[-]` both get replaced with `@`.
- *
- * all `,` and `.` instructions are left unchanged, as are any `[` or `]`
- * instructions not part of the two sequences that are replaced with `@`. */
-nonnull_args bool filter_dead(sized_buf *src, const char *in_name);
+/* Reads the content of the file fd, and returns a string containing optimized
+ * internal intermediate representation of that file's code.
+ * fd must be open for reading already, no check is performed.
+ * Calling function is responsible for `mgr_free`ing the returned string. */
+nonnull_args bool filter_dead(sized_buf *bf_code, const char *in_name);
 #endif /* BFC_OPTIMIZE_H */
