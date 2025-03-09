@@ -6,6 +6,7 @@
 #ifndef BFC_UTIL_H
 #define BFC_UTIL_H 1
 #include "attributes.h"
+#include "resource_mgr.h"
 #include "types.h"
 
 /* by defining BFC_UTIL_C in util.c, needing duplicate definitions of
@@ -31,6 +32,17 @@ const_fn inline_impl u8 trailing_0s(u64 val) {
 const_fn inline_impl bool bit_fits(i64 val, u8 bits) {
     return val >= (INT64_C(-1) << (bits - 1)) &&
            val < (INT64_C(1) << (bits - 1));
+}
+
+/* create a new sized_buf with the provided size, and a buffer allocated through
+ * resource_mgr */
+inline_impl sized_buf newbuf(size_t sz) {
+    sized_buf newbuf = {
+        .buf = mgr_malloc(sz),
+        .sz = 0,
+        .capacity = sz,
+    };
+    return newbuf;
 }
 
 /* return the least significant bits of val sign-extended */
