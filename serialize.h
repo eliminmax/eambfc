@@ -87,4 +87,6 @@ nonnull_args size_t
 serialize_ehdr64_be(const Elf64_Ehdr *ehdr, void *dest); /* Elf64_Ehdr */
 nonnull_args size_t
 serialize_phdr64_be(const Elf64_Phdr *phdr, void *dest); /* Elf64_Phdr */
+
+#undef inline_impl
 #endif /* BFC_SERIALIZE_H */
