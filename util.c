@@ -192,4 +192,4 @@ CU_pSuite register_util_tests(void) {
     CU_ADD_TEST(suite, test_sign_extend);
     return suite;
 }
-#endif
+#endif /* BFC_TEST */
