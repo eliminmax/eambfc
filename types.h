@@ -37,7 +37,7 @@ typedef uint_fast32_t ufast_32;
 typedef uint_fast64_t ufast_64;
 
 typedef struct sized_buf {
-    void *buf;
+    char *buf;
     size_t sz; /* size of data used in buffer */
     size_t capacity; /* amount of space allocated for buffer */
 } sized_buf;

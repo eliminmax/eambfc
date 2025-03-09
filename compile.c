@@ -487,9 +487,7 @@ bool bf_compile(
         ret &= compile_condensed(src_code.buf, &obj_code, inter, in_name);
     } else {
         for (size_t i = 0; i < src_code.sz; i++) {
-            ret &= comp_instr(
-                ((char *)src_code.buf)[i], &obj_code, inter, in_name
-            );
+            ret &= comp_instr(src_code.buf[i], &obj_code, inter, in_name);
         }
     }
 
