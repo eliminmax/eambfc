@@ -29,7 +29,7 @@ const_fn inline_impl u8 trailing_0s(u64 val) {
 
 /* Return true if signed `val` fits within specified number of bits */
 const_fn inline_impl bool bit_fits(i64 val, u8 bits) {
-    return val >= (INT64_C(-1) << (bits - 1)) &&
+    return val >= -(INT64_C(1) << (bits - 1)) &&
            val < (INT64_C(1) << (bits - 1));
 }
 
