@@ -24,28 +24,28 @@
  * write the bytes of the value to that pointer in LSB order.
  * This requires CHAR_BIT to be 8, which is required by POSIX anyway. */
 nonnull_args inline_impl size_t serialize16le(u16 v16, void *dest) {
-    ((char *)dest)[0] = v16;
-    ((char *)dest)[1] = (v16 >> 8);
+    ((u8 *)dest)[0] = v16;
+    ((u8 *)dest)[1] = (v16 >> 8);
     return 2;
 }
 
 nonnull_args inline_impl size_t serialize32le(u32 v32, void *dest) {
-    ((char *)dest)[0] = v32;
-    ((char *)dest)[1] = (v32 >> 8);
-    ((char *)dest)[2] = (v32 >> 16);
-    ((char *)dest)[3] = (v32 >> 24);
+    ((u8 *)dest)[0] = v32;
+    ((u8 *)dest)[1] = (v32 >> 8);
+    ((u8 *)dest)[2] = (v32 >> 16);
+    ((u8 *)dest)[3] = (v32 >> 24);
     return 4;
 }
 
 nonnull_args inline_impl size_t serialize64le(u64 v64, void *dest) {
-    ((char *)dest)[0] = v64;
-    ((char *)dest)[1] = (v64 >> 8);
-    ((char *)dest)[2] = (v64 >> 16);
-    ((char *)dest)[3] = (v64 >> 24);
-    ((char *)dest)[4] = (v64 >> 32);
-    ((char *)dest)[5] = (v64 >> 40);
-    ((char *)dest)[6] = (v64 >> 48);
-    ((char *)dest)[7] = (v64 >> 56);
+    ((u8 *)dest)[0] = v64;
+    ((u8 *)dest)[1] = (v64 >> 8);
+    ((u8 *)dest)[2] = (v64 >> 16);
+    ((u8 *)dest)[3] = (v64 >> 24);
+    ((u8 *)dest)[4] = (v64 >> 32);
+    ((u8 *)dest)[5] = (v64 >> 40);
+    ((u8 *)dest)[6] = (v64 >> 48);
+    ((u8 *)dest)[7] = (v64 >> 56);
     return 8;
 }
 
@@ -58,28 +58,28 @@ serialize_phdr64_le(const Elf64_Phdr *phdr, void *dest); /* Elf64_Phdr */
 
 /* The same as the above, except in MSB order. */
 nonnull_args inline_impl size_t serialize16be(u16 v16, void *dest) {
-    ((char *)dest)[0] = (v16 >> 8);
-    ((char *)dest)[1] = v16;
+    ((u8 *)dest)[0] = (v16 >> 8);
+    ((u8 *)dest)[1] = v16;
     return 2;
 }
 
 nonnull_args inline_impl size_t serialize32be(u32 v32, void *dest) {
-    ((char *)dest)[0] = (v32 >> 24);
-    ((char *)dest)[1] = (v32 >> 16);
-    ((char *)dest)[2] = (v32 >> 8);
-    ((char *)dest)[3] = v32;
+    ((u8 *)dest)[0] = (v32 >> 24);
+    ((u8 *)dest)[1] = (v32 >> 16);
+    ((u8 *)dest)[2] = (v32 >> 8);
+    ((u8 *)dest)[3] = v32;
     return 4;
 }
 
 nonnull_args inline_impl size_t serialize64be(u64 v64, void *dest) {
-    ((char *)dest)[0] = (v64 >> 56);
-    ((char *)dest)[1] = (v64 >> 48);
-    ((char *)dest)[2] = (v64 >> 40);
-    ((char *)dest)[3] = (v64 >> 32);
-    ((char *)dest)[4] = (v64 >> 24);
-    ((char *)dest)[5] = (v64 >> 16);
-    ((char *)dest)[6] = (v64 >> 8);
-    ((char *)dest)[7] = v64;
+    ((u8 *)dest)[0] = (v64 >> 56);
+    ((u8 *)dest)[1] = (v64 >> 48);
+    ((u8 *)dest)[2] = (v64 >> 40);
+    ((u8 *)dest)[3] = (v64 >> 32);
+    ((u8 *)dest)[4] = (v64 >> 24);
+    ((u8 *)dest)[5] = (v64 >> 16);
+    ((u8 *)dest)[6] = (v64 >> 8);
+    ((u8 *)dest)[7] = v64;
     return 8;
 }
 
