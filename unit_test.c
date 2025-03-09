@@ -20,7 +20,7 @@
 #define UNIT_TEST_C 1
 /* internal */
 #include "resource_mgr.h"
-#include "testutils.h"
+#include "unit_test.h"
 #include "types.h"
 #include "util.h"
 

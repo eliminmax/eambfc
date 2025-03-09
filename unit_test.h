@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only */
 
-#ifndef BFC_TESTUTILS_H
-#define BFC_TESTUTILS_H 1
+#ifndef BFC_UNIT_TEST_H
+#define BFC_UNIT_TEST_H 1
 /* C99 */
 #include <limits.h>
 
@@ -27,4 +27,4 @@ unit_extern disasm_ref X86_64_DIS;
 
 sized_buf disassemble(disasm_ref ref, sized_buf bytes);
 
-#endif /* BFC_TESTUTILS_H */
+#endif /* BFC_UNIT_TEST_H */
