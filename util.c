@@ -129,7 +129,7 @@ nonnull_args bool append_obj(
 /* Reads the contents of fd into sb. If a read error occurs, frees what's
  * already been read, and sets sb to {0, 0, NULL}. */
 sized_buf read_to_sized_buf(int fd, const char *in_name) {
-    sized_buf sb = {.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
+    sized_buf sb = newbuf(4096);
     /* read into sb in 4096-byte chunks */
     char chunk[4096];
     ssize_t count;

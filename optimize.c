@@ -17,7 +17,7 @@
 
 /* filter out the non-bf characters from code->buf */
 static nonnull_args void filter_non_bf(sized_buf *code) {
-    sized_buf tmp = {.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
+    sized_buf tmp = newbuf(code->sz);
     char instr;
     for (size_t i = 0; i < code->sz; i++) {
         switch (instr = ((char *)(code->buf))[i]) {
