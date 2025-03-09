@@ -187,6 +187,7 @@ static void trailing_0s_test(void) {
 
 CU_pSuite register_util_tests(void) {
     CU_pSuite suite = CU_add_suite("util", NULL, NULL);
+    if (suite == NULL) return NULL;
     CU_ADD_TEST(suite, bit_fits_test);
     CU_ADD_TEST(suite, trailing_0s_test);
     CU_ADD_TEST(suite, test_sign_extend);
