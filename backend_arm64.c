@@ -330,4 +330,30 @@ const arch_inter ARM64_INTER = {
     .ELF_ARCH = EM_AARCH64,
     .ELF_DATA = ELFDATA2LSB,
 };
+
+#ifdef BFC_TEST
+/* CUnit */
+#include <CUnit/CUnit.h>
+/* internal */
+#include "unit_test.h"
+
+#define DISASM(sb) disassemble(ARM64_DIS, sb)
+
+void test_set_reg_simple(void) {
+    sized_buf sb = newbuf(32);
+    set_reg(0, 0, &sb);
+    sb = DISASM(sb);
+    fprintf(stderr, "%s\n", (char *)sb.buf);
+    CU_ASSERT_STRING_EQUAL(sb.buf, "mov x0, #0x0\n");
+}
+
+CU_pSuite register_arm64_tests(void) {
+    CU_pSuite suite = CU_add_suite("backend_arm64", NULL, NULL);
+    if (suite == NULL) return NULL;
+    CU_ADD_TEST(suite, test_set_reg_simple);
+    return suite;
+}
+
+#endif /* BFC_TEST */
+
 #endif /* BFC_TARGET_ARM64 */
