@@ -438,5 +438,3 @@ run_cfg parse_args(int argc, char *argv[]) {
     if (rc.inter == NULL) rc.inter = &BFC_DEFAULT_INTER;
     return rc;
 }
-
-#undef SHOW_HINT
