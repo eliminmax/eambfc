@@ -540,6 +540,22 @@ void test_nops(void) {
     DISASM_TEST(dis, "nop\nnop\nnop\n");
 }
 
+void test_successfull_jumps(void) {
+    sized_buf sb = newbuf(12);
+    jump_zero(0, 32, &sb);
+    jump_not_zero(0, -32, &sb);
+    sized_buf dis = DISASM(sb);
+    DISASM_TEST(
+        dis,
+        "ldrb w17, [x0], #0x0\n"
+        "tst x17, #0xff\n"
+        "b.eq #0x24\n"
+        "ldrb w17, [x0], #0x0\n"
+        "tst x17, #0xff\n"
+        "b.ne #-0x1c\n"
+    );
+}
+
 CU_pSuite register_arm64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_arm64", NULL, NULL);
     if (suite == NULL) return NULL;
@@ -557,6 +573,7 @@ CU_pSuite register_arm64_tests(void) {
     ADD_TEST(suite, test_reg_copy);
     ADD_TEST(suite, test_syscall);
     ADD_TEST(suite, test_nops);
+    ADD_TEST(suite, test_successfull_jumps);
     return suite;
 }
 
