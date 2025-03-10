@@ -62,7 +62,7 @@ version.h: version gen_version_h.sh
 	./gen_version_h.sh
 
 resource_mgr.o: resource_mgr.c $(COMMON_HEADERS)
-serialize.o: serialize.c $(COMMON_HEADERS)
+serialize.o: serialize.c $(COMMON_HEADERS) serialize.h
 compile.o: compile.c $(COMMON_HEADERS)
 parse_args.o: parse_args.c parse_args.h version.h $(COMMON_HEADERS)
 main.o: main.c parse_args.h $(COMMON_HEADERS)
@@ -70,10 +70,10 @@ err.o: err.c $(COMMON_HEADERS)
 util.o: util.c $(COMMON_HEADERS)
 optimize.o: optimize.c $(COMMON_HEADERS)
 # __BACKENDS__ add target for backend object file
-backend_arm64.o: backend_arm64.c $(COMMON_HEADERS)
-backend_riscv64.o: backend_riscv64.c $(COMMON_HEADERS)
-backend_s390x.o: backend_s390x.c $(COMMON_HEADERS)
-backend_x86_64.o: backend_x86_64.c $(COMMON_HEADERS)
+backend_arm64.o: backend_arm64.c $(COMMON_HEADERS) serialize.h
+backend_riscv64.o: backend_riscv64.c $(COMMON_HEADERS) serialize.h
+backend_s390x.o: backend_s390x.c $(COMMON_HEADERS) serialize.h
+backend_x86_64.o: backend_x86_64.c $(COMMON_HEADERS) serialize.h
 
 # for testing
 #
