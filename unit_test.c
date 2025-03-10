@@ -33,44 +33,36 @@
         triple, "generic", features, NULL, 0, NULL, NULL \
     );
 
-sized_buf disassemble(disasm_ref ref, sized_buf bytes) {
-    char disasm[128];
-    sized_buf output = newbuf(1024);
+bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm) {
+    char disasm_insn[128];
     size_t prev_sz;
-    while ((prev_sz = bytes.sz)) {
-        memset(disasm, 0, 128);
+    disasm->sz = 0;
+    while ((prev_sz = bytes->sz)) {
+        memset(disasm_insn, 0, 128);
         size_t used_sz = LLVMDisasmInstruction(
-            ref, (u8 *)bytes.buf, bytes.sz, 0, disasm, 128
+            ref, (u8 *)bytes->buf, bytes->sz, 0, disasm_insn, 128
         );
-        if (!used_sz) {
-            mgr_free(bytes.buf);
-            mgr_free(output.buf);
-            output.buf = NULL;
-            output.sz = 0;
-            output.capacity = 0;
-            return output;
-        }
-        memmove(bytes.buf, (char *)bytes.buf + used_sz, bytes.sz - used_sz);
-        bytes.sz -= used_sz;
+        if (!used_sz) return false;
+        memmove(bytes->buf, bytes->buf + used_sz, bytes->sz - used_sz);
+        bytes->sz -= used_sz;
         ufast_8 i;
         /* start at 1 to skip leading '\t' */
         /* Replace spaces with tabs. Don't need to explicitly check for the end
-         * condition because LLVMDisasmInstruction always null-terminates is
+         * of the array because LLVMDisasmInstruction always null-terminates is
          * output. */
-        for (i = 1; disasm[i]; i++) {
-            if (disasm[i] == '\t') disasm[i] = ' ';
+        for (i = 1; disasm_insn[i]; i++) {
+            if (disasm_insn[i] == '\t') disasm_insn[i] = ' ';
         }
         /* replace null terminator with a newline */
-        disasm[i] = '\n';
+        disasm_insn[i] = '\n';
         /* leave `i` as-is, as the 0-based indexing and the extra '\n' cancel
-         * out, and the loop will be null-terminated at the end */
-        append_obj(&output, &disasm[1], i);
+         * out, and the loop shouldn't be null-terminated yet. */
+        append_obj(disasm, &disasm_insn[1], i);
     }
     /* null-terminate the output loop */
-    char *terminator = sb_reserve(&output, 1);
+    char *terminator = sb_reserve(disasm, 1);
     *terminator = 0;
-    mgr_free(bytes.buf);
-    return output;
+    return true;
 }
 
 static void llvm_init(void) {

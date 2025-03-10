@@ -380,10 +380,11 @@ const arch_inter RISCV64_INTER = {
 /* internal */
 #include "unit_test.h"
 
-#define DISASM(sb) disassemble(RISCV64_DIS, sb)
+#define REF RISCV64_DIS
 
 void test_set_reg_32(void) {
     sized_buf sb = newbuf(32);
+    sized_buf dis = newbuf(168);
     set_reg(RISCV_A0, 0, &sb);
     CU_ASSERT_EQUAL(sb.sz, 2);
     set_reg(RISCV_A1, 1, &sb);
@@ -402,8 +403,9 @@ void test_set_reg_32(void) {
     CU_ASSERT_EQUAL(sb.sz, 28);
     set_reg(RISCV_A1, 0x1001, &sb);
     CU_ASSERT_EQUAL(sb.sz, 32);
-    sized_buf dis = DISASM(sb);
     DISASM_TEST(
+        REF,
+        sb,
         dis,
         "li a0, 0x0\n"
         "li a1, 0x1\n"

@@ -7,13 +7,14 @@
 
 /* C99 */
 #include <limits.h>
+#include <stdio.h> /* IWYU pragma: export */
 #include <stdlib.h>
 
 /* libLLVM */
-#include <llvm-c/Disassembler.h>
+#include <llvm-c/Disassembler.h> /* IWYU pragma: export */
 
 /* CUNIT */
-#include <CUnit/CUnit.h>
+#include <CUnit/CUnit.h> /* IWYU pragma: export */
 
 /* internal */
 #include "types.h"
@@ -24,15 +25,6 @@
 #define unit_extern extern
 #endif /* UNIT_TEST_C */
 
-/* utility macro to test if a sized_buf contains the expected disassembly */
-#define DISASM_TEST(dis, expected) \
-    if (dis.buf) { \
-        CU_ASSERT_STRING_EQUAL(dis.buf, expected); \
-        mgr_free(dis.buf); \
-    } else { \
-        CU_FAIL("Failed to decompile bytes!"); \
-    }
-
 typedef LLVMDisasmContextRef disasm_ref;
 
 unit_extern disasm_ref ARM64_DIS;
@@ -42,12 +34,30 @@ unit_extern disasm_ref X86_64_DIS;
 
 /* disassemble the contents of bytes, and return a sized_buf containing the
  * diassembly - instructions are separated by newlines, and the disassembly as a
- * whole is null-terminated. If any bytes within sized_buf are unable to be
+ * whole is null-terminated. If any the provided bytes is unable to be fully
  * disassembled, it returns a sized_buf with sz and capacity set to zero, and
  * buf set to NULL.
  *
- * Note that `bytes.buf` will be `mgr_free`d no matter the outcome. */
-sized_buf disassemble(disasm_ref ref, sized_buf bytes);
+ * `bytes->sz` is set to zero by this process, but the allocation of
+ * `bytes->buf` is left as-is, so it can be reused. */
+bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
+
+/* utility macro to test if a sized_buf contains the expected disassembly.
+ * Clears both sb and dis, leaving the allocation behind for reuse if needed */
+#define DISASM_TEST(ref, code, dis, expected) \
+    if (disassemble(ref, &code, &dis)) { \
+        CU_ASSERT_STRING_EQUAL(dis.buf, expected); \
+        if (strcmp(dis.buf, expected)) { \
+            fprintf( \
+                stderr, \
+                "### EXPECTED ###\n%s\n\n### ACTUAL ###\n%s\n", \
+                expected, \
+                dis.buf \
+            ); \
+        } \
+    } else { \
+        CU_FAIL("Failed to decompile bytes!"); \
+    }
 
 #define ERRORCHECKED(expr) \
     expr; \

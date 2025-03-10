@@ -328,9 +328,12 @@ const arch_inter ARM64_INTER = {
 /* internal */
 #include "unit_test.h"
 
-#define DISASM(sb) disassemble(ARM64_DIS, sb)
+#define REF ARM64_DIS
 
 void test_set_reg_simple(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(24);
+
     struct {
         i64 imm;
         const char *disasm;
@@ -343,62 +346,84 @@ void test_set_reg_simple(void) {
     };
 
     for (ufast_8 i = 0; i < 4; i++) {
-        sized_buf sb = newbuf(4);
         set_reg(test_sets[i].reg, test_sets[i].imm, &sb);
-        sized_buf dis = DISASM(sb);
-        DISASM_TEST(dis, test_sets[i].disasm);
+        DISASM_TEST(REF, sb, dis, test_sets[i].disasm);
     }
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_reg_multiple(void) {
     sized_buf sb = newbuf(8);
+    sized_buf dis = newbuf(32);
+
     set_reg(0, 0xdeadbeef, &sb);
-    sized_buf dis = DISASM(sb);
     DISASM_TEST(
+        REF,
+        sb,
         dis,
         "mov x0, #0xbeef\n"
         "movk x0, #0xdead, lsl #16\n"
     );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_reg_split(void) {
     sized_buf sb = newbuf(8);
+    sized_buf dis = newbuf(48);
+
     set_reg(19, 0xdead0000beef, &sb);
-    sized_buf dis = DISASM(sb);
     DISASM_TEST(
+        REF,
+        sb,
         dis,
         "mov x19, #0xbeef\n"
         "movk x19, #0xdead, lsl #32\n"
     );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_reg_neg(void) {
     sized_buf sb = newbuf(8);
+    sized_buf dis = newbuf(48);
+
     set_reg(19, INT64_C(-0xdeadbeef), &sb);
-    sized_buf dis = DISASM(sb);
     DISASM_TEST(
+        REF,
+        sb,
         dis,
         "mov x19, #-0xbeef\n"
         /* the bitwise negation of 0xdead is 0x2152 */
         "movk x19, #0x2152, lsl #16\n"
     );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_reg_neg_split(void) {
-    sized_buf sb = newbuf(8);
+    sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(80);
+
     set_reg(19, INT64_C(-0xdead0000beef), &sb);
-    sized_buf dis = DISASM(sb);
     DISASM_TEST(
+        REF,
+        sb,
         dis,
         "mov x19, #-0xbeef\n"
         /* the bitwise negation of 0xdead is 0x2152 */
         "movk x19, #0x2152, lsl #32\n"
     );
 
-    sb = newbuf(12);
     set_reg(8, INT64_C(-0xdeadbeef0000), &sb);
-    dis = DISASM(sb);
     DISASM_TEST(
+        REF,
+        sb,
         dis,
         "mov x8, #-0x10000\n"
         /* the bitwise negation of 0xbeef is 0x4110
@@ -407,78 +432,80 @@ void test_reg_neg_split(void) {
         /* the bitwise negation of 0xdead is 0x2152 */
         "movk x8, #0x2152, lsl #32\n"
     );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_inc_dec_reg(void) {
     sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(24);
+
     inc_reg(0, &sb);
-    sized_buf dis = DISASM(sb);
-    DISASM_TEST(dis, "add x0, x0, #0x1\n");
+    DISASM_TEST(REF, sb, dis, "add x0, x0, #0x1\n");
 
-    sb = newbuf(4);
     inc_reg(19, &sb);
-    dis = DISASM(sb);
-    DISASM_TEST(dis, "add x19, x19, #0x1\n");
+    DISASM_TEST(REF, sb, dis, "add x19, x19, #0x1\n");
 
-    sb = newbuf(4);
     dec_reg(1, &sb);
-    dis = DISASM(sb);
-    DISASM_TEST(dis, "sub x1, x1, #0x1\n");
+    DISASM_TEST(REF, sb, dis, "sub x1, x1, #0x1\n");
 
-    sb = newbuf(4);
     dec_reg(19, &sb);
-    dis = DISASM(sb);
-    DISASM_TEST(dis, "sub x19, x19, #0x1\n");
+    DISASM_TEST(REF, sb, dis, "sub x19, x19, #0x1\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_load_store(void) {
     sized_buf sb = newbuf(4);
-    load_from_byte(19, sb_reserve(&sb, 4));
-    sized_buf dis = DISASM(sb);
-    DISASM_TEST(dis, "ldrb w17, [x19], #0x0\n");
+    sized_buf dis = newbuf(24);
 
-    sb = newbuf(4);
+    load_from_byte(19, sb_reserve(&sb, 4));
+    DISASM_TEST(REF, sb, dis, "ldrb w17, [x19], #0x0\n");
+
     store_to_byte(19, sb_reserve(&sb, 4));
-    dis = DISASM(sb);
-    DISASM_TEST(dis, "strb w17, [x19], #0x0\n");
+    DISASM_TEST(REF, sb, dis, "strb w17, [x19], #0x0\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_add_sub_reg(void) {
-    sized_buf sb = newbuf(8);
+    sized_buf sb = newbuf(24);
+    sized_buf dis = newbuf(64);
     add_sub(8, A64_OP_ADD, 0xabcdef, &sb);
-    sized_buf dis = DISASM(sb);
     DISASM_TEST(
-        dis,
-        "add x8, x8, #0xabc, lsl #12\n"
-        "add x8, x8, #0xdef\n"
+        REF, sb, dis, "add x8, x8, #0xabc, lsl #12\nadd x8, x8, #0xdef\n"
     );
 
-    sb = newbuf(4);
     add_sub(8, A64_OP_SUB, 0xabc000, &sb);
-    dis = DISASM(sb);
-    DISASM_TEST(dis, "sub x8, x8, #0xabc, lsl #12\n");
+    DISASM_TEST(REF, sb, dis, "sub x8, x8, #0xabc, lsl #12\n");
 
-    sb = newbuf(24);
     add_sub(8, A64_OP_ADD, 0xdeadbeef, &sb);
     add_sub(8, A64_OP_SUB, 0xdeadbeef, &sb);
-    dis = DISASM(sb);
     DISASM_TEST(
+        REF,
+        sb,
         dis,
-        "mov x17, #0xbeef\n"
-        "movk x17, #0xdead, lsl #16\n"
-        "add x8, x8, x17\n"
-        "mov x17, #0xbeef\n"
-        "movk x17, #0xdead, lsl #16\n"
-        "sub x8, x8, x17\n"
+        "mov x17, #0xbeef\nmovk x17, #0xdead, lsl #16\nadd x8, x8, x17\n"
+        "mov x17, #0xbeef\nmovk x17, #0xdead, lsl #16\nsub x8, x8, x17\n"
     );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_add_sub_byte(void) {
     sized_buf sb = newbuf(24);
+    sized_buf dis = newbuf(144);
+
     add_byte(19, 0xa5, &sb);
     sub_byte(19, 0xa5, &sb);
-    sized_buf dis = DISASM(sb);
+
     DISASM_TEST(
+        REF,
+        sb,
         dis,
         "ldrb w17, [x19], #0x0\n"
         "add x17, x17, #0xa5\n"
@@ -487,21 +514,30 @@ void test_add_sub_byte(void) {
         "sub x17, x17, #0xa5\n"
         "strb w17, [x19], #0x0\n"
     );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_zero_byte(void) {
     sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(24);
+
     zero_byte(19, &sb);
-    sized_buf dis = DISASM(sb);
-    DISASM_TEST(dis, "strb wzr, [x19], #0x0\n");
+    DISASM_TEST(REF, sb, dis, "strb wzr, [x19], #0x0\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_inc_dec_wrapper(void) {
     sized_buf sb = newbuf(24);
+    sized_buf dis = newbuf(136);
     inc_byte(1, &sb);
     dec_byte(8, &sb);
-    sized_buf dis = DISASM(sb);
     DISASM_TEST(
+        REF,
+        sb,
         dis,
         "ldrb w17, [x1], #0x0\n"
         "add x17, x17, #0x1\n"
@@ -510,42 +546,58 @@ void test_inc_dec_wrapper(void) {
         "sub x17, x17, #0x1\n"
         "strb w17, [x8], #0x0\n"
     );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_reg_copy(void) {
     sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(48);
     reg_copy(1, 19, &sb);
     reg_copy(2, 0, &sb);
     reg_copy(8, 8, &sb);
-    sized_buf dis = DISASM(sb);
     DISASM_TEST(
+        REF,
+        sb,
         dis,
         "mov x1, x19\n"
         "mov x2, x0\n"
         "mov x8, x8\n"
     );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_syscall(void) {
     sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(16);
     syscall(&sb);
-    sized_buf dis = DISASM(sb);
-    DISASM_TEST(dis, "svc #0\n");
+    DISASM_TEST(REF, sb, dis, "svc #0\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_nops(void) {
     sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(16);
     nop_loop_open(&sb);
-    sized_buf dis = DISASM(sb);
-    DISASM_TEST(dis, "nop\nnop\nnop\n");
+    DISASM_TEST(REF, sb, dis, "nop\nnop\nnop\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 void test_successfull_jumps(void) {
     sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(104);
     jump_zero(0, 32, &sb);
     jump_not_zero(0, -32, &sb);
-    sized_buf dis = DISASM(sb);
     DISASM_TEST(
+        REF,
+        sb,
         dis,
         "ldrb w17, [x0], #0x0\n"
         "tst x17, #0xff\n"
@@ -554,6 +606,9 @@ void test_successfull_jumps(void) {
         "tst x17, #0xff\n"
         "b.ne #-0x1c\n"
     );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
 }
 
 CU_pSuite register_arm64_tests(void) {
