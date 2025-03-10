@@ -421,10 +421,100 @@ void test_set_reg_32(void) {
     );
 }
 
+void test_set_reg_64(void) {
+    sized_buf dis = newbuf(1024);
+    sized_buf sb = newbuf(124);
+
+    char *expected_disasm = mgr_malloc(1024);
+    char *disasm_p = expected_disasm;
+    size_t expected_len = 0;
+    for (i64 val = ((i64)INT32_MAX) + 1; val < INT64_MAX / 2; val <<= 1) {
+        set_reg(RISCV_A7, val, &sb);
+        u8 shift_lvl = trailing_0s(val);
+        disasm_p += sprintf(
+            disasm_p, "li a7, 0x1\nslli a7, a7, 0x%" PRIx8 "\n", shift_lvl
+        );
+        expected_len += 4;
+        CU_ASSERT_EQUAL(sb.sz, expected_len);
+    }
+    CU_ASSERT_EQUAL(expected_len, 124);
+    DISASM_TEST(REF, sb, dis, expected_disasm);
+    mgr_free(expected_disasm);
+
+    /* worst-case scenario is alternating bits. 0b0101 is 0x5. */
+    /* first, just a single sequence, but it'll need to be shifted */
+    set_reg(RISCV_A7, INT64_C(0x5555) << 24, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+    DISASM_TEST(REF, sb, dis, "lui a7, 0x5555\nslli a7, a7, 0xc\n");
+
+    set_reg(RISCV_S0, INT64_C(0x555555555555), &sb);
+    set_reg(RISCV_A7, INT64_C(-0x555555555555), &sb);
+    DISASM_TEST(
+        REF,
+        sb,
+        dis,
+        /* this is what LLVM 19 generates for these instructions:
+         * ###
+         * llvm-mc --triple=riscv64-linux-gnu -mattr=+c --print-imm-hex - <<<EOF
+         * li s0, 0x555555555555
+         * li a7, -0x555555555555
+         * EOF
+         * ### */
+        "lui s0, 0x555\n"
+        "addiw s0, s0, 0x555\n"
+        "slli s0, s0, 0xc\n"
+        "addi s0, s0, 0x555\n"
+        "slli s0, s0, 0xc\n"
+        "addi s0, s0, 0x555\n"
+        "lui a7, 0xffaab\n"
+        "addiw a7, a7, -0x555\n"
+        "slli a7, a7, 0xc\n"
+        "addi a7, a7, -0x555\n"
+        "slli a7, a7, 0xc\n"
+        "addi a7, a7, -0x555\n"
+    );
+
+    /* again, but with 64-bit rather than 48-bit values */
+    set_reg(RISCV_S0, INT64_C(0x5555555555555555), &sb);
+    set_reg(RISCV_A7, INT64_C(-0x5555555555555555), &sb);
+    DISASM_TEST(
+        REF,
+        sb,
+        dis,
+        /* this is what LLVM 19 generates for these instructions:
+         * ###
+         * llvm-mc --triple=riscv64-linux-gnu -mattr=+c --print-imm-hex - <<<EOF
+         * li s0, 0x5555555555555555
+         * li a7, -0x5555555555555555
+         * EOF
+         * ### */
+        "lui s0, 0x5555\n"
+        "addiw s0, s0, 0x555\n"
+        "slli s0, s0, 0xc\n"
+        "addi s0, s0, 0x555\n"
+        "slli s0, s0, 0xc\n"
+        "addi s0, s0, 0x555\n"
+        "slli s0, s0, 0xc\n"
+        "addi s0, s0, 0x555\n"
+        "lui a7, 0xfaaab\n"
+        "addiw a7, a7, -0x555\n"
+        "slli a7, a7, 0xc\n"
+        "addi a7, a7, -0x555\n"
+        "slli a7, a7, 0xc\n"
+        "addi a7, a7, -0x555\n"
+        "slli a7, a7, 0xc\n"
+        "addi a7, a7, -0x555\n"
+    );
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
 CU_pSuite register_riscv64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_riscv64", NULL, NULL);
     if (suite == NULL) return NULL;
     ADD_TEST(suite, test_set_reg_32);
+    ADD_TEST(suite, test_set_reg_64);
     return suite;
 }
 
