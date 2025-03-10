@@ -64,6 +64,14 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     u16 default_val;
     mov_type lead_mt;
 
+    if (imm < 0) {
+        default_val = 0xffff;
+        lead_mt = A64_MT_INVERT;
+    } else {
+        default_val = 0;
+        lead_mt = A64_MT_ZERO;
+    }
+
     /* split the immediate into 4 16-bit parts - high, medium-high, medium-low,
      * and low. */
     const struct {
@@ -76,13 +84,6 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         {(imm >> 48), A64_SL_SHIFT48},
     };
 
-    if (imm < 0) {
-        default_val = 0xffff;
-        lead_mt = A64_MT_INVERT;
-    } else {
-        default_val = 0;
-        lead_mt = A64_MT_ZERO;
-    }
     /* skip to the first part with non-default imm16 values. */
     bool started = false;
     for (ufast_8 i = 0; i < 4; i++) {
