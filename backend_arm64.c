@@ -386,6 +386,31 @@ void test_reg_neg(void) {
     );
 }
 
+void test_reg_neg_split(void) {
+    sized_buf sb = newbuf(8);
+    set_reg(19, INT64_C(-0xdead0000beef), &sb);
+    sized_buf dis = DISASM(sb);
+    DISASM_TEST(
+        dis,
+        "mov x19, #-0xbeef\n"
+        /* the bitwise negation of 0xdead is 0x2152 */
+        "movk x19, #0x2152, lsl #32"
+    );
+
+    sb = newbuf(12);
+    set_reg(8, INT64_C(-0xdeadbeef0000), &sb);
+    dis = DISASM(sb);
+    DISASM_TEST(
+        dis,
+        "mov x8, #-0x10000\n"
+        /* the bitwise negation of 0xbeef is 0x4110
+         * (Add 1 because that's how 2's complement works)*/
+        "movk x8, #0x4111, lsl #16\n"
+        /* the bitwise negation of 0xdead is 0x2152 */
+        "movk x8, #0x2152, lsl #32\n"
+    );
+}
+
 CU_pSuite register_arm64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_arm64", NULL, NULL);
     if (suite == NULL) return NULL;
@@ -393,6 +418,7 @@ CU_pSuite register_arm64_tests(void) {
     CU_ADD_TEST(suite, test_reg_multiple);
     CU_ADD_TEST(suite, test_reg_split);
     CU_ADD_TEST(suite, test_reg_neg);
+    CU_ADD_TEST(suite, test_reg_neg_split);
     return suite;
 }
 
