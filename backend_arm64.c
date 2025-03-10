@@ -98,15 +98,16 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         /* at least one needs to be set */
         /* (MOVZ|MOVN) x.reg, lead_imm{, lsl lead_shift} */
         mov(lead_mt, parts[i].imm16, parts[i].shift, reg, instr_bytes);
-        for (++i; i < 4; i++)
+        for (++i; i < 4; i++) {
+            /*  MOVK x[reg], imm16{, lsl shift} */
             if (parts[i].imm16 != default_val) {
-                /*  MOVK x[reg], imm16{, lsl shift} */
                 mov(A64_MT_KEEP,
                     parts[i].imm16,
                     parts[i].shift,
                     reg,
                     sb_reserve(dst_buf, 4));
             }
+        }
     }
     return true;
 }
