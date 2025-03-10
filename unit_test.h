@@ -18,6 +18,15 @@
 #define unit_extern extern
 #endif /* UNIT_TEST_C */
 
+/* utility macro to test if a sized_buf contains the expected disassembly */
+#define DISASM_TEST(dis, expected) \
+    if (dis.buf) { \
+        CU_ASSERT_STRING_EQUAL(dis.buf, expected); \
+        mgr_free(dis.buf); \
+    } else { \
+        CU_FAIL("Failed to decompile bytes!"); \
+    }
+
 typedef LLVMDisasmContextRef disasm_ref;
 
 unit_extern disasm_ref ARM64_DIS;

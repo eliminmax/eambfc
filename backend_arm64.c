@@ -348,12 +348,7 @@ void test_set_reg_simple(void) {
         sized_buf sb = newbuf(4);
         set_reg(test_sets[i].reg, test_sets[i].imm, &sb);
         sized_buf dis = DISASM(sb);
-        if (dis.buf) {
-            CU_ASSERT_STRING_EQUAL(dis.buf, test_sets[i].disasm);
-            mgr_free(dis.buf);
-        } else {
-            CU_FAIL("Failed to decompile bytes!");
-        }
+        DISASM_TEST(dis, test_sets[i].disasm);
     }
 }
 
@@ -361,49 +356,34 @@ void test_reg_multiple(void) {
     sized_buf sb = newbuf(8);
     set_reg(0, 0xdeadbeef, &sb);
     sized_buf dis = DISASM(sb);
-    if (dis.buf) {
-        CU_ASSERT_STRING_EQUAL(
-            dis.buf,
-            "mov x0, #0xbeef\n"
-            "movk x0, #0xdead, lsl #16\n"
-        );
-        mgr_free(dis.buf);
-    } else {
-        CU_FAIL("Failed to decompile bytes!");
-    }
+    DISASM_TEST(
+        dis,
+        "mov x0, #0xbeef\n"
+        "movk x0, #0xdead, lsl #16\n"
+    );
 }
 
 void test_reg_split(void) {
     sized_buf sb = newbuf(8);
     set_reg(19, 0xdead0000beef, &sb);
     sized_buf dis = DISASM(sb);
-    if (dis.buf) {
-        CU_ASSERT_STRING_EQUAL(
-            dis.buf,
-            "mov x19, #0xbeef\n"
-            "movk x19, #0xdead, lsl #32\n"
-        );
-        mgr_free(dis.buf);
-    } else {
-        CU_FAIL("Failed to decompile bytes!");
-    }
+    DISASM_TEST(
+        dis,
+        "mov x19, #0xbeef\n"
+        "movk x19, #0xdead, lsl #32\n"
+    );
 }
 
 void test_reg_neg(void) {
     sized_buf sb = newbuf(8);
     set_reg(19, INT64_C(-0xdeadbeef), &sb);
     sized_buf dis = DISASM(sb);
-    if (dis.buf) {
-        CU_ASSERT_STRING_EQUAL(
-            dis.buf,
-            "mov x19, #-0xbeef\n"
-            /* the bitwise negation of 0xdead is 0x2152 */
-            "movk x19, #0x2152, lsl #16\n"
-        );
-        mgr_free(dis.buf);
-    } else {
-        CU_FAIL("Failed to decompile bytes!");
-    }
+    DISASM_TEST(
+        dis,
+        "mov x19, #-0xbeef\n"
+        /* the bitwise negation of 0xdead is 0x2152 */
+        "movk x19, #0x2152, lsl #16\n"
+    );
 }
 
 CU_pSuite register_arm64_tests(void) {
