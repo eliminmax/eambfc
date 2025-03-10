@@ -66,16 +66,16 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
 
     /* split the immediate into 4 16-bit parts - high, medium-high, medium-low,
      * and low. */
-    struct shifted_imm {
+    const struct {
         u16 imm16;
         shift_lvl shift;
+    } parts[4] = {
+        {imm, A64_SL_NO_SHIFT},
+        {(imm >> 16), A64_SL_SHIFT16},
+        {(imm >> 32), A64_SL_SHIFT32},
+        {(imm >> 48), A64_SL_SHIFT48},
     };
-    const struct shifted_imm parts[4] = {
-        {(u16)imm, A64_SL_NO_SHIFT},
-        {(u16)(imm >> 16), A64_SL_SHIFT16},
-        {(u16)(imm >> 32), A64_SL_SHIFT32},
-        {(u16)(imm >> 48), A64_SL_SHIFT48},
-    };
+
     if (imm < 0) {
         default_val = 0xffff;
         lead_mt = A64_MT_INVERT;
@@ -84,30 +84,21 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         lead_mt = A64_MT_ZERO;
     }
     /* skip to the first part with non-default imm16 values. */
-    int i;
-    for (i = 0; i < 4; i++) {
-        if (parts[i].imm16 != default_val) break;
-    }
-    u8 *instr_bytes = sb_reserve(dst_buf, 4);
-    /* check if the end was reached without finding a non-default value */
-    if (i == 4) {
-        /* all are the default value, so use this fallback instruction */
-        /* (MOVZ|MOVN) x.reg, default_val */
-        mov(lead_mt, default_val, A64_SL_NO_SHIFT, reg, instr_bytes);
-    } else {
-        /* at least one needs to be set */
-        /* (MOVZ|MOVN) x.reg, lead_imm{, lsl lead_shift} */
-        mov(lead_mt, parts[i].imm16, parts[i].shift, reg, instr_bytes);
-        for (++i; i < 4; i++) {
-            /*  MOVK x[reg], imm16{, lsl shift} */
-            if (parts[i].imm16 != default_val) {
-                mov(A64_MT_KEEP,
-                    parts[i].imm16,
-                    parts[i].shift,
-                    reg,
-                    sb_reserve(dst_buf, 4));
-            }
+    bool started = false;
+    for (ufast_8 i = 0; i < 4; i++) {
+        if (parts[i].imm16 != default_val) {
+            mov(started ? A64_MT_KEEP : lead_mt,
+                parts[i].imm16,
+                parts[i].shift,
+                reg,
+                sb_reserve(dst_buf, 4));
+            started = true;
         }
+    }
+    if (!started) {
+        /* all were the default value, so use this fallback instruction */
+        /* (MOVZ|MOVN) x.reg, default_val */
+        mov(lead_mt, default_val, A64_SL_NO_SHIFT, reg, sb_reserve(dst_buf, 4));
     }
     return true;
 }
