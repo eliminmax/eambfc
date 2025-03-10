@@ -24,10 +24,6 @@
 #include "unit_test.h"
 #include "util.h"
 
-CU_pSuite register_util_tests(void);
-CU_pSuite register_serialize_tests(void);
-CU_pSuite register_arm64_tests(void);
-
 /* LLVM uses some obnoxiously long identifiers. This helps mitigate that */
 #define INTEL_ASM LLVMDisassembler_Option_AsmPrinterVariant
 #define HEX_IMMS LLVMDisassembler_Option_PrintImmHex
