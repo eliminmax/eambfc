@@ -412,11 +412,11 @@ void test_reg_neg_split(void) {
 CU_pSuite register_arm64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_arm64", NULL, NULL);
     if (suite == NULL) return NULL;
-    ERRORCHECKED(CU_ADD_TEST(suite, test_set_reg_simple));
-    ERRORCHECKED(CU_ADD_TEST(suite, test_reg_multiple));
-    ERRORCHECKED(CU_ADD_TEST(suite, test_reg_split));
-    ERRORCHECKED(CU_ADD_TEST(suite, test_reg_neg));
-    ERRORCHECKED(CU_ADD_TEST(suite, test_reg_neg_split));
+    ADD_TEST(suite, test_set_reg_simple);
+    ADD_TEST(suite, test_reg_multiple);
+    ADD_TEST(suite, test_reg_split);
+    ADD_TEST(suite, test_reg_neg);
+    ADD_TEST(suite, test_reg_neg_split);
     return suite;
 }
 

@@ -56,4 +56,6 @@ sized_buf disassemble(disasm_ref ref, sized_buf bytes);
         exit(EXIT_FAILURE); \
     }
 
+#define ADD_TEST(suite, test) ERRORCHECKED(CU_ADD_TEST(suite, test))
+
 #endif /* BFC_UNIT_TEST_H */

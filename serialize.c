@@ -108,7 +108,7 @@ static void test_serialize_nums(void) {
 CU_pSuite register_serialize_tests(void) {
     CU_pSuite suite = CU_add_suite("serialize", NULL, NULL);
     if (suite == NULL) return NULL;
-    ERRORCHECKED(CU_ADD_TEST(suite, test_serialize_nums));
+    ADD_TEST(suite, test_serialize_nums);
     return suite;
 }
 
