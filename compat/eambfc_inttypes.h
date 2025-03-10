@@ -49,9 +49,10 @@
 
 #ifndef BFC_INTTYPES_H
 #define BFC_INTTYPES_H 1
+
 /* inttypes.h #includes <stdint.h> and provides printf and scanf macros. */
 /* C99 */
-#include <inttypes.h>
+#include <inttypes.h> /* IWYU pragma: export */
 
 #ifndef INT64_MAX /* if not defined, int64_t is not supported. */
 #define INT64_MAX 9223372036854775807LL

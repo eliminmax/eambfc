@@ -6,11 +6,11 @@
 #ifndef BFC_TYPES_H
 #define BFC_TYPES_H 1
 /* C99 */
-#include <stdbool.h>
+#include <stdbool.h> /* IWYU pragma: export */
 /* POSIX */
-#include <sys/types.h>
+#include <sys/types.h> /* IWYU pragma: export */
 /* internal */
-#include "compat/eambfc_inttypes.h"
+#include "compat/eambfc_inttypes.h" /* IWYU pragma: export */
 
 typedef unsigned int uint;
 typedef unsigned char uchar;

@@ -17,11 +17,11 @@ CompileFlags:
     - "-DBFC_TEST"
   Compiler: clang
 
-Diagnostics:
-  Includes:
-    # Avoid false positives for unused header-checks from indirect includes
-    # from types.h and compat/eambfc_inttypes.h
-    IgnoreHeader: .*types\.h
+# Diagnostics:
+#   Includes:
+#     # Avoid false positives for unused header-checks from indirect includes
+#     # from types.h and compat/eambfc_inttypes.h
+#     IgnoreHeader: .*types\.h
 
 ---
 If:
