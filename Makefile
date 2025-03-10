@@ -41,6 +41,9 @@ UNIBUILD_DEPS = serialize.c compile.c optimize.c err.c util.c resource_mgr.c \
 
 UNIBUILD_FILES = $(UNIBUILD_DEPS) main.c
 
+UNIT_TEST_DEPS = $(UNIBUILD_DEPS) $(COMMON_HEADERS) unit_test.c unit_test.h \
+		 serialize.h
+
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
 # overridden if CFLAGS are passed as an argument to make.
 .SUFFIXES: .c.o
@@ -131,7 +134,7 @@ all_tests: all_arch_test strict ubsan int_torture_test
 all_arch_test: can_run_all eambfc
 	(cd tests; make -s test_all)
 
-unit_test_driver: $(UNIBUILD_DEPS) unit_test.c $(COMMON_HEADERS) serialize.h
+unit_test_driver: $(UNIT_TEST_DEPS)
 	gcc $(GCC_STRICT_FLAGS) $$(llvm-config --cflags) -DBFC_TEST=1 -o $@ \
 	    unit_test.c $(UNIBUILD_DEPS) $(LDLIBS) -lcunit -lm \
 	    $$(llvm-config --ldflags --libs)
