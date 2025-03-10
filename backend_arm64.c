@@ -37,7 +37,7 @@ typedef enum {
 } mov_type;
 
 /* set dst to the machine code for STRB w17, x.reg */
-static void store_to_byte(u8 src, u8 *dst) {
+static void store_to_byte(u8 src, u8 dst[4]) {
     serialize32le(0x38000411 | (((u32)src) << 5), dst);
 }
 
