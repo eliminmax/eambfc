@@ -473,6 +473,22 @@ void test_add_sub_reg(void) {
     );
 }
 
+void test_add_sub_byte(void) {
+    sized_buf sb = newbuf(24);
+    add_byte(19, 0xa5, &sb);
+    sub_byte(19, 0xa5, &sb);
+    sized_buf dis = DISASM(sb);
+    DISASM_TEST(
+        dis,
+        "ldrb w17, [x19], #0x0\n"
+        "add x17, x17, #0xa5\n"
+        "strb w17, [x19], #0x0\n"
+        "ldrb w17, [x19], #0x0\n"
+        "sub x17, x17, #0xa5\n"
+        "strb w17, [x19], #0x0\n"
+    );
+}
+
 CU_pSuite register_arm64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_arm64", NULL, NULL);
     if (suite == NULL) return NULL;
@@ -484,6 +500,7 @@ CU_pSuite register_arm64_tests(void) {
     ADD_TEST(suite, test_inc_dec_reg);
     ADD_TEST(suite, test_load_store);
     ADD_TEST(suite, test_add_sub_reg);
+    ADD_TEST(suite, test_add_sub_byte);
     return suite;
 }
 
