@@ -392,7 +392,7 @@ void test_reg_neg_split(void) {
         dis,
         "mov x19, #-0xbeef\n"
         /* the bitwise negation of 0xdead is 0x2152 */
-        "movk x19, #0x2152, lsl #32"
+        "movk x19, #0x2152, lsl #32\n"
     );
 
     sb = newbuf(12);
