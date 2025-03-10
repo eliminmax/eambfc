@@ -340,20 +340,88 @@ const arch_inter ARM64_INTER = {
 #define DISASM(sb) disassemble(ARM64_DIS, sb)
 
 void test_set_reg_simple(void) {
-    sized_buf sb = newbuf(32);
-    set_reg(0, 0, &sb);
-    sb = DISASM(sb);
-    fprintf(stderr, "%s\n", (char *)sb.buf);
-    CU_ASSERT_STRING_EQUAL(sb.buf, "mov x0, #0x0\n");
+    struct {
+        i64 imm;
+        const char *disasm;
+        u8 reg;
+    } test_sets[4] = {
+        {0, "mov x0, #0x0\n", 0},
+        {-1, "mov x0, #-0x1\n", 0},
+        {-0x100001, "mov x0, #-0x100001\n", 0},
+        {0xbeef, "mov x1, #0xbeef\n", 1},
+    };
+
+    for (ufast_8 i = 0; i < 4; i++) {
+        sized_buf sb = newbuf(4);
+        set_reg(test_sets[i].reg, test_sets[i].imm, &sb);
+        sized_buf dis = DISASM(sb);
+        if (dis.buf) {
+            CU_ASSERT_STRING_EQUAL(dis.buf, test_sets[i].disasm);
+            mgr_free(dis.buf);
+        } else {
+            CU_FAIL("Failed to decompile bytes!");
+        }
+    }
+}
+
+void test_reg_multiple(void) {
+    sized_buf sb = newbuf(8);
+    set_reg(0, 0xdeadbeef, &sb);
+    sized_buf dis = DISASM(sb);
+    if (dis.buf) {
+        CU_ASSERT_STRING_EQUAL(
+            dis.buf,
+            "mov x0, #0xbeef\n"
+            "movk x0, #0xdead, lsl #16\n"
+        );
+        mgr_free(dis.buf);
+    } else {
+        CU_FAIL("Failed to decompile bytes!");
+    }
+}
+
+void test_reg_split(void) {
+    sized_buf sb = newbuf(8);
+    set_reg(19, 0xdead0000beef, &sb);
+    sized_buf dis = DISASM(sb);
+    if (dis.buf) {
+        CU_ASSERT_STRING_EQUAL(
+            dis.buf,
+            "mov x19, #0xbeef\n"
+            "movk x19, #0xdead, lsl #32\n"
+        );
+        mgr_free(dis.buf);
+    } else {
+        CU_FAIL("Failed to decompile bytes!");
+    }
+}
+
+void test_reg_neg(void) {
+    sized_buf sb = newbuf(8);
+    set_reg(19, -0xdeadbeef, &sb);
+    sized_buf dis = DISASM(sb);
+    if (dis.buf) {
+        CU_ASSERT_STRING_EQUAL(
+            dis.buf,
+            "mov x19, #-0xbeef\n"
+            /* the bitwise negation of 0xdead is 0x2152 */
+            "movk x19, #0x2152, lsl #16\n"
+        );
+        mgr_free(dis.buf);
+    } else {
+        CU_FAIL("Failed to decompile bytes!");
+    }
 }
 
 CU_pSuite register_arm64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_arm64", NULL, NULL);
     if (suite == NULL) return NULL;
     CU_ADD_TEST(suite, test_set_reg_simple);
+    CU_ADD_TEST(suite, test_reg_multiple);
+    CU_ADD_TEST(suite, test_reg_split);
+    CU_ADD_TEST(suite, test_reg_neg);
     return suite;
 }
 
 #endif /* BFC_TEST */
-
 #endif /* BFC_TARGET_ARM64 */
