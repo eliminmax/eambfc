@@ -443,6 +443,36 @@ void test_load_store(void) {
     DISASM_TEST(dis, "strb w17, [x19], #0x0\n");
 }
 
+void test_add_sub_reg(void) {
+    sized_buf sb = newbuf(8);
+    add_sub(8, A64_OP_ADD, 0xabcdef, &sb);
+    sized_buf dis = DISASM(sb);
+    DISASM_TEST(
+        dis,
+        "add x8, x8, #0xabc, lsl #12\n"
+        "add x8, x8, #0xdef\n"
+    );
+
+    sb = newbuf(4);
+    add_sub(8, A64_OP_SUB, 0xabc000, &sb);
+    dis = DISASM(sb);
+    DISASM_TEST(dis, "sub x8, x8, #0xabc, lsl #12\n");
+
+    sb = newbuf(24);
+    add_sub(8, A64_OP_ADD, 0xdeadbeef, &sb);
+    add_sub(8, A64_OP_SUB, 0xdeadbeef, &sb);
+    dis = DISASM(sb);
+    DISASM_TEST(
+        dis,
+        "mov x17, #0xbeef\n"
+        "movk x17, #0xdead, lsl #16\n"
+        "add x8, x8, x17\n"
+        "mov x17, #0xbeef\n"
+        "movk x17, #0xdead, lsl #16\n"
+        "sub x8, x8, x17\n"
+    );
+}
+
 CU_pSuite register_arm64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_arm64", NULL, NULL);
     if (suite == NULL) return NULL;
@@ -453,6 +483,7 @@ CU_pSuite register_arm64_tests(void) {
     ADD_TEST(suite, test_reg_neg_split);
     ADD_TEST(suite, test_inc_dec_reg);
     ADD_TEST(suite, test_load_store);
+    ADD_TEST(suite, test_add_sub_reg);
     return suite;
 }
 
