@@ -11,6 +11,16 @@
 
 #if BFC_TARGET_RISCV64
 
+/* enum of RISC-V registers used in this file, referred to by ABI mnemonic. */
+enum RISCV_REGS {
+    RISCV_T1 = 6,
+    RISCV_S0 = 8,
+    RISCV_A0 = 10,
+    RISCV_A1 = 11,
+    RISCV_A2 = 12,
+    RISCV_A7 = 17
+};
+
 /* padding bytes to be replaced with an instruction within a u8 array. */
 #define PAD_INSTRUCTION 0x00, 0x00, 0x00, 0x00
 
@@ -105,22 +115,19 @@ bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
 
 /* SPDX-SnippetEnd */
 
-/* t1 temporary register used as a scratch register within certain operations */
-static const u8 TEMP_REG = 6;
-
 /* return a u32 containing the value of the instruction to store the lowest byte
- * in TEMP_REG at the address pointed to by addr_reg, suitable to pass to
+ * in t1 at the address pointed to by addr_reg, suitable to pass to
  * serialize32le */
 static u32 store_to_byte(u8 addr) {
     /* SB */
-    return (((u32)TEMP_REG) << 20) | (((u32)addr) << 15) | 0x23;
+    return (((u32)RISCV_T1) << 20) | (((u32)addr) << 15) | 0x23;
 }
 
 /* return a u32 containing the value of the instruction to load the byte at the
- * address pointed to by addr in TEMPREG suitable to pass to serialize32le */
+ * address pointed to by addr in t1 suitable to pass to serialize32le */
 static u32 load_from_byte(u8 addr) {
     /* LB */
-    return (((u32)addr) << 15) | (((u32)TEMP_REG) << 7) | 0x03;
+    return (((u32)addr) << 15) | (((u32)RISCV_T1) << 7) | 0x03;
 }
 
 static bool cond_jump(u8 reg, i64 distance, bool eq, sized_buf *dst_buf) {
@@ -251,9 +258,9 @@ static bool add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
         );
         return append_obj(dst_buf, i_bytes, 4);
     }
-    /* c.add reg, TEMP_REG */
-    u16 add_regs = 0x9002 | (((u16)reg) << 7) | (((u16)TEMP_REG) << 2);
-    return encode_li(dst_buf, TEMP_REG, imm) &&
+    /* c.add reg, t1 */
+    u16 add_regs = 0x9002 | (((u16)reg) << 7) | (((u16)RISCV_T1) << 2);
+    return encode_li(dst_buf, RISCV_T1, imm) &&
            append_obj(
                dst_buf, (u8[]){add_regs & 0xff, (add_regs & 0xff00) >> 8}, 2
            );
@@ -275,17 +282,17 @@ static bool add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     serialize32le(load_from_byte(reg), i_bytes);
     if (bit_fits(imm_s, 6)) {
         sz = 10;
-        /* c.addi TEMP_REG, imm8 */
+        /* c.addi t1, imm8 */
         serialize16le(
-            (((imm_s & 0x20) | TEMP_REG) << 7) | ((imm_s & 0x1f) << 2) | 1,
+            (((imm_s & 0x20) | RISCV_T1) << 7) | ((imm_s & 0x1f) << 2) | 1,
             &i_bytes[4]
         );
     } else {
         sz = 12;
-        /* addi TEMP_REG, TEMP_REG, imm8 */
+        /* addi t1, t1, imm8 */
         serialize32le(
-            (((u32)imm_s) << 20) | (((u32)TEMP_REG) << 15) |
-                (((u32)TEMP_REG) << 7) | 0x13,
+            (((u32)imm_s) << 20) | (((u32)RISCV_T1) << 15) |
+                (((u32)RISCV_T1) << 7) | 0x13,
             &i_bytes[4]
         );
     }
@@ -301,17 +308,17 @@ static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     serialize32le(load_from_byte(reg), i_bytes);
     if (bit_fits(imm_s, 6)) {
         sz = 10;
-        /* c.addi TEMP_REG, imm8 */
+        /* c.addi t1, imm8 */
         serialize16le(
-            (((imm_s & 0x20) | TEMP_REG) << 7) | ((imm_s & 0x1f) << 2) | 1,
+            (((imm_s & 0x20) | RISCV_T1) << 7) | ((imm_s & 0x1f) << 2) | 1,
             &i_bytes[4]
         );
     } else {
         sz = 12;
-        /* addi TEMP_REG, TEMP_REG, imm8 */
+        /* addi t1, t1, imm8 */
         serialize32le(
-            (((u32)imm_s) << 20) | (((u32)TEMP_REG) << 15) |
-                (((u32)TEMP_REG) << 7) | 0x13,
+            (((u32)imm_s) << 20) | (((u32)RISCV_T1) << 15) |
+                (((u32)RISCV_T1) << 7) | 0x13,
             &i_bytes[4]
         );
     }
@@ -351,11 +358,11 @@ static const arch_sc_nums SC_NUMS = {
 };
 
 static const arch_registers REGS = {
-    .sc_num = 17 /* a7 */,
-    .arg1 = 10 /* a0 */,
-    .arg2 = 11 /* a1 */,
-    .arg3 = 12 /* a2 */,
-    .bf_ptr = 8 /* s0 */,
+    .sc_num = RISCV_A7,
+    .arg1 = RISCV_A0,
+    .arg2 = RISCV_A1,
+    .arg3 = RISCV_A2,
+    .bf_ptr = RISCV_S0,
 };
 
 const arch_inter RISCV64_INTER = {
