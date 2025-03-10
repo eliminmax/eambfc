@@ -20,8 +20,8 @@
 #define UNIT_TEST_C 1
 /* internal */
 #include "resource_mgr.h"
-#include "unit_test.h"
 #include "types.h"
+#include "unit_test.h"
 #include "util.h"
 
 CU_pSuite register_util_tests(void);
@@ -43,17 +43,15 @@ sized_buf disassemble(disasm_ref ref, sized_buf bytes) {
     size_t prev_sz;
     while ((prev_sz = bytes.sz)) {
         memset(disasm, 0, 128);
-        size_t used_sz =
-            LLVMDisasmInstruction(ref, bytes.buf, bytes.sz, 0, disasm, 128);
+        size_t used_sz = LLVMDisasmInstruction(
+            ref, (u8 *)bytes.buf, bytes.sz, 0, disasm, 128
+        );
         if (!used_sz) {
             mgr_free(bytes.buf);
             mgr_free(output.buf);
             output.buf = NULL;
             output.sz = 0;
             output.capacity = 0;
-            fprintf(
-                stderr, "failed to decompile %ju bytes.\n", (uintmax_t)bytes.sz
-            );
             return output;
         }
         memmove(bytes.buf, (char *)bytes.buf + used_sz, bytes.sz - used_sz);
