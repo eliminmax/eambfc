@@ -123,7 +123,7 @@ static bool syscall(sized_buf *dst_buf) {
 }
 
 static bool nop_loop_open(sized_buf *dst_buf) {
-#define NOP 0x1f, 0x20, 0x03, 0xdf
+#define NOP 0x1f, 0x20, 0x03, 0xd5
     return append_obj(dst_buf, (u8[]){NOP, NOP, NOP}, 12);
 #undef NOP
 }
