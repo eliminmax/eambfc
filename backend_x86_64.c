@@ -12,10 +12,6 @@
 #include "util.h"
 #if BFC_TARGET_X86_64
 
-/* If there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
- * functions, the common lines dealing with writing machine code should
- * be moved into a separate function. */
-
 /* mark a series of bytes within a u8 array as being a single instruction,
  * mostly to prevent automated code formatting from splitting them up */
 #define INSTRUCTION(...) __VA_ARGS__
