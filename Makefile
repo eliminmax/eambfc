@@ -131,14 +131,16 @@ all_tests: all_arch_test strict ubsan int_torture_test
 all_arch_test: can_run_all eambfc
 	(cd tests; make -s test_all)
 
-unit_test: $(UNIBUILD_DEPS) unit_test.c $(COMMON_HEADERS) serialize.h
+unit_test_driver: $(UNIBUILD_DEPS) unit_test.c $(COMMON_HEADERS) serialize.h
 	gcc $(GCC_STRICT_FLAGS) $$(llvm-config --cflags) -DBFC_TEST=1 -o $@ \
 	    unit_test.c $(UNIBUILD_DEPS) $(LDLIBS) -lcunit -lm \
 	    $$(llvm-config --ldflags --libs)
-	if ! ./$@; then rm $@ && exit 1; fi
+
+unit_test: unit_test_driver
+	./unit_test_driver
 
 
 # remove eambfc and the objects it's built from, and remove test artifacts
 clean:
-	rm -rf $(EAMBFC_DEPS) eambfc alt-builds unit_test
+	rm -rf $(EAMBFC_DEPS) eambfc alt-builds unit_test_driver
 	(cd tests; make clean)

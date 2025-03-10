@@ -22,4 +22,4 @@ releases/
 a.out
 
 # unit testing binary
-unit_test
+unit_test_driver
