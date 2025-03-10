@@ -512,6 +512,34 @@ void test_inc_dec_wrapper(void) {
     );
 }
 
+void test_reg_copy(void) {
+    sized_buf sb = newbuf(12);
+    reg_copy(1, 19, &sb);
+    reg_copy(2, 0, &sb);
+    reg_copy(8, 8, &sb);
+    sized_buf dis = DISASM(sb);
+    DISASM_TEST(
+        dis,
+        "mov x1, x19\n"
+        "mov x2, x0\n"
+        "mov x8, x8\n"
+    );
+}
+
+void test_syscall(void) {
+    sized_buf sb = newbuf(4);
+    syscall(&sb);
+    sized_buf dis = DISASM(sb);
+    DISASM_TEST(dis, "svc #0\n");
+}
+
+void test_nops(void) {
+    sized_buf sb = newbuf(12);
+    nop_loop_open(&sb);
+    sized_buf dis = DISASM(sb);
+    DISASM_TEST(dis, "nop\nnop\nnop\n");
+}
+
 CU_pSuite register_arm64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_arm64", NULL, NULL);
     if (suite == NULL) return NULL;
@@ -526,6 +554,9 @@ CU_pSuite register_arm64_tests(void) {
     ADD_TEST(suite, test_add_sub_byte);
     ADD_TEST(suite, test_zero_byte);
     ADD_TEST(suite, test_inc_dec_wrapper);
+    ADD_TEST(suite, test_reg_copy);
+    ADD_TEST(suite, test_syscall);
+    ADD_TEST(suite, test_nops);
     return suite;
 }
 
