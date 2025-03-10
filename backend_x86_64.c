@@ -12,6 +12,26 @@
 #include "util.h"
 #if BFC_TARGET_X86_64
 
+enum X86_REGS {
+    /* x86 32-bit register IDs */
+    X86_EAX = 00,
+    /* reserved for use in `reg_arith` only: `X86_ECX = 01,` */
+    X86_EDX = 02,
+    X86_EBX = 03,
+    /* omit a few not used in eambfc */
+    X86_ESI = 06,
+    X86_EDI = 07,
+    /* x86_64-only registers */
+    X86_64_RAX = X86_EAX,
+    /* reserved for use in `reg_arith` only: `X86_64_RCX = X86_ECX,` */
+    X86_64_RDX = X86_EDX,
+    /* omit a few not used in eambfc */
+    X86_64_RBX = X86_EBX,
+    X86_64_RSI = X86_ESI,
+    X86_64_RDI = X86_EDI,
+    /* omit extra numbered registers r10 through r15 added in x86_64 */
+};
+
 /* mark a series of bytes within a u8 array as being a single instruction,
  * mostly to prevent automated code formatting from splitting them up */
 #define INSTRUCTION(...) __VA_ARGS__
@@ -220,11 +240,11 @@ static const arch_funcs FUNCS = {
 static const arch_sc_nums SC_NUMS = {.read = 0, .write = 1, .exit = 60};
 
 static const arch_registers REGS = {
-    .sc_num = 00 /* RAX */,
-    .arg1 = 07 /* RDI */,
-    .arg2 = 06 /* RSI */,
-    .arg3 = 02 /* RDX */,
-    .bf_ptr = 03 /* RBX */,
+    .sc_num = X86_64_RAX,
+    .arg1 = X86_64_RDI,
+    .arg2 = X86_64_RSI,
+    .arg3 = X86_64_RDX,
+    .bf_ptr = X86_64_RBX,
 };
 
 const arch_inter X86_64_INTER = {
@@ -235,4 +255,5 @@ const arch_inter X86_64_INTER = {
     .ELF_ARCH = EM_X86_64,
     .ELF_DATA = ELFDATA2LSB,
 };
+
 #endif /* BFC_TARGET_X86_64 */
