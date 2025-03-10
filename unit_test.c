@@ -93,10 +93,13 @@ static void llvm_init(void) {
 }
 
 static void llvm_cleanup(void) {
+    static bool ran = false;
+    if (ran) return;
     LLVMDisasmDispose(ARM64_DIS);
     LLVMDisasmDispose(RISCV64_DIS);
     LLVMDisasmDispose(S390X_DIS);
     LLVMDisasmDispose(X86_64_DIS);
+    ran = true;
 }
 
 int main(void) {
@@ -107,15 +110,17 @@ int main(void) {
     }
     llvm_init();
 
-    if (CU_initialize_registry() != CUE_SUCCESS ||
-        register_util_tests() == NULL || register_serialize_tests() == NULL ||
-        register_arm64_tests() == NULL) {
-        return CU_get_error();
-    }
+    ERRORCHECKED(CU_initialize_registry());
+    register_util_tests();
+    register_serialize_tests();
+    register_arm64_tests();
 
     /* Run all tests using the console interface */
     CU_basic_set_mode(CU_BRM_VERBOSE);
-    CU_basic_run_tests();
+
+    ERRORCHECKED(CU_basic_run_tests());
+    int ret = CU_get_number_of_tests_failed() ? EXIT_FAILURE : EXIT_SUCCESS;
     CU_cleanup_registry();
-    return CU_get_error();
+    llvm_cleanup();
+    return ret;
 }

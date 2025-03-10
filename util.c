@@ -154,12 +154,12 @@ sized_buf read_to_sized_buf(int fd, const char *in_name) {
 }
 
 #ifdef BFC_TEST
-/* CUnit */
-#include <CUnit/CUnit.h>
-
 /* POSIX */
 #include <fcntl.h>
 #include <unistd.h>
+
+/* internal */
+#include "unit_test.h"
 
 static void bit_fits_test(void) {
     for (uint i = 1; i < 32; i++) {
@@ -188,9 +188,9 @@ static void trailing_0s_test(void) {
 CU_pSuite register_util_tests(void) {
     CU_pSuite suite = CU_add_suite("util", NULL, NULL);
     if (suite == NULL) return NULL;
-    CU_ADD_TEST(suite, bit_fits_test);
-    CU_ADD_TEST(suite, trailing_0s_test);
-    CU_ADD_TEST(suite, test_sign_extend);
+    ERRORCHECKED(CU_ADD_TEST(suite, bit_fits_test));
+    ERRORCHECKED(CU_ADD_TEST(suite, trailing_0s_test));
+    ERRORCHECKED(CU_ADD_TEST(suite, test_sign_extend));
     return suite;
 }
 #endif /* BFC_TEST */

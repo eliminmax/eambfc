@@ -4,11 +4,17 @@
 
 #ifndef BFC_UNIT_TEST_H
 #define BFC_UNIT_TEST_H 1
+
 /* C99 */
 #include <limits.h>
+#include <stdlib.h>
 
 /* libLLVM */
 #include <llvm-c/Disassembler.h>
+
+/* CUNIT */
+#include <CUnit/CUnit.h>
+
 /* internal */
 #include "types.h"
 
@@ -42,5 +48,12 @@ unit_extern disasm_ref X86_64_DIS;
  *
  * Note that `bytes.buf` will be `mgr_free`d no matter the outcome. */
 sized_buf disassemble(disasm_ref ref, sized_buf bytes);
+
+#define ERRORCHECKED(expr) \
+    expr; \
+    if (CU_get_error()) { \
+        fprintf(stderr, "%s\n", CU_get_error_msg()); \
+        exit(EXIT_FAILURE); \
+    }
 
 #endif /* BFC_UNIT_TEST_H */

@@ -75,8 +75,8 @@ nonnull_args size_t serialize_phdr64_be(const Elf64_Phdr *phdr, void *dest) {
 }
 
 #ifdef BFC_TEST
-/* CUnit */
-#include <CUnit/CUnit.h>
+/* internal */
+#include "unit_test.h"
 
 static void test_serialize_nums(void) {
     char dest16le[3] = {0};
@@ -108,7 +108,7 @@ static void test_serialize_nums(void) {
 CU_pSuite register_serialize_tests(void) {
     CU_pSuite suite = CU_add_suite("serialize", NULL, NULL);
     if (suite == NULL) return NULL;
-    CU_ADD_TEST(suite, test_serialize_nums);
+    ERRORCHECKED(CU_ADD_TEST(suite, test_serialize_nums));
     return suite;
 }
 
