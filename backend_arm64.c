@@ -431,6 +431,18 @@ void test_inc_dec_reg(void) {
     DISASM_TEST(dis, "sub x19, x19, #0x1\n");
 }
 
+void test_load_store(void) {
+    sized_buf sb = newbuf(4);
+    load_from_byte(19, sb_reserve(&sb, 4));
+    sized_buf dis = DISASM(sb);
+    DISASM_TEST(dis, "ldrb w17, [x19], #0x0\n");
+
+    sb = newbuf(4);
+    store_to_byte(19, sb_reserve(&sb, 4));
+    dis = DISASM(sb);
+    DISASM_TEST(dis, "strb w17, [x19], #0x0\n");
+}
+
 CU_pSuite register_arm64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_arm64", NULL, NULL);
     if (suite == NULL) return NULL;
@@ -440,6 +452,7 @@ CU_pSuite register_arm64_tests(void) {
     ADD_TEST(suite, test_reg_neg);
     ADD_TEST(suite, test_reg_neg_split);
     ADD_TEST(suite, test_inc_dec_reg);
+    ADD_TEST(suite, test_load_store);
     return suite;
 }
 
