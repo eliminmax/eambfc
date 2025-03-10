@@ -409,6 +409,28 @@ void test_reg_neg_split(void) {
     );
 }
 
+void test_inc_dec_reg(void) {
+    sized_buf sb = newbuf(4);
+    inc_reg(0, &sb);
+    sized_buf dis = DISASM(sb);
+    DISASM_TEST(dis, "add x0, x0, #0x1\n");
+
+    sb = newbuf(4);
+    inc_reg(19, &sb);
+    dis = DISASM(sb);
+    DISASM_TEST(dis, "add x19, x19, #0x1\n");
+
+    sb = newbuf(4);
+    dec_reg(1, &sb);
+    dis = DISASM(sb);
+    DISASM_TEST(dis, "sub x1, x1, #0x1\n");
+
+    sb = newbuf(4);
+    dec_reg(19, &sb);
+    dis = DISASM(sb);
+    DISASM_TEST(dis, "sub x19, x19, #0x1\n");
+}
+
 CU_pSuite register_arm64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_arm64", NULL, NULL);
     if (suite == NULL) return NULL;
@@ -417,6 +439,7 @@ CU_pSuite register_arm64_tests(void) {
     ADD_TEST(suite, test_reg_split);
     ADD_TEST(suite, test_reg_neg);
     ADD_TEST(suite, test_reg_neg_split);
+    ADD_TEST(suite, test_inc_dec_reg);
     return suite;
 }
 
