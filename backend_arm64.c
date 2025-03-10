@@ -489,6 +489,13 @@ void test_add_sub_byte(void) {
     );
 }
 
+void test_zero_byte(void) {
+    sized_buf sb = newbuf(4);
+    zero_byte(19, &sb);
+    sized_buf dis = DISASM(sb);
+    DISASM_TEST(dis, "strb wzr, [x19], #0x0\n");
+}
+
 CU_pSuite register_arm64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_arm64", NULL, NULL);
     if (suite == NULL) return NULL;
@@ -501,6 +508,7 @@ CU_pSuite register_arm64_tests(void) {
     ADD_TEST(suite, test_load_store);
     ADD_TEST(suite, test_add_sub_reg);
     ADD_TEST(suite, test_add_sub_byte);
+    ADD_TEST(suite, test_zero_byte);
     return suite;
 }
 
