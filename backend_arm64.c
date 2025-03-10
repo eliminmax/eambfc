@@ -391,7 +391,7 @@ void test_reg_split(void) {
 
 void test_reg_neg(void) {
     sized_buf sb = newbuf(8);
-    set_reg(19, -0xdeadbeef, &sb);
+    set_reg(19, INT64_C(-0xdeadbeef), &sb);
     sized_buf dis = DISASM(sb);
     if (dis.buf) {
         CU_ASSERT_STRING_EQUAL(
