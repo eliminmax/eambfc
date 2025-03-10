@@ -375,4 +375,57 @@ const arch_inter RISCV64_INTER = {
     .ELF_DATA = ELFDATA2LSB,
 };
 
+#ifdef BFC_TEST
+
+/* internal */
+#include "unit_test.h"
+
+#define DISASM(sb) disassemble(RISCV64_DIS, sb)
+
+void test_set_reg_32(void) {
+    sized_buf sb = newbuf(32);
+    set_reg(RISCV_A0, 0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 2);
+    set_reg(RISCV_A1, 1, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 4);
+    set_reg(RISCV_A2, -2, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+    set_reg(RISCV_A7, 0x123, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 10);
+    set_reg(RISCV_A0, -0x123, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 14);
+    set_reg(RISCV_S0, 0x100000, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 18);
+    set_reg(RISCV_A7, 0x123456, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 26);
+    set_reg(RISCV_A0, 0x1000, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 28);
+    set_reg(RISCV_A1, 0x1001, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 32);
+    sized_buf dis = DISASM(sb);
+    DISASM_TEST(
+        dis,
+        "li a0, 0x0\n"
+        "li a1, 0x1\n"
+        "li a2, -0x2\n"
+        "li a7, 0x123\n"
+        "li a0, -0x123\n"
+        "lui s0, 0x100\n"
+        "lui a7, 0x123\n"
+        "addiw a7, a7, 0x456\n"
+        "lui a0, 0x1\n"
+        "lui a1, 0x1\n"
+        "addiw a1, a1, 0x1\n"
+    );
+}
+
+CU_pSuite register_riscv64_tests(void) {
+    CU_pSuite suite = CU_add_suite("backend_riscv64", NULL, NULL);
+    if (suite == NULL) return NULL;
+    ADD_TEST(suite, test_set_reg_32);
+    return suite;
+}
+
+#endif /* BFC_TEST */
+
 #endif /* BFC_TARGET_RISCV64 */
