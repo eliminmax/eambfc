@@ -27,7 +27,7 @@ GCC_STRICT_FLAGS = -Wall -Wextra -Wpedantic -Werror -std=c99 -fanalyzer        \
 COMMON_HEADERS = err.h types.h config.h
 
 GCC_UBSAN_FLAGS = -std=c99 -fanalyzer -fsanitize=address,undefined \
-		-fno-sanitize-recover=all $(POSIX_CFLAG) $(CFLAGS)
+		-fno-sanitize-recover=all
 
 GCC_INT_TORTURE_FLAGS = -D INT_TORTURE_TEST=1 $(GCC_STRICT_FLAGS) -Wno-format \
 			-Wno-pedantic -fsanitize=address,undefined
@@ -118,8 +118,8 @@ strict: config.h
 ubsan: can_run_all config.h
 	mkdir -p alt-builds
 	@printf 'WARNING: `make $@` IS NOT PORTABLE AT ALL!\n' >&2
-	gcc $(GCC_UBSAN_FLAGS) $(LDFLAGS) $(UNIBUILD_FILES) \
-		-o alt-builds/eambfc-$@
+	gcc $(GCC_UBSAN_FLAGS) $(POSIX_CFLAG) $(CFLAGS) $(LDFLAGS) \
+	    $(UNIBUILD_FILES) -o alt-builds/eambfc-$@
 	(cd tests; make EAMBFC=../alt-builds/eambfc-$@ test_all)
 
 int_torture_test: can_run_all config.h
@@ -135,9 +135,9 @@ all_arch_test: can_run_all eambfc
 	(cd tests; make -s test_all)
 
 unit_test_driver: $(UNIT_TEST_DEPS)
-	gcc $(GCC_STRICT_FLAGS) $$(llvm-config --cflags) -DBFC_TEST=1 -o $@ \
-	    unit_test.c $(UNIBUILD_DEPS) $(LDLIBS) -lcunit -lm \
-	    $$(llvm-config --ldflags --libs)
+	gcc $(GCC_STRICT_FLAGS) $(GCC_UBSAN_FLAGS) $$(llvm-config --cflags) \
+	    -DBFC_TEST=1 -o $@ unit_test.c $(UNIBUILD_DEPS) $(LDLIBS) \
+	    -lcunit -lm $$(llvm-config --ldflags --libs)
 
 unit_test: unit_test_driver
 	./unit_test_driver
