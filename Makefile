@@ -129,7 +129,7 @@ int_torture_test: can_run_all config.h
 		-o alt-builds/eambfc-$@
 	(cd tests; make EAMBFC=../alt-builds/eambfc-$@ test_all)
 
-all_tests: all_arch_test strict ubsan int_torture_test
+all_tests: all_arch_test strict ubsan int_torture_test unit_test
 
 all_arch_test: can_run_all eambfc
 	(cd tests; make -s test_all)
