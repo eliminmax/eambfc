@@ -278,20 +278,20 @@ static bool add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     if (!imm8) return true;
     u8 i_bytes[12];
     uint sz;
-    i8 imm_s = imm8;
+    i16 imm = sign_extend(imm8, 8);
     serialize32le(load_from_byte(reg), i_bytes);
-    if (bit_fits(imm_s, 6)) {
+    if (bit_fits(imm, 6)) {
         sz = 10;
         /* c.addi t1, imm8 */
         serialize16le(
-            (((imm_s & 0x20) | RISCV_T1) << 7) | ((imm_s & 0x1f) << 2) | 1,
+            (((imm & 0x20) | RISCV_T1) << 7) | ((imm & 0x1f) << 2) | 1,
             &i_bytes[4]
         );
     } else {
         sz = 12;
         /* addi t1, t1, imm8 */
         serialize32le(
-            (((u32)imm_s) << 20) | (((u32)RISCV_T1) << 15) |
+            (((u32)imm) << 20) | (((u32)RISCV_T1) << 15) |
                 (((u32)RISCV_T1) << 7) | 0x13,
             &i_bytes[4]
         );
@@ -304,20 +304,20 @@ static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     if (!imm8) return true;
     u8 i_bytes[12];
     uint sz;
-    i8 imm_s = -((i16)imm8);
+    i16 imm = -sign_extend(imm8, 8);
     serialize32le(load_from_byte(reg), i_bytes);
-    if (bit_fits(imm_s, 6)) {
+    if (bit_fits(imm, 6)) {
         sz = 10;
         /* c.addi t1, imm8 */
         serialize16le(
-            (((imm_s & 0x20) | RISCV_T1) << 7) | ((imm_s & 0x1f) << 2) | 1,
+            (((imm & 0x20) | RISCV_T1) << 7) | ((imm & 0x1f) << 2) | 1,
             &i_bytes[4]
         );
     } else {
         sz = 12;
         /* addi t1, t1, imm8 */
         serialize32le(
-            (((u32)imm_s) << 20) | (((u32)RISCV_T1) << 15) |
+            (((u32)imm) << 20) | (((u32)RISCV_T1) << 15) |
                 (((u32)RISCV_T1) << 7) | 0x13,
             &i_bytes[4]
         );
