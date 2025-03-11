@@ -600,6 +600,180 @@ static void test_nop_pad(void) {
     mgr_free(sb.buf);
 }
 
+static void test_successful_jumps(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(72);
+
+    jump_zero(RISCV_S0, 32, &sb);
+    jump_not_zero(RISCV_S0, -32, &sb);
+    DISASM_TEST(
+        REF,
+        sb,
+        dis,
+        "lb t1, 0x0(s0)\n"
+        "bnez t1, 0x8\n"
+        "j 0x24\n"
+        "lb t1, 0x0(s0)\n"
+        "beqz t1, 0x8\n"
+        "j -0x1c\n"
+    );
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
+static void test_inc_dec(void) {
+    sized_buf sb = newbuf(24);
+    sized_buf dis = newbuf(136);
+
+    inc_byte(RISCV_S0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 10);
+
+    dec_byte(RISCV_S0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 20);
+
+    inc_reg(RISCV_S0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 22);
+
+    dec_reg(RISCV_S0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 24);
+
+    DISASM_TEST(
+        REF,
+        sb,
+        dis,
+        "lb t1, 0x0(s0)\n"
+        "addi t1, t1, 0x1\n"
+        "sb t1, 0x0(s0)\n"
+        "lb t1, 0x0(s0)\n"
+        "addi t1, t1, -0x1\n"
+        "sb t1, 0x0(s0)\n"
+        "addi s0, s0, 0x1\n"
+        "addi s0, s0, -0x1\n"
+    );
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
+static void sub_reg_is_neg_add_reg(void) {
+    sized_buf a, b;
+    a = newbuf(32);
+    b = newbuf(32);
+
+    sub_reg(REGS.bf_ptr, 0, &a);
+    add_reg(RISCV_S0, 0, &b);
+    CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
+    CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
+    for (ufast_8 i = 0; i < 63; i++) {
+        a.sz = 0;
+        b.sz = 0;
+        sub_reg(REGS.bf_ptr, INT64_C(1) << i, &a);
+        add_reg(RISCV_S0, -(INT64_C(1) << i), &b);
+        CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
+        CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
+    }
+
+    mgr_free(a.buf);
+    mgr_free(b.buf);
+}
+
+static void test_add_reg(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf alt = newbuf(10);
+    sized_buf dis = newbuf(40);
+    sized_buf fakesb;
+
+    add_reg(RISCV_S0, 0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 0);
+
+    add_reg(RISCV_S0, 0x12, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 2);
+
+    add_reg(RISCV_S0, 0x123, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+
+    DISASM_TEST(REF, sb, dis, "addi s0, s0, 0x12\naddi s0, s0, 0x123\n");
+
+    add_reg(RISCV_S0, 0xdeadbeef, &sb);
+    encode_li(&alt, RISCV_T1, 0xdeadbeef);
+    CU_ASSERT_EQUAL_FATAL(sb.sz, alt.sz + 2);
+    CU_ASSERT(memcmp(sb.buf, alt.buf, alt.sz) == 0);
+    fakesb.sz = 2;
+    fakesb.capacity = 2;
+    fakesb.buf = sb.buf + alt.sz;
+    memset(dis.buf, 0, dis.sz);
+    DISASM_TEST(REF, fakesb, dis, "add s0, s0, t1\n");
+
+    mgr_free(sb.buf);
+    mgr_free(alt.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_byte(void) {
+    sized_buf sb = newbuf(28);
+    sized_buf dis = newbuf(96);
+
+    add_byte(REGS.arg1, 0, &sb);
+    sub_byte(REGS.arg1, 0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 0);
+
+    add_byte(REGS.arg2, 0x10, &sb);
+    sub_byte(REGS.arg2, 0x10, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 20);
+    DISASM_TEST(
+        REF,
+        sb,
+        dis,
+        "lb t1, 0x0(a1)\n"
+        "addi t1, t1, 0x10\n"
+        "sb t1, 0x0(a1)\n"
+        "lb t1, 0x0(a1)\n"
+        "addi t1, t1, -0x10\n"
+        "sb t1, 0x0(a1)\n"
+    );
+    memset(dis.buf, 0, dis.sz);
+
+    /* 0x70 is too large to fit in the compressed add instruction, so 2 extra
+     * bytes per addi are needed */
+    add_byte(REGS.arg2, 0x70, &sb);
+    sub_byte(REGS.arg2, 0x70, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 24);
+    DISASM_TEST(
+        REF,
+        sb,
+        dis,
+        "lb t1, 0x0(a1)\n"
+        "addi t1, t1, 0x70\n"
+        "sb t1, 0x0(a1)\n"
+        "lb t1, 0x0(a1)\n"
+        "addi t1, t1, -0x70\n"
+        "sb t1, 0x0(a1)\n"
+    );
+    memset(dis.buf, 0, dis.sz);
+
+    /* if the imm is >= 0x80, it will become negative due to the casting that's
+     * done, but will have the same byte value once truncated down. */
+    add_byte(REGS.arg3, 0x80, &sb);
+    sub_byte(REGS.arg3, 0x80, &sb);
+    CU_ASSERT_EQUAL((i8)(INT16_C(1) + 0x80), (i8)(INT16_C(1) - 0x80));
+    (void)0;
+    DISASM_TEST(
+        REF,
+        sb,
+        dis,
+        "lb t1, 0x0(a2)\n"
+        "addi t1, t1, -0x80\n"
+        "sb t1, 0x0(a2)\n"
+        "lb t1, 0x0(a2)\n"
+        "addi t1, t1, 0x80\n"
+        "sb t1, 0x0(a2)\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
 CU_pSuite register_riscv64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_riscv64", NULL, NULL);
     if (suite == NULL) return NULL;
@@ -611,6 +785,11 @@ CU_pSuite register_riscv64_tests(void) {
     ADD_TEST(suite, test_load_and_store);
     ADD_TEST(suite, test_zero_byte);
     ADD_TEST(suite, test_nop_pad);
+    ADD_TEST(suite, test_successful_jumps);
+    ADD_TEST(suite, test_inc_dec);
+    ADD_TEST(suite, sub_reg_is_neg_add_reg);
+    ADD_TEST(suite, test_add_reg);
+    ADD_TEST(suite, test_add_sub_byte);
     return suite;
 }
 
