@@ -540,12 +540,24 @@ static void test_compressed_set_reg_64(void) {
     mgr_free(sb.buf);
 }
 
+static void test_syscall(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(8);
+
+    syscall(&sb);
+    DISASM_TEST(REF, sb, dis, "ecall\n");
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
 CU_pSuite register_riscv64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_riscv64", NULL, NULL);
     if (suite == NULL) return NULL;
     ADD_TEST(suite, test_set_reg_32);
     ADD_TEST(suite, test_set_reg_64);
     ADD_TEST(suite, test_compressed_set_reg_64);
+    ADD_TEST(suite, test_syscall);
     return suite;
 }
 
