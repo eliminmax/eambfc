@@ -10,9 +10,11 @@
 #include "attributes.h"
 #include "types.h"
 
-/* Reads the content of the file fd, and returns a string containing optimized
- * internal intermediate representation of that file's code.
- * fd must be open for reading already, no check is performed.
- * Calling function is responsible for `mgr_free`ing the returned string. */
+/* filter out all non-BF bytes, and anything that is trivially determined to be
+ * dead code, or code with no effect (e.g. "+-" or "<>"), and replace "[-]" and
+ * "[+]" with "@".
+ *
+ * "in_name" is the source filename, and is used only to generate error
+ * messages. */
 nonnull_args bool filter_dead(sized_buf *bf_code, const char *in_name);
 #endif /* BFC_OPTIMIZE_H */

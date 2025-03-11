@@ -2,9 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * Either provides a function that returns EAMBFC IR from an FD, or prints out a
- * step-by-step overview of the optimization process, depending on whether the
- * OPTIMIZE_STANDALONE macro is defined at compile time. */
+ * implements the filter_dead function, which filters non-bf bytes and dead code
+ * and replaces `[-]` and `[+]` sequences with `@`. */
 
 /* C99 */
 #include <string.h>
@@ -191,10 +190,12 @@ static nonnull_args void merge_set_zero(sized_buf *ir) {
     ir->sz = strlen(str);
 }
 
-/* Reads the content of the file fd, and returns a string containing optimized
- * internal intermediate representation of that file's code.
- * fd must be open for reading already, no check is performed.
- * Calling function is responsible for `mgr_free`ing the returned string. */
+/* filter out all non-BF bytes, and anything that is trivially determined to be
+ * dead code, or code with no effect (e.g. "+-" or "<>"), and replace "[-]" and
+ * "[+]" with "@".
+ *
+ * "in_name" is the source filename, and is used only to generate error
+ * messages. */
 nonnull_args bool filter_dead(sized_buf *bf_code, const char *in_name) {
     filter_non_bf(bf_code);
     if (bf_code->buf == NULL) {
