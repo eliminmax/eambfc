@@ -214,7 +214,7 @@ static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
         if (!set_reg(TEMP_REG, (i64)imm, dst_buf)) return false;
         /* either ADD x.reg, x.reg, x17 or SUB x.reg, x.reg, x17 */
         serialize32le(
-            op_byte << 24 | TEMP_REG << 16 | reg | reg << 5,
+            (u32)op_byte << 24 | TEMP_REG << 16 | reg | reg << 5,
             sb_reserve(dst_buf, 4)
         );
         return true;

@@ -50,7 +50,7 @@ bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
     u8 i_bytes[4];
     u32 lo12 = sign_extend(val, 12);
     if (bit_fits(val, 32)) {
-        i32 hi20 = sign_extend(((u64)val + 0x800) >> 12, 20);
+        u32 hi20 = sign_extend(((u64)val + 0x800) >> 12, 20);
         if (hi20 && bit_fits(hi20, 6)) {
             u16 instr =
                 0x6001 | (((hi20 & 0x20) | reg) << 7) | ((hi20 & 0x1f) << 2);
