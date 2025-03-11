@@ -258,8 +258,8 @@ static void strip_dead_code_test(void) {
 }
 
 CU_pSuite register_optimize_tests(void) {
-    CU_pSuite suite = CU_add_suite("optimize", NULL, NULL);
-    if (suite == NULL) return NULL;
+    CU_pSuite suite;
+    INIT_SUITE(suite);
     ADD_TEST(suite, strip_dead_code_test);
     return suite;
 }

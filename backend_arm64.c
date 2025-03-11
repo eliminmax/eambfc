@@ -612,8 +612,8 @@ static void test_successfull_jumps(void) {
 }
 
 CU_pSuite register_arm64_tests(void) {
-    CU_pSuite suite = CU_add_suite("backend_arm64", NULL, NULL);
-    if (suite == NULL) return NULL;
+    CU_pSuite suite;
+    INIT_SUITE(suite);
     ADD_TEST(suite, test_set_reg_simple);
     ADD_TEST(suite, test_reg_multiple);
     ADD_TEST(suite, test_reg_split);

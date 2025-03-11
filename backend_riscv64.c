@@ -775,8 +775,8 @@ static void test_add_sub_byte(void) {
 }
 
 CU_pSuite register_riscv64_tests(void) {
-    CU_pSuite suite = CU_add_suite("backend_riscv64", NULL, NULL);
-    if (suite == NULL) return NULL;
+    CU_pSuite suite;
+    INIT_SUITE(suite);
     ADD_TEST(suite, test_set_reg_32);
     ADD_TEST(suite, test_set_reg_64);
     ADD_TEST(suite, test_compressed_set_reg_64);

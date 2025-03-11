@@ -66,6 +66,10 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
         exit(EXIT_FAILURE); \
     }
 
+#define INIT_SUITE(suite_var) \
+    suite_var = CU_add_suite(__BASE_FILE__, NULL, NULL); \
+    if (suite_var == NULL) return NULL
+
 #define ADD_TEST(suite, test) ERRORCHECKED(CU_ADD_TEST(suite, test))
 
 CU_pSuite register_util_tests(void);
