@@ -382,7 +382,7 @@ const arch_inter RISCV64_INTER = {
 
 #define REF RISCV64_DIS
 
-void test_set_reg_32(void) {
+static void test_set_reg_32(void) {
     sized_buf sb = newbuf(32);
     sized_buf dis = newbuf(168);
     set_reg(RISCV_A0, 0, &sb);
@@ -421,7 +421,7 @@ void test_set_reg_32(void) {
     );
 }
 
-void test_set_reg_64(void) {
+static void test_set_reg_64(void) {
     sized_buf dis = newbuf(1024);
     sized_buf sb = newbuf(124);
 

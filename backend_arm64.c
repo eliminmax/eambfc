@@ -330,7 +330,7 @@ const arch_inter ARM64_INTER = {
 
 #define REF ARM64_DIS
 
-void test_set_reg_simple(void) {
+static void test_set_reg_simple(void) {
     sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(24);
 
@@ -354,7 +354,7 @@ void test_set_reg_simple(void) {
     mgr_free(dis.buf);
 }
 
-void test_reg_multiple(void) {
+static void test_reg_multiple(void) {
     sized_buf sb = newbuf(8);
     sized_buf dis = newbuf(32);
 
@@ -371,7 +371,7 @@ void test_reg_multiple(void) {
     mgr_free(dis.buf);
 }
 
-void test_reg_split(void) {
+static void test_reg_split(void) {
     sized_buf sb = newbuf(8);
     sized_buf dis = newbuf(48);
 
@@ -388,7 +388,7 @@ void test_reg_split(void) {
     mgr_free(dis.buf);
 }
 
-void test_reg_neg(void) {
+static void test_reg_neg(void) {
     sized_buf sb = newbuf(8);
     sized_buf dis = newbuf(48);
 
@@ -406,7 +406,7 @@ void test_reg_neg(void) {
     mgr_free(dis.buf);
 }
 
-void test_reg_neg_split(void) {
+static void test_reg_neg_split(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(80);
 
@@ -437,7 +437,7 @@ void test_reg_neg_split(void) {
     mgr_free(dis.buf);
 }
 
-void test_inc_dec_reg(void) {
+static void test_inc_dec_reg(void) {
     sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(24);
 
@@ -457,7 +457,7 @@ void test_inc_dec_reg(void) {
     mgr_free(dis.buf);
 }
 
-void test_load_store(void) {
+static void test_load_store(void) {
     sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(24);
 
@@ -471,7 +471,7 @@ void test_load_store(void) {
     mgr_free(dis.buf);
 }
 
-void test_add_sub_reg(void) {
+static void test_add_sub_reg(void) {
     sized_buf sb = newbuf(24);
     sized_buf dis = newbuf(64);
     add_sub(8, A64_OP_ADD, 0xabcdef, &sb);
@@ -496,7 +496,7 @@ void test_add_sub_reg(void) {
     mgr_free(dis.buf);
 }
 
-void test_add_sub_byte(void) {
+static void test_add_sub_byte(void) {
     sized_buf sb = newbuf(24);
     sized_buf dis = newbuf(144);
 
@@ -519,7 +519,7 @@ void test_add_sub_byte(void) {
     mgr_free(dis.buf);
 }
 
-void test_zero_byte(void) {
+static void test_zero_byte(void) {
     sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(24);
 
@@ -530,7 +530,7 @@ void test_zero_byte(void) {
     mgr_free(dis.buf);
 }
 
-void test_inc_dec_wrapper(void) {
+static void test_inc_dec_wrapper(void) {
     sized_buf sb = newbuf(24);
     sized_buf dis = newbuf(136);
     inc_byte(1, &sb);
@@ -551,7 +551,7 @@ void test_inc_dec_wrapper(void) {
     mgr_free(dis.buf);
 }
 
-void test_reg_copy(void) {
+static void test_reg_copy(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(48);
     reg_copy(1, 19, &sb);
@@ -570,7 +570,7 @@ void test_reg_copy(void) {
     mgr_free(dis.buf);
 }
 
-void test_syscall(void) {
+static void test_syscall(void) {
     sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(16);
     syscall(&sb);
@@ -580,7 +580,7 @@ void test_syscall(void) {
     mgr_free(dis.buf);
 }
 
-void test_nops(void) {
+static void test_nops(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(16);
     nop_loop_open(&sb);
@@ -590,7 +590,7 @@ void test_nops(void) {
     mgr_free(dis.buf);
 }
 
-void test_successfull_jumps(void) {
+static void test_successfull_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(104);
     jump_zero(0, 32, &sb);
