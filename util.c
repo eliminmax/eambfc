@@ -182,7 +182,9 @@ static void test_sign_extend(void) {
 
 static void trailing_0s_test(void) {
     CU_ASSERT_EQUAL(trailing_0s(0), UINT8_MAX);
-    for (uint i = 0; i < 32; i++) CU_ASSERT_EQUAL(trailing_0s(1 << i), i);
+    for (uint i = 0; i < 32; i++) {
+        CU_ASSERT_EQUAL(trailing_0s(UINT64_C(1) << i), i);
+    }
 }
 
 CU_pSuite register_util_tests(void) {
