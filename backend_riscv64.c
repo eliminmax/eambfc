@@ -510,11 +510,42 @@ static void test_set_reg_64(void) {
     mgr_free(sb.buf);
 }
 
+static void test_compressed_set_reg_64(void) {
+    sized_buf sb = newbuf(6);
+    sized_buf dis = newbuf(24);
+    sized_buf fakesb;
+    set_reg(RISCV_A1, INT64_C(0xf00000010), &sb);
+    /* fatal variant because the following trickery with fakesb would be
+     * problematic otherwise. */
+    CU_ASSERT_EQUAL_FATAL(sb.sz, 6);
+
+    /* make sure that it's encoded using the following instructions, and that
+     * each of the instructions is exactly 2 bytes in size */
+    fakesb.buf = sb.buf;
+    fakesb.sz = 2;
+    fakesb.capacity = 2;
+    DISASM_TEST(REF, fakesb, dis, "li a1, 0xf\n");
+
+    fakesb.sz = 2;
+    fakesb.buf += 2;
+    memset(dis.buf, 0, dis.sz);
+    DISASM_TEST(REF, fakesb, dis, "slli a1, a1, 0x20\n");
+
+    fakesb.sz = 2;
+    fakesb.buf += 2;
+    memset(dis.buf, 0, dis.sz);
+    DISASM_TEST(REF, fakesb, dis, "addi a1, a1, 0x10\n");
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
 CU_pSuite register_riscv64_tests(void) {
     CU_pSuite suite = CU_add_suite("backend_riscv64", NULL, NULL);
     if (suite == NULL) return NULL;
     ADD_TEST(suite, test_set_reg_32);
     ADD_TEST(suite, test_set_reg_64);
+    ADD_TEST(suite, test_compressed_set_reg_64);
     return suite;
 }
 
