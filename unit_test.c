@@ -32,6 +32,8 @@
     LLVMCreateDisasmCPUFeatures( \
         triple, "generic", features, NULL, 0, NULL, NULL \
     );
+#define SET_DIS_OPTIONS(ref, opt) \
+    if (!LLVMSetDisasmOptions(ref, opt)) exit(EXIT_FAILURE);
 
 bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm) {
     char disasm_insn[128];
@@ -69,20 +71,26 @@ static void llvm_init(void) {
     LLVMInitializeAllTargetInfos();
     LLVMInitializeAllTargetMCs();
     LLVMInitializeAllDisassemblers();
+    /* __BACKENDS__ set up the disasm_ref here */
     ARM64_DIS = CREATE_DISASM("aarch64-linux-gnu");
+    SET_DIS_OPTIONS(ARM64_DIS, HEX_IMMS);
+
     RISCV64_DIS = CREATE_DISASM_FEATURES("riscv64-linux-gnu", "+c");
+    SET_DIS_OPTIONS(RISCV64_DIS, HEX_IMMS);
+
     S390X_DIS = CREATE_DISASM_FEATURES("systemz-linux-gnu", "+high-word");
+    SET_DIS_OPTIONS(S390X_DIS, HEX_IMMS);
+
     X86_64_DIS = CREATE_DISASM("x86_64-linux-gnu");
-    LLVMSetDisasmOptions(X86_64_DIS, INTEL_ASM);
-    LLVMSetDisasmOptions(ARM64_DIS, HEX_IMMS);
-    LLVMSetDisasmOptions(RISCV64_DIS, HEX_IMMS);
-    LLVMSetDisasmOptions(S390X_DIS, HEX_IMMS);
-    LLVMSetDisasmOptions(X86_64_DIS, HEX_IMMS);
+    /* needs to be set before hex_imms, otherwise it overwrites it */
+    SET_DIS_OPTIONS(X86_64_DIS, INTEL_ASM);
+    SET_DIS_OPTIONS(X86_64_DIS, HEX_IMMS);
 }
 
 static void llvm_cleanup(void) {
     static bool ran = false;
     if (ran) return;
+    /* __BACKENDS__ clean up the disasm_ref here */
     LLVMDisasmDispose(ARM64_DIS);
     LLVMDisasmDispose(RISCV64_DIS);
     LLVMDisasmDispose(S390X_DIS);

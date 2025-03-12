@@ -28,6 +28,7 @@
 
 typedef LLVMDisasmContextRef disasm_ref;
 
+/* __BACKENDS__ add a declaration of the disasm_ref here */
 unit_extern disasm_ref ARM64_DIS;
 unit_extern disasm_ref RISCV64_DIS;
 unit_extern disasm_ref S390X_DIS;
