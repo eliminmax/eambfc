@@ -13,8 +13,25 @@
 #include "err.h"
 #include "types.h"
 
-/* to keep the order consistent with the bf_err_id enum, do non-ICE errors then
- * ICEs, with each group sorted alphabetically */
+#ifdef BFC_TEST
+/* C99 */
+#include <setjmp.h>
+/* internal */
+#include "unit_test.h"
+
+/* bit shift e.id and or 1 into the lowest bit, to differentiate between
+ * the original setjmp return value of 0, and the final one of the error id,
+ * which also could be 0. */
+#define ERR_CALLBACK(e_id) \
+    if (testing_err) longjmp(etest_stack, e_id << 1 | 1)
+
+#else /* BFC_TEST */
+#define ERR_CALLBACK(e_id) (void)0
+#endif /* BFC_TEST */
+
+/* to keep the order consistent with the bf_err_id enum, do normal errors, then
+ * ICEs, and finally "Fatal:AllocFailure", with each group sorted
+ * alphabetically */
 const char *ERR_IDS[] = {
     "BadSourceExtension",
     "BufferTooLarge",
@@ -52,6 +69,8 @@ const char *ERR_IDS[] = {
     "ICE:MgrParamsTooLong",
     "ICE:MgrTooManyAllocs",
     "ICE:MgrTooManyOpens",
+    /* AllocFailure divider */
+    "Fatal:AllocFailure",
 };
 
 static out_mode err_mode = OUTMODE_NORMAL;
@@ -69,10 +88,11 @@ void json_mode(void) {
  * causing a loop of failures to generate json error messages properly.
  * If puts or fputs call malloc internally, then there's nothing to be done. */
 noreturn void alloc_err(void) {
+    ERR_CALLBACK(BF_FATAL_ALLOC_FAILURE);
     switch (err_mode) {
     case OUTMODE_JSON:
         puts(
-            "{\"errorId:\":\"ALLOC_FAILED\","
+            "{\"errorId:\":\"Fatal:AllocFailure\","
             "\"message\":\"A call to malloc or realloc returned NULL.\"}"
         );
         break;
@@ -237,6 +257,7 @@ static void json_eprint(bf_comp_err err) {
 }
 
 void display_err(bf_comp_err e) {
+    ERR_CALLBACK(e.id);
     switch (err_mode) {
     case OUTMODE_QUIET: break;
     case OUTMODE_NORMAL: normal_eprint(e); break;
@@ -245,6 +266,7 @@ void display_err(bf_comp_err e) {
 }
 
 noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg) {
+    ERR_CALLBACK(err_id);
     bf_comp_err e = {
         .msg = msg,
         .file = NULL,

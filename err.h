@@ -46,6 +46,8 @@ typedef enum {
     BF_ICE_PARAMS_TOO_LONG,
     BF_ICE_TOO_MANY_ALLOCS,
     BF_ICE_TOO_MANY_OPENS,
+    /* AllocFailure divider */
+    BF_FATAL_ALLOC_FAILURE,
 } bf_err_id;
 
 typedef enum {

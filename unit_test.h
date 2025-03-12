@@ -7,7 +7,8 @@
 
 /* C99 */
 #include <limits.h>
-#include <stdio.h> /* IWYU pragma: export */
+#include <setjmp.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 /* libLLVM */
@@ -31,6 +32,9 @@ unit_extern disasm_ref ARM64_DIS;
 unit_extern disasm_ref RISCV64_DIS;
 unit_extern disasm_ref S390X_DIS;
 unit_extern disasm_ref X86_64_DIS;
+
+unit_extern bool testing_err;
+unit_extern jmp_buf etest_stack;
 
 /* disassemble the contents of bytes, and return a sized_buf containing the
  * diassembly - instructions are separated by newlines, and the disassembly as a
@@ -59,6 +63,7 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
         CU_FAIL("Failed to decompile bytes!"); \
     }
 
+/* utility macro to abort on CUnit error after running expr */
 #define ERRORCHECKED(expr) \
     expr; \
     if (CU_get_error()) { \
@@ -66,11 +71,26 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
         exit(EXIT_FAILURE); \
     }
 
+/* utility macro to set up a CUnit suite with the current file name */
 #define INIT_SUITE(suite_var) \
-    suite_var = CU_add_suite(__BASE_FILE__, NULL, NULL); \
-    if (suite_var == NULL) return NULL
+    ERRORCHECKED(suite_var = CU_add_suite(__BASE_FILE__, NULL, NULL))
 
+/* simple self-explanatory ERRORCHECKED wrapper around CU_ADD_TEST */
 #define ADD_TEST(suite, test) ERRORCHECKED(CU_ADD_TEST(suite, test))
+
+/* boilerplate for use of setjmp to test if the right error is hit.
+ * will result in undefined behavior if it's in a function that doesn't result
+ * in one of `internal_err`, `alloc_err`, or `display_err` being called later */
+#define EXPECT_BF_ERR(eid) \
+    do { \
+        testing_err = true; \
+        int returned_err; \
+        if ((returned_err = setjmp(etest_stack))) { \
+            CU_ASSERT_EQUAL(eid << 0 | 1, returned_err); \
+        } \
+        testing_err = false; \
+        return; \
+    } while (0);
 
 CU_pSuite register_util_tests(void);
 CU_pSuite register_serialize_tests(void);
