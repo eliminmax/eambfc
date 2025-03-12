@@ -205,7 +205,7 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
          * set, as that enables using shorter instructions. In the terminology
          * of the architecture, they are the high high and high low quarters of
          * the register's value. */
-        if (upper_imm <= INT16_MAX && upper_imm >= INT16_MIN) {
+        if ((upper_imm & ~INT32_C(0xffff)) >> 16 == default_val) {
             /* sets bits 16-31 of the register to the immediate */
             /* IIHL reg, upper_imm {RI-a} */
             u8 i_bytes[4] = ENCODE_RI_OP(0xa51, reg);
