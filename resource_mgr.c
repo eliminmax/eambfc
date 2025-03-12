@@ -71,6 +71,7 @@ void mgr_free(void *ptr) {
     memmove(
         &(resources.allocs[index]), &(resources.allocs[index + 1]), to_move
     );
+    resources.next_a--;
 }
 
 nonnull_args nonnull_ret void *mgr_realloc(void *ptr, size_t size) {
