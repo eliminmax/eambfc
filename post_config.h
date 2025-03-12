@@ -19,6 +19,11 @@
 #error "No backends are enabled"
 #endif /* BFC_NUM_BACKENDS */
 
+/* __BACKENDS__ number of backends should be incremented */
+#if defined(BFC_TEST) && (BFC_NUM_BACKENDS != 4)
+#error "unit testing is unsupported without all backends enabled"
+#endif /* defined(BFC_TEST) && ... */
+
 /* __BACKENDS__ add a block for the new backend
  * Each listed backend should first check if it's enabled, and result in a
  * compile-time error if it isn't. After that check, it should define the
