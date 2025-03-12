@@ -24,21 +24,20 @@
 static struct resource_tracker {
     void *allocs[MAX_ALLOCS];
     int fds[MAX_FDS];
-    /* index variables are for the NEXT entry in the array. */
-    ifast_8 alloc_i;
-    ifast_8 fd_i;
+    ifast_8 next_a;
+    ifast_8 next_f;
 } resources;
 
 static ifast_8 alloc_index(const void *ptr) {
     /* work backwards, as more recent allocs are more likely to be used */
-    for (ifast_8 i = resources.alloc_i - 1; i >= 0; --i) {
+    for (ifast_8 i = resources.next_a - 1; i >= 0; --i) {
         if (resources.allocs[i] == ptr) return i;
     }
     return -1;
 }
 
 nonnull_ret void *mgr_malloc(size_t size) {
-    if (resources.alloc_i > MAX_ALLOCS - 1) {
+    if (resources.next_a > MAX_ALLOCS - 1) {
         internal_err(
             BF_ICE_TOO_MANY_ALLOCS,
             "Allocated too many times for resource_mgr to track."
@@ -49,10 +48,10 @@ nonnull_ret void *mgr_malloc(size_t size) {
     void *result = malloc(size);
     if (result == NULL) {
         /* don't skip over this array index */
-        resources.alloc_i--;
+        resources.next_a--;
         alloc_err();
     } else {
-        resources.allocs[resources.alloc_i++] = result;
+        resources.allocs[resources.next_a++] = result;
     }
     return result;
 }
@@ -68,7 +67,7 @@ void mgr_free(void *ptr) {
         return;
     }
     free(ptr);
-    size_t to_move = (resources.alloc_i - index) * sizeof(void *);
+    size_t to_move = (resources.next_a - index) * sizeof(void *);
     memmove(
         &(resources.allocs[index]), &(resources.allocs[index + 1]), to_move
     );
@@ -95,7 +94,7 @@ nonnull_args nonnull_ret void *mgr_realloc(void *ptr, size_t size) {
 static nonnull_args int mgr_open_handler(
     const char *pathname, int flags, mode_t mode, bool with_mode
 ) {
-    if (resources.fd_i > MAX_FDS - 1) {
+    if (resources.next_f > MAX_FDS - 1) {
         internal_err(
             BF_ICE_TOO_MANY_OPENS,
             "Opened too many files for resource_mgr to track."
@@ -110,7 +109,7 @@ static nonnull_args int mgr_open_handler(
         result = open(pathname, flags);
     }
 
-    if (result != -1) resources.fds[resources.fd_i++] = result;
+    if (result != -1) resources.fds[resources.next_f++] = result;
     return result;
 }
 
@@ -127,7 +126,7 @@ nonnull_args int mgr_open(const char *pathname, int flags) {
 int mgr_close(int fd) {
     ifast_8 index = -1;
     /* work backwards - more likely to close more recently-opened files */
-    for (ifast_8 i = resources.fd_i - 1; i >= 0; i--) {
+    for (ifast_8 i = resources.next_f - 1; i >= 0; i--) {
         if (resources.fds[i] == fd) {
             index = i;
             break;
@@ -141,15 +140,15 @@ int mgr_close(int fd) {
         /* will never return, as internal_err calls exit(EXIT_FAILURE) */
     } else {
         /* remove fd from resources */
-        size_t to_move = ((resources.fd_i--) - index) * sizeof(int);
+        size_t to_move = ((resources.next_f--) - index) * sizeof(int);
         memmove(&(resources.fds[index]), &(resources.fds[index + 1]), to_move);
     }
     return close(fd);
 }
 
 void cleanup(void) {
-    while (--resources.alloc_i > -1) free(resources.allocs[resources.alloc_i]);
-    while (--resources.fd_i > -1) close(resources.fds[resources.fd_i]);
+    while (--resources.next_a > -1) free(resources.allocs[resources.next_a]);
+    while (--resources.next_f > -1) close(resources.fds[resources.next_f]);
 }
 
 void register_mgr(void) {
