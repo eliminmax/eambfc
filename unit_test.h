@@ -50,7 +50,7 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
         if (strcmp(dis.buf, expected)) { \
             fprintf( \
                 stderr, \
-                "### EXPECTED ###\n%s\n\n### ACTUAL ###\n%s\n", \
+                "\n\n### EXPECTED ###\n%s\n\n### ACTUAL ###\n%s\n", \
                 expected, \
                 dis.buf \
             ); \
