@@ -104,6 +104,7 @@ int main(void) {
     ERRORCHECKED(register_arm64_tests());
     ERRORCHECKED(register_riscv64_tests());
     ERRORCHECKED(register_s390x_tests());
+    ERRORCHECKED(register_x86_64_tests());
     ERRORCHECKED(register_optimize_tests());
 
     /* Run all tests using the console interface */
