@@ -217,3 +217,51 @@ nonnull_args bool filter_dead(sized_buf *bf_code, const char *in_name) {
     merge_set_zero(bf_code);
     return true;
 }
+
+#ifdef BFC_TEST
+/* internal */
+#include "unit_test.h"
+
+static void strip_dead_code_test(void) {
+    /* fill filterable with have a bunch of valid brainfuck code which does the
+     * equivalent of ">[->+<]", and ensure that it is optimized down to just
+     * that sequence. */
+    sized_buf filterable = newbuf(574);
+    append_obj(
+        &filterable, "[+++++]><+---+++-[-][,[-][+>-<]]-+[-+]-+[]+-[]", 46
+    );
+    char *tgt = sb_reserve(&filterable, 256);
+    memset(tgt, '+', 256);
+    append_obj(&filterable, "[+-]>", 5);
+    tgt = sb_reserve(&filterable, 256);
+    memset(tgt, '-', 256);
+    append_obj(&filterable, "[->+<][,.]", 10);
+    for (size_t i = 0; i < filterable.sz; ++i) {
+        switch (filterable.buf[i]) {
+        case '<':
+        case '>':
+        case '+':
+        case '-':
+        case '[':
+        case ']':
+        case '.':
+        case ',': continue;
+        default: CU_FAIL_FATAL("filterable contains non-bf bytes"); return;
+        }
+    }
+    filter_dead(&filterable, "test");
+    /* null-terminate before string comparison */
+    tgt = sb_reserve(&filterable, 1);
+    *tgt = '\0';
+    CU_ASSERT_STRING_EQUAL(filterable.buf, ">[->+<]");
+    mgr_free(filterable.buf);
+}
+
+CU_pSuite register_optimize_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, strip_dead_code_test);
+    return suite;
+}
+
+#endif

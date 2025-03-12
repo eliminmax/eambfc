@@ -73,3 +73,43 @@ nonnull_args size_t serialize_phdr64_le(const Elf64_Phdr *phdr, void *dest) {
 nonnull_args size_t serialize_phdr64_be(const Elf64_Phdr *phdr, void *dest) {
     IMPL_PHDR64(serialize32be, serialize64be);
 }
+
+#ifdef BFC_TEST
+/* internal */
+#include "unit_test.h"
+
+static void test_serialize_nums(void) {
+    char dest16le[3] = {0};
+    char dest16be[3] = {0};
+    char dest32le[5] = {0};
+    char dest32be[5] = {0};
+    char dest64le[9] = {0};
+    char dest64be[9] = {0};
+    const uchar expect16le[3] = {0xef, 0xbe};
+    const uchar expect16be[3] = {0xbe, 0xef};
+    const uchar expect32le[5] = {0xef, 0xbe, 0xad, 0xde};
+    const uchar expect32be[5] = {0xde, 0xad, 0xbe, 0xef};
+    const uchar expect64le[9] = {0xef, 0xcd, 0xab, 0x89, 0x67, 0x45, 0x23, 0x1};
+    const uchar expect64be[9] = {0x1, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
+    serialize16le(0xbeef, dest16le);
+    serialize16be(0xbeef, dest16be);
+    serialize32le(0xdeadbeef, dest32le);
+    serialize32be(0xdeadbeef, dest32be);
+    serialize64le(0x123456789abcdef, dest64le);
+    serialize64be(0x123456789abcdef, dest64be);
+    CU_ASSERT_NSTRING_EQUAL(dest16le, expect16le, 3);
+    CU_ASSERT_NSTRING_EQUAL(dest16be, expect16be, 3);
+    CU_ASSERT_NSTRING_EQUAL(dest32le, expect32le, 5);
+    CU_ASSERT_NSTRING_EQUAL(dest32be, expect32be, 5);
+    CU_ASSERT_NSTRING_EQUAL(dest64le, expect64le, 9);
+    CU_ASSERT_NSTRING_EQUAL(dest64be, expect64be, 9);
+}
+
+CU_pSuite register_serialize_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, test_serialize_nums);
+    return suite;
+}
+
+#endif /* BFC_TEST */

@@ -77,4 +77,6 @@ nonnull_args bool append_obj(
 /* Reads the contents of fd into a sized_buf. If a read error occurs, frees
  * what's already been read, and sets the sized_buf to {0, 0, NULL}. */
 sized_buf read_to_sized_buf(int fd, const char *in_name);
+
+#undef inline_impl
 #endif /* BFC_UTIL_H */

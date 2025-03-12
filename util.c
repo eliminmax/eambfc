@@ -152,3 +152,47 @@ sized_buf read_to_sized_buf(int fd, const char *in_name) {
     }
     return sb;
 }
+
+#ifdef BFC_TEST
+/* POSIX */
+#include <fcntl.h>
+#include <unistd.h>
+
+/* internal */
+#include "unit_test.h"
+
+static void bit_fits_test(void) {
+    for (uint i = 1; i < 32; i++) {
+        i64 tst_val = INT64_C(1) << i;
+        CU_ASSERT(bit_fits(tst_val, i + 2));
+        CU_ASSERT(!bit_fits(tst_val, i + 1));
+        CU_ASSERT(bit_fits(-tst_val, i + 1));
+        CU_ASSERT(!bit_fits(-tst_val, i));
+        CU_ASSERT(bit_fits(tst_val - 1, i + 1));
+    }
+}
+
+static void test_sign_extend(void) {
+    CU_ASSERT_EQUAL(sign_extend(0xf, 4), -1);
+    CU_ASSERT_EQUAL(sign_extend(0xe, 4), -2);
+    CU_ASSERT_EQUAL(sign_extend(0xf, 5), 0xf);
+    CU_ASSERT_EQUAL(sign_extend(0x1f, 5), -1);
+    CU_ASSERT_EQUAL(sign_extend(1, 1), -1);
+}
+
+static void trailing_0s_test(void) {
+    CU_ASSERT_EQUAL(trailing_0s(0), UINT8_MAX);
+    for (uint i = 0; i < 32; i++) {
+        CU_ASSERT_EQUAL(trailing_0s(UINT64_C(1) << i), i);
+    }
+}
+
+CU_pSuite register_util_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, bit_fits_test);
+    ADD_TEST(suite, trailing_0s_test);
+    ADD_TEST(suite, test_sign_extend);
+    return suite;
+}
+#endif /* BFC_TEST */

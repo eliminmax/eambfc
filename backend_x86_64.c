@@ -256,4 +256,141 @@ const arch_inter X86_64_INTER = {
     .ELF_DATA = ELFDATA2LSB,
 };
 
+#ifdef BFC_TEST
+
+#include "unit_test.h"
+#define REF X86_64_DIS
+
+static void test_set_reg(void) {
+    sized_buf sb = newbuf(10);
+    sized_buf dis = newbuf(32);
+
+    set_reg(X86_EBX, 0, &sb);
+    DISASM_TEST(sb, dis, "xor ebx, ebx\n");
+
+    set_reg(X86_EBX, 128, &sb);
+    DISASM_TEST(sb, dis, "mov ebx, 0x80\n");
+
+    set_reg(X86_64_RBX, INT64_MAX - INT64_C(0xffff), &sb);
+    DISASM_TEST(sb, dis, "movabs rbx, 0x7fffffffffff0000\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_jump_instructions(void) {
+    sized_buf sb = newbuf(27);
+    sized_buf dis = newbuf(160);
+
+    jump_zero(X86_64_RDI, 9, &sb);
+    jump_not_zero(X86_64_RDI, -18, &sb);
+    nop_loop_open(&sb);
+    CU_ASSERT_EQUAL(sb.sz, 27);
+    DISASM_TEST(
+        sb,
+        dis,
+        "test byte ptr [rdi], -0x1\n"
+        "je 0x9\n"
+        "test byte ptr [rdi], -0x1\n"
+        "jne -0x12\n"
+        "nop\nnop\nnop\n"
+        "nop\nnop\nnop\n"
+        "nop\nnop\nnop\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_small_imm(void) {
+    sized_buf sb = newbuf(3);
+    sized_buf dis = newbuf(16);
+
+    add_reg(X86_64_RSI, 0x20, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 3);
+    DISASM_TEST(sb, dis, "add esi, 0x20\n");
+
+    sub_reg(X86_64_RSI, 0x20, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 3);
+    DISASM_TEST(sb, dis, "sub esi, 0x20\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_medium_imm(void) {
+    sized_buf sb = newbuf(6);
+    sized_buf dis = newbuf(24);
+
+    add_reg(X86_64_RDX, 0xdead, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+    DISASM_TEST(sb, dis, "add edx, 0xdead\n");
+
+    sub_reg(X86_64_RDX, 0xbeef, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+    DISASM_TEST(sb, dis, "sub edx, 0xbeef\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_large_imm(void) {
+    sized_buf sb = newbuf(13);
+    sized_buf dis = newbuf(40);
+
+    add_reg(X86_64_RBX, 0xdeadbeef, &sb);
+    DISASM_TEST(sb, dis, "movabs rcx, 0xdeadbeef\nadd rbx, rcx\n");
+
+    sub_reg(X86_64_RBX, 0xdeadbeef, &sb);
+    DISASM_TEST(sb, dis, "movabs rcx, 0xdeadbeef\nsub rbx, rcx\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_byte(void) {
+    sized_buf sb = newbuf(6);
+    sized_buf dis = newbuf(56);
+
+    add_byte(X86_64_RDI, 0x23, &sb);
+    sub_byte(X86_64_RDI, 0x23, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+
+    DISASM_TEST(
+        sb,
+        dis,
+        "add byte ptr [rdi], 0x23\n"
+        "sub byte ptr [rdi], 0x23\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_zero_byte(void) {
+    sized_buf sb = newbuf(3);
+    sized_buf dis = newbuf(32);
+
+    zero_byte(X86_64_RDX, &sb);
+    DISASM_TEST(sb, dis, "mov byte ptr [rdx], 0x0\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+CU_pSuite register_x86_64_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, test_set_reg);
+    ADD_TEST(suite, test_jump_instructions);
+    ADD_TEST(suite, test_add_sub_small_imm);
+    ADD_TEST(suite, test_add_sub_medium_imm);
+    ADD_TEST(suite, test_add_sub_large_imm);
+    ADD_TEST(suite, test_add_sub_byte);
+    ADD_TEST(suite, test_zero_byte);
+    return (suite);
+}
+
+#endif
+
 #endif /* BFC_TARGET_X86_64 */
