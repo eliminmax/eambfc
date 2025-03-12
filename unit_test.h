@@ -76,6 +76,7 @@ CU_pSuite register_util_tests(void);
 CU_pSuite register_serialize_tests(void);
 CU_pSuite register_arm64_tests(void);
 CU_pSuite register_riscv64_tests(void);
+CU_pSuite register_s390x_tests(void);
 CU_pSuite register_optimize_tests(void);
 
 #endif /* BFC_UNIT_TEST_H */

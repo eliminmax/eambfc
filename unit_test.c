@@ -103,6 +103,7 @@ int main(void) {
     register_serialize_tests();
     register_arm64_tests();
     register_riscv64_tests();
+    register_s390x_tests();
     register_optimize_tests();
 
     /* Run all tests using the console interface */

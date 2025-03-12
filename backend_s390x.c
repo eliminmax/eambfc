@@ -448,4 +448,141 @@ const arch_inter S390X_INTER = {
     .ELF_ARCH = EM_S390,
     .ELF_DATA = ELFDATA2MSB,
 };
+
+#ifdef BFC_TEST
+/* internal */
+#include "unit_test.h"
+
+/* Given that even though it is set to use hex immediates, the LLVM disassembler
+ * for this architecture often uses decimal immediates, it's sometimes necessary
+ * to explain why a given immediate is expected in the disassembly, so this
+ * macro can be used as an enforced way to explain the reasoning */
+#define GIVEN_THAT CU_ASSERT_FATAL
+#define REF S390X_DIS
+
+static void test_load_store(void) {
+    sized_buf sb = newbuf(6);
+    sized_buf dis = newbuf(24);
+
+    load_from_byte(8, &sb);
+    DISASM_TEST(REF, sb, dis, "llgc %r5, 0(%r8,0)\n");
+    memset(dis.buf, 0, dis.capacity);
+
+    store_to_byte(8, 5, &sb);
+    DISASM_TEST(REF, sb, dis, "stc %r5, 0(%r8,0)\n");
+    memset(dis.buf, 0, dis.capacity);
+
+    store_to_byte(5, 8, &sb);
+    DISASM_TEST(REF, sb, dis, "stc %r8, 0(%r5,0)\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_reg_copy(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(16);
+
+    reg_copy(2, 1, &sb);
+    DISASM_TEST(REF, sb, dis, "lgr %r2, %r1\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_set_reg_zero(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(16);
+    sized_buf alt = newbuf(4);
+
+    reg_copy(2, 0, &sb);
+    set_reg(2, 0, &alt);
+    CU_ASSERT_EQUAL(sb.sz, alt.sz);
+    CU_ASSERT(memcmp(sb.buf, alt.buf, sb.sz) == 0);
+    mgr_free(alt.buf);
+
+    DISASM_TEST(REF, sb, dis, "lgr %r2, %r0\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_set_reg_small_imm(void) {
+    sized_buf sb = newbuf(8);
+    sized_buf dis = newbuf(40);
+
+    set_reg(5, 12345, &sb);
+    set_reg(8, -12345, &sb);
+    DISASM_TEST(REF, sb, dis, "lghi %r5, 12345\nlghi %r8, -12345\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_set_reg_medium_imm(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(48);
+
+    set_reg(4, INT64_C(0x1234abcd), &sb);
+    set_reg(4, INT64_C(-0x1234abcd), &sb);
+    GIVEN_THAT(INT64_C(0x1234abcd) == INT64_C(305441741));
+    DISASM_TEST(REF, sb, dis, "lgfi %r4, 305441741\nlgfi %r4, -305441741\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_set_reg_large_imm(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(48);
+
+    set_reg(1, INT64_C(0xdead0000beef), &sb);
+    GIVEN_THAT(0xdeadU == 57005U && 0xbeefU == 48879U);
+    DISASM_TEST(REF, sb, dis, "lgfi %r1, 48879\niihl %r1, 57005\n");
+    memset(dis.buf, 0, dis.sz);
+
+    set_reg(2, INT64_C(-0xdead0000beef), &sb);
+    GIVEN_THAT(-0xbeefL == -48879L && ~(i16)0xdead == 8530);
+    DISASM_TEST(REF, sb, dis, "lgfi %r2, -48879\niihl %r2, 8530\n");
+    memset(dis.buf, 0, dis.sz);
+
+    set_reg(3, INT64_C(0xdead00000000), &sb);
+    DISASM_TEST(REF, sb, dis, "lgr %r3, %r0\niihl %r3, 57005\n");
+    memset(dis.buf, 0, dis.sz);
+
+    set_reg(4, INT64_MAX ^ (INT64_C(0xffff) << 32), &sb);
+    DISASM_TEST(REF, sb, dis, "lghi %r4, -1\niihh %r4, 32767\n");
+    memset(dis.buf, 0, dis.sz);
+
+    set_reg(5, INT64_MIN ^ (INT64_C(0xffff) << 32), &sb);
+    DISASM_TEST(REF, sb, dis, "lgr %r5, %r0\niihh %r5, 32768\n");
+    memset(dis.buf, 0, dis.sz);
+
+    set_reg(8, INT64_C(0x123456789abcdef0), &sb);
+    GIVEN_THAT(0x12345678L == 305419896L);
+    GIVEN_THAT((i32)0x9abcdef0UL == -1698898192L);
+    DISASM_TEST(REF, sb, dis, "lgfi %r8, -1698898192\niihf %r8, 305419896\n");
+    memset(dis.buf, 0, dis.sz);
+
+    set_reg(8, INT64_C(-0x123456789abcdef0), &sb);
+    DISASM_TEST(REF, sb, dis, "lgfi %r8, 1698898192\niihf %r8, 3989547399\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+CU_pSuite register_s390x_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, test_load_store);
+    ADD_TEST(suite, test_reg_copy);
+    ADD_TEST(suite, test_set_reg_zero);
+    ADD_TEST(suite, test_set_reg_small_imm);
+    ADD_TEST(suite, test_set_reg_medium_imm);
+    ADD_TEST(suite, test_set_reg_large_imm);
+    return suite;
+}
+
+#endif /* BFC_TEST */
+
 #endif /* BFC_TARGET_S390X */
