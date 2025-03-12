@@ -347,7 +347,7 @@ static void test_set_reg_simple(void) {
 
     for (ufast_8 i = 0; i < 4; i++) {
         set_reg(test_sets[i].reg, test_sets[i].imm, &sb);
-        DISASM_TEST(REF, sb, dis, test_sets[i].disasm);
+        DISASM_TEST(sb, dis, test_sets[i].disasm);
     }
 
     mgr_free(sb.buf);
@@ -360,7 +360,6 @@ static void test_reg_multiple(void) {
 
     set_reg(0, 0xdeadbeef, &sb);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "mov x0, #0xbeef\n"
@@ -377,7 +376,6 @@ static void test_reg_split(void) {
 
     set_reg(19, 0xdead0000beef, &sb);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "mov x19, #0xbeef\n"
@@ -394,7 +392,6 @@ static void test_reg_neg(void) {
 
     set_reg(19, INT64_C(-0xdeadbeef), &sb);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "mov x19, #-0xbeef\n"
@@ -412,7 +409,6 @@ static void test_reg_neg_split(void) {
 
     set_reg(19, INT64_C(-0xdead0000beef), &sb);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "mov x19, #-0xbeef\n"
@@ -422,7 +418,6 @@ static void test_reg_neg_split(void) {
 
     set_reg(8, INT64_C(-0xdeadbeef0000), &sb);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "mov x8, #-0x10000\n"
@@ -442,16 +437,16 @@ static void test_inc_dec_reg(void) {
     sized_buf dis = newbuf(24);
 
     inc_reg(0, &sb);
-    DISASM_TEST(REF, sb, dis, "add x0, x0, #0x1\n");
+    DISASM_TEST(sb, dis, "add x0, x0, #0x1\n");
 
     inc_reg(19, &sb);
-    DISASM_TEST(REF, sb, dis, "add x19, x19, #0x1\n");
+    DISASM_TEST(sb, dis, "add x19, x19, #0x1\n");
 
     dec_reg(1, &sb);
-    DISASM_TEST(REF, sb, dis, "sub x1, x1, #0x1\n");
+    DISASM_TEST(sb, dis, "sub x1, x1, #0x1\n");
 
     dec_reg(19, &sb);
-    DISASM_TEST(REF, sb, dis, "sub x19, x19, #0x1\n");
+    DISASM_TEST(sb, dis, "sub x19, x19, #0x1\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -462,10 +457,10 @@ static void test_load_store(void) {
     sized_buf dis = newbuf(24);
 
     load_from_byte(19, sb_reserve(&sb, 4));
-    DISASM_TEST(REF, sb, dis, "ldrb w17, [x19], #0x0\n");
+    DISASM_TEST(sb, dis, "ldrb w17, [x19], #0x0\n");
 
     store_to_byte(19, sb_reserve(&sb, 4));
-    DISASM_TEST(REF, sb, dis, "strb w17, [x19], #0x0\n");
+    DISASM_TEST(sb, dis, "strb w17, [x19], #0x0\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -475,17 +470,14 @@ static void test_add_sub_reg(void) {
     sized_buf sb = newbuf(24);
     sized_buf dis = newbuf(64);
     add_sub(8, A64_OP_ADD, 0xabcdef, &sb);
-    DISASM_TEST(
-        REF, sb, dis, "add x8, x8, #0xabc, lsl #12\nadd x8, x8, #0xdef\n"
-    );
+    DISASM_TEST(sb, dis, "add x8, x8, #0xabc, lsl #12\nadd x8, x8, #0xdef\n");
 
     add_sub(8, A64_OP_SUB, 0xabc000, &sb);
-    DISASM_TEST(REF, sb, dis, "sub x8, x8, #0xabc, lsl #12\n");
+    DISASM_TEST(sb, dis, "sub x8, x8, #0xabc, lsl #12\n");
 
     add_sub(8, A64_OP_ADD, 0xdeadbeef, &sb);
     add_sub(8, A64_OP_SUB, 0xdeadbeef, &sb);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "mov x17, #0xbeef\nmovk x17, #0xdead, lsl #16\nadd x8, x8, x17\n"
@@ -504,7 +496,6 @@ static void test_add_sub_byte(void) {
     sub_byte(19, 0xa5, &sb);
 
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "ldrb w17, [x19], #0x0\n"
@@ -524,7 +515,7 @@ static void test_zero_byte(void) {
     sized_buf dis = newbuf(24);
 
     zero_byte(19, &sb);
-    DISASM_TEST(REF, sb, dis, "strb wzr, [x19], #0x0\n");
+    DISASM_TEST(sb, dis, "strb wzr, [x19], #0x0\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -536,7 +527,6 @@ static void test_inc_dec_wrapper(void) {
     inc_byte(1, &sb);
     dec_byte(8, &sb);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "ldrb w17, [x1], #0x0\n"
@@ -558,7 +548,6 @@ static void test_reg_copy(void) {
     reg_copy(2, 0, &sb);
     reg_copy(8, 8, &sb);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "mov x1, x19\n"
@@ -574,7 +563,7 @@ static void test_syscall(void) {
     sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(16);
     syscall(&sb);
-    DISASM_TEST(REF, sb, dis, "svc #0\n");
+    DISASM_TEST(sb, dis, "svc #0\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -584,7 +573,7 @@ static void test_nops(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(16);
     nop_loop_open(&sb);
-    DISASM_TEST(REF, sb, dis, "nop\nnop\nnop\n");
+    DISASM_TEST(sb, dis, "nop\nnop\nnop\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -596,7 +585,6 @@ static void test_successful_jumps(void) {
     jump_zero(0, 32, &sb);
     jump_not_zero(0, -32, &sb);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "ldrb w17, [x0], #0x0\n"

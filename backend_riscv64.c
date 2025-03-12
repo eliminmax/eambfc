@@ -404,7 +404,6 @@ static void test_set_reg_32(void) {
     set_reg(RISCV_A1, 0x1001, &sb);
     CU_ASSERT_EQUAL(sb.sz, 32);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "li a0, 0x0\n"
@@ -438,19 +437,18 @@ static void test_set_reg_64(void) {
         CU_ASSERT_EQUAL(sb.sz, expected_len);
     }
     CU_ASSERT_EQUAL(expected_len, 124);
-    DISASM_TEST(REF, sb, dis, expected_disasm);
+    DISASM_TEST(sb, dis, expected_disasm);
     mgr_free(expected_disasm);
 
     /* worst-case scenario is alternating bits. 0b0101 is 0x5. */
     /* first, just a single sequence, but it'll need to be shifted */
     set_reg(RISCV_A7, INT64_C(0x5555) << 24, &sb);
     CU_ASSERT_EQUAL(sb.sz, 6);
-    DISASM_TEST(REF, sb, dis, "lui a7, 0x5555\nslli a7, a7, 0xc\n");
+    DISASM_TEST(sb, dis, "lui a7, 0x5555\nslli a7, a7, 0xc\n");
 
     set_reg(RISCV_S0, INT64_C(0x555555555555), &sb);
     set_reg(RISCV_A7, INT64_C(-0x555555555555), &sb);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         /* this is what LLVM 19 generates for these instructions:
@@ -478,7 +476,6 @@ static void test_set_reg_64(void) {
     set_reg(RISCV_S0, INT64_C(0x5555555555555555), &sb);
     set_reg(RISCV_A7, INT64_C(-0x5555555555555555), &sb);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         /* this is what LLVM 19 generates for these instructions:
@@ -524,17 +521,17 @@ static void test_compressed_set_reg_64(void) {
     fakesb.buf = sb.buf;
     fakesb.sz = 2;
     fakesb.capacity = 2;
-    DISASM_TEST(REF, fakesb, dis, "li a1, 0xf\n");
+    DISASM_TEST(fakesb, dis, "li a1, 0xf\n");
 
     fakesb.sz = 2;
     fakesb.buf += 2;
     memset(dis.buf, 0, dis.sz);
-    DISASM_TEST(REF, fakesb, dis, "slli a1, a1, 0x20\n");
+    DISASM_TEST(fakesb, dis, "slli a1, a1, 0x20\n");
 
     fakesb.sz = 2;
     fakesb.buf += 2;
     memset(dis.buf, 0, dis.sz);
-    DISASM_TEST(REF, fakesb, dis, "addi a1, a1, 0x10\n");
+    DISASM_TEST(fakesb, dis, "addi a1, a1, 0x10\n");
 
     mgr_free(dis.buf);
     mgr_free(sb.buf);
@@ -545,7 +542,7 @@ static void test_syscall(void) {
     sized_buf dis = newbuf(8);
 
     syscall(&sb);
-    DISASM_TEST(REF, sb, dis, "ecall\n");
+    DISASM_TEST(sb, dis, "ecall\n");
 
     mgr_free(dis.buf);
     mgr_free(sb.buf);
@@ -556,10 +553,10 @@ static void test_reg_copies(void) {
     sized_buf dis = newbuf(16);
 
     reg_copy(RISCV_A1, RISCV_S0, &sb);
-    DISASM_TEST(REF, sb, dis, "mv a1, s0\n");
+    DISASM_TEST(sb, dis, "mv a1, s0\n");
 
     reg_copy(RISCV_S0, RISCV_A7, &sb);
-    DISASM_TEST(REF, sb, dis, "mv s0, a7\n");
+    DISASM_TEST(sb, dis, "mv s0, a7\n");
 
     mgr_free(dis.buf);
     mgr_free(sb.buf);
@@ -571,7 +568,7 @@ static void test_load_and_store(void) {
 
     serialize32le(load_from_byte(RISCV_A0), sb_reserve(&sb, 4));
     serialize32le(store_to_byte(RISCV_A0), sb_reserve(&sb, 4));
-    DISASM_TEST(REF, sb, dis, "lb t1, 0x0(a0)\nsb t1, 0x0(a0)\n");
+    DISASM_TEST(sb, dis, "lb t1, 0x0(a0)\nsb t1, 0x0(a0)\n");
 
     mgr_free(dis.buf);
     mgr_free(sb.buf);
@@ -582,7 +579,7 @@ static void test_zero_byte(void) {
     sized_buf dis = newbuf(24);
 
     zero_byte(RISCV_A2, &sb);
-    DISASM_TEST(REF, sb, dis, "sb zero, 0x0(a2)\n");
+    DISASM_TEST(sb, dis, "sb zero, 0x0(a2)\n");
 
     mgr_free(dis.buf);
     mgr_free(sb.buf);
@@ -594,7 +591,7 @@ static void test_nop_pad(void) {
 
     nop_loop_open(&sb);
     CU_ASSERT_EQUAL(sb.sz, 12);
-    DISASM_TEST(REF, sb, dis, "nop\nnop\nnop\n");
+    DISASM_TEST(sb, dis, "nop\nnop\nnop\n");
 
     mgr_free(dis.buf);
     mgr_free(sb.buf);
@@ -607,7 +604,6 @@ static void test_successful_jumps(void) {
     jump_zero(RISCV_S0, 32, &sb);
     jump_not_zero(RISCV_S0, -32, &sb);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "lb t1, 0x0(s0)\n"
@@ -639,7 +635,6 @@ static void test_inc_dec(void) {
     CU_ASSERT_EQUAL(sb.sz, 24);
 
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "lb t1, 0x0(s0)\n"
@@ -693,7 +688,7 @@ static void test_add_reg(void) {
     add_reg(RISCV_S0, 0x123, &sb);
     CU_ASSERT_EQUAL(sb.sz, 6);
 
-    DISASM_TEST(REF, sb, dis, "addi s0, s0, 0x12\naddi s0, s0, 0x123\n");
+    DISASM_TEST(sb, dis, "addi s0, s0, 0x12\naddi s0, s0, 0x123\n");
 
     add_reg(RISCV_S0, 0xdeadbeef, &sb);
     encode_li(&alt, RISCV_T1, 0xdeadbeef);
@@ -703,7 +698,7 @@ static void test_add_reg(void) {
     fakesb.capacity = 2;
     fakesb.buf = sb.buf + alt.sz;
     memset(dis.buf, 0, dis.sz);
-    DISASM_TEST(REF, fakesb, dis, "add s0, s0, t1\n");
+    DISASM_TEST(fakesb, dis, "add s0, s0, t1\n");
 
     mgr_free(sb.buf);
     mgr_free(alt.buf);
@@ -722,7 +717,6 @@ static void test_add_sub_byte(void) {
     sub_byte(REGS.arg2, 0x10, &sb);
     CU_ASSERT_EQUAL(sb.sz, 20);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "lb t1, 0x0(a1)\n"
@@ -740,7 +734,6 @@ static void test_add_sub_byte(void) {
     sub_byte(REGS.arg2, 0x70, &sb);
     CU_ASSERT_EQUAL(sb.sz, 24);
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "lb t1, 0x0(a1)\n"
@@ -759,7 +752,6 @@ static void test_add_sub_byte(void) {
     CU_ASSERT_EQUAL((i8)(INT16_C(1) + 0x80), (i8)(INT16_C(1) - 0x80));
     (void)0;
     DISASM_TEST(
-        REF,
         sb,
         dis,
         "lb t1, 0x0(a2)\n"

@@ -44,8 +44,8 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
 
 /* utility macro to test if a sized_buf contains the expected disassembly.
  * Clears both sb and dis, leaving the allocation behind for reuse if needed */
-#define DISASM_TEST(ref, code, dis, expected) \
-    if (disassemble(ref, &code, &dis)) { \
+#define DISASM_TEST(code, dis, expected) \
+    if (disassemble(REF, &code, &dis)) { \
         CU_ASSERT_STRING_EQUAL(dis.buf, expected); \
         if (strcmp(dis.buf, expected)) { \
             fprintf( \

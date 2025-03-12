@@ -465,15 +465,15 @@ static void test_load_store(void) {
     sized_buf dis = newbuf(24);
 
     load_from_byte(8, &sb);
-    DISASM_TEST(REF, sb, dis, "llgc %r5, 0(%r8,0)\n");
+    DISASM_TEST(sb, dis, "llgc %r5, 0(%r8,0)\n");
     memset(dis.buf, 0, dis.capacity);
 
     store_to_byte(8, 5, &sb);
-    DISASM_TEST(REF, sb, dis, "stc %r5, 0(%r8,0)\n");
+    DISASM_TEST(sb, dis, "stc %r5, 0(%r8,0)\n");
     memset(dis.buf, 0, dis.capacity);
 
     store_to_byte(5, 8, &sb);
-    DISASM_TEST(REF, sb, dis, "stc %r8, 0(%r5,0)\n");
+    DISASM_TEST(sb, dis, "stc %r8, 0(%r5,0)\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -484,7 +484,7 @@ static void test_reg_copy(void) {
     sized_buf dis = newbuf(16);
 
     reg_copy(2, 1, &sb);
-    DISASM_TEST(REF, sb, dis, "lgr %r2, %r1\n");
+    DISASM_TEST(sb, dis, "lgr %r2, %r1\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -501,7 +501,7 @@ static void test_set_reg_zero(void) {
     CU_ASSERT(memcmp(sb.buf, alt.buf, sb.sz) == 0);
     mgr_free(alt.buf);
 
-    DISASM_TEST(REF, sb, dis, "lgr %r2, %r0\n");
+    DISASM_TEST(sb, dis, "lgr %r2, %r0\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -513,7 +513,7 @@ static void test_set_reg_small_imm(void) {
 
     set_reg(5, 12345, &sb);
     set_reg(8, -12345, &sb);
-    DISASM_TEST(REF, sb, dis, "lghi %r5, 12345\nlghi %r8, -12345\n");
+    DISASM_TEST(sb, dis, "lghi %r5, 12345\nlghi %r8, -12345\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -526,7 +526,7 @@ static void test_set_reg_medium_imm(void) {
     set_reg(4, INT64_C(0x1234abcd), &sb);
     set_reg(4, INT64_C(-0x1234abcd), &sb);
     GIVEN_THAT(INT64_C(0x1234abcd) == INT64_C(305441741));
-    DISASM_TEST(REF, sb, dis, "lgfi %r4, 305441741\nlgfi %r4, -305441741\n");
+    DISASM_TEST(sb, dis, "lgfi %r4, 305441741\nlgfi %r4, -305441741\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -538,34 +538,34 @@ static void test_set_reg_large_imm(void) {
 
     set_reg(1, INT64_C(0xdead0000beef), &sb);
     GIVEN_THAT(0xdeadU == 57005U && 0xbeefU == 48879U);
-    DISASM_TEST(REF, sb, dis, "lgfi %r1, 48879\niihl %r1, 57005\n");
+    DISASM_TEST(sb, dis, "lgfi %r1, 48879\niihl %r1, 57005\n");
     memset(dis.buf, 0, dis.sz);
 
     set_reg(2, INT64_C(-0xdead0000beef), &sb);
     GIVEN_THAT(-0xbeefL == -48879L && ~(i16)0xdead == 8530);
-    DISASM_TEST(REF, sb, dis, "lgfi %r2, -48879\niihl %r2, 8530\n");
+    DISASM_TEST(sb, dis, "lgfi %r2, -48879\niihl %r2, 8530\n");
     memset(dis.buf, 0, dis.sz);
 
     set_reg(3, INT64_C(0xdead00000000), &sb);
-    DISASM_TEST(REF, sb, dis, "lgr %r3, %r0\niihl %r3, 57005\n");
+    DISASM_TEST(sb, dis, "lgr %r3, %r0\niihl %r3, 57005\n");
     memset(dis.buf, 0, dis.sz);
 
     set_reg(4, INT64_MAX ^ (INT64_C(0xffff) << 32), &sb);
-    DISASM_TEST(REF, sb, dis, "lghi %r4, -1\niihh %r4, 32767\n");
+    DISASM_TEST(sb, dis, "lghi %r4, -1\niihh %r4, 32767\n");
     memset(dis.buf, 0, dis.sz);
 
     set_reg(5, INT64_MIN ^ (INT64_C(0xffff) << 32), &sb);
-    DISASM_TEST(REF, sb, dis, "lgr %r5, %r0\niihh %r5, 32768\n");
+    DISASM_TEST(sb, dis, "lgr %r5, %r0\niihh %r5, 32768\n");
     memset(dis.buf, 0, dis.sz);
 
     set_reg(8, INT64_C(0x123456789abcdef0), &sb);
     GIVEN_THAT(0x12345678L == 305419896L);
     GIVEN_THAT((i32)0x9abcdef0UL == -1698898192L);
-    DISASM_TEST(REF, sb, dis, "lgfi %r8, -1698898192\niihf %r8, 305419896\n");
+    DISASM_TEST(sb, dis, "lgfi %r8, -1698898192\niihf %r8, 305419896\n");
     memset(dis.buf, 0, dis.sz);
 
     set_reg(8, INT64_C(-0x123456789abcdef0), &sb);
-    DISASM_TEST(REF, sb, dis, "lgfi %r8, 1698898192\niihf %r8, 3989547399\n");
+    DISASM_TEST(sb, dis, "lgfi %r8, 1698898192\niihf %r8, 3989547399\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -583,7 +583,7 @@ static void test_successful_jumps(void) {
      * 0xffffffffffffffdc */
     GIVEN_THAT((u64)INT64_C(-36) == UINT64_C(0xffffffffffffffdc));
     DISASM_TEST(
-        REF,
+
         sb,
         dis,
         "llgc %r5, 0(%r3,0)\n"
@@ -612,7 +612,7 @@ static void test_syscall(void) {
 
     syscall(&sb);
     CU_ASSERT_EQUAL(sb.sz, 2);
-    DISASM_TEST(REF, sb, dis, "svc 0\n");
+    DISASM_TEST(sb, dis, "svc 0\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -623,7 +623,7 @@ static void test_zero_byte(void) {
     sized_buf dis = newbuf(24);
 
     zero_byte(REGS.bf_ptr, &sb);
-    DISASM_TEST(REF, sb, dis, "stc %r0, 0(%r8,0)\n");
+    DISASM_TEST(sb, dis, "stc %r0, 0(%r8,0)\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -639,7 +639,7 @@ static void test_reg_arith_small_imm(void) {
     /* check that inc_reg(r, sb) is the same as add_reg(r, 1, sb) */
     CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
     CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
-    DISASM_TEST(REF, a, dis, "aghi %r8, 1\n");
+    DISASM_TEST(a, dis, "aghi %r8, 1\n");
     memset(dis.buf, 0, dis.sz);
     b.sz = 0;
 
@@ -648,7 +648,7 @@ static void test_reg_arith_small_imm(void) {
     /* check that dec_reg(r, sb) is the same as sub_reg(r, 1, sb) */
     CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
     CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
-    DISASM_TEST(REF, a, dis, "aghi %r8, -1\n");
+    DISASM_TEST(a, dis, "aghi %r8, -1\n");
     memset(dis.buf, 0, dis.sz);
     b.sz = 0;
 
@@ -659,7 +659,7 @@ static void test_reg_arith_small_imm(void) {
     add_reg(8, INT64_C(-12345), &b);
     CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
     CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
-    DISASM_TEST(REF, a, dis, "aghi %r8, 12345\naghi %r8, -12345\n");
+    DISASM_TEST(a, dis, "aghi %r8, 12345\naghi %r8, -12345\n");
 
     mgr_free(a.buf);
     mgr_free(b.buf);
@@ -672,11 +672,11 @@ static void test_reg_arith_medium_imm(void) {
 
     add_reg(8, 0x123456, &sb);
     GIVEN_THAT(0x123456 == 1193046);
-    DISASM_TEST(REF, sb, dis, "agfi %r8, 1193046\n");
+    DISASM_TEST(sb, dis, "agfi %r8, 1193046\n");
     memset(dis.buf, 0, dis.sz);
 
     sub_reg(8, 0x123456, &sb);
-    DISASM_TEST(REF, sb, dis, "agfi %r8, -1193046\n");
+    DISASM_TEST(sb, dis, "agfi %r8, -1193046\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -689,20 +689,20 @@ static void test_reg_arith_large_imm(void) {
     add_reg(8, INT64_C(9876543210), &sb);
     GIVEN_THAT((i32)INT64_C(9876543210) == 1286608618);
     GIVEN_THAT(INT64_C(9876543210) >> 32 == 2);
-    DISASM_TEST(REF, sb, dis, "agfi %r8, 1286608618\naih %r8, 2\n");
+    DISASM_TEST(sb, dis, "agfi %r8, 1286608618\naih %r8, 2\n");
     memset(dis.buf, 0, dis.sz);
 
     sub_reg(8, INT64_C(9876543210), &sb);
     GIVEN_THAT((i32)INT64_C(-9876543210) == -1286608618);
     GIVEN_THAT(sign_extend((u64)INT64_C(-9876543210) >> 32, 32) == INT64_C(-3));
-    DISASM_TEST(REF, sb, dis, "agfi %r8, -1286608618\naih %r8, -3\n");
+    DISASM_TEST(sb, dis, "agfi %r8, -1286608618\naih %r8, -3\n");
     memset(dis.buf, 0, dis.sz);
 
     /* make sure that if the lower bits are zero, the agfi instruction is
      * skipped */
     add_reg(8, 0x1234abcd00000000, &sb);
     GIVEN_THAT(0x1234abcd00000000 >> 32 == 305441741L);
-    DISASM_TEST(REF, sb, dis, "aih %r8, 305441741\n");
+    DISASM_TEST(sb, dis, "aih %r8, 305441741\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -737,7 +737,7 @@ static void test_byte_arith(void) {
     CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
     CU_ASSERT(memcmp(a.buf, expected.buf, a.sz) == 0);
     DISASM_TEST(
-        REF,
+
         a,
         dis,
         "llgc %r5, 0(%r8,0)\n"
@@ -757,7 +757,7 @@ static void test_byte_arith(void) {
     CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
     CU_ASSERT(memcmp(a.buf, expected.buf, a.sz) == 0);
     DISASM_TEST(
-        REF,
+
         a,
         dis,
         "llgc %r5, 0(%r8,0)\n"
@@ -769,7 +769,7 @@ static void test_byte_arith(void) {
     add_byte(8, 32, &a);
     sub_byte(8, 32, &a);
     DISASM_TEST(
-        REF,
+
         a,
         dis,
         "llgc %r5, 0(%r8,0)\n"
