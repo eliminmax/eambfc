@@ -215,7 +215,7 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
             /* sets bits 0-15 of the register to the immediate. */
             /* IIHH reg, upper_imm {RI-a} */
             u8 i_bytes[4] = ENCODE_RI_OP(0xa50, reg);
-            serialize16be(upper_imm, &i_bytes[2]);
+            serialize16be(((u32)upper_imm) >> 16, &i_bytes[2]);
             ret &= append_obj(dst_buf, &i_bytes, 4);
         } else {
             /* need to set the full upper word, with Insert Immediate (high) */
