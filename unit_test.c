@@ -99,12 +99,12 @@ int main(void) {
     llvm_init();
 
     ERRORCHECKED(CU_initialize_registry());
-    register_util_tests();
-    register_serialize_tests();
-    register_arm64_tests();
-    register_riscv64_tests();
-    register_s390x_tests();
-    register_optimize_tests();
+    ERRORCHECKED(register_util_tests());
+    ERRORCHECKED(register_serialize_tests());
+    ERRORCHECKED(register_arm64_tests());
+    ERRORCHECKED(register_riscv64_tests());
+    ERRORCHECKED(register_s390x_tests());
+    ERRORCHECKED(register_optimize_tests());
 
     /* Run all tests using the console interface */
     CU_basic_set_mode(CU_BRM_VERBOSE);
