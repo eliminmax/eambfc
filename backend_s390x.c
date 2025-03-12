@@ -571,6 +571,221 @@ static void test_set_reg_large_imm(void) {
     mgr_free(dis.buf);
 }
 
+static void test_successful_jumps(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(128);
+
+    jump_zero(3, 18, &sb);
+    jump_not_zero(3, -36, &sb);
+    nop_loop_open(&sb);
+    /* For some reason, LLVM treats jump offset operand as an unsigned immediate
+     * after sign extending it to the full 64 bits, so -36 becomes
+     * 0xffffffffffffffdc */
+    GIVEN_THAT((u64)INT64_C(-36) == UINT64_C(0xffffffffffffffdc));
+    DISASM_TEST(
+        REF,
+        sb,
+        dis,
+        "llgc %r5, 0(%r3,0)\n"
+        "cfi %r5, 0\n"
+        /* LLVM uses "jge" instead of the IBM-documented "jle" extended mnemonic
+         * for `brcl 8,addr` because "jl" is also "jump if less". */
+        "jge 0x12\n"
+        "llgc %r5, 0(%r3,0)\n"
+        "cfi %r5, 0\n"
+        /* lh for low | high (i.e. not equal). */
+        "jglh 0xffffffffffffffdc\n"
+        "nop 0\n"
+        "nop 0\n"
+        "nop 0\n"
+        "nop 0\n"
+        "nopr %r0\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_syscall(void) {
+    sized_buf sb = newbuf(2);
+    sized_buf dis = newbuf(8);
+
+    syscall(&sb);
+    CU_ASSERT_EQUAL(sb.sz, 2);
+    DISASM_TEST(REF, sb, dis, "svc 0\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_zero_byte(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(24);
+
+    zero_byte(REGS.bf_ptr, &sb);
+    DISASM_TEST(REF, sb, dis, "stc %r0, 0(%r8,0)\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_reg_arith_small_imm(void) {
+    sized_buf a = newbuf(8);
+    sized_buf b = newbuf(8);
+    sized_buf dis = newbuf(40);
+
+    add_reg(8, 1, &a);
+    inc_reg(8, &b);
+    /* check that inc_reg(r, sb) is the same as add_reg(r, 1, sb) */
+    CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
+    CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
+    DISASM_TEST(REF, a, dis, "aghi %r8, 1\n");
+    memset(dis.buf, 0, dis.sz);
+    b.sz = 0;
+
+    sub_reg(8, 1, &a);
+    dec_reg(8, &b);
+    /* check that dec_reg(r, sb) is the same as sub_reg(r, 1, sb) */
+    CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
+    CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
+    DISASM_TEST(REF, a, dis, "aghi %r8, -1\n");
+    memset(dis.buf, 0, dis.sz);
+    b.sz = 0;
+
+    /* check that sub_reg properly translates to add_reg */
+    add_reg(8, 12345, &a);
+    sub_reg(8, 12345, &a);
+    sub_reg(8, INT64_C(-12345), &b);
+    add_reg(8, INT64_C(-12345), &b);
+    CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
+    CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
+    DISASM_TEST(REF, a, dis, "aghi %r8, 12345\naghi %r8, -12345\n");
+
+    mgr_free(a.buf);
+    mgr_free(b.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_reg_arith_medium_imm(void) {
+    sized_buf sb = newbuf(6);
+    sized_buf dis = newbuf(24);
+
+    add_reg(8, 0x123456, &sb);
+    GIVEN_THAT(0x123456 == 1193046);
+    DISASM_TEST(REF, sb, dis, "agfi %r8, 1193046\n");
+    memset(dis.buf, 0, dis.sz);
+
+    sub_reg(8, 0x123456, &sb);
+    DISASM_TEST(REF, sb, dis, "agfi %r8, -1193046\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_reg_arith_large_imm(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(40);
+
+    add_reg(8, INT64_C(9876543210), &sb);
+    GIVEN_THAT((i32)INT64_C(9876543210) == 1286608618);
+    GIVEN_THAT(INT64_C(9876543210) >> 32 == 2);
+    DISASM_TEST(REF, sb, dis, "agfi %r8, 1286608618\naih %r8, 2\n");
+    memset(dis.buf, 0, dis.sz);
+
+    sub_reg(8, INT64_C(9876543210), &sb);
+    GIVEN_THAT((i32)INT64_C(-9876543210) == -1286608618);
+    GIVEN_THAT(sign_extend((u64)INT64_C(-9876543210) >> 32, 32) == INT64_C(-3));
+    DISASM_TEST(REF, sb, dis, "agfi %r8, -1286608618\naih %r8, -3\n");
+    memset(dis.buf, 0, dis.sz);
+
+    /* make sure that if the lower bits are zero, the agfi instruction is
+     * skipped */
+    add_reg(8, 0x1234abcd00000000, &sb);
+    GIVEN_THAT(0x1234abcd00000000 >> 32 == 305441741L);
+    DISASM_TEST(REF, sb, dis, "aih %r8, 305441741\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_i64_min(void) {
+    sized_buf a = newbuf(6);
+    sized_buf b = newbuf(6);
+
+    add_reg(4, INT64_MIN, &a);
+    sub_reg(4, INT64_MIN, &b);
+    CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
+    CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
+
+    mgr_free(a.buf);
+    mgr_free(b.buf);
+}
+
+static void test_byte_arith(void) {
+    sized_buf a = newbuf(14);
+    sized_buf b = newbuf(14);
+    sized_buf dis = newbuf(120);
+    sized_buf expected = newbuf(14);
+
+    load_from_byte(8, &expected);
+    inc_reg(TMP_REG, &expected);
+    store_to_byte(8, TMP_REG, &expected);
+    inc_byte(8, &a);
+    add_byte(8, 1, &b);
+    CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
+    CU_ASSERT_EQUAL_FATAL(a.sz, expected.sz);
+    CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
+    CU_ASSERT(memcmp(a.buf, expected.buf, a.sz) == 0);
+    DISASM_TEST(
+        REF,
+        a,
+        dis,
+        "llgc %r5, 0(%r8,0)\n"
+        "aghi %r5, 1\n"
+        "stc %r5, 0(%r8,0)\n"
+    );
+    memset(dis.buf, 0, dis.sz);
+    expected.sz = b.sz = 0;
+
+    load_from_byte(8, &expected);
+    dec_reg(TMP_REG, &expected);
+    store_to_byte(8, TMP_REG, &expected);
+    dec_byte(8, &a);
+    sub_byte(8, 1, &b);
+    CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
+    CU_ASSERT_EQUAL_FATAL(a.sz, expected.sz);
+    CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
+    CU_ASSERT(memcmp(a.buf, expected.buf, a.sz) == 0);
+    DISASM_TEST(
+        REF,
+        a,
+        dis,
+        "llgc %r5, 0(%r8,0)\n"
+        "aghi %r5, -1\n"
+        "stc %r5, 0(%r8,0)\n"
+    );
+    memset(dis.buf, 0, dis.sz);
+
+    add_byte(8, 32, &a);
+    sub_byte(8, 32, &a);
+    DISASM_TEST(
+        REF,
+        a,
+        dis,
+        "llgc %r5, 0(%r8,0)\n"
+        "aghi %r5, 32\n"
+        "stc %r5, 0(%r8,0)\n"
+        "llgc %r5, 0(%r8,0)\n"
+        "aghi %r5, -32\n"
+        "stc %r5, 0(%r8,0)\n"
+    );
+
+    mgr_free(a.buf);
+    mgr_free(b.buf);
+    mgr_free(expected.buf);
+    mgr_free(dis.buf);
+}
+
 CU_pSuite register_s390x_tests(void) {
     CU_pSuite suite;
     INIT_SUITE(suite);
@@ -580,6 +795,14 @@ CU_pSuite register_s390x_tests(void) {
     ADD_TEST(suite, test_set_reg_small_imm);
     ADD_TEST(suite, test_set_reg_medium_imm);
     ADD_TEST(suite, test_set_reg_large_imm);
+    ADD_TEST(suite, test_successful_jumps);
+    ADD_TEST(suite, test_syscall);
+    ADD_TEST(suite, test_zero_byte);
+    ADD_TEST(suite, test_reg_arith_small_imm);
+    ADD_TEST(suite, test_reg_arith_medium_imm);
+    ADD_TEST(suite, test_reg_arith_large_imm);
+    ADD_TEST(suite, test_add_sub_i64_min);
+    ADD_TEST(suite, test_byte_arith);
     return suite;
 }
 
