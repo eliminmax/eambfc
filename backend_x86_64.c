@@ -378,6 +378,11 @@ static void test_zero_byte(void) {
     mgr_free(dis.buf);
 }
 
+static void test_jump_too_long(void) {
+    EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
+    jump_zero(0, INT64_MAX, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+}
+
 CU_pSuite register_x86_64_tests(void) {
     CU_pSuite suite;
     INIT_SUITE(suite);
@@ -388,6 +393,7 @@ CU_pSuite register_x86_64_tests(void) {
     ADD_TEST(suite, test_add_sub_large_imm);
     ADD_TEST(suite, test_add_sub_byte);
     ADD_TEST(suite, test_zero_byte);
+    ADD_TEST(suite, test_jump_too_long);
     return (suite);
 }
 

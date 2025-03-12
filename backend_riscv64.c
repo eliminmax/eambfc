@@ -766,6 +766,16 @@ static void test_add_sub_byte(void) {
     mgr_free(dis.buf);
 }
 
+static void test_bad_jump_offset(void) {
+    EXPECT_BF_ERR(BF_ICE_INVALID_JUMP_ADDRESS);
+    jump_not_zero(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+}
+
+static void test_jump_too_long(void) {
+    EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
+    jump_zero(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+}
+
 CU_pSuite register_riscv64_tests(void) {
     CU_pSuite suite;
     INIT_SUITE(suite);
@@ -782,6 +792,8 @@ CU_pSuite register_riscv64_tests(void) {
     ADD_TEST(suite, sub_reg_is_neg_add_reg);
     ADD_TEST(suite, test_add_reg);
     ADD_TEST(suite, test_add_sub_byte);
+    ADD_TEST(suite, test_bad_jump_offset);
+    ADD_TEST(suite, test_jump_too_long);
     return suite;
 }
 
