@@ -590,7 +590,7 @@ static void test_nops(void) {
     mgr_free(dis.buf);
 }
 
-static void test_successfull_jumps(void) {
+static void test_successful_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(104);
     jump_zero(0, 32, &sb);
@@ -628,7 +628,7 @@ CU_pSuite register_arm64_tests(void) {
     ADD_TEST(suite, test_reg_copy);
     ADD_TEST(suite, test_syscall);
     ADD_TEST(suite, test_nops);
-    ADD_TEST(suite, test_successfull_jumps);
+    ADD_TEST(suite, test_successful_jumps);
     return suite;
 }
 
