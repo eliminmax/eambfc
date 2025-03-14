@@ -16,12 +16,12 @@ EAMBFC_DEPS = serialize.o $(BACKENDS) optimize.o err.o util.o resource_mgr.o \
 
 # flags for some of the more specialized, non-portable builds
 GCC_STRICT_FLAGS = -Wall -Wextra -Wpedantic -Werror -std=c99 -fanalyzer        \
-		-Wformat-truncation=2 -Wduplicated-branches -Wshadow           \
+		-Wformat-truncation=2 -Wduplicated-branches -Wshadow -Wundef   \
 		-Wformat-overflow=2 -Wformat-signedness -Wbad-function-cast    \
 		-Wnull-dereference -Wredundant-decls -Wduplicated-cond         \
 		-Warray-bounds=2 -Wuninitialized -Wunused-macros -Wformat=2    \
-		-Wtrampolines -Wlogical-op -Winit-self -Wcast-qual -Wundef     \
-		$(POSIX_CFLAG) $(CFLAGS)
+		-Wtrampolines -Wlogical-op -Winit-self -Wcast-qual             \
+		-Wcast-align=strict -Wwrite-strings $(POSIX_CFLAG) $(CFLAGS)
 
 # if these are changed, rebuild everything
 COMMON_HEADERS = err.h types.h config.h
