@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: 0BSD
 
 ---
+
 CompileFlags:
   Add:
     # strict warnings, to help ensure C99 and POSIX 2008 compliance
@@ -12,18 +13,20 @@ CompileFlags:
     - "-xc"
     - "-std=c99"
     - "-D_POSIX_C_SOURCE=200908L"
+  Compiler: clang
+
+---
+
+If:
+  PathExclude: 'main\.c'
+CompileFlags:
+  Add:
     # flags needed for test suite
     - "-I/usr/lib/llvm-19/include"
     - "-DBFC_TEST"
-  Compiler: clang
-
-# Diagnostics:
-#   Includes:
-#     # Avoid false positives for unused header-checks from indirect includes
-#     # from types.h and compat/eambfc_inttypes.h
-#     IgnoreHeader: .*types\.h
 
 ---
+
 If:
   PathExclude: compat/elf\.h
 CompileFlags:
@@ -31,7 +34,9 @@ CompileFlags:
     # Warn on reserved identifiers outside of elf.h
     - "-Wreserved-identifier"
     - "-Wreserved-macro-identifier"
+
 ---
+
 # headers are not complete translation units on their own, so the
 # empty-translation-unit check is prone to false positives if run on headers
 If:
@@ -39,7 +44,9 @@ If:
 CompileFlags:
   Add:
     - "-Wno-empty-translation-unit"
+
 ---
+
 # post_config.h is an odd one that needs special treatment if edited directly
 If:
   PathMatch: post_config.h
