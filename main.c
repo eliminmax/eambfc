@@ -89,7 +89,12 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
     return result;
 }
 
+#ifdef BFC_TEST
+int real_main(int argc, char *argv[]) {
+#else /* BFC_TEST */
 int main(int argc, char *argv[]) {
+#endif /* BFC_TEST */
+
     /* register atexit function to clean up any open files or memory allocations
      * left behind. */
     register_mgr();
