@@ -42,8 +42,10 @@
 # * musl-tools
 # * gawk
 # * clang-19 (with /usr/lib/llvm-19/bin in $PATH, so it's invoked as clang)
+# * libcunit1-dev
 # * libubsan1
 # * libasan6
+# * llvm-19-dev
 # * tcc
 # * qemu-user-binfmt (backport version, as stable segfaults sometimes for s390x)
 #
