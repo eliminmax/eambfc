@@ -4,6 +4,7 @@
  *
  * Utility functions for unit testing, and the unit testing entry point */
 
+#ifdef BFC_TEST
 /* C99 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -126,3 +127,4 @@ int main(void) {
     llvm_cleanup();
     return ret;
 }
+#endif /* BFC_TEST */
