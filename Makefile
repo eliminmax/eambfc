@@ -36,12 +36,10 @@ GCC_INT_TORTURE_FLAGS = -D INT_TORTURE_TEST=1 $(GCC_STRICT_FLAGS) -Wno-format \
 BACKEND_FILES = backend_arm64.c backend_riscv64.c backend_s390x.c \
 		backend_x86_64.c
 
-UNIBUILD_DEPS = serialize.c compile.c optimize.c err.c util.c resource_mgr.c \
-			$(BACKEND_FILES) parse_args.c
+UNIBUILD_FILES = serialize.c compile.c optimize.c err.c util.c resource_mgr.c \
+			$(BACKEND_FILES) parse_args.c main.c
 
-UNIBUILD_FILES = $(UNIBUILD_DEPS) main.c
-
-UNIT_TEST_DEPS = $(UNIBUILD_DEPS) $(COMMON_HEADERS) unit_test.c unit_test.h \
+UNIT_TEST_DEPS = $(UNIBUILD_FILES) $(COMMON_HEADERS) unit_test.c unit_test.h \
 		 serialize.h
 
 # replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
@@ -136,8 +134,8 @@ all_arch_test: can_run_all eambfc
 
 unit_test_driver: $(UNIT_TEST_DEPS)
 	gcc $(GCC_STRICT_FLAGS) $(GCC_UBSAN_FLAGS) $$(llvm-config --cflags) \
-	    -DBFC_TEST=1 -o $@ unit_test.c $(UNIBUILD_DEPS) $(LDLIBS) \
-	    -lcunit -lm $$(llvm-config --ldflags --libs)
+	    -DBFC_TEST=1 -o $@ unit_test.c $(UNIBUILD_FILES) $(LDLIBS) \
+	    -lcunit $$(llvm-config --ldflags --libs)
 
 unit_test: unit_test_driver
 	./unit_test_driver
