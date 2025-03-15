@@ -5,12 +5,13 @@
  * Miscellaneous utility functions used throughout the eambfc codebase. */
 #ifndef BFC_UTIL_H
 #define BFC_UTIL_H 1
+/* internal */
 #include "attributes.h"
 #include "resource_mgr.h"
 #include "types.h"
 
-/* by defining BFC_UTIL_C in util.c, needing duplicate definitions of
- * these functions is avoided */
+/* by defining BFC_UTIL_C in util.c, the normal need for duplicate definitions
+ * of these functions is avoided */
 #ifdef BFC_UTIL_C
 #define inline_impl extern
 #else
@@ -34,8 +35,8 @@ const_fn inline_impl bool bit_fits(i64 val, u8 bits) {
            val < (INT64_C(1) << (bits - 1));
 }
 
-/* create a new sized_buf with the provided size, and a buffer allocated through
- * resource_mgr */
+/* create a new sized_buf with the provided capacity, and a buffer allocated
+ * through resource_mgr */
 inline_impl sized_buf newbuf(size_t sz) {
     sized_buf newbuf = {
         .buf = mgr_malloc(sz),
@@ -45,9 +46,9 @@ inline_impl sized_buf newbuf(size_t sz) {
     return newbuf;
 }
 
-/* return the least significant bits of val sign-extended */
-const_fn inline_impl i64 sign_extend(i64 val, u8 bits) {
-    u8 shift_amount = (sizeof(i64) * 8) - bits;
+/* return the least significant nbits of val sign-extended to 64 bits. */
+const_fn inline_impl i64 sign_extend(i64 val, u8 nbits) {
+    u8 shift_amount = (sizeof(i64) * 8) - nbits;
     /* shifting into the sign bit is undefined behavior, so cast it to unsigned,
      * then assign it back. */
     i64 lshifted = ((u64)val << shift_amount);
