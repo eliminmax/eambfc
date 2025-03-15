@@ -68,7 +68,7 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes);
 
 /* Appends first bytes_sz of bytes to dst, reallocating dst as needed. */
 nonnull_args bool append_obj(
-    sized_buf *dst, const void *bytes, size_t bytes_sz
+    sized_buf *restrict dst, const void *restrict bytes, size_t bytes_sz
 );
 
 /* Reads the contents of fd into a sized_buf. If a read error occurs, frees
