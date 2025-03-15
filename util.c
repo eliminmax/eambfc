@@ -57,7 +57,6 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
         internal_err(
             BF_ICE_APPEND_TO_NULL, "sb_reserve called with dst->buf set to NULL"
         );
-        /* will never return, as internal_err calls exit(EXIT_FAILURE) */
     }
     /* if more space is needed, ensure no overflow occurs when calculating new
      * space requirements, then allocate it. */

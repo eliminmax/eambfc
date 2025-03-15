@@ -25,12 +25,10 @@
 #include "attributes.h"
 #include "types.h"
 
-/* MUST BE CALLED to register the internal cleanup function with atexit.
- *
- * Fatal Error Calls:
- * - if atexit failed to register Resource Manager cleanup function, calls
- *   internal_err with error code `MGR_ATEXIT_FAILED` */
-void register_mgr(void);
+/* close all open managed fds and free all open allocs - to be used in case
+ * of abnormal exit (such as from internal_err and alloc_err).
+ * It's a fallback mechanism, and shouldn't be needed if exiting normally. */
+void mgr_cleanup(void);
 
 /* mgr_malloc has the same semantics as malloc, but registers allocations that
  * it has returned, and any still registered will be freed when eambfc exits.

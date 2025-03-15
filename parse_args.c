@@ -13,6 +13,7 @@
 #include "config.h"
 #include "err.h"
 #include "parse_args.h"
+#include "resource_mgr.h"
 #include "version.h"
 
 #if BFC_LONGOPTS
@@ -205,6 +206,7 @@ static noreturn nonnull_args void report_version(const char *progname) {
          * if it's anything else, it'll add ": eambfc" after the progname */
         strcmp(progname, "eambfc") ? ": eambfc" : ""
     );
+    mgr_cleanup();
     exit(EXIT_SUCCESS);
 }
 
@@ -237,6 +239,7 @@ static noreturn nonnull_args void list_arches(void) {
 #endif /* BFC_TARGET_S390X */
 
          ARCH_LIST_END);
+    mgr_cleanup();
     exit(EXIT_SUCCESS);
 }
 
@@ -254,6 +257,7 @@ static noreturn nonnull_args void bad_arg(
         .has_location = false,
     });
     if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
+    mgr_cleanup();
     exit(EXIT_FAILURE);
 }
 
@@ -280,7 +284,10 @@ run_cfg parse_args(int argc, char *argv[]) {
 
     while ((opt = getopt(argc, argv, ":hVqjOkmcAa:e:t:s:")) != -1) {
         switch (opt) {
-        case 'h': printf(HELP_TEMPLATE, progname); exit(EXIT_SUCCESS);
+        case 'h':
+            printf(HELP_TEMPLATE, progname);
+            mgr_cleanup();
+            exit(EXIT_SUCCESS);
         case 'V': report_version(progname);
         case 'A': list_arches();
         case 'q':
@@ -372,7 +379,10 @@ run_cfg parse_args(int argc, char *argv[]) {
                     show_hint
                 );
             }
-            if (!select_inter(optarg, &rc.inter)) exit(EXIT_FAILURE);
+            if (!select_inter(optarg, &rc.inter)) {
+                mgr_cleanup();
+                exit(EXIT_FAILURE);
+            }
             break;
         case ':': /* one of -a, -e, or -t is missing an argument */
             missing_op_msg[1] = optopt;
@@ -400,6 +410,7 @@ run_cfg parse_args(int argc, char *argv[]) {
             });
             if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
             free(unknown_arg_msg);
+            mgr_cleanup();
             exit(EXIT_FAILURE);
 #else
             unknown_arg_msg[19] = optopt;

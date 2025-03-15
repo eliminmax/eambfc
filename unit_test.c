@@ -20,7 +20,6 @@
 
 #define UNIT_TEST_C 1
 /* internal */
-#include "resource_mgr.h"
 #include "types.h"
 #include "unit_test.h"
 #include "util.h"
@@ -100,7 +99,6 @@ static void llvm_cleanup(void) {
 }
 
 int main(void) {
-    register_mgr();
     if (atexit(llvm_cleanup)) {
         fputs("Failed to register llvm_cleanup with atexit\n", stderr);
         return EXIT_FAILURE;

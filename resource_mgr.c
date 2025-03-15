@@ -13,6 +13,7 @@
 /* internal */
 #include "attributes.h"
 #include "err.h"
+#include "resource_mgr.h"
 #include "types.h"
 
 #define MAX_ALLOCS 64
@@ -42,7 +43,6 @@ nonnull_ret void *mgr_malloc(size_t size) {
             BF_ICE_TOO_MANY_ALLOCS,
             "Allocated too many times for resource_mgr to track."
         );
-        /* will never return, as internal_err calls exit(EXIT_FAILURE) */
     }
 
     void *result = malloc(size);
@@ -63,8 +63,6 @@ void mgr_free(void *ptr) {
             BF_ICE_MGR_FREE_UNKNOWN,
             "mgr_free called with an unregistered *ptr value"
         );
-        /* will never return, as internal_err calls exit(EXIT_FAILURE) */
-        return;
     }
     free(ptr);
     size_t to_move = (resources.next_a - index) * sizeof(void *);
@@ -77,7 +75,6 @@ void mgr_free(void *ptr) {
 nonnull_args nonnull_ret void *mgr_realloc(void *ptr, size_t size) {
     ifast_8 index = alloc_index(ptr);
     if (index == -1) {
-        /* will never return, as internal_err calls exit(EXIT_FAILURE) */
         internal_err(
             BF_ICE_MGR_REALLOC_UNKNOWN,
             "mgr_realloc called with an unregistered *ptr value"
@@ -100,7 +97,6 @@ static nonnull_args int mgr_open_handler(
             BF_ICE_TOO_MANY_OPENS,
             "Opened too many files for resource_mgr to track."
         );
-        /* will never return, as internal_err calls exit(EXIT_FAILURE) */
         return -1;
     }
     int result;
@@ -138,16 +134,14 @@ int mgr_close(int fd) {
             BF_ICE_MGR_CLOSE_UNKNOWN,
             "mgr_close called with an unregistered fd value"
         );
-        /* will never return, as internal_err calls exit(EXIT_FAILURE) */
-    } else {
-        /* remove fd from resources */
-        size_t to_move = ((resources.next_f--) - index) * sizeof(int);
-        memmove(&(resources.fds[index]), &(resources.fds[index + 1]), to_move);
     }
+    /* remove fd from resources */
+    size_t to_move = ((resources.next_f--) - index) * sizeof(int);
+    memmove(&(resources.fds[index]), &(resources.fds[index + 1]), to_move);
     return close(fd);
 }
 
-void cleanup(void) {
+void mgr_cleanup(void) {
     while (--resources.next_a > -1) free(resources.allocs[resources.next_a]);
     while (--resources.next_f > -1) close(resources.fds[resources.next_f]);
 }
@@ -157,7 +151,7 @@ void register_mgr(void) {
     /* if already registered, do nothing. */
     if (registered) return;
     /* atexit returns 0 on success, and a nonzero value otherwise. */
-    if (atexit(cleanup)) {
+    if (atexit(mgr_cleanup)) {
         internal_err(
             BF_ERR_MGR_ATEXIT_FAILED,
             "Failed to register cleanup function with atexit"

@@ -95,9 +95,6 @@ int real_main(int argc, char *argv[]) {
 int main(int argc, char *argv[]) {
 #endif /* BFC_TEST */
 
-    /* register atexit function to clean up any open files or memory allocations
-     * left behind. */
-    register_mgr();
     int ret = EXIT_SUCCESS;
     run_cfg rc = parse_args(argc, argv);
     for (int i = optind; i < argc; i++) {
@@ -105,6 +102,5 @@ int main(int argc, char *argv[]) {
         ret = EXIT_FAILURE;
         if (!rc.cont_on_fail) break;
     }
-
     return ret;
 }
