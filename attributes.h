@@ -12,7 +12,6 @@
 #define nonnull_ret
 #define const_fn
 
-#ifndef BFC_NOATTRIBUTES
 #if __STDC_VERSION__ == 202311L
 #undef noreturn
 #define noreturn [[noreturn]]
@@ -40,4 +39,3 @@
 
 #endif /* __GNUC__ */
 #endif /* BFC_NOATTRIBUTES */
-#endif /* BFC_ATTRIBUTES */
