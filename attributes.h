@@ -11,6 +11,7 @@
 #define nonnull_args
 #define nonnull_ret
 #define const_fn
+#define malloc_like
 
 #if __STDC_VERSION__ == 202311L
 #undef noreturn
@@ -36,6 +37,9 @@
 
 #undef const_fn
 #define const_fn __attribute__((const))
+
+#undef malloc_like
+#define malloc_like __attribute__((malloc))
 
 #endif /* __GNUC__ */
 #endif /* BFC_NOATTRIBUTES */

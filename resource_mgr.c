@@ -4,6 +4,7 @@
  * provides wrappers around various functions that need cleanup at the end of
  * the process, and calls the cleanup functions as needed if the end was reached
  * improperly */
+
 /* C99 */
 #include <stdlib.h>
 #include <string.h>
@@ -16,9 +17,6 @@
 #include "resource_mgr.h"
 #include "types.h"
 
-#define MAX_ALLOCS 64
-#define MAX_FDS 16
-
 /* with the maximum numbers of entries as low as they are, no fancy data
  * structure needed. A struct is used just to keep all of the Resource Manager's
  * internal state in one place. */
@@ -29,6 +27,7 @@ static struct resource_tracker {
     ifast_8 next_f;
 } resources;
 
+/* return the index of the allocation, or -1 if it's not a managed allocation */
 static ifast_8 alloc_index(const void *ptr) {
     /* work backwards, as more recent allocs are more likely to be used */
     for (ifast_8 i = resources.next_a - 1; i >= 0; --i) {
@@ -37,7 +36,7 @@ static ifast_8 alloc_index(const void *ptr) {
     return -1;
 }
 
-nonnull_ret void *mgr_malloc(size_t size) {
+malloc_like nonnull_ret void *mgr_malloc(size_t size) {
     if (resources.next_a > MAX_ALLOCS - 1) {
         internal_err(
             BF_ICE_TOO_MANY_ALLOCS,
@@ -50,42 +49,33 @@ nonnull_ret void *mgr_malloc(size_t size) {
         /* don't skip over this array index */
         resources.next_a--;
         alloc_err();
-    } else {
-        resources.allocs[resources.next_a++] = result;
     }
+    resources.allocs[resources.next_a++] = result;
     return result;
 }
 
 void mgr_free(void *ptr) {
-    ifast_8 index = alloc_index(ptr);
-    if (index == -1) {
-        internal_err(
-            BF_ICE_MGR_FREE_UNKNOWN,
-            "mgr_free called with an unregistered *ptr value"
-        );
-    }
     free(ptr);
-    size_t to_move = (resources.next_a - index) * sizeof(void *);
+    ifast_8 index;
+    if ((index = alloc_index(ptr)) == -1) return;
     memmove(
-        &(resources.allocs[index]), &(resources.allocs[index + 1]), to_move
+        &(resources.allocs[index]),
+        &(resources.allocs[index + 1]),
+        (resources.next_a - index) * sizeof(void *)
     );
     resources.next_a--;
 }
 
 nonnull_args nonnull_ret void *mgr_realloc(void *ptr, size_t size) {
-    ifast_8 index = alloc_index(ptr);
-    if (index == -1) {
-        internal_err(
-            BF_ICE_MGR_REALLOC_UNKNOWN,
-            "mgr_realloc called with an unregistered *ptr value"
-        );
-    }
     void *new_ptr = realloc(ptr, size);
+    ifast_8 index = alloc_index(ptr);
     if (new_ptr == NULL) {
-        free(resources.allocs[index]);
+        /* if it's a managed pointer, it will be freed when alloc_err calls
+         * mgr_cleanup. Otherwise, free it here. */
+        if (index != -1) free(ptr);
         alloc_err();
     }
-    resources.allocs[index] = new_ptr;
+    if (index != -1) resources.allocs[index] = new_ptr;
     return new_ptr;
 }
 
@@ -121,42 +111,22 @@ nonnull_args int mgr_open(const char *pathname, int flags) {
 }
 
 int mgr_close(int fd) {
-    ifast_8 index = -1;
     /* work backwards - more likely to close more recently-opened files */
     for (ifast_8 i = resources.next_f - 1; i >= 0; i--) {
         if (resources.fds[i] == fd) {
-            index = i;
+            memmove(
+                &(resources.fds[i]),
+                &(resources.fds[i + 1]),
+                ((resources.next_f--) - i) * sizeof(int)
+            );
             break;
         }
     }
-    if (index == -1) {
-        internal_err(
-            BF_ICE_MGR_CLOSE_UNKNOWN,
-            "mgr_close called with an unregistered fd value"
-        );
-    }
     /* remove fd from resources */
-    size_t to_move = ((resources.next_f--) - index) * sizeof(int);
-    memmove(&(resources.fds[index]), &(resources.fds[index + 1]), to_move);
     return close(fd);
 }
 
 void mgr_cleanup(void) {
     while (--resources.next_a > -1) free(resources.allocs[resources.next_a]);
     while (--resources.next_f > -1) close(resources.fds[resources.next_f]);
-}
-
-void register_mgr(void) {
-    static bool registered = false;
-    /* if already registered, do nothing. */
-    if (registered) return;
-    /* atexit returns 0 on success, and a nonzero value otherwise. */
-    if (atexit(mgr_cleanup)) {
-        internal_err(
-            BF_ERR_MGR_ATEXIT_FAILED,
-            "Failed to register cleanup function with atexit"
-        );
-    } else {
-        registered = true;
-    }
 }
