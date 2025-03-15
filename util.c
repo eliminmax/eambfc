@@ -19,34 +19,27 @@
 #include "util.h"
 
 /* Wrapper around write.3POSIX that returns true if all bytes were written, and
- * prints an error and returns false otherwise or if ct is too large to
+ * prints an error and returns false otherwise.
  * validate. */
 nonnull_args bool write_obj(
-    int fd, const void *buf, size_t ct, const char *out_name
+    int fd, const void *restrict buf, size_t ct, const char *restrict out_name
 ) {
-    if (ct > SSIZE_MAX) {
-        display_err((bf_comp_err){
-            .id = BF_ERR_WRITE_TOO_LARGE,
-            .msg =
-                "Didn't write because write is too large to properly validate.",
-            .has_location = false,
-            .has_instr = false,
-            .file = out_name,
-        });
-        return false;
+    while (ct > (size_t)SSIZE_MAX) {
+        if (write(fd, buf, SSIZE_MAX) != SSIZE_MAX) goto fail;
+        buf = (const char *)buf + SSIZE_MAX;
+        ct -= SSIZE_MAX;
     }
-    ssize_t written = write(fd, buf, ct);
-    if (written != (ssize_t)ct) {
-        display_err((bf_comp_err){
-            .id = BF_ERR_FAILED_WRITE,
-            .msg = "Failed to write to file",
-            .has_location = false,
-            .has_instr = false,
-            .file = out_name,
-        });
-        return false;
-    }
+    if (write(fd, buf, ct) != (ssize_t)ct) goto fail;
     return true;
+fail:
+    display_err((bf_comp_err){
+        .id = BF_ERR_FAILED_WRITE,
+        .msg = "Failed to write to file",
+        .has_location = false,
+        .has_instr = false,
+        .file = out_name,
+    });
+    return false;
 }
 
 /* reserve nbytes bytes at the end of dst, and returns a pointer to the
@@ -81,7 +74,7 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
 /* Append bytes to dst, handling reallocs as needed.
  * Assumes that dst has been allocated with resource_mgr. */
 nonnull_args bool append_obj(
-    sized_buf *dst, const void *bytes, size_t bytes_sz
+    sized_buf *restrict dst, const void *restrict bytes, size_t bytes_sz
 ) {
     /* if more space is needed, ensure no overflow occurs when calculating new
      * space requirements, then allocate it.

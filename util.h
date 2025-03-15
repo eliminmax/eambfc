@@ -54,14 +54,11 @@ const_fn inline_impl i64 sign_extend(i64 val, u8 bits) {
     return lshifted >> shift_amount;
 }
 
-/* Passes arguments to write, and checks if bytes written is equal to ct.
- * If it is, returns true. otherwise, outputs a FAILED_WRITE error and
- * returns false. If ct is more than SSIZE_MAX, it will print an error and
- * return false immediately, as it's too big to validate.
- *
- * See write.3POSIX for more information on arguments. */
+/* Attempts to write ct bytes from buf to the specified fd.
+ * If all bytes are written, returns true, otherwise, it outputs a FailedWrite
+ * error message and returns false. */
 nonnull_args bool write_obj(
-    int fd, const void *buf, size_t ct, const char *outname
+    int fd, const void *restrict buf, size_t ct, const char *restrict outname
 );
 
 /* reserve nbytes bytes at the end of dst, and returns a pointer to the
