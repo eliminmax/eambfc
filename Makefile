@@ -133,9 +133,9 @@ all_arch_test: can_run_all eambfc
 	(cd tests; make -s test_all)
 
 unit_test_driver: $(UNIT_TEST_DEPS)
-	gcc $(GCC_STRICT_FLAGS) $(GCC_UBSAN_FLAGS) $$(llvm-config --cflags) \
-	    -DBFC_TEST=1 -o $@ unit_test.c $(UNIBUILD_FILES) $(LDLIBS) \
-	    -lcunit $$(llvm-config --ldflags --libs)
+	$(CC) $$(llvm-config --cflags) -DBFC_TEST=1 -o $@ \
+	    $(LDFLAGS) unit_test.c $(UNIBUILD_FILES) \
+	    $(LDLIBS) -lcunit $$(llvm-config --ldflags --libs)
 
 unit_test: unit_test_driver
 	./unit_test_driver
