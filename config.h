@@ -49,7 +49,7 @@
 /* runs some preprocessor validation that the above settings are sane, and
  * defines some macros based on the configured default target architecture */
 #define BFC_PREPROC_POST_CONFIG
-#include "post_config.h"
+#include "post_config.h" /* IWYU pragma: export */
 #undef BFC_PREPROC_POST_CONFIG
 
 #endif /* BFC_CONFIG_H */
