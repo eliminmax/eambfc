@@ -490,16 +490,13 @@ int main(void) {
     load_arch_support();
     result_tracker results = {0, 0, 0};
     run_bin_tests(&results);
-    /* clang-format off */
     signal(SIGPIPE, SIG_IGN);
     printf(
-        "\n#################\nRESULTS\n"
-        "\nSUCCESSES: %" PRIu8
-        "\nFAILURES:  %" PRIu8
-        "\nSKIPPED:   %" PRIu8
-        "\nTOTAL:     %d\n",
-        results.succeeded, results.failed, results.skipped,
-        results.succeeded + results.failed + results.skipped
+        "\n#################\nRESULTS\n\n"
+        "SUCCESSES: %" PRIu8 "\nFAILURES:  %" PRIu8 "\nSKIPPED:   %" PRIu8 "\n",
+        results.succeeded,
+        results.failed,
+        results.skipped
     );
     /* clang-format on */
     if (results.failed || (getenv("BFC_DONT_SKIP_TESTS") && results.skipped)) {
