@@ -23,8 +23,7 @@
 /* alternative to using non-portable/non-standard `asprintf` for new strings */
 #define SPRINTF_NEW(dst, fmt, ...) \
     do { \
-        static char sprintf_new_dummy[20]; \
-        dst = malloc(snprintf(sprintf_new_dummy, 0, fmt, __VA_ARGS__) + 10); \
+        dst = malloc(snprintf(NULL, 0, fmt, __VA_ARGS__) + 1); \
         if (dst == NULL) abort(); \
         sprintf(dst, fmt, __VA_ARGS__); \
     } while (0)
