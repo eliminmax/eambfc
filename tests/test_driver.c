@@ -363,6 +363,7 @@ static bool tm_test_run(char outbuf[2][16]) {
     int chld_status;
     pid_t chld;
     char inputs[] = "01";
+    signal(SIGPIPE, SIG_DFL);
     for (int iter = 0; inputs[iter]; iter++) {
         if (pipe(c2p) != 0) abort();
         if (pipe(p2c) != 0) abort();
@@ -401,12 +402,14 @@ static bool tm_test_run(char outbuf[2][16]) {
             }
         }
     }
+    signal(SIGPIPE, SIG_IGN);
     return true;
 chld_fail:
     kill(chld, SIGTERM);
 fail:
     close(c2p[0]);
     close(p2c[1]);
+    signal(SIGPIPE, SIG_IGN);
     return false;
 }
 
@@ -486,6 +489,7 @@ int main(void) {
     result_tracker results = {0, 0, 0};
     arch_tests(&results);
     /* clang-format off */
+    signal(SIGPIPE, SIG_IGN);
     printf(
         "\n#################\nRESULTS\n"
         "\nSUCCESSES: %" PRIu8
