@@ -407,6 +407,7 @@ static test_outcome tm_test(const char *arch, bool opt) {
         );
     }
     EPRINTF("SUCCESS: %s\n", test_id);
+    free(test_id);
     return TEST_SUCCEEDED;
 
 fail:
