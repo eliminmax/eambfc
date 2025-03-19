@@ -2,6 +2,10 @@
 #
 # SPDX-License-Identifier: 0BSD
 
+# test driver
+test_driver
+
+# test binaries
 alternative_extension
 colortest
 hello

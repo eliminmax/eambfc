@@ -30,6 +30,10 @@ test_all:
 	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a x86_64" clean build_all
 	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a x86_64
 
+test_driver: test_driver.c
+	$(CC) $(CFLAGS) $(LDFLAGS) $@.c $(LDLIBS) -o $@
+
+
 test: clean build_all
 	./test.sh $(EAMBFC) $(EAMBFC_ARGS)
 
@@ -85,4 +89,4 @@ clean:
 	rm -f .*.build_err hello rw loop null wrap wrap2 colortest \
 		truthmachine too_many_nested_loops unmatched_close \
 		unmatched_open unseekable alternative_extension unseekable_f \
-		piped_in piped_in.bf dead_code hello.elf
+		piped_in piped_in.bf dead_code hello.elf test_driver
