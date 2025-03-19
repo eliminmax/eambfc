@@ -124,22 +124,61 @@ typedef enum test_outcome {
     TEST_SKIPPED = 1,
 } test_outcome;
 
-static int exec_eambfc(const char *args[]) {
+static nonnull_args size_t read_chunk(sized_buf *dst, int fd) {
+    if (dst->capacity > (SIZE_MAX - 0x8080)) abort();
+    char buf[128];
+    ssize_t ct = read(fd, buf, 128);
+    if (ct < 0) abort();
+    size_t needed_cap = dst->sz + ct;
+    if (needed_cap > dst->capacity) {
+        if (needed_cap & 0xfff) needed_cap = (needed_cap + 0x1000) & (~0xfff);
+        char *newbuf = realloc(dst->buf, needed_cap);
+        if (newbuf == NULL) abort();
+        dst->buf = newbuf;
+    }
+    memcpy(dst->buf + dst->sz, buf, ct);
+    dst->sz += ct;
+    return ct;
+}
+
+static nonnull_arg(1) int exec_eambfc(
+    const char *args[], sized_buf *out, sized_buf *err
+) {
     int chld_status;
     pid_t chld;
+    int out_pipe[2];
+    int err_pipe[2];
+    if (out != NULL && pipe(out_pipe) != 0) abort();
+    if (err != NULL && pipe(err_pipe) != 0) abort();
     switch (chld = fork()) {
     case -1: abort();
     case 0:
-        /* this cast is risky, but the POSIX standard explicitly documents that
+        if (out != NULL) {
+            dup2(out_pipe[1], STDOUT_FILENO);
+            close(out_pipe[0]);
+            close(out_pipe[1]);
+        }
+        if (err != NULL) {
+            dup2(err_pipe[1], STDERR_FILENO);
+            close(err_pipe[0]);
+            close(err_pipe[1]);
+        }
+        /* This cast is risky, but the POSIX standard explicitly documents that
          * args are not modified, and the use of `char *const[]` instead of
          * `const char *const[]` is for compatibility with existing code calling
-         * the execv* variants of exec. */
+         * the execv* variants of exec.
+         *
+         * As long as the data is not actually modified, no UB occurs. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-qual"
         execv(EAMBFC, (char *const *)args);
 #pragma GCC diagnostic pop
         abort();
     default:
+        if (out) close(out_pipe[1]);
+        if (err) close(err_pipe[1]);
+        while ((out && read_chunk(out, out_pipe[0])) ||
+               (err && read_chunk(err, err_pipe[0])));
         if (waitpid(chld, &chld_status, 0) == -1) abort();
         return WIFEXITED(chld_status) ? WEXITSTATUS(chld_status) : -1;
     }
@@ -183,7 +222,7 @@ static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
         EAMBFC, "-j", opt ? "-Oa" : "-a", arch, "--", test_filename, NULL
     };
 
-    if (exec_eambfc(args) != EXIT_SUCCESS) {
+    if (exec_eambfc(args, NULL, NULL) != EXIT_SUCCESS) {
         FAIL(test_id, "Failed to compile", fail_before_chld);
     }
 
@@ -289,7 +328,7 @@ static test_outcome rw_test(const char *arch, bool opt) {
     const char *args[] = {
         EAMBFC, "-j", opt ? "-Oa" : "-a", arch, "rw.bf", NULL
     };
-    if (exec_eambfc(args) != EXIT_SUCCESS) {
+    if (exec_eambfc(args, NULL, NULL) != EXIT_SUCCESS) {
         FAIL(test_id, "Failed to compile", fail);
     }
 
@@ -389,7 +428,7 @@ static test_outcome tm_test(const char *arch, bool opt) {
     const char *args[] = {
         EAMBFC, "-j", opt ? "-Oa" : "-a", arch, "truthmachine.bf", NULL
     };
-    if (exec_eambfc(args) != EXIT_SUCCESS) {
+    if (exec_eambfc(args, NULL, NULL) != EXIT_SUCCESS) {
         FAIL(test_id, "Failed to compile", fail);
     }
 
