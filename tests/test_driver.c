@@ -241,12 +241,12 @@ static bool rw_test_run(uchar byte, uchar *output_byte) {
     switch (chld = fork()) {
     case -1: abort();
     case 0:
-        close(c2p[0]);
-        close(p2c[1]);
-        dup2(c2p[1], STDOUT_FILENO);
         dup2(p2c[0], STDIN_FILENO);
+        dup2(c2p[1], STDOUT_FILENO);
+        close(c2p[0]);
         close(c2p[1]);
         close(p2c[0]);
+        close(p2c[1]);
         execl("./rw", "./rw", NULL);
         abort();
     default:
@@ -328,8 +328,8 @@ static bool tm_test_run(char outbuf[2][16]) {
         switch (chld = fork()) {
         case -1: abort();
         case 0:
-            dup2(c2p[1], STDOUT_FILENO);
             dup2(p2c[0], STDIN_FILENO);
+            dup2(c2p[1], STDOUT_FILENO);
             close(c2p[0]);
             close(c2p[1]);
             close(p2c[0]);
