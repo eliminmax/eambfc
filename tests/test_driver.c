@@ -20,7 +20,9 @@
 
 #define EPRINTF(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
 
-/* alternative to using non-portable/non-standard `asprintf` for new strings */
+/* alternative to using non-portable, non-standard `asprintf` for new strings
+ * (snprintf to NULL with size zero is stated by the C99 standard to be allowed,
+ * and is defined to return the number of bytes that would have been added) */
 #define SPRINTF_NEW(dst, fmt, ...) \
     do { \
         dst = malloc(snprintf(NULL, 0, fmt, __VA_ARGS__) + 1); \
