@@ -469,7 +469,9 @@ static nonnull_args void count_result(
     }
 }
 
-static nonnull_args void arch_tests(result_tracker *results) {
+/* run bintests for each supported architecture, ensuring that they work as
+ * expected, and updating `results */
+static nonnull_args void run_bin_tests(result_tracker *results) {
     for (ifast_8 i = 0; ARCHES[i]; i++) {
         for (ifast_8 bt = 0; bt < NBINTESTS; bt++) {
             count_result(results, bin_test(bt, ARCHES[i], false));
@@ -487,7 +489,7 @@ int main(void) {
     if (EAMBFC == NULL) EAMBFC = "../eambfc";
     load_arch_support();
     result_tracker results = {0, 0, 0};
-    arch_tests(&results);
+    run_bin_tests(&results);
     /* clang-format off */
     signal(SIGPIPE, SIG_IGN);
     printf(
