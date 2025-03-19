@@ -31,7 +31,7 @@ test_all:
 	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a x86_64
 
 test_driver: test_driver.c
-	$(CC) $(CFLAGS) $(LDFLAGS) $@.c $(LDLIBS) -o $@
+	$(CC) -D _POSIX_C_SOURCE=200908L $(CFLAGS) $(LDFLAGS) $@.c $(LDLIBS) -o $@
 
 
 test: clean build_all
