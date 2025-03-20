@@ -198,37 +198,34 @@ static nonnull_arg(1) int exec_eambfc(
 /* test a binary which takes no input, making sure it exists successfully after
  * writing the expected data to stdout */
 static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
-    char *test_id;
-    SPRINTF_NEW(
-        test_id,
-        "%s (%s%s)",
-        BINTESTS[bt].test_bin,
-        arch,
-        opt ? ", optimized" : ""
-    );
+#define MSG(outcome, reason) \
+    EPRINTF( \
+        outcome ": %s (%s%s): " reason "\n", \
+        BINTESTS[bt].test_bin, \
+        arch, \
+        opt ? ", optimized" : "" \
+    )
 
     switch (support_status(arch)) {
     case ARCH_DISABLED:
-        EPRINTF("SKIPPED: %s: %s support disabled\n", test_id, arch);
-        free(test_id);
+        MSG("SKIPPED", "architecture support disabled");
         return TEST_SKIPPED;
     case CANT_RUN:
-        EPRINTF("SKIPPED: %s: can't run %s binaries\n", test_id, arch);
-        free(test_id);
+        MSG("SKIPPED", "can't run target binaries");
         return TEST_SKIPPED;
     case UNKNOWN_ARCH: abort();
     default: break;
     }
 
     size_t nbytes = BINTESTS[bt].expected_sz;
-    char *test_filename;
-    SPRINTF_NEW(test_filename, "%s.bf", BINTESTS[bt].test_bin);
-    const char *args[] = {
-        EAMBFC, "-j", opt ? "-Oa" : "-a", arch, "--", test_filename, NULL
-    };
+    char *src_name;
+    SPRINTF_NEW(src_name, "%s.bf", BINTESTS[bt].test_bin);
+
+    const char **args = ARGS("-j", opt ? "-Oa" : "-a", arch, "--", src_name);
 
     if (exec_eambfc(args, NULL, NULL) != EXIT_SUCCESS) {
-        FAIL(test_id, "Failed to compile", fail_before_chld);
+        MSG("FAILURE", "failed to compile");
+        goto fail_before_chld;
     }
 
     char *chld_output = malloc(nbytes ? nbytes : 1);
@@ -240,26 +237,34 @@ static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
     FILE *chld = popen(cmd, "r");
 
     if (nbytes && fread(chld_output, 1, nbytes, chld) != nbytes) {
-        FAIL(test_id, "not enough output", fail_with_chld);
+        MSG("FAILURE", "not enough output");
+        goto fail_with_chld;
     }
 
     if (fread(&dummy, 1, 1, chld) > 0 || ferror(chld)) {
-        FAIL(test_id, "too much output", fail_with_chld);
+        MSG("FAILURE", "too much output");
+        goto fail_with_chld;
     }
 
     if (pclose(chld) != EXIT_SUCCESS) {
-        FAIL(test_id, "child process failed", fail_after_chld);
+        MSG("FAILURE", "child process failed");
+        goto fail_after_chld;
     }
 
     if (nbytes && memcmp(chld_output, BINTESTS[bt].expected, nbytes) != 0) {
-        FAIL(test_id, "output mismatch", fail_after_chld);
+        MSG("FAILURE", "output mismatch");
+        goto fail_after_chld;
     }
 
     free(cmd);
     free(chld_output);
-    free(test_filename);
-    EPRINTF("SUCCESS: %s\n", test_id);
-    free(test_id);
+    free(src_name);
+    EPRINTF(
+        "SUCCESS: %s (%s%s)\n",
+        BINTESTS[bt].test_bin,
+        arch,
+        opt ? ", optimized" : ""
+    );
     /* both exit_status and cmp_status should be zero on success */
     return TEST_SUCCEEDED;
 
@@ -269,9 +274,9 @@ fail_after_chld:
     free(chld_output);
     free(cmd);
 fail_before_chld:
-    free(test_filename);
-    free(test_id);
+    free(src_name);
     return TEST_FAILED;
+#undef MSG
 }
 
 /* test the rw binary - returns a non-zero value if it didn't run successfully
@@ -315,51 +320,54 @@ fail:
 }
 
 static test_outcome rw_test(const char *arch, bool opt) {
-    char *test_id;
-    SPRINTF_NEW(test_id, "rw (%s%s)", arch, opt ? ", optimized" : "");
+    const char *variant = opt ? ", optimized" : "";
+#define MSG(outcome, reason) \
+    EPRINTF(outcome ": rw (%s%s): " reason "\n", arch, opt ? ", optimized" : "")
     switch (support_status(arch)) {
     case ARCH_DISABLED:
-        EPRINTF("SKIPPED: %s: %s support disabled\n", test_id, arch);
-        free(test_id);
+        MSG("SKIPPED", "architecture support disabled");
         return TEST_SKIPPED;
     case CANT_RUN:
-        EPRINTF("SKIPPED: %s: can't run %s binaries\n", test_id, arch);
-        free(test_id);
+        MSG("SKIPPED", "can't run target binaries");
         return TEST_SKIPPED;
     case UNKNOWN_ARCH: abort();
     default: break;
     }
 
-    const char *args[] = {
-        EAMBFC, "-j", opt ? "-Oa" : "-a", arch, "rw.bf", NULL
-    };
+    const char **args = ARGS("-j", opt ? "-Oa" : "-a", arch, "rw.bf");
+
     if (exec_eambfc(args, NULL, NULL) != EXIT_SUCCESS) {
-        FAIL(test_id, "Failed to compile", fail);
+        MSG("FAILURE", "failed to compile");
+        return TEST_FAILED;
     }
 
     for (uint i = 0; i < 256; i++) {
         uchar out_byte;
         if (!rw_test_run(i, &out_byte)) {
-            EPRINTF("FAILURE: %s: abnormal run with byte 0x%02x\n", test_id, i);
-            goto fail;
+            EPRINTF(
+                "FAILURE: rw (%s%s): abnormal run with byte 0x%02x\n",
+                arch,
+                variant,
+                i
+            );
+            return TEST_FAILED;
         }
         if (out_byte != i) {
             EPRINTF(
-                "FAILURE: %s: run with byte 0x%02x printed byte %0x02hhx\n",
-                test_id,
+                "FAILURE: rw (%s%s): run with byte 0x%02x printed byte "
+                "%0x02hhx\n",
+                arch,
+                variant,
                 i,
                 out_byte
             );
-            goto fail;
+            return TEST_FAILED;
         }
     }
 
-    EPRINTF("SUCCESS: %s\n", test_id);
-    free(test_id);
+    EPRINTF("SUCCESS: rw (%s%s)\n", arch, variant);
     return TEST_SUCCEEDED;
-fail:
-    free(test_id);
-    return TEST_FAILED;
+#undef MSG
 }
 
 static bool tm_test_run(char outbuf[2][16]) {
@@ -419,16 +427,19 @@ fail:
 }
 
 static test_outcome tm_test(const char *arch, bool opt) {
-    char *test_id;
-    SPRINTF_NEW(test_id, "truthmachine (%s%s)", arch, opt ? ", optimized" : "");
+#define MSG(outcome, reason) \
+    EPRINTF( \
+        outcome ": truthmachine (%s%s): " reason "\n", \
+        arch, \
+        opt ? ", optimized" : "" \
+    )
+
     switch (support_status(arch)) {
     case ARCH_DISABLED:
-        EPRINTF("SKIPPED: %s: %s support disabled\n", test_id, arch);
-        free(test_id);
+        MSG("SKIPPED", "architecture support disabled");
         return TEST_SKIPPED;
     case CANT_RUN:
-        EPRINTF("SKIPPED: %s: can't run %s binaries\n", test_id, arch);
-        free(test_id);
+        MSG("SKIPPED", "can't run target binaries");
         return TEST_SKIPPED;
     case UNKNOWN_ARCH: abort();
     default: break;
@@ -437,31 +448,26 @@ static test_outcome tm_test(const char *arch, bool opt) {
         EAMBFC, "-j", opt ? "-Oa" : "-a", arch, "truthmachine.bf", NULL
     };
     if (exec_eambfc(args, NULL, NULL) != EXIT_SUCCESS) {
-        FAIL(test_id, "Failed to compile", fail);
+        MSG("FAILURE", "failed to compile");
+        return TEST_FAILED;
     }
 
     char outbuf[2][16] = {{0}, {0}};
     const char expected[2][16] = {"0", "1111111111111111"};
-    if (!tm_test_run(outbuf)) FAIL(test_id, "abnormal run", fail);
+    if (!tm_test_run(outbuf)) {
+        MSG("FAILURE", "abnormal run");
+        return TEST_FAILED;
+    }
     if (memcmp(expected[0], outbuf[0], 16) != 0) {
-        FAIL(
-            test_id, "input '0' results in output other than single '0'", fail
-        );
+        MSG("FAILURE", "input '0' results in output other than single '0'");
+        return TEST_FAILED;
     }
     if (memcmp(expected[1], outbuf[1], 16) != 0) {
-        FAIL(
-            test_id,
-            "input '1' results in output other than repeating '1'",
-            fail
-        );
+        MSG("FAILURE", "input '1' results in output other than repeating '1'");
+        return TEST_FAILED;
     }
-    EPRINTF("SUCCESS: %s\n", test_id);
-    free(test_id);
+    EPRINTF("SUCCESS: truthmachine (%s%s)\n", arch, opt ? ", optimized" : "");
     return TEST_SUCCEEDED;
-
-fail:
-    free(test_id);
-    return TEST_FAILED;
 }
 
 static nonnull_args void count_result(
@@ -507,7 +513,7 @@ static nonnull_args test_outcome err_test(
         free(out.buf);
         free(moved_args);
         EPRINTF(
-            "FAILED: %s: eambfc exited successfully, expected error\n", test_id
+            "FAILURE: %s: eambfc exited successfully, expected error\n", test_id
         );
         return TEST_FAILED;
     }
@@ -522,7 +528,7 @@ static nonnull_args test_outcome err_test(
     free(out.buf);
     if (strcmp(error_id, expected_err) != 0) {
         EPRINTF(
-            "FAILED: %s: expected error \"%s\", got error \"%s\".\n",
+            "FAILURE: %s: expected error \"%s\", got error \"%s\".\n",
             test_id,
             expected_err,
             error_id
