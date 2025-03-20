@@ -146,7 +146,7 @@ static nonnull_args size_t read_chunk(sized_buf *dst, int fd) {
 
 #define ARGS(...) (const char *[]){EAMBFC, __VA_ARGS__, (char *)0}
 
-static nonnull_arg(1) int exec_eambfc(
+nonnull_arg(1) static int exec_eambfc(
     const char *args[], sized_buf *out, sized_buf *err
 ) {
     int chld_status;
