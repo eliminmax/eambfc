@@ -189,12 +189,6 @@ nonnull_arg(1) static int exec_eambfc(
     }
 }
 
-#define FAIL(test_id, reason, label) \
-    do { \
-        EPRINTF("FAILURE: %s: " reason "\n", test_id); \
-        goto label; \
-    } while (0)
-
 /* test a binary which takes no input, making sure it exists successfully after
  * writing the expected data to stdout */
 static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
