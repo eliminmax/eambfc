@@ -9,7 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 /* POSIX */
+#include <fcntl.h>
+#include <libgen.h>
 #include <signal.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 /* internal */
@@ -140,6 +143,8 @@ static nonnull_args size_t read_chunk(sized_buf *dst, int fd) {
     dst->sz += ct;
     return ct;
 }
+
+#define ARGS(...) (const char *[]){EAMBFC, __VA_ARGS__, (char *)0}
 
 static nonnull_arg(1) int exec_eambfc(
     const char *args[], sized_buf *out, sized_buf *err
@@ -484,11 +489,105 @@ static nonnull_args void run_bin_tests(result_tracker *results) {
     }
 }
 
-int main(void) {
+static nonnull_args test_outcome err_test(
+    const char *test_id, const char *expected_err, const char *restrict args[]
+) {
+    size_t i;
+    for (i = 1; args[i - 1]; i++);
+    const char **moved_args = calloc(i, sizeof(char *));
+    if (moved_args == NULL) abort();
+
+    moved_args[0] = args[0];
+    moved_args[1] = "-j";
+    for (i = 1; args[i]; i++) moved_args[i + 1] = args[i];
+
+    sized_buf out = {.buf = calloc(4096, 1), .sz = 0, .capacity = 4096};
+    if (out.buf == NULL) abort();
+    if (exec_eambfc(moved_args, &out, NULL) != EXIT_FAILURE) {
+        free(out.buf);
+        free(moved_args);
+        EPRINTF(
+            "FAILED: %s: eambfc exited successfully, expected error\n", test_id
+        );
+        return TEST_FAILED;
+    }
+    free(moved_args);
+
+    char error_id[33] = {0};
+    if (sscanf(out.buf, "{\"errorId\": \"%32[^\"]s\", ", error_id) != 1) {
+        memset(out.buf + out.sz, 0, out.capacity - out.sz);
+        fprintf(stderr, "%4096s\n", out.buf);
+        abort();
+    }
+    free(out.buf);
+    if (strcmp(error_id, expected_err) != 0) {
+        EPRINTF(
+            "FAILED: %s: expected error \"%s\", got error \"%s\".\n",
+            test_id,
+            expected_err,
+            error_id
+        );
+        return TEST_FAILED;
+    }
+    EPRINTF("SUCCESS: %s\n", test_id);
+    return TEST_SUCCEEDED;
+}
+
+static nonnull_args void run_bad_arg_tests(result_tracker *results) {
+    const struct arg_test {
+        const char *id;
+        const char *expected;
+        const char **args;
+    } tests[10] = {
+        {NULL, "MultipleExtensions", ARGS("-e.brf", "-e.bf", "hello.bf")},
+        {NULL, "MultipleTapeBlockCounts", ARGS("-t1", "-t32")},
+        {"MissingOperand (-e)", "MissingOperand", ARGS("-e")},
+        {"MissingOperand (-t)", "MissingOperand", ARGS("-t")},
+        {NULL, "UnknownArg", ARGS("-T")},
+        {NULL, "NoSourceFiles", ARGS((char *)0)},
+        {NULL, "BadSourceExtension", ARGS("test_driver.c")},
+        {NULL, "TapeSizeZero", ARGS("-t0")},
+        {NULL, "TapeTooLarge", ARGS("-t9223372036854775807")},
+        {NULL, "MultipleOutputExtensions", ARGS("-s", ".elf", "-s", ".out")},
+    };
+
+    for (int i = 0; i < 10; i++) {
+        const char *id = tests[i].id ? tests[i].id : tests[i].expected;
+        count_result(results, err_test(id, tests[i].expected, tests[i].args));
+    }
+}
+
+static nonnull_args void run_perm_err_tests(result_tracker *results) {
+    struct stat hello_perms;
+    stat("hello.bf", &hello_perms);
+    chmod("hello.bf", 0);
+    count_result(
+        results, err_test("OpenReadFailed", "OpenReadFailed", ARGS("hello.bf"))
+    );
+    chmod("hello.bf", hello_perms.st_mode);
+    if (creat("hello.b", 0500) < 0) abort();
+    count_result(
+        results,
+        err_test(
+            "OpenWriteFailed", "OpenWriteFailed", ARGS("-e", "f", "hello.bf")
+        )
+    );
+    unlink("hello.b");
+}
+
+int main(int argc, const char *argv[]) {
+    if (!argc) abort();
+    if (!strchr(argv[0], '/')) abort();
+    char *argv0 = strdup(argv[0]);
+    if (argv0 == NULL || chdir(dirname(argv0)) != 0) abort();
+    free(argv0);
+
     EAMBFC = getenv("EAMBFC");
     if (EAMBFC == NULL) EAMBFC = "../eambfc";
     load_arch_support();
     result_tracker results = {0, 0, 0};
+    run_bad_arg_tests(&results);
+    run_perm_err_tests(&results);
     run_bin_tests(&results);
     signal(SIGPIPE, SIG_IGN);
     printf(

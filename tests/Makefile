@@ -7,47 +7,12 @@
 
 EAMBFC = ../eambfc
 EAMBFC_ARGS = -Ok
-.SUFFIXES: .bf .brnfck
-.bf:
-	$(EAMBFC) -j $(EAMBFC_ARGS) $< >.$*.build_err && rm .$*.build_err
-.brnfck:
-	$(EAMBFC) -j $(EAMBFC_ARGS) -e .brnfck \
-		$< >.$*.build_err && rm .$*.build_err
-
-# build test assets
-build_all: hello loop wrap wrap2 colortest truthmachine dead_code piped_in \
-	unmatched_close unmatched_open unseekable alternative_extension rw null \
-	hello.elf
-
-# __BACKENDS__ add a test for the new architecture
-test_all:
-	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a arm64" clean build_all
-	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a arm64
-	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a riscv64" clean build_all
-	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a riscv64
-	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a s390x" clean build_all
-	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a s390x
-	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a x86_64" clean build_all
-	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a x86_64
+test: test_driver hello.elf unseekable piped_in alternative_extension
+	./test_driver
 
 test_driver: test_driver.c
 	$(CC) -D _POSIX_C_SOURCE=200908L $(CFLAGS) $(LDFLAGS) $@.c $(LDLIBS) -o $@
 
-
-test: clean build_all
-	./test.sh $(EAMBFC) $(EAMBFC_ARGS)
-
-dead_code: dead_code.bf
-hello: hello.bf
-loop: loop.bf
-null: null.bf
-wrap: wrap.bf
-wrap2: wrap2.bf
-colortest: colortest.bf
-truthmachine: truthmachine.bf
-too_many_nested_loops: too_many_nested_loops.bf
-unmatched_close: unmatched_close.bf
-unmatched_open: unmatched_open.bf
 
 # test handling of provided output suffixes
 hello.elf: hello.bf
@@ -89,4 +54,4 @@ clean:
 	rm -f .*.build_err hello rw loop null wrap wrap2 colortest \
 		truthmachine too_many_nested_loops unmatched_close \
 		unmatched_open unseekable alternative_extension unseekable_f \
-		piped_in piped_in.bf dead_code hello.elf test_driver
+		piped_in piped_in.bf dead_code hello.elf test_driver hello.b
