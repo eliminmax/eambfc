@@ -185,7 +185,8 @@ nonnull_arg(1) static int exec_eambfc(
         while ((out && read_chunk(out, out_pipe[0])) ||
                (err && read_chunk(err, err_pipe[0])));
         if (waitpid(chld, &chld_status, 0) == -1) abort();
-        return WIFEXITED(chld_status) ? WEXITSTATUS(chld_status) : -1;
+        if (!WIFEXITED(chld_status)) abort();
+        return WEXITSTATUS(chld_status);
     }
 }
 
@@ -494,7 +495,7 @@ static nonnull_args test_outcome err_test(
 ) {
     size_t i;
     for (i = 1; args[i - 1]; i++);
-    const char **moved_args = calloc(i, sizeof(char *));
+    const char **moved_args = calloc(i + 1, sizeof(char *));
     if (moved_args == NULL) abort();
 
     moved_args[0] = args[0];
