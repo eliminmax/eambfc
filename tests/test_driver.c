@@ -216,7 +216,7 @@ static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
     char *src_name;
     SPRINTF_NEW(src_name, "%s.bf", BINTESTS[bt].test_bin);
 
-    const char **args = ARGS("-j", opt ? "-Oa" : "-a", arch, "--", src_name);
+    const char **args = ARGS(opt ? "-Oa" : "-a", arch, "--", src_name);
 
     if (exec_eambfc(args, NULL, NULL) != EXIT_SUCCESS) {
         MSG("FAILURE", "failed to compile");
@@ -329,7 +329,7 @@ static test_outcome rw_test(const char *arch, bool opt) {
     default: break;
     }
 
-    const char **args = ARGS("-j", opt ? "-Oa" : "-a", arch, "rw.bf");
+    const char **args = ARGS(opt ? "-Oa" : "-a", arch, "rw.bf");
 
     if (exec_eambfc(args, NULL, NULL) != EXIT_SUCCESS) {
         MSG("FAILURE", "failed to compile");
@@ -440,7 +440,7 @@ static test_outcome tm_test(const char *arch, bool opt) {
     default: break;
     }
     const char *args[] = {
-        EAMBFC, "-j", opt ? "-Oa" : "-a", arch, "truthmachine.bf", NULL
+        EAMBFC, opt ? "-Oa" : "-a", arch, "truthmachine.bf", NULL
     };
     if (exec_eambfc(args, NULL, NULL) != EXIT_SUCCESS) {
         MSG("FAILURE", "failed to compile");
