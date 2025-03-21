@@ -1,6 +1,9 @@
 /* SPDX-FileCopyrightText: 2025 Eli Array Minkoff
  *
- * SPDX-License-Identifier: GPL-3.0-only */
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Runs tests of eambfc's command-line behavior, with no dependencies beyond a
+ * POSIX-compliant libc, and no use of eambfc's internal functions */
 
 /* C99 */
 #include <limits.h>
@@ -15,25 +18,31 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
-/* internal */
+
+/* internal - only macros and typedefs */
 #include "../attributes.h"
 #include "../config.h"
 #include "../types.h"
+/* internal - A header which provides a macro to generate a string containing
+ * the expected output of colortest using the C Preprocessor */
 #include "colortest_output.h"
+#include "test_utils.h"
 
-#define EPRINTF(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
-
-/* alternative to using non-portable, non-standard `asprintf` for new strings
- * (snprintf to NULL with size zero is stated by the C99 standard to be allowed,
- * and is defined to return the number of bytes that would have been added) */
-#define SPRINTF_NEW(dst, fmt, ...) \
-    do { \
-        dst = malloc(snprintf(NULL, 0, fmt, __VA_ARGS__) + 1); \
-        if (dst == NULL) abort(); \
-        sprintf(dst, fmt, __VA_ARGS__); \
-    } while (0)
-
+/* pointer to a string containing the path to the EAMBFC executable.
+ *
+ * Set in the main function to `argv[1]`, falling back to `"../eambfc"` if argv
+ * isn't long enough.
+ *
+ * After that, it must be left unchanged through the duration of the program. */
 static const char *EAMBFC;
+
+/* convenience macro to prepend the eambfc executable as args[0] and append NULL
+ * to arguments */
+#define ARGS(...) \
+    (const char *[]) { \
+        EAMBFC, __VA_ARGS__, NULL \
+    }
+
 static const char *ARCHES[BFC_NUM_BACKENDS + 1];
 
 enum arch_support_status {
@@ -104,19 +113,23 @@ typedef struct result_tracker {
     u8 succeeded;
 } result_tracker;
 
+/* Information about binary tests. */
 typedef struct bintest {
+    /* the argv[0] value when running the binary */
     const char *test_bin;
+    /* the expected output of the binary */
     const char *expected;
+    /* the size of the expected output */
     size_t expected_sz;
 } bintest;
 
 static const bintest BINTESTS[] = {
-    {"colortest", COLORTEST_OUTPUT, COLORTEST_OUTPUT_LEN},
-    {"hello", "Hello, world!\n", 14},
-    {"loop", "!", 1},
-    {"null", "", 0},
-    {"wrap", "\xf0\x9f\xa7\x9f" /* utf8-encoded zombie emoji */, 4},
-    {"wrap2", "0000", 4},
+    {"./colortest", COLORTEST_OUTPUT, COLORTEST_OUTPUT_LEN},
+    {"./hello", "Hello, world!\n", 14},
+    {"./loop", "!", 1},
+    {"./null", "", 0},
+    {"./wrap", "\xf0\x9f\xa7\x9f" /* utf8-encoded zombie emoji */, 4},
+    {"./wrap2", "0000", 4},
 };
 
 #define NBINTESTS 6
@@ -127,76 +140,13 @@ typedef enum test_outcome {
     TEST_SKIPPED = 1,
 } test_outcome;
 
-static nonnull_args size_t read_chunk(sized_buf *dst, int fd) {
-    if (dst->capacity > (SIZE_MAX - 0x8080)) abort();
-    char buf[128];
-    ssize_t ct = read(fd, buf, 128);
-    if (ct < 0) abort();
-    size_t needed_cap = dst->sz + ct;
-    if (needed_cap > dst->capacity) {
-        if (needed_cap & 0xfff) needed_cap = (needed_cap + 0x1000) & (~0xfff);
-        char *newbuf = realloc(dst->buf, needed_cap);
-        if (newbuf == NULL) abort();
-        dst->buf = newbuf;
-    }
-    memcpy(dst->buf + dst->sz, buf, ct);
-    dst->sz += ct;
-    return ct;
-}
-
-#define ARGS(...) (const char *[]){EAMBFC, __VA_ARGS__, (char *)0}
-
-nonnull_arg(1) static int exec_eambfc(
-    const char *args[], sized_buf *out, sized_buf *err
-) {
-    int chld_status;
-    pid_t chld;
-    int out_pipe[2];
-    int err_pipe[2];
-    if (out != NULL && pipe(out_pipe) != 0) abort();
-    if (err != NULL && pipe(err_pipe) != 0) abort();
-    switch (chld = fork()) {
-    case -1: abort();
-    case 0:
-        if (out != NULL) {
-            dup2(out_pipe[1], STDOUT_FILENO);
-            close(out_pipe[0]);
-            close(out_pipe[1]);
-        }
-        if (err != NULL) {
-            dup2(err_pipe[1], STDERR_FILENO);
-            close(err_pipe[0]);
-            close(err_pipe[1]);
-        }
-        /* This cast is risky, but the POSIX standard explicitly documents that
-         * args are not modified, and the use of `char *const[]` instead of
-         * `const char *const[]` is for compatibility with existing code calling
-         * the execv* variants of exec.
-         *
-         * As long as the data is not actually modified, no UB occurs. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-qual"
-        execv(EAMBFC, (char *const *)args);
-#pragma GCC diagnostic pop
-        abort();
-    default:
-        if (out) close(out_pipe[1]);
-        if (err) close(err_pipe[1]);
-        while ((out && read_chunk(out, out_pipe[0])) ||
-               (err && read_chunk(err, err_pipe[0])));
-        if (waitpid(chld, &chld_status, 0) == -1) abort();
-        if (!WIFEXITED(chld_status)) abort();
-        return WEXITSTATUS(chld_status);
-    }
-}
-
 /* test a binary which takes no input, making sure it exists successfully after
  * writing the expected data to stdout */
 static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
 #define MSG(outcome, reason) \
     EPRINTF( \
         outcome ": %s (%s%s): " reason "\n", \
-        BINTESTS[bt].test_bin, \
+        BINTESTS[bt].test_bin + 2, \
         arch, \
         opt ? ", optimized" : "" \
     )
@@ -208,66 +158,58 @@ static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
     case CANT_RUN:
         MSG("SKIPPED", "can't run target binaries");
         return TEST_SKIPPED;
-    case UNKNOWN_ARCH: abort();
+    case UNKNOWN_ARCH:
+        EPRINTF("Unreachable branch at " __FILE__ ":%d reached\n", __LINE__);
+        abort();
     default: break;
     }
 
     size_t nbytes = BINTESTS[bt].expected_sz;
-    char *src_name;
-    SPRINTF_NEW(src_name, "%s.bf", BINTESTS[bt].test_bin);
+    /* + 3 for ".bf", + 1 for NUL terminator, - 2 for the skipped bytes */
+    char *src_name = checked_malloc(strlen(BINTESTS[bt].test_bin) + 2);
+    /* set src_name to BINTESTS[bt].test_bin without the leading "./", and with
+     * ".bf" appended. */
+    strcpy(stpcpy(src_name, BINTESTS[bt].test_bin + 2), ".bf");
 
     const char **args = ARGS(opt ? "-Oa" : "-a", arch, "--", src_name);
 
-    if (exec_eambfc(args, NULL, NULL) != EXIT_SUCCESS) {
+    if (subprocess(args) != EXIT_SUCCESS) {
         MSG("FAILURE", "failed to compile");
         goto fail_before_chld;
     }
 
-    char *chld_output = malloc(nbytes ? nbytes : 1);
-    if (chld_output == NULL) abort();
+    sized_buf chld_output = {
+        .buf = checked_malloc(nbytes), .sz = 0, .capacity = nbytes
+    };
+    run_capturing(
+        (const char *[]){BINTESTS[bt].test_bin, NULL}, &chld_output, NULL
+    );
 
-    char dummy;
-    char *cmd;
-    SPRINTF_NEW(cmd, "./%s", BINTESTS[bt].test_bin);
-    FILE *chld = popen(cmd, "r");
-
-    if (nbytes && fread(chld_output, 1, nbytes, chld) != nbytes) {
-        MSG("FAILURE", "not enough output");
-        goto fail_with_chld;
+    if (nbytes) {
+        if (chld_output.sz != nbytes) {
+            MSG("FAILURE", "output size mismatch");
+            goto fail_after_chld;
+        }
+        if (memcmp(chld_output.buf, BINTESTS[bt].expected, nbytes) != 0) {
+            MSG("FAILURE", "output mismatch");
+            goto fail_after_chld;
+        }
     }
 
-    if (fread(&dummy, 1, 1, chld) > 0 || ferror(chld)) {
-        MSG("FAILURE", "too much output");
-        goto fail_with_chld;
-    }
-
-    if (pclose(chld) != EXIT_SUCCESS) {
-        MSG("FAILURE", "child process failed");
-        goto fail_after_chld;
-    }
-
-    if (nbytes && memcmp(chld_output, BINTESTS[bt].expected, nbytes) != 0) {
-        MSG("FAILURE", "output mismatch");
-        goto fail_after_chld;
-    }
-
-    free(cmd);
-    free(chld_output);
+    free(chld_output.buf);
     free(src_name);
     EPRINTF(
         "SUCCESS: %s (%s%s)\n",
-        BINTESTS[bt].test_bin,
+        BINTESTS[bt].test_bin + 2,
         arch,
         opt ? ", optimized" : ""
     );
-    /* both exit_status and cmp_status should be zero on success */
+    CHECKED(unlink(BINTESTS[bt].test_bin) == 0);
     return TEST_SUCCEEDED;
 
-fail_with_chld:
-    pclose(chld);
 fail_after_chld:
-    free(chld_output);
-    free(cmd);
+    free(chld_output.buf);
+    CHECKED(unlink(BINTESTS[bt].test_bin) == 0);
 fail_before_chld:
     free(src_name);
     return TEST_FAILED;
@@ -282,35 +224,64 @@ static bool rw_test_run(uchar byte, uchar *output_byte) {
     int chld_status;
     uchar overwrite;
     pid_t chld;
-    if (pipe(c2p) != 0) abort();
-    if (pipe(p2c) != 0) abort();
-    switch (chld = fork()) {
-    case -1: abort();
-    case 0:
-        dup2(p2c[0], STDIN_FILENO);
-        dup2(c2p[1], STDOUT_FILENO);
-        close(c2p[0]);
-        close(c2p[1]);
-        close(p2c[0]);
-        close(p2c[1]);
-        execl("./rw", "./rw", NULL);
+    CHECKED(pipe(c2p) == 0);
+    CHECKED(pipe(p2c) == 0);
+    CHECKED((chld = fork()) != -1);
+    if (chld == 0) {
+        POST_FORK_CHECKED(close(p2c[1]) == 0);
+        POST_FORK_CHECKED(close(c2p[0]) == 0);
+        POST_FORK_CHECKED(dup2(p2c[0], STDIN_FILENO) >= 0);
+        POST_FORK_CHECKED(dup2(c2p[1], STDOUT_FILENO) >= 0);
+        POST_FORK_CHECKED(close(p2c[0]) == 0);
+        POST_FORK_CHECKED(close(c2p[1]) == 0);
+        POST_FORK_CHECKED(execl("./rw", "./rw", NULL) != -1);
         abort();
-    default:
-        close(c2p[1]);
-        close(p2c[0]);
-        if (write(p2c[1], &byte, 1) != 1) goto fail;
-        wait(&chld_status);
-        if (!WIFEXITED(chld_status)) goto fail;
-        if (WEXITSTATUS(chld_status) != 0) goto fail;
-        if (read(c2p[0], output_byte, 1) != 1) goto fail;
-        if (read(c2p[0], &overwrite, 1) != 0) goto fail;
-        close(c2p[0]);
-        close(p2c[1]);
-        return true;
     }
+    CHECKED(close(c2p[1]) != -1);
+    CHECKED(close(p2c[0]) != -1);
+    if (write(p2c[1], &byte, 1) != 1) {
+        EPRINTF(
+            __FILE__ ":%s:%d: failed to write to p2c[1]\n", __func__, __LINE__
+        );
+        goto fail;
+    }
+
+    if (read(c2p[0], output_byte, 1) != 1) {
+        EPRINTF(__FILE__ ":%s:%d: no bytes read\n", __func__, __LINE__);
+        goto fail;
+    }
+    if (read(c2p[0], &overwrite, 1) != 0) {
+        EPRINTF(
+            __FILE__ ":%s:%d: more than one byte read\n", __func__, __LINE__
+        );
+        goto fail;
+    }
+    CHECKED(close(c2p[0]) != -1);
+    CHECKED(close(p2c[1]) != -1);
+    CHECKED(waitpid(chld, &chld_status, 0) == chld);
+    if (!WIFEXITED(chld_status)) {
+        EPRINTF(
+            __FILE__ ":%s:%d: child exited abnormally\n", __func__, __LINE__
+        );
+        if (WIFSIGNALED(chld_status)) {
+            EPRINTF(
+                "stopped due to signal %s.\n", strsignal(WTERMSIG(chld_status))
+            );
+        }
+        if (WIFSTOPPED(chld_status)) kill(chld, SIGTERM);
+        return false;
+    }
+    if (WEXITSTATUS(chld_status) != 0) {
+        EPRINTF(
+            __FILE__ ":%s:%d: nonzero child exit code\n", __func__, __LINE__
+        );
+        return false;
+    }
+    return true;
 fail:
-    close(c2p[0]);
-    close(p2c[1]);
+    CHECKED(kill(chld, SIGTERM) == 0);
+    CHECKED(close(c2p[0]) != -1);
+    CHECKED(close(p2c[1]) != -1);
     return false;
 }
 
@@ -325,16 +296,19 @@ static test_outcome rw_test(const char *arch, bool opt) {
     case CANT_RUN:
         MSG("SKIPPED", "can't run target binaries");
         return TEST_SKIPPED;
-    case UNKNOWN_ARCH: abort();
+    case UNKNOWN_ARCH:
+        EPRINTF("Unreachable branch at " __FILE__ ":%d reached\n", __LINE__);
+        abort();
     default: break;
     }
 
     const char **args = ARGS(opt ? "-Oa" : "-a", arch, "rw.bf");
 
-    if (exec_eambfc(args, NULL, NULL) != EXIT_SUCCESS) {
+    if (subprocess(args) != EXIT_SUCCESS) {
         MSG("FAILURE", "failed to compile");
         return TEST_FAILED;
     }
+    test_outcome ret;
 
     for (uint i = 0; i < 256; i++) {
         uchar out_byte;
@@ -345,7 +319,8 @@ static test_outcome rw_test(const char *arch, bool opt) {
                 variant,
                 i
             );
-            return TEST_FAILED;
+            ret = TEST_FAILED;
+            goto cleanup;
         }
         if (out_byte != i) {
             EPRINTF(
@@ -356,12 +331,16 @@ static test_outcome rw_test(const char *arch, bool opt) {
                 i,
                 out_byte
             );
-            return TEST_FAILED;
+            ret = TEST_FAILED;
+            goto cleanup;
         }
     }
 
     EPRINTF("SUCCESS: rw (%s%s)\n", arch, variant);
-    return TEST_SUCCEEDED;
+    ret = TEST_SUCCEEDED;
+cleanup:
+    CHECKED(unlink("rw") == 0);
+    return ret;
 #undef MSG
 }
 
@@ -371,53 +350,50 @@ static bool tm_test_run(char outbuf[2][16]) {
     int chld_status;
     pid_t chld;
     char inputs[] = "01";
-    signal(SIGPIPE, SIG_DFL);
     for (int iter = 0; inputs[iter]; iter++) {
-        if (pipe(c2p) != 0) abort();
-        if (pipe(p2c) != 0) abort();
-        switch (chld = fork()) {
-        case -1: abort();
-        case 0:
-            dup2(p2c[0], STDIN_FILENO);
-            dup2(c2p[1], STDOUT_FILENO);
-            close(c2p[0]);
-            close(c2p[1]);
-            close(p2c[0]);
-            close(p2c[1]);
-            execl("./truthmachine", "./truthmachine", NULL);
-            abort();
-        default:
-            close(c2p[1]);
-            close(p2c[0]);
-            if (write(p2c[1], &inputs[iter], 1) != 1) goto chld_fail;
-            close(p2c[1]);
-            if (iter == 0) {
-                if (read(c2p[0], outbuf[0], 16) != 1) goto chld_fail;
-                wait(&chld_status);
-                if (!WIFEXITED(chld_status)) goto fail;
-                if (WEXITSTATUS(chld_status) != 0) goto fail;
-                close(c2p[0]);
-            } else {
-                /* can't do read(.., 16) because child process's output is not
-                 * buffered and less than 16 bytes could have been written. */
-                for (ifast_8 i = 0; i < 16; i++) {
-                    if (read(c2p[0], &outbuf[1][i], 1) != 1) goto chld_fail;
-                }
-                close(c2p[0]);
-                wait(&chld_status);
-                if (!WIFSIGNALED(chld_status)) goto fail;
-                if (WTERMSIG(chld_status) != SIGPIPE) goto fail;
+        CHECKED(pipe(c2p) == 0);
+        CHECKED(pipe(p2c) == 0);
+        CHECKED((chld = fork()) != -1);
+        if (chld == 0) {
+            signal(SIGPIPE, SIG_DFL);
+            POST_FORK_CHECKED(close(c2p[0]) == 0);
+            POST_FORK_CHECKED(close(p2c[1]) == 0);
+            POST_FORK_CHECKED(dup2(p2c[0], STDIN_FILENO) >= 0);
+            POST_FORK_CHECKED(dup2(c2p[1], STDOUT_FILENO) >= 0);
+            POST_FORK_CHECKED(close(p2c[0]) == 0);
+            POST_FORK_CHECKED(close(c2p[1]) == 0);
+            POST_FORK_CHECKED(
+                execl("./truthmachine", "./truthmachine", NULL) != -1
+            );
+        }
+        CHECKED(close(c2p[1]) == 0);
+        CHECKED(close(p2c[0]) == 0);
+        if (write(p2c[1], &inputs[iter], 1) != 1) goto chld_fail;
+        CHECKED(close(p2c[1]) == 0);
+        if (iter == 0) {
+            if (read(c2p[0], outbuf[0], 16) != 1) goto chld_fail;
+            if (waitpid(chld, &chld_status, 0) != chld) goto fail;
+            if (!WIFEXITED(chld_status)) goto fail;
+            if (WEXITSTATUS(chld_status) != 0) goto fail;
+            CHECKED(close(c2p[0]) == 0);
+        } else {
+            /* can't do read(.., 16) because child process's output is not
+             * buffered and less than 16 bytes could have been written. */
+            for (ifast_8 i = 0; i < 16; i++) {
+                if (read(c2p[0], &outbuf[1][i], 1) != 1) goto chld_fail;
             }
+            CHECKED(close(c2p[0]) == 0);
+            CHECKED(waitpid(chld, &chld_status, 0) != -1);
+            if (!WIFSIGNALED(chld_status)) goto fail;
+            if (WTERMSIG(chld_status) != SIGPIPE) goto fail;
         }
     }
-    signal(SIGPIPE, SIG_IGN);
     return true;
 chld_fail:
     kill(chld, SIGTERM);
 fail:
     close(c2p[0]);
     close(p2c[1]);
-    signal(SIGPIPE, SIG_IGN);
     return false;
 }
 
@@ -436,33 +412,41 @@ static test_outcome tm_test(const char *arch, bool opt) {
     case CANT_RUN:
         MSG("SKIPPED", "can't run target binaries");
         return TEST_SKIPPED;
-    case UNKNOWN_ARCH: abort();
+    case UNKNOWN_ARCH:
+        EPRINTF("Unreachable branch at " __FILE__ ":%d reached\n", __LINE__);
+        abort();
     default: break;
     }
     const char *args[] = {
         EAMBFC, opt ? "-Oa" : "-a", arch, "truthmachine.bf", NULL
     };
-    if (exec_eambfc(args, NULL, NULL) != EXIT_SUCCESS) {
+    if (subprocess(args) != EXIT_SUCCESS) {
         MSG("FAILURE", "failed to compile");
         return TEST_FAILED;
     }
+
+    test_outcome ret;
 
     char outbuf[2][16] = {{0}, {0}};
     const char expected[2][16] = {"0", "1111111111111111"};
     if (!tm_test_run(outbuf)) {
         MSG("FAILURE", "abnormal run");
-        return TEST_FAILED;
+        goto cleanup;
     }
     if (memcmp(expected[0], outbuf[0], 16) != 0) {
         MSG("FAILURE", "input '0' results in output other than single '0'");
-        return TEST_FAILED;
+        goto cleanup;
     }
     if (memcmp(expected[1], outbuf[1], 16) != 0) {
         MSG("FAILURE", "input '1' results in output other than repeating '1'");
-        return TEST_FAILED;
+        goto cleanup;
     }
     EPRINTF("SUCCESS: truthmachine (%s%s)\n", arch, opt ? ", optimized" : "");
-    return TEST_SUCCEEDED;
+    ret = TEST_SUCCEEDED;
+cleanup:
+    CHECKED(unlink("truthmachine") == 0);
+    return ret;
+#undef MSG
 }
 
 static nonnull_args void count_result(
@@ -504,7 +488,7 @@ static nonnull_args test_outcome err_test(
 
     sized_buf out = {.buf = calloc(4096, 1), .sz = 0, .capacity = 4096};
     if (out.buf == NULL) abort();
-    if (exec_eambfc(moved_args, &out, NULL) != EXIT_FAILURE) {
+    if (run_capturing(moved_args, &out, NULL) != EXIT_FAILURE) {
         free(out.buf);
         free(moved_args);
         EPRINTF(
@@ -545,7 +529,7 @@ static nonnull_args void run_bad_arg_tests(result_tracker *results) {
         {"MissingOperand (-e)", "MissingOperand", ARGS("-e")},
         {"MissingOperand (-t)", "MissingOperand", ARGS("-t")},
         {NULL, "UnknownArg", ARGS("-T")},
-        {NULL, "NoSourceFiles", ARGS((char *)0)},
+        {NULL, "NoSourceFiles", ARGS(NULL)},
         {NULL, "BadSourceExtension", ARGS("test_driver.c")},
         {NULL, "TapeSizeZero", ARGS("-t0")},
         {NULL, "TapeTooLarge", ARGS("-t9223372036854775807")},
@@ -566,23 +550,27 @@ static nonnull_args void run_perm_err_tests(result_tracker *results) {
         results, err_test("OpenReadFailed", "OpenReadFailed", ARGS("hello.bf"))
     );
     chmod("hello.bf", hello_perms.st_mode);
-    if (creat("hello.b", 0500) < 0) abort();
+    int fd;
+    CHECKED((fd = creat("hello.b", 0500)) >= 0);
+    CHECKED(close(fd) == 0);
     count_result(
         results,
         err_test(
             "OpenWriteFailed", "OpenWriteFailed", ARGS("-e", "f", "hello.bf")
         )
     );
-    unlink("hello.b");
+    CHECKED(unlink("hello.b") == 0);
 }
 
 int main(int argc, const char *argv[]) {
     if (!argc) abort();
     if (!strchr(argv[0], '/')) abort();
     char *argv0 = strdup(argv[0]);
-    if (argv0 == NULL || chdir(dirname(argv0)) != 0) abort();
+    if (argv0 == NULL) abort();
+    CHECKED(chdir(dirname(argv0)) == 0);
     free(argv0);
 
+    signal(SIGPIPE, SIG_IGN);
     EAMBFC = getenv("EAMBFC");
     if (EAMBFC == NULL) EAMBFC = "../eambfc";
     load_arch_support();
@@ -590,7 +578,6 @@ int main(int argc, const char *argv[]) {
     run_bad_arg_tests(&results);
     run_perm_err_tests(&results);
     run_bin_tests(&results);
-    signal(SIGPIPE, SIG_IGN);
     printf(
         "\n#################\nRESULTS\n\n"
         "SUCCESSES: %" PRIu8 "\nFAILURES:  %" PRIu8 "\nSKIPPED:   %" PRIu8 "\n",

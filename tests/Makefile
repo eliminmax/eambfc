@@ -7,11 +7,24 @@
 
 EAMBFC = ../eambfc
 EAMBFC_ARGS = -Ok
-test: test_driver hello.elf unseekable piped_in alternative_extension
+# This flag enables POSIX.1-2008-specific macros and features
+POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
+
+# replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
+# overridden if CFLAGS are passed as an argument to make.
+.SUFFIXES: .c.o
+.c.o:
+	$(CC) $(CFLAGS) $(POSIX_CFLAG) -c -o $@ $<
+
+test: test_driver
 	./test_driver
 
-test_driver: test_driver.c
-	$(CC) -D _POSIX_C_SOURCE=200908L $(CFLAGS) $(LDFLAGS) $@.c $(LDLIBS) -o $@
+test_driver: test_driver.o test_utils.o
+	$(CC) $(CFLAGS) $(POSIX_CFLAG) $(LDFLAGS) \
+		-o $@ test_driver.o test_utils.o $(LDLIBS)
+
+test_driver.o: test_driver.c
+test_utils.o: test_utils.c
 
 
 # test handling of provided output suffixes
@@ -54,4 +67,5 @@ clean:
 	rm -f .*.build_err hello rw loop null wrap wrap2 colortest \
 		truthmachine too_many_nested_loops unmatched_close \
 		unmatched_open unseekable alternative_extension unseekable_f \
-		piped_in piped_in.bf dead_code hello.elf test_driver hello.b
+		piped_in piped_in.bf dead_code hello.elf test_driver hello.b \
+		test_driver.o test_utils.o
