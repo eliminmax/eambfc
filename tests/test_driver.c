@@ -6,6 +6,7 @@
  * POSIX-compliant libc, and no use of eambfc's internal functions */
 
 /* C99 */
+#include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -130,9 +131,10 @@ static const bintest BINTESTS[] = {
     {"./null", "", 0},
     {"./wrap", "\xf0\x9f\xa7\x9f" /* utf8-encoded zombie emoji */, 4},
     {"./wrap2", "0000", 4},
+    {"./dead_code", "", 0},
 };
 
-#define NBINTESTS 6
+#define NBINTESTS 7
 
 typedef enum test_outcome {
     TEST_FAILED = -1,
@@ -562,6 +564,269 @@ static nonnull_args void run_perm_err_tests(result_tracker *results) {
     CHECKED(unlink("hello.b") == 0);
 }
 
+typedef nonnull_args test_outcome (*hellotest)(const sized_buf *const);
+
+#define MSG(outcome, reason) EPRINTF(outcome ": %s: " reason "\n", __func__);
+
+static nonnull_args test_outcome
+test_unseekable(const sized_buf *const hello_code) {
+    CHECKED(mkfifo("unseekable", 0755) == 0);
+    CHECKED(symlink("hello.bf", "unseekable.bf") == 0);
+    pid_t chld;
+    int fifo_fd, chld_status;
+    CHECKED((chld = fork()) != -1);
+    if (chld == 0) {
+        execl(EAMBFC, EAMBFC, "unseekable.bf", NULL);
+        /* can't safely call fputs - it's not signal-safe, and only signal-safe
+         * functions are guaranteed to have defined behavior between fork and
+         * exec. */
+        write(
+            STDERR_FILENO,
+            "Failed to exec eambfc to compile unseekable.bf\n",
+            48
+        );
+        abort();
+    }
+    CHECKED((fifo_fd = open("unseekable", O_RDONLY)) != -1);
+    sized_buf output = {
+        .buf = checked_malloc(BFC_CHUNK_SIZE),
+        .sz = 0,
+        .capacity = BFC_CHUNK_SIZE
+    };
+    while (read_chunk(&output, fifo_fd));
+    CHECKED((waitpid(chld, &chld_status, 0) != -1));
+    CHECKED(unlink("unseekable") == 0);
+    CHECKED(unlink("unseekable.bf") == 0);
+    if (!WIFEXITED(chld_status)) {
+        MSG("FAILURE", "eambfc stopped abnormally when compiling unseekable\n");
+        free(output.buf);
+        return TEST_FAILED;
+    }
+    if (WEXITSTATUS(chld_status) != EXIT_SUCCESS) {
+        MSG("FAILURE", "eambfc exit status indicates failure");
+        free(output.buf);
+        return TEST_FAILED;
+    }
+    if (sb_eq(&output, hello_code)) {
+        fputs("SUCCESS: unseekable\n", stderr);
+        free(output.buf);
+        return TEST_SUCCEEDED;
+    } else {
+        MSG("FAILURE", "output mismatch");
+        free(output.buf);
+        return TEST_FAILED;
+    }
+}
+
+static nonnull_args test_outcome
+alternate_extension(const sized_buf *const hello_code) {
+    CHECKED(symlink("hello.bf", "alternate_extension.brnfck") == 0);
+    const char **args = ARGS("-e", ".brnfck", "alternate_extension.brnfck");
+    if (subprocess(args) != EXIT_SUCCESS) {
+        MSG("FAILURE", "eambfc returned nonzero exit code");
+        CHECKED(unlink("alternate_extension.brnfck") == 0);
+        return TEST_FAILED;
+    }
+    CHECKED(unlink("alternate_extension.brnfck") == 0);
+    sized_buf output = {
+        .buf = checked_malloc(BFC_CHUNK_SIZE),
+        .sz = 0,
+        .capacity = BFC_CHUNK_SIZE
+    };
+    int fd;
+    CHECKED((fd = open("alternate_extension", O_RDONLY)) != -1);
+    while (read_chunk(&output, fd));
+    CHECKED(close(fd) == 0);
+    CHECKED(unlink("alternate_extension") == 0);
+    if (sb_eq(&output, hello_code)) {
+        fputs("SUCCESS: alternate_extension\n", stderr);
+        free(output.buf);
+        return TEST_SUCCEEDED;
+    } else {
+        MSG("FAILURE", "output mismatch");
+        free(output.buf);
+        return TEST_FAILED;
+    }
+}
+
+static nonnull_args test_outcome out_suffix(const sized_buf *const hello_code) {
+    const char **args = ARGS("-s", ".elf", "hello.bf");
+    if (subprocess(args) != EXIT_SUCCESS) {
+        MSG("FAILURE", "eambfc returned nonzero exit code");
+        return TEST_FAILED;
+    }
+    sized_buf output = {
+        .buf = checked_malloc(BFC_CHUNK_SIZE),
+        .sz = 0,
+        .capacity = BFC_CHUNK_SIZE
+    };
+
+    int fd;
+    CHECKED((fd = open("hello.elf", O_RDONLY)) != -1);
+    while (read_chunk(&output, fd));
+    CHECKED(close(fd) == 0);
+    CHECKED(unlink("hello.elf") == 0);
+
+    if (sb_eq(&output, hello_code)) {
+        fputs("SUCCESS: out_suffix\n", stderr);
+        free(output.buf);
+        return TEST_SUCCEEDED;
+    } else {
+        MSG("FAILURE", "output mismatch");
+        free(output.buf);
+        return TEST_FAILED;
+    }
+}
+
+static nonnull_args test_outcome piped_in(const sized_buf *const hello_code) {
+    CHECKED(mkfifo("piped_in.bf", 0755) == 0);
+    pid_t chld;
+    CHECKED((chld = fork()) != -1);
+    if (chld == 0) {
+        execl(EAMBFC, EAMBFC, "piped_in.bf", NULL);
+        write(
+            STDERR_FILENO, "Failed to exec eambfc to compile piped_in.bf\n", 45
+        );
+        abort();
+    }
+    int fifo_fd, hello_fd, chld_status;
+    CHECKED((hello_fd = open("hello.bf", O_RDONLY)) != -1);
+    CHECKED((fifo_fd = open("piped_in.bf", O_WRONLY)) != -1);
+    char transfer[BFC_CHUNK_SIZE];
+    ssize_t sz;
+    while ((sz = read(hello_fd, transfer, BFC_CHUNK_SIZE))) {
+        CHECKED(sz != -1);
+        CHECKED(write(fifo_fd, transfer, sz) == sz);
+    }
+    CHECKED(close(hello_fd) == 0);
+    CHECKED(close(fifo_fd) == 0);
+    CHECKED(waitpid(chld, &chld_status, 0) == chld);
+    if (!WIFEXITED(chld_status) || WEXITSTATUS(chld_status) != EXIT_SUCCESS) {
+        MSG("FAILURE", "eambfc didn't exit successfully\n");
+        return TEST_FAILED;
+    }
+    sized_buf output = {
+        .buf = checked_malloc(BFC_CHUNK_SIZE),
+        .sz = 0,
+        .capacity = BFC_CHUNK_SIZE
+    };
+    int fd;
+    CHECKED((fd = open("piped_in", O_RDONLY)) != -1);
+    while (read_chunk(&output, fd));
+    CHECKED(close(fd) == 0);
+    CHECKED(unlink("piped_in") == 0);
+    CHECKED(unlink("piped_in.bf") == 0);
+
+    if (sb_eq(&output, hello_code)) {
+        fputs("SUCCESS: piped_in\n", stderr);
+        free(output.buf);
+        return TEST_SUCCEEDED;
+    } else {
+        MSG("FAILURE", "output mismatch");
+        free(output.buf);
+        return TEST_FAILED;
+    }
+}
+
+static nonnull_args void run_alt_hello_tests(result_tracker *results) {
+    const hellotest test_funcs[] = {
+        test_unseekable,
+        alternate_extension,
+        out_suffix,
+        piped_in,
+        NULL,
+    };
+    if (subprocess(ARGS("hello.bf")) != EXIT_SUCCESS) {
+        fputs("failed to compile hello.bf for comparisons\n", stderr);
+        abort();
+    }
+    sized_buf hello = {
+        .buf = checked_malloc(BFC_CHUNK_SIZE),
+        .sz = 0,
+        .capacity = BFC_CHUNK_SIZE
+    };
+    int fd;
+    CHECKED((fd = open("hello", O_RDONLY)) != -1);
+    while (read_chunk(&hello, fd));
+    CHECKED(close(fd) == 0);
+    CHECKED(unlink("hello") == 0);
+    for (int i = 0; test_funcs[i] != NULL; i++) {
+        count_result(results, test_funcs[i](&hello));
+    }
+
+    free(hello.buf);
+}
+
+static nonnull_args test_outcome dead_code(void) {
+    if (subprocess(ARGS("-O", "null.bf", "dead_code.bf")) != EXIT_SUCCESS) {
+        MSG("FAILURE", "failed to compile hello.bf for comparisons");
+        CHECKED(unlink("null") == 0 || errno == ENOENT);
+        CHECKED(unlink("dead_code") == 0 || errno == ENOENT);
+        return EXIT_FAILURE;
+    }
+    int fd;
+
+    sized_buf dead_code_output = {
+        .buf = checked_malloc(BFC_CHUNK_SIZE),
+        .sz = 0,
+        .capacity = BFC_CHUNK_SIZE
+    };
+    CHECKED((fd = open("dead_code", O_RDONLY)) != -1);
+    while (read_chunk(&dead_code_output, fd));
+    CHECKED(close(fd) == 0);
+
+    sized_buf null_output = {
+        .buf = checked_malloc(BFC_CHUNK_SIZE),
+        .sz = 0,
+        .capacity = BFC_CHUNK_SIZE
+    };
+    CHECKED((fd = open("null", O_RDONLY)) != -1);
+    while (read_chunk(&null_output, fd));
+    CHECKED(close(fd) == 0);
+
+    bool succeeded = sb_eq(&dead_code_output, &null_output);
+
+    free(dead_code_output.buf);
+    free(null_output.buf);
+    CHECKED(unlink("null") == 0 || errno == ENOENT);
+    CHECKED(unlink("dead_code") == 0 || errno == ENOENT);
+    if (succeeded) {
+        fputs("SUCCESS: dead_code\n", stderr);
+        return TEST_SUCCEEDED;
+    } else {
+        MSG("FAILURE", "dead_code not optimiazed down equivalent to nothing");
+        return TEST_FAILED;
+    }
+}
+
+#undef MSG
+
+static nonnull_args void run_misc_tests(result_tracker *results) {
+    count_result(results, dead_code());
+    const char *unmatched_types[2][2] = {
+        {"UnmatchedOpen", "unmatched_open.bf"},
+        {"UnmatchedClose", "unmatched_close.bf"}
+    };
+    for (int i = 0; i < 2; i++) {
+        count_result(
+            results,
+            err_test(
+                unmatched_types[i][0],
+                unmatched_types[i][0],
+                ARGS(unmatched_types[i][1])
+            )
+        );
+        count_result(
+            results,
+            err_test(
+                unmatched_types[i][0],
+                unmatched_types[i][0],
+                ARGS("-O", unmatched_types[i][1])
+            )
+        );
+    }
+}
+
 int main(int argc, const char *argv[]) {
     if (!argc) abort();
     if (!strchr(argv[0], '/')) abort();
@@ -578,6 +843,8 @@ int main(int argc, const char *argv[]) {
     run_bad_arg_tests(&results);
     run_perm_err_tests(&results);
     run_bin_tests(&results);
+    run_alt_hello_tests(&results);
+    run_misc_tests(&results);
     printf(
         "\n#################\nRESULTS\n\n"
         "SUCCESSES: %" PRIu8 "\nFAILURES:  %" PRIu8 "\nSKIPPED:   %" PRIu8 "\n",

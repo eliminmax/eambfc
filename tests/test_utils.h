@@ -7,6 +7,7 @@
 /* C99 */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 /* POSIX */
 #include <unistd.h>
 /* internal */
@@ -19,6 +20,10 @@
 #else /* BFC_TEST_UTILS_C */
 #define inline_impl inline
 #endif /* BFC_TEST_UTILS_C */
+
+nonnull_args inline_impl bool sb_eq(const sized_buf *a, const sized_buf *b) {
+    return a->sz == b->sz && memcmp(a->buf, b->buf, a->sz) == 0;
+}
 
 /* malloc, aborting on failure*/
 nonnull_ret malloc_like inline_impl void *checked_malloc(size_t sz) {
