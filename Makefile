@@ -66,8 +66,8 @@ all_arch_test: can_run_all eambfc
 
 unit_test_driver: $(UNIT_TEST_DEPS)
 	$(CC) $$(llvm-config --cflags) -DBFC_TEST=1 -o $@ \
-	    $(LDFLAGS) unit_test.c $(ALL_SOURCES) \
-	    $(LDLIBS) -lcunit $$(llvm-config --ldflags --libs)
+		$(LDFLAGS) unit_test.c $(ALL_SOURCES) \
+		$(LDLIBS) -lcunit $$(llvm-config --ldflags --libs)
 
 # remove eambfc and the objects it's built from, and remove test artifacts
 clean:
