@@ -6,11 +6,13 @@
 
 /* C99 */
 #include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 /* POSIX */
 #include <unistd.h>
 /* internal */
 #include "attributes.h"
+#include "config.h"
 #include "err.h"
 #include "resource_mgr.h"
 #include "types.h"
@@ -76,22 +78,6 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
 nonnull_args bool append_obj(
     sized_buf *restrict dst, const void *restrict bytes, size_t bytes_sz
 ) {
-    /* if more space is needed, ensure no overflow occurs when calculating new
-     * space requirements, then allocate it.
-     *
-     * Make sure to leave 8 KiB shy of SIZE_MAX available - it will never
-     * get anywhere near that high in any realisitic scenario, and the extra
-     * space simplifies overflow checking logic. Besides, any sensible malloc
-     * implementation will be returning NULL well before this is relevant. */
-    if ((bytes_sz > (SIZE_MAX - 0x8000)) ||
-        (dst->capacity > (SIZE_MAX - (bytes_sz + 0x8000)))) {
-        mgr_free(dst->buf);
-        dst->capacity = 0;
-        dst->sz = 0;
-        dst->buf = NULL;
-        alloc_err();
-    }
-
     if (dst->buf == NULL) {
         internal_err(
             BF_ICE_APPEND_TO_NULL, "append_obj called with dst->buf set to NULL"
@@ -99,17 +85,20 @@ nonnull_args bool append_obj(
     }
     /* how much capacity is needed */
     size_t needed_cap = bytes_sz + dst->sz;
-    /* if needed_cap isn't a multiple of 4 KiB in size, pad it out -
-     * most usage of this function is going to be for small objects, so the
-     * number of reallocations is vastly reduced that way.
-     *
-     * Because the previous check established that there's at least 8 KiB of
-     * padding available, this is guaranteed not to overflow. */
-    if (needed_cap & 0xfff) needed_cap = (needed_cap + 0x1000) & (~0xfff);
+    if (needed_cap < dst->sz) {
+        display_err((bf_comp_err){
+            .file = NULL,
+            .id = BF_ERR_BUF_TOO_LARGE,
+            .msg = "reallocating buffer would cause overflow",
+            .has_instr = false,
+            .has_location = false,
+        });
+        abort();
+    }
 
     if (needed_cap > dst->capacity) {
         /* reallocate to new capacity */
-        dst->buf = mgr_realloc(dst->buf, needed_cap);
+        dst->buf = mgr_realloc(dst->buf, chunk_pad(needed_cap));
         dst->capacity = needed_cap;
     }
     /* actually append the object now that prep work is done */
@@ -121,11 +110,10 @@ nonnull_args bool append_obj(
 /* Reads the contents of fd into sb. If a read error occurs, frees what's
  * already been read, and sets sb to {0, 0, NULL}. */
 sized_buf read_to_sized_buf(int fd, const char *in_name) {
-    sized_buf sb = newbuf(4096);
-    /* read into sb in 4096-byte chunks */
-    char chunk[4096];
+    sized_buf sb = newbuf(BFC_CHUNK_SIZE);
+    char chunk[BFC_CHUNK_SIZE];
     ssize_t count;
-    while ((count = read(fd, &chunk, 4096))) {
+    while ((count = read(fd, &chunk, BFC_CHUNK_SIZE))) {
         if (count >= 0) {
             append_obj(&sb, &chunk, count);
         } else {

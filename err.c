@@ -10,6 +10,7 @@
 #include <string.h>
 /* internal */
 #include "attributes.h"
+#include "config.h"
 #include "err.h"
 #include "types.h"
 
@@ -128,7 +129,7 @@ nonnull_args static int char_esc(char c, char *dest) {
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
 nonnull_ret nonnull_args static char *json_str(const char *str) {
-    size_t bufsz = 4096;
+    size_t bufsz = BFC_CHUNK_SIZE;
     const char *p = str;
     char *escaped = malloc(bufsz);
     if (escaped == NULL) alloc_err();
@@ -155,7 +156,7 @@ nonnull_ret nonnull_args static char *json_str(const char *str) {
         }
         /* If less than 8 chars are left before overflow, allocate more space */
         if (index > bufsz - 8) {
-            bufsz += 4096;
+            bufsz += BFC_CHUNK_SIZE;
             char *reallocator = realloc(escaped, bufsz);
             if (reallocator == NULL) {
                 free(escaped);

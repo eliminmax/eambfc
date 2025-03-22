@@ -74,7 +74,7 @@ void quiet_mode(void);
  * stdout instead of printing human-readable error messages to stderr. */
 void json_mode(void);
 
-/* functions to display error messages, depending on the current error mode. */
+/* function to display error messages, depending on the current error mode. */
 void display_err(bf_comp_err e);
 
 /* compatibility macros to ease transition to updated error handling system */

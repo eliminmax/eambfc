@@ -40,7 +40,7 @@
 #ifndef _ELF_H
 #define _ELF_H 1
 
-#include "eambfc_inttypes.h"
+#include "eambfc_inttypes.h" /* IWYU pragma: keep */
 
 /* Standard ELF types.  */
 
