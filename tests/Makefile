@@ -27,8 +27,8 @@ test_driver: test_driver.o test_utils.o
 		-o $@ test_driver.o test_utils.o $(LDLIBS)
 
 clean:
-	rm -f .*.build_err hello rw loop null wrap wrap2 colortest \
-		truthmachine unmatched_close unmatched_open unseekable \
+	rm -f hello rw loop null wrap wrap2 colortest dead_code unseekable \
+		truthmachine unmatched_close unmatched_open \
 		alternate_extension unseekable.bf piped_in piped_in.bf \
-		dead_code hello.elf test_driver hello.b test_driver.o \
-		test_utils.o unseekable alternate_extension.bf
+		hello.elf test_driver hello.b test_driver.o test_utils.o \
+		test_utils.o alternate_extension.brnfck
