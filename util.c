@@ -11,6 +11,7 @@
 #include <unistd.h>
 /* internal */
 #include "attributes.h"
+#include "config.h"
 #include "err.h"
 #include "resource_mgr.h"
 #include "types.h"
@@ -121,11 +122,10 @@ nonnull_args bool append_obj(
 /* Reads the contents of fd into sb. If a read error occurs, frees what's
  * already been read, and sets sb to {0, 0, NULL}. */
 sized_buf read_to_sized_buf(int fd, const char *in_name) {
-    sized_buf sb = newbuf(4096);
-    /* read into sb in 4096-byte chunks */
-    char chunk[4096];
+    sized_buf sb = newbuf(BFC_CHUNK_SIZE);
+    char chunk[BFC_CHUNK_SIZE];
     ssize_t count;
-    while ((count = read(fd, &chunk, 4096))) {
+    while ((count = read(fd, &chunk, BFC_CHUNK_SIZE))) {
         if (count >= 0) {
             append_obj(&sb, &chunk, count);
         } else {

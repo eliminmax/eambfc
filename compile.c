@@ -462,7 +462,7 @@ bool bf_compile(
     sized_buf src_code = read_to_sized_buf(in_fd, in_name);
     /* Return immediately if a read failed */
     if (src_code.buf == NULL) return false;
-    sized_buf obj_code = newbuf(4096);
+    sized_buf obj_code = newbuf(BFC_CHUNK_SIZE);
 
     bool ret = true;
 

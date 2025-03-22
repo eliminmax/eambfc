@@ -65,4 +65,6 @@
 #error "BFC_LONGOPTS requires _GNU_SOURCE"
 #endif
 
+#define BFC_CHUNK_MASK (BFC_CHUNK_SIZE - 1)
+
 #endif /* BFC_POST_CONFIG_H */
