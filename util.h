@@ -5,8 +5,11 @@
  * Miscellaneous utility functions used throughout the eambfc codebase. */
 #ifndef BFC_UTIL_H
 #define BFC_UTIL_H 1
+/* C99 */
+#include <limits.h>
 /* internal */
 #include "attributes.h"
+#include "config.h"
 #include "resource_mgr.h"
 #include "types.h"
 
@@ -27,6 +30,15 @@ const_fn inline_impl u8 trailing_0s(u64 val) {
         counter += 1;
     }
     return counter;
+}
+
+/* return `nbytes`, padded to the next multiple of `BFC_CHUNK_SIZE`. If it is
+ * already a multiple of `BFC_CHUNK_SIZE`, it is returned as-is, and if the
+ * padding would exceed `SIZE_MAX`, it returns `SIZE_MAX`. */
+const_fn inline_impl size_t chunk_pad(size_t nbytes) {
+    if (!(nbytes & (BFC_CHUNK_SIZE - 1))) return nbytes;
+    size_t ret = nbytes & ~(size_t)(BFC_CHUNK_SIZE - 1) + BFC_CHUNK_SIZE;
+    return (ret < nbytes) ? SIZE_MAX : ret;
 }
 
 /* Return true if signed `val` fits within specified number of bits */
