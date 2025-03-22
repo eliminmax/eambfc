@@ -32,7 +32,7 @@ UNIT_TEST_DEPS = $(ALL_SOURCES) $(COMMON_HEADERS) unit_test.h serialize.h
 all: eambfc
 
 eambfc: $(EAMBFC_DEPS)
-	$(CC) $(POSIX_CFLAG) $(LDFLAGS) -o $@ $(EAMBFC_DEPS) $(LDLIBS)
+	$(CC) $(POSIX_CFLAG) $(CFLAGS) $(LDFLAGS) -o $@ $(EAMBFC_DEPS) $(LDLIBS)
 
 install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
