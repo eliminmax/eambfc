@@ -97,7 +97,12 @@ unit-test: unit_test_driver
 
 
 
-# LINTS - check style and quality of individual files
+# LINTS - check style and quality of individual files and the project as a whole
+
+[doc("Check repo for REUSE compliance")]
+[group("lints")]
+reuse:
+    reuse lint
 
 [doc("run cppcheck with options suitable for standalone files")]
 [group("lints")]
@@ -178,13 +183,18 @@ all-tests:
 
 [group("meta")]
 [doc("run all applicable lints on **files**")]
-all-lints +files: runmatch
-    just copyright_check {{ files }}
+all-lints +files: (copyright_check files) (timeless-lints files)
+
+[group("meta")]
+[doc("run all lints other than copyright_check on all files")]
+timeless-lints +files: runmatch reuse
     tools/runmatch '*.[ch]' just clang-fmt-check '{-}' {{ files }}
     tools/runmatch '*.c' just cppcheck-single '{-}' {{ files }}
     tools/runmatch '*.sh' checkbashims -f '{-}' {{ files }}
     tools/runmatch '*.sh' shellcheck '{-}' {{ files }}
     codespell {{ files }}
+
+
 
 # PRIVATE
 
