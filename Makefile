@@ -61,13 +61,10 @@ backend_x86_64.o: backend_x86_64.c $(COMMON_HEADERS) serialize.h
 test: eambfc
 	(cd tests; make clean test)
 
-all_arch_test: can_run_all eambfc
-	(cd tests; make -s test_all)
-
 unit_test_driver: $(UNIT_TEST_DEPS)
 	$(CC) $$(llvm-config --cflags) -DBFC_TEST=1 -o $@ \
-		$(LDFLAGS) unit_test.c $(ALL_SOURCES) \
-		$(LDLIBS) -lcunit $$(llvm-config --ldflags --libs)
+		$(LDFLAGS) $(ALL_SOURCES) $(LDLIBS) \
+		-lcunit $$(llvm-config --ldflags --libs)
 
 # remove eambfc and the objects it's built from, and remove test artifacts
 clean:
