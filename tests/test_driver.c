@@ -14,7 +14,6 @@
 #include <string.h>
 /* POSIX */
 #include <fcntl.h>
-#include <libgen.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
