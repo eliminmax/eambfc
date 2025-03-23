@@ -6,10 +6,6 @@ SPDX-License-Identifier: GPL-3.0-only
 
 # Eli Array Minkoff's BFC (original version)
 
-**Also check out the
-[Blazingly 🔥 fast 🚀 version](https://github.com/eliminmax/eambfc-rs), written
-in Rust 🦀!**
-
 An optimizing compiler for brainfuck, written in C for Unix-like systems.
 
 Output 64-bit ELF executables that uses Linux system calls for I/O.
@@ -17,8 +13,9 @@ Currently, it has x64_64 and arm64 backends.
 
 I started this as an inexperienced C programmer, and this was originally an
 attempt to gain practice by writing something somewhat simple yet not trivial.
-As it went on, I added more and more features, created a Rust rewrite, and have
-maintained feature parity between them.
+As it went on, I added more and more features, created
+[a Rust rewrite](https://github.com/eliminmax/eambfc-rs), and have maintained
+feature parity between them.
 
 ## Usage
 
@@ -55,14 +52,39 @@ and treat remaining arguments as source file names.
 
 ## Supported platforms
 
-It should be possible to compile and run `eambfc` itself on any POSIX\* system
-with a C99 compiler. If that is not the case, it's a bug.
+It should be possible to compile and run `eambfc` itself for any system that
+supports the APIs specified in the POSIX.1-2008 version of the POSIX standard,
+using a compiler targeting any version of C from C99 on.
 
-\* *Specifically POSIX.1-2008. Compilation requires the optional C-Language
-Development Utilities, or at least something similar enough. It probably works
-on systems that comply with any version of the POSIX standard from POSIX.1-2001
-on, and with any newer version of ISO standard C, but if it does not, it's not
-considered a bug.*
+All Makefiles aim to use **only** functionality POSIX.1-2008 requires `make` to
+support, which is very limited, and other than the `unit_test_driver` target as
+documented below, no Makefile targets depend on non-standard tools or behavior.
+
+### Non-portable functionality
+
+If the `BFC_LONGOPTS` macro is defined to have a nonzero value at compile time,
+the GNU C library's `getopts_long` function is used instead of the
+POSIX-standard `getopts`, to support GNU-style `--long-options`.
+
+In the C Source code, GCC attributes and pragmas are used, but only if they work
+with both `gcc` and `clang`, and preprocessor directives are used to ensure that
+they are only exposed if the `__GNUC__` macro is defined.
+
+#### Unit tests
+
+Unit tests do not aim for the same level of portability as the rest of the
+project.
+
+* Unit tests use the CUnit framework for unit testing.
+
+* Some unit tests use the LLVM disassembler through LLVM 19's C interface, to
+  ensure that the codegen actually generates the right machine code - if I made
+  a mistake in the codegen, it's more likely I'll make the same mistake when
+  writing my own disassembler and it'll be uncaught, so I'd rather use something
+  far more established instead.
+
+* In the future, unit tests will use a 3rd-party library to test generation of
+  JSON-formatted error messages for the same reason I used LLVM's disassembler.
 
 ## Building and Installing
 
@@ -72,6 +94,10 @@ is a macro to select the default backend.
 ```sh
 # Build eambfc
 make
+
+# clean previous build, build with glibc's getopt_long instead of POSIX getopt
+make clean; make CFLAGS='-D _GNU_SOURCE -D BFC_LONGOPTS=1' eambfc
+
 # Run the test suite
 make test
 # install eambfc to /usr/local with sudo
@@ -82,57 +108,63 @@ make clean; make CC=tcc
 make PREFIX="$HOME/.local" install
 ```
 
-## Development Process and Standards
+## Development Process
 
 I have a dev branch and a main branch. When I feel like it, and all of the tests
 pass, I merge the dev branch into the main branch. The main branch is guaranteed
-to have passed the full test suite on Debian 12 amd64, Debian 12 arm64 with
-qemu-binfmt, and FreeBSD 14.2 amd64 with Linux binary support. Features that are
-documented and exposed via command-line flags are tested, working, and complete,
-though code that's part of WIP features may be present, but not activated.
+to have run `make CFLAGS='-Wall -Werror -Wextra' clean test` successfully on the
+following platforms:
+
+* Debian 12 amd64 with `qemu-binfmt/bookworm-backports` to run foreign binaries
+* Debian 12 arm64
+* FreeBSD 14.2 amd64 with Linuxulator for Linux syscall support
+
+Features that are both documented in the help output and/or the `eambfc.1` man
+page in the main branch are tested and working, though code that's part of WIP
+features may be present, but not activated.
+
+Once a version is tagged, the tag will continue to point to that specific commit
+forever.
 
 The only thing promised about the dev branch is that it has successfully been
-tested with `make clean test` on one of my systems before being pushed to
-GitHub.
+tested with `make clean test` on one of my personal systems before being pushed
+to GitHub.
 
 When developing, I have `core.hookspath` set to `.githooks/`, so that the git
 hooks used can be checked into the git repository. There is a pre-commit hook
 to check code quality with various linters, a pre-push commit that validates
 that `make clean test` runs successfully.
 
-### Standards compliance
+### Testing
 
-All C code and Makefiles, and most shell scripts, target the POSIX.1-2008
-standard and/or the ISO/IEC 9899:1999 standard (i.e. C99).
+There are 2 main parts to the testing: CLI tests and unit tests.
 
-Some Makefile targets are not portable - they use `gcc`-specific flags and
-features, and are hard-coded to call `gcc` rather than the user-specified C
-compiler.
+CLI tests are run with `tests/test_driver`, which is written to work on all
+supported platforms.
 
-The `release.sh` and `run_lints.sh` scripts have a large number of extra
-dependencies which they document, used for extra testing and linting, and for
-building source tarballs.
+They test `eambfc` using its command-line interface to ensure it works as it
+should. Some tests require the host system to support output binaries, so it
+detects which output formats are supported at runtime, and skips tests for
+unsupported formats.
 
-All files in the main branch comply with version 3.3 of the REUSE specification
-for licensing information.
+Unit tests are run with `unit_test_driver`, which does not aim to hold up the
+same level of portability as the rest of the project. It uses the CUnit
+framework to run the tests, and uses LLVM's C interface to validate codegen,
+as explained [above](unit-tests).
 
-### Test suite
-
-The primary test suite consists of a series of brainfuck programs, and a script
-to compare their actual behavior against their expected behavior. Because of
-this, it must be able to run the created binaries, which means that it does not
-work on systems that can't run ELF files for supported architectures with Linux
-system calls. That said, I have successfully run the test suite in a FreeBSD VM
-with [Linuxulator](https://docs.freebsd.org/en/books/handbook/linuxemu/)
-enabled, and a Debian 12 "Bookworm" arm64 system with the `qemu-user-binfmt`
-package installed.
+Additionally, the `justfile` has rules to use various static and dynamic
+analysis tools, and githooks are used to ensure that they all run successfully
+before anything is merged into main.
 
 ## Legal Stuff
 
 `eambfc` as a whole is licensed under the GNU General Public License version 3.
 Some individual components of the source code, infrastructure, and test assets
-are licensed under other compatible licenses, mainly the Zero-Clause BSD license
-(a public-domain-equivalent license).
+are licensed under other compatible licenses, mainly the Zero-Clause BSD
+license, which is a public-domain-equivalent license.
+Files have licensing information encoded in accordance with the REUSE
+Specification, using SPDX headers to encode the copyright info in a manner that
+is both human and machine readable.
 
 Some brainfuck test programs include snippets of sample code taken from the
 esolangs.org pages
@@ -146,4 +178,3 @@ repository is my own original work.
 All licenses used in any part of this repository are in the LICENSES/ directory,
 and every file has an SPDX License header identifying the license(s) it's under,
 either near the top of the file, or in an associated `.license` file.
-
