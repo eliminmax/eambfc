@@ -22,7 +22,7 @@ releases/
 a.out
 
 # compiled tool
-tools/argglob
+tools/runmatch
 
 # unit testing binary
 unit_test_driver
