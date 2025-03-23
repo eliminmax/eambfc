@@ -34,4 +34,4 @@ clean:
 		truthmachine unmatched_close unmatched_open \
 		alternate_extension unseekable.bf piped_in piped_in.bf \
 		hello.elf test_driver hello.b test_driver.o test_utils.o \
-		test_utils.o alternate_extension.brnfck colortest_output.h
+		test_utils.o alternate_extension.brnfck
