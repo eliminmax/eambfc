@@ -21,14 +21,14 @@
  * structure needed. A struct is used just to keep all of the Resource Manager's
  * internal state in one place. */
 static struct resource_tracker {
-    void *allocs[MAX_ALLOCS];
+    uintptr_t allocs[MAX_ALLOCS];
     int fds[MAX_FDS];
     ifast_8 next_a;
     ifast_8 next_f;
 } resources;
 
 /* return the index of the allocation, or -1 if it's not a managed allocation */
-static ifast_8 alloc_index(const void *ptr) {
+static ifast_8 alloc_index(uintptr_t ptr) {
     /* work backwards, as more recent allocs are more likely to be used */
     for (ifast_8 i = resources.next_a - 1; i >= 0; --i) {
         if (resources.allocs[i] == ptr) return i;
@@ -50,14 +50,14 @@ malloc_like nonnull_ret void *mgr_malloc(size_t size) {
         resources.next_a--;
         alloc_err();
     }
-    resources.allocs[resources.next_a++] = result;
+    resources.allocs[resources.next_a++] = (uintptr_t)result;
     return result;
 }
 
 void mgr_free(void *ptr) {
     free(ptr);
     ifast_8 index;
-    if ((index = alloc_index(ptr)) == -1) return;
+    if ((index = alloc_index((uintptr_t)ptr)) == -1) return;
     memmove(
         &(resources.allocs[index]),
         &(resources.allocs[index + 1]),
@@ -68,14 +68,14 @@ void mgr_free(void *ptr) {
 
 nonnull_args nonnull_ret void *mgr_realloc(void *ptr, size_t size) {
     void *new_ptr = realloc(ptr, size);
-    ifast_8 index = alloc_index(ptr);
+    ifast_8 index = alloc_index((uintptr_t)ptr);
     if (new_ptr == NULL) {
         /* if it's a managed pointer, it will be freed when alloc_err calls
          * mgr_cleanup. Otherwise, free it here. */
         if (index != -1) free(ptr);
         alloc_err();
     }
-    if (index != -1) resources.allocs[index] = new_ptr;
+    if (index != -1) resources.allocs[index] = (uintptr_t)new_ptr;
     return new_ptr;
 }
 
@@ -127,6 +127,8 @@ int mgr_close(int fd) {
 }
 
 void mgr_cleanup(void) {
-    while (--resources.next_a > -1) free(resources.allocs[resources.next_a]);
+    while (--resources.next_a > -1) {
+        free((void *)resources.allocs[resources.next_a]);
+    }
     while (--resources.next_f > -1) close(resources.fds[resources.next_f]);
 }
