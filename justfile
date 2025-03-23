@@ -176,7 +176,15 @@ all-tests:
     env BFC_DONT_SKIP_TESTS=1 just int-torture-test
     env BFC_DONT_SKIP_TESTS=1 just unit-test
 
-
+[group("meta")]
+[doc("run all applicable lints on **files**")]
+all-lints +files: runmatch
+    just copyright_check {{ files }}
+    tools/runmatch '*.[ch]' just clang-fmt-check '{-}' {{ files }}
+    tools/runmatch '*.c' just cppcheck-single '{-}' {{ files }}
+    tools/runmatch '*.sh' checkbashims -f '{-}' {{ files }}
+    tools/runmatch '*.sh' shellcheck '{-}' {{ files }}
+    codespell {{ files }}
 
 # PRIVATE
 
@@ -189,13 +197,6 @@ can_run arch:
 [private]
 can_run_all:
     @for arch in {{ backends }}; do just can_run "$arch"; done
-
-[private]
-@pre_commit_checks +files: runmatch
-    just copyright_check {{ files }}
-    tools/runmatch '*.[ch]' just clang-fmt-check '{-}' {{ files }}
-    tools/runmatch '*.c' just cppcheck-single '{-}' {{ files }}
-    codespell {{ files }}
 
 [private]
 alt-builds-dir:
