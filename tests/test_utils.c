@@ -25,8 +25,7 @@ nonnull_args size_t read_chunk(sized_buf *dst, int fd) {
     ssize_t ct;
     CHECKED((ct = read(fd, buf, BFC_CHUNK_SIZE)) >= 0);
     if (dst->sz > (SIZE_MAX - (size_t)ct)) {
-        fprintf(
-            stderr,
+        EPRINTF(
             "Appending %jd bytes to an object of %ju bytes would overflow\n",
             (intmax_t)ct,
             (uintmax_t)dst->sz
