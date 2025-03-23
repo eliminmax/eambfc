@@ -827,13 +827,21 @@ static nonnull_args void run_misc_tests(result_tracker *results) {
     }
 }
 
-int main(int argc, const char *argv[]) {
-    if (!argc) abort();
-    if (!strchr(argv[0], '/')) abort();
-    char *argv0 = strdup(argv[0]);
-    if (argv0 == NULL) abort();
-    CHECKED(chdir(dirname(argv0)) == 0);
-    free(argv0);
+int main(int argc, char *argv[]) {
+    if (!argc) {
+        fputs("Empty argv array\n", stderr);
+        abort();
+    }
+
+    char *last_sep;
+    if ((last_sep = strrchr(argv[0], '/')) == NULL) {
+        fputs("Failed to determine path to tests dir from argv[0]\n", stderr);
+        abort();
+    }
+
+    *last_sep = 0;
+    CHECKED(chdir(argv[0]) == 0);
+    *last_sep = '/';
 
     signal(SIGPIPE, SIG_IGN);
     EAMBFC = getenv("EAMBFC");
