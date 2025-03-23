@@ -31,10 +31,10 @@
 
 /* pointer to a string containing the path to the EAMBFC executable.
  *
- * Set in the main function to `argv[1]`, falling back to `"../eambfc"` if argv
- * isn't long enough.
+ * Set in the main function to the `EAMBFC` environment variable, falling back
+ * to `"../eambfc"` if `getenv("EAMBFC")` returns `NULL`.
  *
- * After that, it must be left unchanged through the duration of the program. */
+ * Once set, it should be left unchanged through the duration of the program. */
 static const char *EAMBFC;
 
 /* convenience macro to prepend the eambfc executable as args[0] and append NULL
