@@ -37,9 +37,8 @@
 
 bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm) {
     char disasm_insn[128];
-    size_t prev_sz;
     disasm->sz = 0;
-    while ((prev_sz = bytes->sz)) {
+    while (bytes->sz) {
         memset(disasm_insn, 0, 128);
         size_t used_sz = LLVMDisasmInstruction(
             ref, (u8 *)bytes->buf, bytes->sz, 0, disasm_insn, 128
