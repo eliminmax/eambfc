@@ -610,7 +610,7 @@ static void test_zero_byte(void) {
     sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(24);
 
-    zero_byte(REGS.bf_ptr, &sb);
+    zero_byte(S390X_INTER.reg_bf_ptr, &sb);
     DISASM_TEST(sb, dis, "stc %r0, 0(%r8,0)\n");
 
     mgr_free(sb.buf);
