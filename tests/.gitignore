@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: 0BSD
 
 # test driver
+colortest_output.h
 test_driver
 test_driver.o
 test_utils.o
