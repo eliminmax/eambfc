@@ -2,24 +2,30 @@
 #
 # SPDX-License-Identifier: 0BSD
 
-alternative_extension
+# test driver
+test_driver
+test_driver.o
+test_utils.o
+
+# test binaries
+alternate_extension
+alternate_extension.brnfck
 colortest
+dead_code
 hello
+hello.b
+hello.elf
 loop
 null
-rw
-too_many_nested_loops
-truthmachine
-wrap
-wrap2
-unmatched_open
-unmatched_close
-unseekable
-dead_code
-
-# test assets
-*.build_err
-unseekable_f
+null.bf
 piped_in
 piped_in.bf
-hello.elf
+rw
+rw.bf
+truthmachine
+unmatched_close
+unmatched_open
+unseekable
+unseekable.bf
+wrap
+wrap2

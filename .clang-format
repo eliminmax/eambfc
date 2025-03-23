@@ -21,6 +21,7 @@ AllowShortFunctionsOnASingleLine: None
 AttributeMacros:
   - noreturn
   - nonnull_args
+  - nonnull_arg
   - nonnull_ret
   - const_fn
 BinPackArguments: false

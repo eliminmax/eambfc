@@ -89,12 +89,12 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
     return result;
 }
 
+#ifdef BFC_TEST
+int real_main(int argc, char *argv[]) {
+#else /* BFC_TEST */
 int main(int argc, char *argv[]) {
-    /* register atexit function to clean up any open files or memory allocations
-     * left behind. */
-#ifndef SKIP_RESOURCE_MGR
-    register_mgr();
-#endif /* SKIP_RESOURCE_MGR */
+#endif /* BFC_TEST */
+
     int ret = EXIT_SUCCESS;
     run_cfg rc = parse_args(argc, argv);
     for (int i = optind; i < argc; i++) {
@@ -102,6 +102,5 @@ int main(int argc, char *argv[]) {
         ret = EXIT_FAILURE;
         if (!rc.cont_on_fail) break;
     }
-
     return ret;
 }

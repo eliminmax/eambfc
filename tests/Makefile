@@ -7,82 +7,28 @@
 
 EAMBFC = ../eambfc
 EAMBFC_ARGS = -Ok
-.SUFFIXES: .bf .brnfck
-.bf:
-	$(EAMBFC) -j $(EAMBFC_ARGS) $< >.$*.build_err && rm .$*.build_err
-.brnfck:
-	$(EAMBFC) -j $(EAMBFC_ARGS) -e .brnfck \
-		$< >.$*.build_err && rm .$*.build_err
+# This flag enables POSIX.1-2008-specific macros and features
+POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
-# build test assets
-build_all: hello loop wrap wrap2 colortest truthmachine dead_code piped_in \
-	unmatched_close unmatched_open unseekable alternative_extension rw null \
-	hello.elf
+# replace default .o suffix rule to pass the POSIX flag, as adding to CFLAGS is
+# overridden if CFLAGS are passed as an argument to make.
+.SUFFIXES: .c.o
+.c.o:
+	$(CC) $(CFLAGS) $(POSIX_CFLAG) -c -o $@ $<
 
-# __BACKENDS__ add a test for the new architecture
-test_all:
-	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a arm64" clean build_all
-	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a arm64
-	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a riscv64" clean build_all
-	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a riscv64
-	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a s390x" clean build_all
-	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a s390x
-	make EAMBFC_ARGS="$(EAMBFC_ARGS) -a x86_64" clean build_all
-	./test.sh $(EAMBFC) $(EAMBFC_ARGS) -a x86_64
+test: test_driver
+	./test_driver
 
-test: clean build_all
-	./test.sh $(EAMBFC) $(EAMBFC_ARGS)
+test_driver.o: test_driver.c
+test_utils.o: test_utils.c
 
-dead_code: dead_code.bf
-hello: hello.bf
-loop: loop.bf
-null: null.bf
-wrap: wrap.bf
-wrap2: wrap2.bf
-colortest: colortest.bf
-truthmachine: truthmachine.bf
-too_many_nested_loops: too_many_nested_loops.bf
-unmatched_close: unmatched_close.bf
-unmatched_open: unmatched_open.bf
-
-# test handling of provided output suffixes
-hello.elf: hello.bf
-	$(EAMBFC) -j $(EAMBFC_ARGS) -s .elf hello.bf >.$@.build_err
-	if [ "$$(wc -c .$@.build_err | awk '{print $$1}')" -eq 0 ]; then\
-		rm .$@.build_err; else false;\
-	fi
-	test -e "$@"
-
-# test handling of unseekable outputs
-unseekable:
-	# make a fifo (named pipe) that will be written to
-	mkfifo $@
-	# compile, writing to the fifo
-	($(EAMBFC) -j $(EAMBFC_ARGS) $@.bf & cat $@ >$@_f; wait) \
-		>.$@.build_err
-	rm $@
-	mv $@_f $@
-	chmod u+x $@
-	if [ "$$(wc -c .$@.build_err | awk '{print $$1}')" -eq 0 ]; then\
-		rm .$@.build_err; else false;\
-	fi
-
-piped_in:
-	mkfifo $@.bf
-	(cat hello.bf > $@.bf & $(EAMBFC) -j $(EAMBFC_ARGS) $@.bf; wait) \
-		>.$@.build_err
-	if [ "$$(wc -c .$@.build_err | awk '{print $$1}')" -eq 0 ]; then\
-		rm .$@.build_err; else false; fi
-	# clean up fifo now that it's done
-	rm $@.bf
-# test support for alternative extensions
-alternative_extension: alternative_extension.brnfck
-
-# expect to encounter a compiler error for these, don't treat as a failure
-.IGNORE: too_many_nested_loops unmatched_close unmatched_open
+test_driver: test_driver.o test_utils.o
+	$(CC) $(CFLAGS) $(POSIX_CFLAG) $(LDFLAGS) \
+		-o $@ test_driver.o test_utils.o $(LDLIBS)
 
 clean:
-	rm -f .*.build_err hello rw loop null wrap wrap2 colortest \
-		truthmachine too_many_nested_loops unmatched_close \
-		unmatched_open unseekable alternative_extension unseekable_f \
-		piped_in piped_in.bf dead_code hello.elf
+	rm -f hello rw loop null wrap wrap2 colortest dead_code unseekable \
+		truthmachine unmatched_close unmatched_open \
+		alternate_extension unseekable.bf piped_in piped_in.bf \
+		hello.elf test_driver hello.b test_driver.o test_utils.o \
+		test_utils.o alternate_extension.brnfck

@@ -19,6 +19,11 @@
 #error "No backends are enabled"
 #endif /* BFC_NUM_BACKENDS */
 
+/* __BACKENDS__ number of backends should be incremented */
+#if defined(BFC_TEST) && (BFC_NUM_BACKENDS != 4)
+#error "unit testing is unsupported without all backends enabled"
+#endif /* defined(BFC_TEST) && ... */
+
 /* __BACKENDS__ add a block for the new backend
  * Each listed backend should first check if it's enabled, and result in a
  * compile-time error if it isn't. After that check, it should define the
@@ -59,5 +64,7 @@
 #if BFC_LONGOPTS && !defined _GNU_SOURCE
 #error "BFC_LONGOPTS requires _GNU_SOURCE"
 #endif
+
+#define BFC_CHUNK_MASK (BFC_CHUNK_SIZE - 1)
 
 #endif /* BFC_POST_CONFIG_H */

@@ -2,7 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * A header file containing values that are intended to be configurable */
+ * A header file containing values that are intended to be configurable at
+ * compile time - define these values in a pre-included header or at the command
+ * line */
 
 #ifndef BFC_CONFIG_H
 #define BFC_CONFIG_H 1
@@ -29,6 +31,15 @@
 #ifndef BFC_TARGET_X86_64
 #define BFC_TARGET_X86_64 1
 #endif /* BFC_TARGET_X86_64 */
+
+/* the size of data chunks - must be a power of two.
+ *
+ * sized_bufs are reallocated to multiples of this size, and file I/O will also
+ * use buffers of this size, stored on the stack. */
+#ifndef BFC_CHUNK_SIZE
+#define BFC_CHUNK_SIZE 0x1000
+#endif /* BFC_CHUNK_SIZE */
+
 /* The target architecture - should be the same as the ELF e_machine value for
  * that architecture for consistency's sake. */
 #ifndef BFC_DEFAULT_TARGET
@@ -38,7 +49,7 @@
 /* runs some preprocessor validation that the above settings are sane, and
  * defines some macros based on the configured default target architecture */
 #define BFC_PREPROC_POST_CONFIG
-#include "post_config.h"
+#include "post_config.h" /* IWYU pragma: export */
 #undef BFC_PREPROC_POST_CONFIG
 
 #endif /* BFC_CONFIG_H */

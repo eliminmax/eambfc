@@ -2,9 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * Either provides a function that returns EAMBFC IR from an FD, or prints out a
- * step-by-step overview of the optimization process, depending on whether the
- * OPTIMIZE_STANDALONE macro is defined at compile time. */
+ * implements the filter_dead function, which filters non-bf bytes and dead code
+ * and replaces `[-]` and `[+]` sequences with `@`. */
 
 /* C99 */
 #include <string.h>
@@ -17,10 +16,10 @@
 
 /* filter out the non-bf characters from code->buf */
 static nonnull_args void filter_non_bf(sized_buf *code) {
-    sized_buf tmp = {.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
+    sized_buf tmp = newbuf(code->sz);
     char instr;
     for (size_t i = 0; i < code->sz; i++) {
-        switch (instr = ((char *)(code->buf))[i]) {
+        switch (instr = code->buf[i]) {
         case '[':
         case '-':
         case '.':
@@ -191,28 +190,78 @@ static nonnull_args void merge_set_zero(sized_buf *ir) {
     ir->sz = strlen(str);
 }
 
-/* Reads the content of the file fd, and returns a string containing optimized
- * internal intermediate representation of that file's code.
- * fd must be open for reading already, no check is performed.
- * Calling function is responsible for `mgr_free`ing the returned string. */
-nonnull_args bool filter_dead(sized_buf *src, const char *in_name) {
-    filter_non_bf(src);
-    if (src->buf == NULL) {
-        mgr_free(src->buf);
-        src->buf = NULL;
+/* filter out all non-BF bytes, and anything that is trivially determined to be
+ * dead code, or code with no effect (e.g. "+-" or "<>"), and replace "[-]" and
+ * "[+]" with "@".
+ *
+ * "in_name" is the source filename, and is used only to generate error
+ * messages. */
+nonnull_args bool filter_dead(sized_buf *bf_code, const char *in_name) {
+    filter_non_bf(bf_code);
+    if (bf_code->buf == NULL) {
+        mgr_free(bf_code->buf);
+        bf_code->buf = NULL;
         return false;
     }
-    if (!loops_match(src->buf, in_name)) {
-        mgr_free(src->buf);
-        src->buf = NULL;
+    if (!loops_match(bf_code->buf, in_name)) {
+        mgr_free(bf_code->buf);
+        bf_code->buf = NULL;
         return false;
     }
-    remove_dead(src, in_name);
-    if (src->buf == NULL) {
-        mgr_free(src->buf);
-        src->buf = NULL;
+    remove_dead(bf_code, in_name);
+    if (bf_code->buf == NULL) {
+        mgr_free(bf_code->buf);
+        bf_code->buf = NULL;
         return false;
     }
-    merge_set_zero(src);
+    merge_set_zero(bf_code);
     return true;
 }
+
+#ifdef BFC_TEST
+/* internal */
+#include "unit_test.h"
+
+static void strip_dead_code_test(void) {
+    /* fill filterable with have a bunch of valid brainfuck code which does the
+     * equivalent of ">[->+<]", and ensure that it is optimized down to just
+     * that sequence. */
+    sized_buf filterable = newbuf(574);
+    append_obj(
+        &filterable, "[+++++]><+---+++-[-][,[-][+>-<]]-+[-+]-+[]+-[]", 46
+    );
+    char *tgt = sb_reserve(&filterable, 256);
+    memset(tgt, '+', 256);
+    append_obj(&filterable, "[+-]>", 5);
+    tgt = sb_reserve(&filterable, 256);
+    memset(tgt, '-', 256);
+    append_obj(&filterable, "[->+<][,.]", 10);
+    for (size_t i = 0; i < filterable.sz; ++i) {
+        switch (filterable.buf[i]) {
+        case '<':
+        case '>':
+        case '+':
+        case '-':
+        case '[':
+        case ']':
+        case '.':
+        case ',': continue;
+        default: CU_FAIL_FATAL("filterable contains non-bf bytes"); return;
+        }
+    }
+    filter_dead(&filterable, "test");
+    /* null-terminate before string comparison */
+    tgt = sb_reserve(&filterable, 1);
+    *tgt = '\0';
+    CU_ASSERT_STRING_EQUAL(filterable.buf, ">[->+<]");
+    mgr_free(filterable.buf);
+}
+
+CU_pSuite register_optimize_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, strip_dead_code_test);
+    return suite;
+}
+
+#endif

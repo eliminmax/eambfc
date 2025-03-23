@@ -12,9 +12,25 @@
 #include "util.h"
 #if BFC_TARGET_X86_64
 
-/* If there are more than 3 lines in common between similar ADD/SUB or JZ/JNZ
- * functions, the common lines dealing with writing machine code should
- * be moved into a separate function. */
+enum X86_REGS {
+    /* x86 32-bit register IDs */
+    X86_EAX = 00,
+    /* reserved for use in `reg_arith` only: `X86_ECX = 01,` */
+    X86_EDX = 02,
+    X86_EBX = 03,
+    /* omit a few not used in eambfc */
+    X86_ESI = 06,
+    X86_EDI = 07,
+    /* x86_64-only registers */
+    X86_64_RAX = X86_EAX,
+    /* reserved for use in `reg_arith` only: `X86_64_RCX = X86_ECX,` */
+    X86_64_RDX = X86_EDX,
+    /* omit a few not used in eambfc */
+    X86_64_RBX = X86_EBX,
+    X86_64_RSI = X86_ESI,
+    X86_64_RDI = X86_EDI,
+    /* omit extra numbered registers r10 through r15 added in x86_64 */
+};
 
 /* mark a series of bytes within a u8 array as being a single instruction,
  * mostly to prevent automated code formatting from splitting them up */
@@ -224,11 +240,11 @@ static const arch_funcs FUNCS = {
 static const arch_sc_nums SC_NUMS = {.read = 0, .write = 1, .exit = 60};
 
 static const arch_registers REGS = {
-    .sc_num = 00 /* RAX */,
-    .arg1 = 07 /* RDI */,
-    .arg2 = 06 /* RSI */,
-    .arg3 = 02 /* RDX */,
-    .bf_ptr = 03 /* RBX */,
+    .sc_num = X86_64_RAX,
+    .arg1 = X86_64_RDI,
+    .arg2 = X86_64_RSI,
+    .arg3 = X86_64_RDX,
+    .bf_ptr = X86_64_RBX,
 };
 
 const arch_inter X86_64_INTER = {
@@ -239,4 +255,148 @@ const arch_inter X86_64_INTER = {
     .ELF_ARCH = EM_X86_64,
     .ELF_DATA = ELFDATA2LSB,
 };
+
+#ifdef BFC_TEST
+
+#include "unit_test.h"
+#define REF X86_64_DIS
+
+static void test_set_reg(void) {
+    sized_buf sb = newbuf(10);
+    sized_buf dis = newbuf(32);
+
+    set_reg(X86_EBX, 0, &sb);
+    DISASM_TEST(sb, dis, "xor ebx, ebx\n");
+
+    set_reg(X86_EBX, 128, &sb);
+    DISASM_TEST(sb, dis, "mov ebx, 0x80\n");
+
+    set_reg(X86_64_RBX, INT64_MAX - INT64_C(0xffff), &sb);
+    DISASM_TEST(sb, dis, "movabs rbx, 0x7fffffffffff0000\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_jump_instructions(void) {
+    sized_buf sb = newbuf(27);
+    sized_buf dis = newbuf(160);
+
+    jump_zero(X86_64_RDI, 9, &sb);
+    jump_not_zero(X86_64_RDI, -18, &sb);
+    nop_loop_open(&sb);
+    CU_ASSERT_EQUAL(sb.sz, 27);
+    DISASM_TEST(
+        sb,
+        dis,
+        "test byte ptr [rdi], -0x1\n"
+        "je 0x9\n"
+        "test byte ptr [rdi], -0x1\n"
+        "jne -0x12\n"
+        "nop\nnop\nnop\n"
+        "nop\nnop\nnop\n"
+        "nop\nnop\nnop\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_small_imm(void) {
+    sized_buf sb = newbuf(3);
+    sized_buf dis = newbuf(16);
+
+    add_reg(X86_64_RSI, 0x20, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 3);
+    DISASM_TEST(sb, dis, "add esi, 0x20\n");
+
+    sub_reg(X86_64_RSI, 0x20, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 3);
+    DISASM_TEST(sb, dis, "sub esi, 0x20\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_medium_imm(void) {
+    sized_buf sb = newbuf(6);
+    sized_buf dis = newbuf(24);
+
+    add_reg(X86_64_RDX, 0xdead, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+    DISASM_TEST(sb, dis, "add edx, 0xdead\n");
+
+    sub_reg(X86_64_RDX, 0xbeef, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+    DISASM_TEST(sb, dis, "sub edx, 0xbeef\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_large_imm(void) {
+    sized_buf sb = newbuf(13);
+    sized_buf dis = newbuf(40);
+
+    add_reg(X86_64_RBX, 0xdeadbeef, &sb);
+    DISASM_TEST(sb, dis, "movabs rcx, 0xdeadbeef\nadd rbx, rcx\n");
+
+    sub_reg(X86_64_RBX, 0xdeadbeef, &sb);
+    DISASM_TEST(sb, dis, "movabs rcx, 0xdeadbeef\nsub rbx, rcx\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_byte(void) {
+    sized_buf sb = newbuf(6);
+    sized_buf dis = newbuf(56);
+
+    add_byte(X86_64_RDI, 0x23, &sb);
+    sub_byte(X86_64_RDI, 0x23, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+
+    DISASM_TEST(
+        sb,
+        dis,
+        "add byte ptr [rdi], 0x23\n"
+        "sub byte ptr [rdi], 0x23\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_zero_byte(void) {
+    sized_buf sb = newbuf(3);
+    sized_buf dis = newbuf(32);
+
+    zero_byte(X86_64_RDX, &sb);
+    DISASM_TEST(sb, dis, "mov byte ptr [rdx], 0x0\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_jump_too_long(void) {
+    EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
+    jump_zero(0, INT64_MAX, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+}
+
+CU_pSuite register_x86_64_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, test_set_reg);
+    ADD_TEST(suite, test_jump_instructions);
+    ADD_TEST(suite, test_add_sub_small_imm);
+    ADD_TEST(suite, test_add_sub_medium_imm);
+    ADD_TEST(suite, test_add_sub_large_imm);
+    ADD_TEST(suite, test_add_sub_byte);
+    ADD_TEST(suite, test_zero_byte);
+    ADD_TEST(suite, test_jump_too_long);
+    return (suite);
+}
+
+#endif
+
 #endif /* BFC_TARGET_X86_64 */

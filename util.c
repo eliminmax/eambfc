@@ -6,70 +6,42 @@
 
 /* C99 */
 #include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 /* POSIX */
 #include <unistd.h>
 /* internal */
 #include "attributes.h"
+#include "config.h"
 #include "err.h"
 #include "resource_mgr.h"
 #include "types.h"
 
-/* return the number of trailing zeroes in val */
-extern const_fn u8 trailing_0s(u64 val) {
-    u8 counter = 0;
-    while (!(val & 1)) {
-        val >>= 1;
-        counter += 1;
-    }
-    return counter;
-}
-
-/* Return true if signed `val` fits within specified number of bits */
-extern const_fn bool bit_fits(i64 val, u8 bits) {
-    int64_t max = INT64_C(1) << (bits - 1);
-    int64_t min = -max;
-    return val >= min && val < max;
-}
-
-/* return the least significant bits of val sign-extended */
-const_fn i64 sign_extend(i64 val, u8 bits) {
-    u8 shift_amount = (sizeof(i64) * 8) - bits;
-    /* shifting into the sign bit is undefined behavior, so cast it to unsigned,
-     * then assign it back. */
-    i64 lshifted = ((u64)val << shift_amount);
-    return lshifted >> shift_amount;
-}
+#define BFC_UTIL_C
+#include "util.h"
 
 /* Wrapper around write.3POSIX that returns true if all bytes were written, and
- * prints an error and returns false otherwise or if ct is too large to
+ * prints an error and returns false otherwise.
  * validate. */
 nonnull_args bool write_obj(
-    int fd, const void *buf, size_t ct, const char *out_name
+    int fd, const void *restrict buf, size_t ct, const char *restrict out_name
 ) {
-    if (ct > SSIZE_MAX) {
-        display_err((bf_comp_err){
-            .id = BF_ERR_WRITE_TOO_LARGE,
-            .msg =
-                "Didn't write because write is too large to properly validate.",
-            .has_location = false,
-            .has_instr = false,
-            .file = out_name,
-        });
-        return false;
+    while (ct > (size_t)SSIZE_MAX) {
+        if (write(fd, buf, SSIZE_MAX) != SSIZE_MAX) goto fail;
+        buf = (const char *)buf + SSIZE_MAX;
+        ct -= SSIZE_MAX;
     }
-    ssize_t written = write(fd, buf, ct);
-    if (written != (ssize_t)ct) {
-        display_err((bf_comp_err){
-            .id = BF_ERR_FAILED_WRITE,
-            .msg = "Failed to write to file",
-            .has_location = false,
-            .has_instr = false,
-            .file = out_name,
-        });
-        return false;
-    }
+    if (write(fd, buf, ct) != (ssize_t)ct) goto fail;
     return true;
+fail:
+    display_err((bf_comp_err){
+        .id = BF_ERR_FAILED_WRITE,
+        .msg = "Failed to write to file",
+        .has_location = false,
+        .has_instr = false,
+        .file = out_name,
+    });
+    return false;
 }
 
 /* reserve nbytes bytes at the end of dst, and returns a pointer to the
@@ -80,7 +52,6 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
         internal_err(
             BF_ICE_APPEND_TO_NULL, "sb_reserve called with dst->buf set to NULL"
         );
-        /* will never return, as internal_err calls exit(EXIT_FAILURE) */
     }
     /* if more space is needed, ensure no overflow occurs when calculating new
      * space requirements, then allocate it. */
@@ -99,30 +70,14 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
         sb->capacity = needed_cap;
     }
     sb->sz += nbytes;
-    return (char *)sb->buf + sb->sz - nbytes;
+    return sb->buf + sb->sz - nbytes;
 }
 
 /* Append bytes to dst, handling reallocs as needed.
  * Assumes that dst has been allocated with resource_mgr. */
 nonnull_args bool append_obj(
-    sized_buf *dst, const void *bytes, size_t bytes_sz
+    sized_buf *restrict dst, const void *restrict bytes, size_t bytes_sz
 ) {
-    /* if more space is needed, ensure no overflow occurs when calculating new
-     * space requirements, then allocate it.
-     *
-     * Make sure to leave 8 KiB shy of SIZE_MAX available - it will never
-     * get anywhere near that high in any realisitic scenario, and the extra
-     * space simplifies overflow checking logic. Besides, any sensible malloc
-     * implementation will be returning NULL well before this is relevant. */
-    if ((bytes_sz > (SIZE_MAX - 0x8000)) ||
-        (dst->capacity > (SIZE_MAX - (bytes_sz + 0x8000)))) {
-        mgr_free(dst->buf);
-        dst->capacity = 0;
-        dst->sz = 0;
-        dst->buf = NULL;
-        alloc_err();
-    }
-
     if (dst->buf == NULL) {
         internal_err(
             BF_ICE_APPEND_TO_NULL, "append_obj called with dst->buf set to NULL"
@@ -130,21 +85,24 @@ nonnull_args bool append_obj(
     }
     /* how much capacity is needed */
     size_t needed_cap = bytes_sz + dst->sz;
-    /* if needed_cap isn't a multiple of 4 KiB in size, pad it out -
-     * most usage of this function is going to be for small objects, so the
-     * number of reallocations is vastly reduced that way.
-     *
-     * Because the previous check established that there's at least 8 KiB of
-     * padding available, this is guaranteed not to overflow. */
-    if (needed_cap & 0xfff) needed_cap = (needed_cap + 0x1000) & (~0xfff);
+    if (needed_cap < dst->sz) {
+        display_err((bf_comp_err){
+            .file = NULL,
+            .id = BF_ERR_BUF_TOO_LARGE,
+            .msg = "reallocating buffer would cause overflow",
+            .has_instr = false,
+            .has_location = false,
+        });
+        abort();
+    }
 
     if (needed_cap > dst->capacity) {
         /* reallocate to new capacity */
-        dst->buf = mgr_realloc(dst->buf, needed_cap);
+        dst->buf = mgr_realloc(dst->buf, chunk_pad(needed_cap));
         dst->capacity = needed_cap;
     }
     /* actually append the object now that prep work is done */
-    memcpy((char *)(dst->buf) + dst->sz, bytes, bytes_sz);
+    memcpy(dst->buf + dst->sz, bytes, bytes_sz);
     dst->sz += bytes_sz;
     return true;
 }
@@ -152,11 +110,10 @@ nonnull_args bool append_obj(
 /* Reads the contents of fd into sb. If a read error occurs, frees what's
  * already been read, and sets sb to {0, 0, NULL}. */
 sized_buf read_to_sized_buf(int fd, const char *in_name) {
-    sized_buf sb = {.sz = 0, .capacity = 4096, .buf = mgr_malloc(4096)};
-    /* read into sb in 4096-byte chunks */
-    char chunk[4096];
+    sized_buf sb = newbuf(BFC_CHUNK_SIZE);
+    char chunk[BFC_CHUNK_SIZE];
     ssize_t count;
-    while ((count = read(fd, &chunk, 4096))) {
+    while ((count = read(fd, &chunk, BFC_CHUNK_SIZE))) {
         if (count >= 0) {
             append_obj(&sb, &chunk, count);
         } else {
@@ -175,3 +132,47 @@ sized_buf read_to_sized_buf(int fd, const char *in_name) {
     }
     return sb;
 }
+
+#ifdef BFC_TEST
+/* POSIX */
+#include <fcntl.h>
+#include <unistd.h>
+
+/* internal */
+#include "unit_test.h"
+
+static void bit_fits_test(void) {
+    for (uint i = 1; i < 32; i++) {
+        i64 tst_val = INT64_C(1) << i;
+        CU_ASSERT(bit_fits(tst_val, i + 2));
+        CU_ASSERT(!bit_fits(tst_val, i + 1));
+        CU_ASSERT(bit_fits(-tst_val, i + 1));
+        CU_ASSERT(!bit_fits(-tst_val, i));
+        CU_ASSERT(bit_fits(tst_val - 1, i + 1));
+    }
+}
+
+static void test_sign_extend(void) {
+    CU_ASSERT_EQUAL(sign_extend(0xf, 4), -1);
+    CU_ASSERT_EQUAL(sign_extend(0xe, 4), -2);
+    CU_ASSERT_EQUAL(sign_extend(0xf, 5), 0xf);
+    CU_ASSERT_EQUAL(sign_extend(0x1f, 5), -1);
+    CU_ASSERT_EQUAL(sign_extend(1, 1), -1);
+}
+
+static void trailing_0s_test(void) {
+    CU_ASSERT_EQUAL(trailing_0s(0), UINT8_MAX);
+    for (uint i = 0; i < 32; i++) {
+        CU_ASSERT_EQUAL(trailing_0s(UINT64_C(1) << i), i);
+    }
+}
+
+CU_pSuite register_util_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, bit_fits_test);
+    ADD_TEST(suite, trailing_0s_test);
+    ADD_TEST(suite, test_sign_extend);
+    return suite;
+}
+#endif /* BFC_TEST */

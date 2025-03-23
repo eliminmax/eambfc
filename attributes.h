@@ -9,10 +9,11 @@
 #define BFC_ATTRIBUTES 1
 #define noreturn
 #define nonnull_args
+#define nonnull_arg(...)
 #define nonnull_ret
 #define const_fn
+#define malloc_like
 
-#ifndef BFC_NOATTRIBUTES
 #if __STDC_VERSION__ == 202311L
 #undef noreturn
 #define noreturn [[noreturn]]
@@ -32,12 +33,17 @@
 #undef nonnull_args
 #define nonnull_args __attribute__((nonnull))
 
+#undef nonnull_arg
+#define nonnull_arg(...) __attribute__((nonnull(__VA_ARGS__)))
+
 #undef nonnull_ret
 #define nonnull_ret __attribute__((returns_nonnull))
 
 #undef const_fn
 #define const_fn __attribute__((const))
 
+#undef malloc_like
+#define malloc_like __attribute__((malloc))
+
 #endif /* __GNUC__ */
 #endif /* BFC_NOATTRIBUTES */
-#endif /* BFC_ATTRIBUTES */

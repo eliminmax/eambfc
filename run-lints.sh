@@ -96,7 +96,7 @@ for file; do
         *.c)
             clang-format-19 -n -Werror "$file"
             cppcheck -q --std=c99 --platform=unspecified --enable=all \
-                --library=.norets.cfg -DBFC_NOATTRIBUTES \
+                -D__GNUC__ \
                 --disable=missingInclude,unusedFunction --error-exitcode=1 \
                 --check-level=exhaustive --suppress=checkersReport "$file"
         ;;

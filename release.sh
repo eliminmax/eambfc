@@ -42,8 +42,10 @@
 # * musl-tools
 # * gawk
 # * clang-19 (with /usr/lib/llvm-19/bin in $PATH, so it's invoked as clang)
+# * libcunit1-dev
 # * libubsan1
 # * libasan6
+# * llvm-19-dev
 # * tcc
 # * qemu-user-binfmt (backport version, as stable segfaults sometimes for s390x)
 #
@@ -98,7 +100,7 @@ ALLOW_SUSPECT_COPYRIGHTS=y ./run-lints.sh ./*.[ch] ./*.sh .githooks/*
 codespell --skip='.git','*.sh','.githooks','*.[ch]'
 # check for unused functions - this was not done with run-lints.sh, as it lacks
 # context if not looking at every file
-cppcheck -q --std=c99 --library=.norets.cfg --enable=unusedFunction \
+cppcheck -q --std=c99 -D__GNUC__ --enable=unusedFunction \
     --error-exitcode=1 --suppress=checkersReport --check-level=exhaustive \
     -DBFC_NOATTRIBUTES ./*.c
 

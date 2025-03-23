@@ -11,6 +11,16 @@
 
 #if BFC_TARGET_RISCV64
 
+/* enum of RISC-V registers used in this file, referred to by ABI mnemonic. */
+enum RISCV_REGS {
+    RISCV_T1 = 6,
+    RISCV_S0 = 8,
+    RISCV_A0 = 10,
+    RISCV_A1 = 11,
+    RISCV_A2 = 12,
+    RISCV_A7 = 17
+};
+
 /* padding bytes to be replaced with an instruction within a u8 array. */
 #define PAD_INSTRUCTION 0x00, 0x00, 0x00, 0x00
 
@@ -40,7 +50,7 @@ bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
     u8 i_bytes[4];
     u32 lo12 = sign_extend(val, 12);
     if (bit_fits(val, 32)) {
-        i32 hi20 = sign_extend(((u64)val + 0x800) >> 12, 20);
+        u32 hi20 = sign_extend(((u64)val + 0x800) >> 12, 20);
         if (hi20 && bit_fits(hi20, 6)) {
             u16 instr =
                 0x6001 | (((hi20 & 0x20) | reg) << 7) | ((hi20 & 0x1f) << 2);
@@ -105,22 +115,19 @@ bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
 
 /* SPDX-SnippetEnd */
 
-/* t1 temporary register used as a scratch register within certain operations */
-static const u8 TEMP_REG = 6;
-
 /* return a u32 containing the value of the instruction to store the lowest byte
- * in TEMP_REG at the address pointed to by addr_reg, suitable to pass to
+ * in t1 at the address pointed to by addr_reg, suitable to pass to
  * serialize32le */
 static u32 store_to_byte(u8 addr) {
     /* SB */
-    return (((u32)TEMP_REG) << 20) | (((u32)addr) << 15) | 0x23;
+    return (((u32)RISCV_T1) << 20) | (((u32)addr) << 15) | 0x23;
 }
 
 /* return a u32 containing the value of the instruction to load the byte at the
- * address pointed to by addr in TEMPREG suitable to pass to serialize32le */
+ * address pointed to by addr in t1 suitable to pass to serialize32le */
 static u32 load_from_byte(u8 addr) {
     /* LB */
-    return (((u32)addr) << 15) | (((u32)TEMP_REG) << 7) | 0x03;
+    return (((u32)addr) << 15) | (((u32)RISCV_T1) << 7) | 0x03;
 }
 
 static bool cond_jump(u8 reg, i64 distance, bool eq, sized_buf *dst_buf) {
@@ -251,9 +258,9 @@ static bool add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
         );
         return append_obj(dst_buf, i_bytes, 4);
     }
-    /* c.add reg, TEMP_REG */
-    u16 add_regs = 0x9002 | (((u16)reg) << 7) | (((u16)TEMP_REG) << 2);
-    return encode_li(dst_buf, TEMP_REG, imm) &&
+    /* c.add reg, t1 */
+    u16 add_regs = 0x9002 | (((u16)reg) << 7) | (((u16)RISCV_T1) << 2);
+    return encode_li(dst_buf, RISCV_T1, imm) &&
            append_obj(
                dst_buf, (u8[]){add_regs & 0xff, (add_regs & 0xff00) >> 8}, 2
            );
@@ -271,21 +278,21 @@ static bool add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     if (!imm8) return true;
     u8 i_bytes[12];
     uint sz;
-    i8 imm_s = imm8;
+    i16 imm = sign_extend(imm8, 8);
     serialize32le(load_from_byte(reg), i_bytes);
-    if (bit_fits(imm_s, 6)) {
+    if (bit_fits(imm, 6)) {
         sz = 10;
-        /* c.addi TEMP_REG, imm8 */
+        /* c.addi t1, imm8 */
         serialize16le(
-            (((imm_s & 0x20) | TEMP_REG) << 7) | ((imm_s & 0x1f) << 2) | 1,
+            (((imm & 0x20) | RISCV_T1) << 7) | ((imm & 0x1f) << 2) | 1,
             &i_bytes[4]
         );
     } else {
         sz = 12;
-        /* addi TEMP_REG, TEMP_REG, imm8 */
+        /* addi t1, t1, imm8 */
         serialize32le(
-            (((u32)imm_s) << 20) | (((u32)TEMP_REG) << 15) |
-                (((u32)TEMP_REG) << 7) | 0x13,
+            (((u32)imm) << 20) | (((u32)RISCV_T1) << 15) |
+                (((u32)RISCV_T1) << 7) | 0x13,
             &i_bytes[4]
         );
     }
@@ -297,21 +304,21 @@ static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     if (!imm8) return true;
     u8 i_bytes[12];
     uint sz;
-    i8 imm_s = -((i16)imm8);
+    i16 imm = -sign_extend(imm8, 8);
     serialize32le(load_from_byte(reg), i_bytes);
-    if (bit_fits(imm_s, 6)) {
+    if (bit_fits(imm, 6)) {
         sz = 10;
-        /* c.addi TEMP_REG, imm8 */
+        /* c.addi t1, imm8 */
         serialize16le(
-            (((imm_s & 0x20) | TEMP_REG) << 7) | ((imm_s & 0x1f) << 2) | 1,
+            (((imm & 0x20) | RISCV_T1) << 7) | ((imm & 0x1f) << 2) | 1,
             &i_bytes[4]
         );
     } else {
         sz = 12;
-        /* addi TEMP_REG, TEMP_REG, imm8 */
+        /* addi t1, t1, imm8 */
         serialize32le(
-            (((u32)imm_s) << 20) | (((u32)TEMP_REG) << 15) |
-                (((u32)TEMP_REG) << 7) | 0x13,
+            (((u32)imm) << 20) | (((u32)RISCV_T1) << 15) |
+                (((u32)RISCV_T1) << 7) | 0x13,
             &i_bytes[4]
         );
     }
@@ -351,11 +358,11 @@ static const arch_sc_nums SC_NUMS = {
 };
 
 static const arch_registers REGS = {
-    .sc_num = 17 /* a7 */,
-    .arg1 = 10 /* a0 */,
-    .arg2 = 11 /* a1 */,
-    .arg3 = 12 /* a2 */,
-    .bf_ptr = 8 /* s0 */,
+    .sc_num = RISCV_A7,
+    .arg1 = RISCV_A0,
+    .arg2 = RISCV_A1,
+    .arg3 = RISCV_A2,
+    .bf_ptr = RISCV_S0,
 };
 
 const arch_inter RISCV64_INTER = {
@@ -367,5 +374,429 @@ const arch_inter RISCV64_INTER = {
     .ELF_ARCH = EM_RISCV,
     .ELF_DATA = ELFDATA2LSB,
 };
+
+#ifdef BFC_TEST
+
+/* internal */
+#include "unit_test.h"
+
+#define REF RISCV64_DIS
+
+static void test_set_reg_32(void) {
+    sized_buf sb = newbuf(32);
+    sized_buf dis = newbuf(168);
+    set_reg(RISCV_A0, 0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 2);
+    set_reg(RISCV_A1, 1, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 4);
+    set_reg(RISCV_A2, -2, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+    set_reg(RISCV_A7, 0x123, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 10);
+    set_reg(RISCV_A0, -0x123, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 14);
+    set_reg(RISCV_S0, 0x100000, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 18);
+    set_reg(RISCV_A7, 0x123456, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 26);
+    set_reg(RISCV_A0, 0x1000, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 28);
+    set_reg(RISCV_A1, 0x1001, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 32);
+    DISASM_TEST(
+        sb,
+        dis,
+        "li a0, 0x0\n"
+        "li a1, 0x1\n"
+        "li a2, -0x2\n"
+        "li a7, 0x123\n"
+        "li a0, -0x123\n"
+        "lui s0, 0x100\n"
+        "lui a7, 0x123\n"
+        "addiw a7, a7, 0x456\n"
+        "lui a0, 0x1\n"
+        "lui a1, 0x1\n"
+        "addiw a1, a1, 0x1\n"
+    );
+}
+
+static void test_set_reg_64(void) {
+    sized_buf dis = newbuf(1024);
+    sized_buf sb = newbuf(124);
+
+    char *expected_disasm = mgr_malloc(1024);
+    char *disasm_p = expected_disasm;
+    size_t expected_len = 0;
+    for (i64 val = ((i64)INT32_MAX) + 1; val < INT64_MAX / 2; val <<= 1) {
+        set_reg(RISCV_A7, val, &sb);
+        u8 shift_lvl = trailing_0s(val);
+        disasm_p += sprintf(
+            disasm_p, "li a7, 0x1\nslli a7, a7, 0x%" PRIx8 "\n", shift_lvl
+        );
+        expected_len += 4;
+        CU_ASSERT_EQUAL(sb.sz, expected_len);
+    }
+    CU_ASSERT_EQUAL(expected_len, 124);
+    DISASM_TEST(sb, dis, expected_disasm);
+    mgr_free(expected_disasm);
+
+    /* worst-case scenario is alternating bits. 0b0101 is 0x5. */
+    /* first, just a single sequence, but it'll need to be shifted */
+    set_reg(RISCV_A7, INT64_C(0x5555) << 24, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+    DISASM_TEST(sb, dis, "lui a7, 0x5555\nslli a7, a7, 0xc\n");
+
+    set_reg(RISCV_S0, INT64_C(0x555555555555), &sb);
+    set_reg(RISCV_A7, INT64_C(-0x555555555555), &sb);
+    DISASM_TEST(
+        sb,
+        dis,
+        /* this is what LLVM 19 generates for these instructions:
+         * ###
+         * llvm-mc --triple=riscv64-linux-gnu -mattr=+c --print-imm-hex - <<<EOF
+         * li s0, 0x555555555555
+         * li a7, -0x555555555555
+         * EOF
+         * ### */
+        "lui s0, 0x555\n"
+        "addiw s0, s0, 0x555\n"
+        "slli s0, s0, 0xc\n"
+        "addi s0, s0, 0x555\n"
+        "slli s0, s0, 0xc\n"
+        "addi s0, s0, 0x555\n"
+        "lui a7, 0xffaab\n"
+        "addiw a7, a7, -0x555\n"
+        "slli a7, a7, 0xc\n"
+        "addi a7, a7, -0x555\n"
+        "slli a7, a7, 0xc\n"
+        "addi a7, a7, -0x555\n"
+    );
+
+    /* again, but with 64-bit rather than 48-bit values */
+    set_reg(RISCV_S0, INT64_C(0x5555555555555555), &sb);
+    set_reg(RISCV_A7, INT64_C(-0x5555555555555555), &sb);
+    DISASM_TEST(
+        sb,
+        dis,
+        /* this is what LLVM 19 generates for these instructions:
+         * ###
+         * llvm-mc --triple=riscv64-linux-gnu -mattr=+c --print-imm-hex - <<<EOF
+         * li s0, 0x5555555555555555
+         * li a7, -0x5555555555555555
+         * EOF
+         * ### */
+        "lui s0, 0x5555\n"
+        "addiw s0, s0, 0x555\n"
+        "slli s0, s0, 0xc\n"
+        "addi s0, s0, 0x555\n"
+        "slli s0, s0, 0xc\n"
+        "addi s0, s0, 0x555\n"
+        "slli s0, s0, 0xc\n"
+        "addi s0, s0, 0x555\n"
+        "lui a7, 0xfaaab\n"
+        "addiw a7, a7, -0x555\n"
+        "slli a7, a7, 0xc\n"
+        "addi a7, a7, -0x555\n"
+        "slli a7, a7, 0xc\n"
+        "addi a7, a7, -0x555\n"
+        "slli a7, a7, 0xc\n"
+        "addi a7, a7, -0x555\n"
+    );
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
+static void test_compressed_set_reg_64(void) {
+    sized_buf sb = newbuf(6);
+    sized_buf dis = newbuf(24);
+    sized_buf fakesb;
+    set_reg(RISCV_A1, INT64_C(0xf00000010), &sb);
+    /* fatal variant because the following trickery with fakesb would be
+     * problematic otherwise. */
+    CU_ASSERT_EQUAL_FATAL(sb.sz, 6);
+
+    /* make sure that it's encoded using the following instructions, and that
+     * each of the instructions is exactly 2 bytes in size */
+    fakesb.buf = sb.buf;
+    fakesb.sz = 2;
+    fakesb.capacity = 2;
+    DISASM_TEST(fakesb, dis, "li a1, 0xf\n");
+
+    fakesb.sz = 2;
+    fakesb.buf += 2;
+    memset(dis.buf, 0, dis.sz);
+    DISASM_TEST(fakesb, dis, "slli a1, a1, 0x20\n");
+
+    fakesb.sz = 2;
+    fakesb.buf += 2;
+    memset(dis.buf, 0, dis.sz);
+    DISASM_TEST(fakesb, dis, "addi a1, a1, 0x10\n");
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
+static void test_syscall(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(8);
+
+    syscall(&sb);
+    DISASM_TEST(sb, dis, "ecall\n");
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
+static void test_reg_copies(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(16);
+
+    reg_copy(RISCV_A1, RISCV_S0, &sb);
+    DISASM_TEST(sb, dis, "mv a1, s0\n");
+
+    reg_copy(RISCV_S0, RISCV_A7, &sb);
+    DISASM_TEST(sb, dis, "mv s0, a7\n");
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
+static void test_load_and_store(void) {
+    sized_buf sb = newbuf(8);
+    sized_buf dis = newbuf(40);
+
+    serialize32le(load_from_byte(RISCV_A0), sb_reserve(&sb, 4));
+    serialize32le(store_to_byte(RISCV_A0), sb_reserve(&sb, 4));
+    DISASM_TEST(sb, dis, "lb t1, 0x0(a0)\nsb t1, 0x0(a0)\n");
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
+static void test_zero_byte(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(24);
+
+    zero_byte(RISCV_A2, &sb);
+    DISASM_TEST(sb, dis, "sb zero, 0x0(a2)\n");
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
+static void test_nop_pad(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(16);
+
+    nop_loop_open(&sb);
+    CU_ASSERT_EQUAL(sb.sz, 12);
+    DISASM_TEST(sb, dis, "nop\nnop\nnop\n");
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
+static void test_successful_jumps(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(72);
+
+    jump_zero(RISCV_S0, 32, &sb);
+    jump_not_zero(RISCV_S0, -32, &sb);
+    DISASM_TEST(
+        sb,
+        dis,
+        "lb t1, 0x0(s0)\n"
+        "bnez t1, 0x8\n"
+        "j 0x24\n"
+        "lb t1, 0x0(s0)\n"
+        "beqz t1, 0x8\n"
+        "j -0x1c\n"
+    );
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
+static void test_inc_dec(void) {
+    sized_buf sb = newbuf(24);
+    sized_buf dis = newbuf(136);
+
+    inc_byte(RISCV_S0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 10);
+
+    dec_byte(RISCV_S0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 20);
+
+    inc_reg(RISCV_S0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 22);
+
+    dec_reg(RISCV_S0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 24);
+
+    DISASM_TEST(
+        sb,
+        dis,
+        "lb t1, 0x0(s0)\n"
+        "addi t1, t1, 0x1\n"
+        "sb t1, 0x0(s0)\n"
+        "lb t1, 0x0(s0)\n"
+        "addi t1, t1, -0x1\n"
+        "sb t1, 0x0(s0)\n"
+        "addi s0, s0, 0x1\n"
+        "addi s0, s0, -0x1\n"
+    );
+
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
+}
+
+static void sub_reg_is_neg_add_reg(void) {
+    sized_buf a, b;
+    a = newbuf(32);
+    b = newbuf(32);
+
+    sub_reg(REGS.bf_ptr, 0, &a);
+    add_reg(RISCV_S0, 0, &b);
+    CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
+    CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
+    for (ufast_8 i = 0; i < 63; i++) {
+        a.sz = 0;
+        b.sz = 0;
+        sub_reg(REGS.bf_ptr, INT64_C(1) << i, &a);
+        add_reg(RISCV_S0, -(INT64_C(1) << i), &b);
+        CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
+        CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
+    }
+
+    mgr_free(a.buf);
+    mgr_free(b.buf);
+}
+
+static void test_add_reg(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf alt = newbuf(10);
+    sized_buf dis = newbuf(40);
+    sized_buf fakesb;
+
+    add_reg(RISCV_S0, 0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 0);
+
+    add_reg(RISCV_S0, 0x12, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 2);
+
+    add_reg(RISCV_S0, 0x123, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+
+    DISASM_TEST(sb, dis, "addi s0, s0, 0x12\naddi s0, s0, 0x123\n");
+
+    add_reg(RISCV_S0, 0xdeadbeef, &sb);
+    encode_li(&alt, RISCV_T1, 0xdeadbeef);
+    CU_ASSERT_EQUAL_FATAL(sb.sz, alt.sz + 2);
+    CU_ASSERT(memcmp(sb.buf, alt.buf, alt.sz) == 0);
+    fakesb.sz = 2;
+    fakesb.capacity = 2;
+    fakesb.buf = sb.buf + alt.sz;
+    memset(dis.buf, 0, dis.sz);
+    DISASM_TEST(fakesb, dis, "add s0, s0, t1\n");
+
+    mgr_free(sb.buf);
+    mgr_free(alt.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_byte(void) {
+    sized_buf sb = newbuf(28);
+    sized_buf dis = newbuf(96);
+
+    add_byte(REGS.arg1, 0, &sb);
+    sub_byte(REGS.arg1, 0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 0);
+
+    add_byte(REGS.arg2, 0x10, &sb);
+    sub_byte(REGS.arg2, 0x10, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 20);
+    DISASM_TEST(
+        sb,
+        dis,
+        "lb t1, 0x0(a1)\n"
+        "addi t1, t1, 0x10\n"
+        "sb t1, 0x0(a1)\n"
+        "lb t1, 0x0(a1)\n"
+        "addi t1, t1, -0x10\n"
+        "sb t1, 0x0(a1)\n"
+    );
+    memset(dis.buf, 0, dis.sz);
+
+    /* 0x70 is too large to fit in the compressed add instruction, so 2 extra
+     * bytes per addi are needed */
+    add_byte(REGS.arg2, 0x70, &sb);
+    sub_byte(REGS.arg2, 0x70, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 24);
+    DISASM_TEST(
+        sb,
+        dis,
+        "lb t1, 0x0(a1)\n"
+        "addi t1, t1, 0x70\n"
+        "sb t1, 0x0(a1)\n"
+        "lb t1, 0x0(a1)\n"
+        "addi t1, t1, -0x70\n"
+        "sb t1, 0x0(a1)\n"
+    );
+    memset(dis.buf, 0, dis.sz);
+
+    /* if the imm is >= 0x80, it will become negative due to the casting that's
+     * done, but will have the same byte value once truncated down. */
+    add_byte(REGS.arg3, 0x80, &sb);
+    sub_byte(REGS.arg3, 0x80, &sb);
+    CU_ASSERT_EQUAL((i8)(INT16_C(1) + 0x80), (i8)(INT16_C(1) - 0x80));
+    (void)0;
+    DISASM_TEST(
+        sb,
+        dis,
+        "lb t1, 0x0(a2)\n"
+        "addi t1, t1, -0x80\n"
+        "sb t1, 0x0(a2)\n"
+        "lb t1, 0x0(a2)\n"
+        "addi t1, t1, 0x80\n"
+        "sb t1, 0x0(a2)\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_bad_jump_offset(void) {
+    EXPECT_BF_ERR(BF_ICE_INVALID_JUMP_ADDRESS);
+    jump_not_zero(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+}
+
+static void test_jump_too_long(void) {
+    EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
+    jump_zero(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+}
+
+CU_pSuite register_riscv64_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, test_set_reg_32);
+    ADD_TEST(suite, test_set_reg_64);
+    ADD_TEST(suite, test_compressed_set_reg_64);
+    ADD_TEST(suite, test_syscall);
+    ADD_TEST(suite, test_reg_copies);
+    ADD_TEST(suite, test_load_and_store);
+    ADD_TEST(suite, test_zero_byte);
+    ADD_TEST(suite, test_nop_pad);
+    ADD_TEST(suite, test_successful_jumps);
+    ADD_TEST(suite, test_inc_dec);
+    ADD_TEST(suite, sub_reg_is_neg_add_reg);
+    ADD_TEST(suite, test_add_reg);
+    ADD_TEST(suite, test_add_sub_byte);
+    ADD_TEST(suite, test_bad_jump_offset);
+    ADD_TEST(suite, test_jump_too_long);
+    return suite;
+}
+
+#endif /* BFC_TEST */
 
 #endif /* BFC_TARGET_RISCV64 */

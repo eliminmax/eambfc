@@ -6,11 +6,11 @@
 #ifndef BFC_TYPES_H
 #define BFC_TYPES_H 1
 /* C99 */
-#include <stdbool.h>
+#include <stdbool.h> /* IWYU pragma: export */
 /* POSIX */
-#include <sys/types.h>
+#include <sys/types.h> /* IWYU pragma: export */
 /* internal */
-#include "compat/eambfc_inttypes.h"
+#include "compat/eambfc_inttypes.h" /* IWYU pragma: export */
 
 typedef unsigned int uint;
 typedef unsigned char uchar;
@@ -37,8 +37,8 @@ typedef uint_fast32_t ufast_32;
 typedef uint_fast64_t ufast_64;
 
 typedef struct sized_buf {
+    char *buf;
     size_t sz; /* size of data used in buffer */
     size_t capacity; /* amount of space allocated for buffer */
-    void *buf;
 } sized_buf;
 #endif /* BFC_TYPES_H */

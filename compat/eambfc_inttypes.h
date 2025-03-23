@@ -33,12 +33,12 @@
  *
  * POSIX.1-2008's C standard interface is an extension to the C99 standard, and
  * the full C99 standard, including long long int and unsigned long long int,
- * will be present.
- * So there's a type that can hold any value that int64_t can, and a type that
+ * as well as int_least64_t and uint_least64_t will be present.
+ * So there are types that can hold any value that int64_t can, and types that
  * can hold any value that uint64_t can. It might not be the same range, but
  * it can be used to cheat at this. If I'm very careful, which I need to be, as
  * it's C I'm ranting about here, I can cheat. I can typedef it myself, and
- * define the macros I use myself, and pretend that a long long that's more than
+ * define the macros I use myself, and pretend that a type that's more than
  * 64 bits is actually only 64 bits.
  *
  * It is fragile, and not desirable, but I can do it, as a fall-back if the
@@ -49,26 +49,25 @@
 
 #ifndef BFC_INTTYPES_H
 #define BFC_INTTYPES_H 1
+
 /* inttypes.h #includes <stdint.h> and provides printf and scanf macros. */
 /* C99 */
-#include <inttypes.h>
+#include <inttypes.h> /* IWYU pragma: export */
 
 #ifndef INT64_MAX /* if not defined, int64_t is not supported. */
 #define INT64_MAX 9223372036854775807LL
 #define INT64_MIN -9223372036854775808LL
-typedef long long int int64_t;
+typedef int_least64_t int64_t;
 #endif /* INT64_MAX */
 
 #ifndef UINT64_MAX /* if not defined, uint64_t is not supported. */
 #define UINT64_MAX 18446744073709551615ULL
-typedef unsigned long long int uint64_t;
-#define PRIx64 "%llu"
-#define SCNx64 "%llu"
+typedef uint_least64_t uint64_t;
 #endif /* UINT64_MAX */
 
 #ifdef INT_TORTURE_TEST
 /* __int128 is a type supported by gcc on some platforms. Use it to make sure
- * that the logic does not break for >64-bit long long types */
+ * that the logic does not break for >64-bit {u,}int_least64_t types */
 #define int64_t __int128
 #define uint64_t unsigned __int128
 #endif /* INT_TORTURE_TEST */

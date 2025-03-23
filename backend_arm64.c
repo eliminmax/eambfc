@@ -37,7 +37,7 @@ typedef enum {
 } mov_type;
 
 /* set dst to the machine code for STRB w17, x.reg */
-static void store_to_byte(u8 src, u8 *dst) {
+static void store_to_byte(u8 src, u8 dst[4]) {
     serialize32le(0x38000411 | (((u32)src) << 5), dst);
 }
 
@@ -64,18 +64,6 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     u16 default_val;
     mov_type lead_mt;
 
-    /* split the immediate into 4 16-bit parts - high, medium-high, medium-low,
-     * and low. */
-    struct shifted_imm {
-        u16 imm16;
-        shift_lvl shift;
-    };
-    const struct shifted_imm parts[4] = {
-        {(u16)imm, A64_SL_NO_SHIFT},
-        {(u16)(imm >> 16), A64_SL_SHIFT16},
-        {(u16)(imm >> 32), A64_SL_SHIFT32},
-        {(u16)(imm >> 48), A64_SL_SHIFT48},
-    };
     if (imm < 0) {
         default_val = 0xffff;
         lead_mt = A64_MT_INVERT;
@@ -83,30 +71,35 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         default_val = 0;
         lead_mt = A64_MT_ZERO;
     }
+
+    /* split the immediate into 4 16-bit parts - high, medium-high, medium-low,
+     * and low. */
+    const struct {
+        u16 imm16;
+        shift_lvl shift;
+    } parts[4] = {
+        {imm, A64_SL_NO_SHIFT},
+        {(imm >> 16), A64_SL_SHIFT16},
+        {(imm >> 32), A64_SL_SHIFT32},
+        {(imm >> 48), A64_SL_SHIFT48},
+    };
+
     /* skip to the first part with non-default imm16 values. */
-    int i;
-    for (i = 0; i < 4; i++) {
-        if (parts[i].imm16 != default_val) break;
+    bool started = false;
+    for (ufast_8 i = 0; i < 4; i++) {
+        if (parts[i].imm16 != default_val) {
+            mov(started ? A64_MT_KEEP : lead_mt,
+                parts[i].imm16,
+                parts[i].shift,
+                reg,
+                sb_reserve(dst_buf, 4));
+            started = true;
+        }
     }
-    u8 *instr_bytes = sb_reserve(dst_buf, 4);
-    /* check if the end was reached without finding a non-default value */
-    if (i == 4) {
-        /* all are the default value, so use this fallback instruction */
+    if (!started) {
+        /* all were the default value, so use this fallback instruction */
         /* (MOVZ|MOVN) x.reg, default_val */
-        mov(lead_mt, default_val, A64_SL_NO_SHIFT, reg, instr_bytes);
-    } else {
-        /* at least one needs to be set */
-        /* (MOVZ|MOVN) x.reg, lead_imm{, lsl lead_shift} */
-        mov(lead_mt, parts[i].imm16, parts[i].shift, reg, instr_bytes);
-        for (++i; i < 4; i++)
-            if (parts[i].imm16 != default_val) {
-                /*  MOVK x[reg], imm16{, lsl shift} */
-                mov(A64_MT_KEEP,
-                    parts[i].imm16,
-                    parts[i].shift,
-                    reg,
-                    sb_reserve(dst_buf, 4));
-            }
+        mov(lead_mt, default_val, A64_SL_NO_SHIFT, reg, sb_reserve(dst_buf, 4));
     }
     return true;
 }
@@ -123,7 +116,7 @@ static bool syscall(sized_buf *dst_buf) {
 }
 
 static bool nop_loop_open(sized_buf *dst_buf) {
-#define NOP 0x1f, 0x20, 0x03, 0xdf
+#define NOP 0x1f, 0x20, 0x03, 0xd5
     return append_obj(dst_buf, (u8[]){NOP, NOP, NOP}, 12);
 #undef NOP
 }
@@ -214,7 +207,7 @@ static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
         if (!set_reg(TEMP_REG, (i64)imm, dst_buf)) return false;
         /* either ADD x.reg, x.reg, x17 or SUB x.reg, x.reg, x17 */
         serialize32le(
-            op_byte << 24 | TEMP_REG << 16 | reg | reg << 5,
+            (u32)op_byte << 24 | TEMP_REG << 16 | reg | reg << 5,
             sb_reserve(dst_buf, 4)
         );
         return true;
@@ -330,4 +323,314 @@ const arch_inter ARM64_INTER = {
     .ELF_ARCH = EM_AARCH64,
     .ELF_DATA = ELFDATA2LSB,
 };
+
+#ifdef BFC_TEST
+/* internal */
+#include "unit_test.h"
+
+#define REF ARM64_DIS
+
+static void test_set_reg_simple(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(24);
+
+    struct {
+        i64 imm;
+        const char *disasm;
+        u8 reg;
+    } test_sets[4] = {
+        {0, "mov x0, #0x0\n", 0},
+        {-1, "mov x0, #-0x1\n", 0},
+        {-0x100001, "mov x0, #-0x100001\n", 0},
+        {0xbeef, "mov x1, #0xbeef\n", 1},
+    };
+
+    for (ufast_8 i = 0; i < 4; i++) {
+        set_reg(test_sets[i].reg, test_sets[i].imm, &sb);
+        DISASM_TEST(sb, dis, test_sets[i].disasm);
+    }
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_reg_multiple(void) {
+    sized_buf sb = newbuf(8);
+    sized_buf dis = newbuf(32);
+
+    set_reg(0, 0xdeadbeef, &sb);
+    DISASM_TEST(
+        sb,
+        dis,
+        "mov x0, #0xbeef\n"
+        "movk x0, #0xdead, lsl #16\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_reg_split(void) {
+    sized_buf sb = newbuf(8);
+    sized_buf dis = newbuf(48);
+
+    set_reg(19, 0xdead0000beef, &sb);
+    DISASM_TEST(
+        sb,
+        dis,
+        "mov x19, #0xbeef\n"
+        "movk x19, #0xdead, lsl #32\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_reg_neg(void) {
+    sized_buf sb = newbuf(8);
+    sized_buf dis = newbuf(48);
+
+    set_reg(19, INT64_C(-0xdeadbeef), &sb);
+    DISASM_TEST(
+        sb,
+        dis,
+        "mov x19, #-0xbeef\n"
+        /* the bitwise negation of 0xdead is 0x2152 */
+        "movk x19, #0x2152, lsl #16\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_reg_neg_split(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(80);
+
+    set_reg(19, INT64_C(-0xdead0000beef), &sb);
+    DISASM_TEST(
+        sb,
+        dis,
+        "mov x19, #-0xbeef\n"
+        /* the bitwise negation of 0xdead is 0x2152 */
+        "movk x19, #0x2152, lsl #32\n"
+    );
+
+    set_reg(8, INT64_C(-0xdeadbeef0000), &sb);
+    DISASM_TEST(
+        sb,
+        dis,
+        "mov x8, #-0x10000\n"
+        /* the bitwise negation of 0xbeef is 0x4110
+         * (Add 1 because that's how 2's complement works)*/
+        "movk x8, #0x4111, lsl #16\n"
+        /* the bitwise negation of 0xdead is 0x2152 */
+        "movk x8, #0x2152, lsl #32\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_inc_dec_reg(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(24);
+
+    inc_reg(0, &sb);
+    DISASM_TEST(sb, dis, "add x0, x0, #0x1\n");
+
+    inc_reg(19, &sb);
+    DISASM_TEST(sb, dis, "add x19, x19, #0x1\n");
+
+    dec_reg(1, &sb);
+    DISASM_TEST(sb, dis, "sub x1, x1, #0x1\n");
+
+    dec_reg(19, &sb);
+    DISASM_TEST(sb, dis, "sub x19, x19, #0x1\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_load_store(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(24);
+
+    load_from_byte(19, sb_reserve(&sb, 4));
+    DISASM_TEST(sb, dis, "ldrb w17, [x19], #0x0\n");
+
+    store_to_byte(19, sb_reserve(&sb, 4));
+    DISASM_TEST(sb, dis, "strb w17, [x19], #0x0\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_reg(void) {
+    sized_buf sb = newbuf(24);
+    sized_buf dis = newbuf(64);
+    add_sub(8, A64_OP_ADD, 0xabcdef, &sb);
+    DISASM_TEST(sb, dis, "add x8, x8, #0xabc, lsl #12\nadd x8, x8, #0xdef\n");
+
+    add_sub(8, A64_OP_SUB, 0xabc000, &sb);
+    DISASM_TEST(sb, dis, "sub x8, x8, #0xabc, lsl #12\n");
+
+    add_sub(8, A64_OP_ADD, 0xdeadbeef, &sb);
+    add_sub(8, A64_OP_SUB, 0xdeadbeef, &sb);
+    DISASM_TEST(
+        sb,
+        dis,
+        "mov x17, #0xbeef\nmovk x17, #0xdead, lsl #16\nadd x8, x8, x17\n"
+        "mov x17, #0xbeef\nmovk x17, #0xdead, lsl #16\nsub x8, x8, x17\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_add_sub_byte(void) {
+    sized_buf sb = newbuf(24);
+    sized_buf dis = newbuf(144);
+
+    add_byte(19, 0xa5, &sb);
+    sub_byte(19, 0xa5, &sb);
+
+    DISASM_TEST(
+        sb,
+        dis,
+        "ldrb w17, [x19], #0x0\n"
+        "add x17, x17, #0xa5\n"
+        "strb w17, [x19], #0x0\n"
+        "ldrb w17, [x19], #0x0\n"
+        "sub x17, x17, #0xa5\n"
+        "strb w17, [x19], #0x0\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_zero_byte(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(24);
+
+    zero_byte(19, &sb);
+    DISASM_TEST(sb, dis, "strb wzr, [x19], #0x0\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_inc_dec_wrapper(void) {
+    sized_buf sb = newbuf(24);
+    sized_buf dis = newbuf(136);
+    inc_byte(1, &sb);
+    dec_byte(8, &sb);
+    DISASM_TEST(
+        sb,
+        dis,
+        "ldrb w17, [x1], #0x0\n"
+        "add x17, x17, #0x1\n"
+        "strb w17, [x1], #0x0\n"
+        "ldrb w17, [x8], #0x0\n"
+        "sub x17, x17, #0x1\n"
+        "strb w17, [x8], #0x0\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_reg_copy(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(48);
+    reg_copy(1, 19, &sb);
+    reg_copy(2, 0, &sb);
+    reg_copy(8, 8, &sb);
+    DISASM_TEST(
+        sb,
+        dis,
+        "mov x1, x19\n"
+        "mov x2, x0\n"
+        "mov x8, x8\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_syscall(void) {
+    sized_buf sb = newbuf(4);
+    sized_buf dis = newbuf(16);
+    syscall(&sb);
+    DISASM_TEST(sb, dis, "svc #0\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_nops(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(16);
+    nop_loop_open(&sb);
+    DISASM_TEST(sb, dis, "nop\nnop\nnop\n");
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_successful_jumps(void) {
+    sized_buf sb = newbuf(12);
+    sized_buf dis = newbuf(104);
+    jump_zero(0, 32, &sb);
+    jump_not_zero(0, -32, &sb);
+    DISASM_TEST(
+        sb,
+        dis,
+        "ldrb w17, [x0], #0x0\n"
+        "tst x17, #0xff\n"
+        "b.eq #0x24\n"
+        "ldrb w17, [x0], #0x0\n"
+        "tst x17, #0xff\n"
+        "b.ne #-0x1c\n"
+    );
+
+    mgr_free(sb.buf);
+    mgr_free(dis.buf);
+}
+
+static void test_bad_jump_offset(void) {
+    EXPECT_BF_ERR(BF_ICE_INVALID_JUMP_ADDRESS);
+    jump_not_zero(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+}
+
+static void test_jump_too_long(void) {
+    EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
+    jump_zero(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+}
+
+CU_pSuite register_arm64_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, test_set_reg_simple);
+    ADD_TEST(suite, test_reg_multiple);
+    ADD_TEST(suite, test_reg_split);
+    ADD_TEST(suite, test_reg_neg);
+    ADD_TEST(suite, test_reg_neg_split);
+    ADD_TEST(suite, test_inc_dec_reg);
+    ADD_TEST(suite, test_load_store);
+    ADD_TEST(suite, test_add_sub_reg);
+    ADD_TEST(suite, test_add_sub_byte);
+    ADD_TEST(suite, test_zero_byte);
+    ADD_TEST(suite, test_inc_dec_wrapper);
+    ADD_TEST(suite, test_reg_copy);
+    ADD_TEST(suite, test_syscall);
+    ADD_TEST(suite, test_nops);
+    ADD_TEST(suite, test_successful_jumps);
+    ADD_TEST(suite, test_bad_jump_offset);
+    ADD_TEST(suite, test_jump_too_long);
+    return suite;
+}
+
+#endif /* BFC_TEST */
 #endif /* BFC_TARGET_ARM64 */
