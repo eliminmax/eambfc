@@ -7,7 +7,6 @@
 # __BACKENDS__: add backend here
 backends := 'arm64 riscv64 s390x x86_64'
 
-
 version_string := (
     trim(read("version")) +
     "-git-" +
@@ -21,7 +20,7 @@ unibuild_files := (
     ' err.c util.c resource_mgr.c parse_args.c main.c '
 )
 
-# aligning it like this was not easy
+# aligning it like this was not easy, but it sure is satisfying
 gcc_strict_flags := (
     '-std=c99 -D_POSIX_C_SOURCE=200908L -O3 -fanalyzer -Wall -Wextra -Werror ' +
     '-Wpedantic -Wformat-truncation=2 -Wduplicated-branches -Wshadow -Wundef ' +
@@ -35,20 +34,36 @@ gcc_ubsan_flags := gcc_strict_flags + ' ' + (
     '-fsanitize=address,undefined -fno-sanitize-recover=all'
 )
 
+
+
+# GENERAL
+
 [doc("Build the basic `eambfc` binary with `make`")]
 [group("general")]
 eambfc:
     make eambfc
 
-[doc("Build the basic `eambfc` binary with `make`")]
+[doc("Create a release build of `eambfc`")]
 [group("general")]
 eambfc-release:
-    make clean
+    # TODO: migrate this into justfile
+    ./release.sh
+
+
+
+# TESTS - static analysis, unit tests, cli tests, etc.
 
 [doc("Run `eambfc` through GCC's static analyzer")]
 [group("tests")]
 strict-gcc:
     gcc {{ gcc_strict_flags }} {{ unibuild_files }} -o /dev/null
+
+[doc("Run the full project through the `cppcheck` static analyzer")]
+[group("tests")]
+cppcheck-full:
+    cppcheck -q --std=c99 -D__GNUC__ --error-exitcode=1 \
+        --check-level=exhaustive --enable=all --disable=missingInclude \
+        --suppress=checkersReport {{ unibuild_files }}
 
 [doc("Run `eambfc` through LLVM's `scan-build` static analyzer")]
 [group("tests")]
@@ -60,32 +75,35 @@ scan-build:
 [group("tests")]
 ubsan-test: alt-builds-dir
     gcc  {{ gcc_ubsan_flags }} {{ unibuild_files }} -o alt-builds/eambfc-ubsan
-    just all_arch_test alt-builds/eambfc-ubsan
+    just test alt-builds/eambfc-ubsan
 
 [doc("Build and test `eambfc` with 64-bit integer fallback hackery")]
-int-torture-test: alt-builds-dir
+[group("tests")]
+int-torture-test: alt-builds-dir test_driver
     gcc -D INT_TORTURE_TEST=1 {{gcc_ubsan_flags}} -Wno-pedantic \
         {{ unibuild_files }} -o alt-builds/eambfc-itt
-    just all_arch_test alt-builds/eambfc-itt
+    just test alt-builds/eambfc-itt
 
-[doc("Test `eambfc` for all targets, with and without `-O`")]
+[doc("Test provided `eambfc` build using its cli")]
 [group("tests")]
 [working-directory('./tests')]
-all_arch_test eambfc="eambfc": can_run_all
-    make EAMBFC={{ join(invocation_dir(), eambfc) }} -s test_all
-    SKIP_DEAD_CODE=1 make EAMBFC={{ join(invocation_dir(), eambfc) }} \
-        EAMBFC_ARGS=-kj test_all
+test eambfc="eambfc": test_driver
+    ./test_driver {{ join(invocation_dir(), eambfc) }}
 
 [doc("Run through the unit tests")]
 [group("tests")]
 unit-test: unit_test_driver
     ./unit_test_driver
 
-[doc("run cppcheck with options for standalone files")]
+
+
+# LINTS - check style and quality of individual files
+
+[doc("run cppcheck with options suitable for standalone files")]
 [group("lints")]
-cppcheck_single +files: argglob
-    cppcheck -q --std=c99 --platform=unspecified --enable=all \
-      --library=.norets.cfg -DBFC_NOATTRIBUTES \
+cppcheck-single +files:
+    cppcheck -q --std=c99 -D__GNUC__ \
+      --platform=unspecified --enable=all \
       --disable=missingInclude,unusedFunction --error-exitcode=1 \
       --check-level=exhaustive --suppress=checkersReport {{ files }}
 
@@ -119,21 +137,48 @@ copyright_check +files:
 clang-fmt-check +files:
     clang-format-19 -n -Werror {{ files }}
 
-[doc("Compile the `tools/argglob` helper binary")]
+
+
+# TOOLS - compiled tools needed for other jobs
+
+[doc("Compile the `tools/runmatch` helper binary")]
 [group("tools")]
 [working-directory('./tools')]
-argglob:
-    #!/bin/sh
-    if [ ! -e argglob -o "$(stat -c %X argglob)" -lt "$(stat -c %X argglob.c)" ]
-    then
-      gcc -Wall -Wextra -Werror -pedantic -std=c99 -D_POSIX_C_SOURCE=200908L \
-        argglob.c -o argglob
-    fi
+runmatch:
+    make CC=gcc CFLAGS={{quote(gcc_strict_flags)}} runmatch
+
+[doc("Compile the `tests/test_driver` binary")]
+[group("tools")]
+[working-directory('./tests')]
+test_driver:
+    make CC=gcc CFLAGS={{quote(gcc_ubsan_flags)}} test_driver
 
 [doc("Build `unit_test_driver` binary")]
 [group("tools")]
 unit_test_driver:
     make CFLAGS={{ quote(gcc_ubsan_flags) }} unit_test_driver
+
+
+
+# META - just what it looks like
+
+[group("meta")]
+[doc("build all tools")]
+all-tools: unit_test_driver runmatch test_driver
+
+[group("meta")]
+[doc("run all tests")]
+all-tests:
+    just strict-gcc
+    just cppcheck-full
+    just scan-build
+    env BFC_DONT_SKIP_TESTS=1 just ubsan-test
+    env BFC_DONT_SKIP_TESTS=1 just int-torture-test
+    env BFC_DONT_SKIP_TESTS=1 just unit-test
+
+
+
+# PRIVATE
 
 [private]
 [working-directory('./tools/execfmt_support')]
@@ -146,10 +191,10 @@ can_run_all:
     @for arch in {{ backends }}; do just can_run "$arch"; done
 
 [private]
-pre_commit_checks +files:
+@pre_commit_checks +files: runmatch
     just copyright_check {{ files }}
-    just clang-fmt-check $(tools/argglob '*.[ch]' {{ files }})
-    just cppcheck_single $(tools/argglob '*.c' {{ files }})
+    tools/runmatch '*.[ch]' just clang-fmt-check '{-}' {{ files }}
+    tools/runmatch '*.c' just cppcheck-single '{-}' {{ files }}
     codespell {{ files }}
 
 [private]
