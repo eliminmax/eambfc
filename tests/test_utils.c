@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 /* POSIX */
+#include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
