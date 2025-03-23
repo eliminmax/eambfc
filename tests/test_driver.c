@@ -14,7 +14,6 @@
 #include <string.h>
 /* POSIX */
 #include <fcntl.h>
-#include <libgen.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -24,17 +23,16 @@
 #include "../attributes.h"
 #include "../config.h"
 #include "../types.h"
-/* internal - A header which provides a macro to generate a string containing
- * the expected output of colortest using the C Preprocessor */
+/* internal - tests */
 #include "colortest_output.h"
 #include "test_utils.h"
 
 /* pointer to a string containing the path to the EAMBFC executable.
  *
- * Set in the main function to `argv[1]`, falling back to `"../eambfc"` if argv
- * isn't long enough.
+ * Set in the main function to the `EAMBFC` environment variable, falling back
+ * to `"../eambfc"` if `getenv("EAMBFC")` returns `NULL`.
  *
- * After that, it must be left unchanged through the duration of the program. */
+ * Once set, it should be left unchanged through the duration of the program. */
 static const char *EAMBFC;
 
 /* convenience macro to prepend the eambfc executable as args[0] and append NULL
@@ -827,24 +825,36 @@ static nonnull_args void run_misc_tests(result_tracker *results) {
     }
 }
 
-int main(int argc, const char *argv[]) {
-    if (!argc) abort();
-    if (!strchr(argv[0], '/')) abort();
-    char *argv0 = strdup(argv[0]);
-    if (argv0 == NULL) abort();
-    CHECKED(chdir(dirname(argv0)) == 0);
-    free(argv0);
+int main(int argc, char *argv[]) {
+    if (!argc) {
+        fputs("Empty argv array\n", stderr);
+        abort();
+    }
+
+    char *last_sep;
+    if ((last_sep = strrchr(argv[0], '/')) == NULL) {
+        fputs("Failed to determine path to tests dir from argv[0]\n", stderr);
+        abort();
+    }
+
+    *last_sep = 0;
+    CHECKED(chdir(argv[0]) == 0);
+    *last_sep = '/';
 
     signal(SIGPIPE, SIG_IGN);
+
     EAMBFC = getenv("EAMBFC");
     if (EAMBFC == NULL) EAMBFC = "../eambfc";
+
     load_arch_support();
     result_tracker results = {0, 0, 0};
+
     run_bad_arg_tests(&results);
     run_perm_err_tests(&results);
     run_bin_tests(&results);
     run_alt_hello_tests(&results);
     run_misc_tests(&results);
+
     printf(
         "\n#################\nRESULTS\n\n"
         "SUCCESSES: %" PRIu8 "\nFAILURES:  %" PRIu8 "\nSKIPPED:   %" PRIu8 "\n",
@@ -852,7 +862,7 @@ int main(int argc, const char *argv[]) {
         results.failed,
         results.skipped
     );
-    /* clang-format on */
+
     if (results.failed || (getenv("BFC_DONT_SKIP_TESTS") && results.skipped)) {
         return EXIT_FAILURE;
     }
