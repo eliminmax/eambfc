@@ -74,7 +74,7 @@ scan-build:
 [doc("Build `eambfc` with **UBsan**, and run through the test suite")]
 [group("tests")]
 ubsan-test: alt-builds-dir
-    gcc  {{ gcc_ubsan_flags }} {{ unibuild_files }} -o alt-builds/eambfc-ubsan
+    gcc {{ gcc_ubsan_flags }} {{ unibuild_files }} -o alt-builds/eambfc-ubsan
     just test alt-builds/eambfc-ubsan
 
 [doc("Build and test `eambfc` with 64-bit integer fallback hackery")]
