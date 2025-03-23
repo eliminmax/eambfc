@@ -13,4 +13,4 @@ if [ "$(git tag --list "v$(cat version)" | wc -c)" -gt 0 ]; then
 fi
 
 # requires GNU xargs -0 option to be supported
-git diff --cached --name-only -z | xargs -0 ./run-lints.sh
+git diff --cached --name-only -z | xargs -0 just all-lints
