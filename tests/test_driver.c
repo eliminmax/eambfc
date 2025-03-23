@@ -23,8 +23,7 @@
 #include "../attributes.h"
 #include "../config.h"
 #include "../types.h"
-/* internal - A header which provides a macro to generate a string containing
- * the expected output of colortest using the C Preprocessor */
+/* internal - tests */
 #include "colortest_output.h"
 #include "test_utils.h"
 
