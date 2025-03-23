@@ -69,6 +69,7 @@ cppcheck-full:
 [group("tests")]
 scan-build:
     scan-build-19 --status-bugs make CFLAGS=-O3 CC=clang-19 clean eambfc
+    scan-build-19 --status-bugs make CFLAGS=-O3 CC=clang-19 unit_test_driver
     make clean
 
 [doc("Build `eambfc` with **UBsan**, and run through the test suite")]
