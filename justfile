@@ -68,9 +68,9 @@ cppcheck-full:
 [doc("Run `eambfc` through LLVM's `scan-build` static analyzer")]
 [group("tests")]
 scan-build:
-    scan-build-19 --status-bugs make CFLAGS=-O3 CC=clang-19 clean eambfc
-    scan-build-19 --status-bugs make CFLAGS=-O3 CC=clang-19 unit_test_driver
-    make clean
+    scan-build-19 --status-bugs make -s CFLAGS=-O3 clean eambfc
+    scan-build-19 --status-bugs make -s CFLAGS=-O3 unit_test_driver
+    make -s clean
 
 [doc("Build `eambfc` with **UBsan**, and run through the test suite")]
 [group("tests")]
