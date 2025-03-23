@@ -37,7 +37,7 @@ const_fn inline_impl u8 trailing_0s(u64 val) {
  * padding would exceed `SIZE_MAX`, it returns `SIZE_MAX`. */
 const_fn inline_impl size_t chunk_pad(size_t nbytes) {
     if (!(nbytes & (BFC_CHUNK_SIZE - 1))) return nbytes;
-    size_t ret = nbytes & ~(size_t)(BFC_CHUNK_SIZE - 1) + BFC_CHUNK_SIZE;
+    size_t ret = (nbytes & ~(size_t)(BFC_CHUNK_SIZE - 1)) + BFC_CHUNK_SIZE;
     return (ret < nbytes) ? SIZE_MAX : ret;
 }
 
