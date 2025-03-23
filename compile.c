@@ -75,7 +75,7 @@ static bool write_ehdr(
 
     /* Target is a 64-bit architecture. */
     header.e_ident[EI_CLASS] = ELFCLASS64;
-    header.e_ident[EI_DATA] = inter->ELF_DATA;
+    header.e_ident[EI_DATA] = inter->elf_data;
 
     /* e_ident[EI_VERSION] must be set to EV_CURRENT. */
     header.e_ident[EI_VERSION] = EV_CURRENT;
@@ -98,7 +98,7 @@ static bool write_ehdr(
 
     /* TARGET_ARCH is defined in config.h, and values are also the values for
      * target ELF architectures. */
-    header.e_machine = inter->ELF_ARCH;
+    header.e_machine = inter->elf_arch;
     /* e_version, like e_ident[EI_VERSION], must be set to EV_CURRENT */
     header.e_version = EV_CURRENT;
 
@@ -136,9 +136,9 @@ static bool write_ehdr(
 
     /* e_flags has a processor-specific meaning. For x86_64, no values are
      * defined, and it should be set to 0. */
-    header.e_flags = inter->FLAGS;
+    header.e_flags = inter->flags;
 
-    if (inter->ELF_DATA == ELFDATA2LSB) {
+    if (inter->elf_data == ELFDATA2LSB) {
         serialize_ehdr64_le(&header, header_bytes);
     } else {
         serialize_ehdr64_be(&header, header_bytes);
@@ -198,7 +198,7 @@ static bool write_phtb(
     phdr_table[1].p_align = 1;
 
     for (int i = 0; i < PHNUM; i++) {
-        if (inter->ELF_DATA == ELFDATA2LSB) {
+        if (inter->elf_data == ELFDATA2LSB) {
             serialize_phdr64_le(
                 &(phdr_table[i]), &(phdr_table_bytes[i * PHDR_SIZE])
             );
@@ -228,17 +228,15 @@ static bool bf_io(
      * sc is the system call number for the system call to use */
     return (
         /* load the number for the write system call into sc_num */
-        inter->FUNCS->set_reg(inter->REGS->sc_num, sc, obj_code) &&
+        inter->set_reg(inter->reg_sc_num, sc, obj_code) &&
         /* load the number for the stdout file descriptor into arg1 */
-        inter->FUNCS->set_reg(inter->REGS->arg1, bf_fd, obj_code) &&
+        inter->set_reg(inter->reg_arg1, bf_fd, obj_code) &&
         /* copy the address in bf_ptr to arg2 */
-        inter->FUNCS->reg_copy(
-            inter->REGS->arg2, inter->REGS->bf_ptr, obj_code
-        ) &&
+        inter->reg_copy(inter->reg_arg2, inter->reg_bf_ptr, obj_code) &&
         /* load # of bytes to read/write (1, specifically) into arg3 */
-        inter->FUNCS->set_reg(inter->REGS->arg3, 1, obj_code) &&
+        inter->set_reg(inter->reg_arg3, 1, obj_code) &&
         /* finally, call the syscall instruction */
-        inter->FUNCS->syscall(obj_code)
+        inter->syscall(obj_code)
     );
 }
 
@@ -292,7 +290,7 @@ static bool bf_jump_open(
     jump_stack.next_index++;
     /* fill space jump open will take with NOP instructions of the same length,
      * so that obj_code->sz remains properly sized. */
-    return inter->FUNCS->nop_loop_open(obj_code);
+    return inter->nop_loop_open(obj_code);
 }
 
 /* compile matching `[` and `]` instructions
@@ -331,20 +329,18 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
         .buf = obj_code->buf, .sz = open_addr, .capacity = obj_code->capacity
     };
 
-    if (!inter->FUNCS->jump_zero(inter->REGS->bf_ptr, distance, &tmp_buf)) {
+    if (!inter->jump_zero(inter->reg_bf_ptr, distance, &tmp_buf)) {
         return false;
     }
 
     /* jumps to right after the `[` instruction, to skip a redundant check */
-    return inter->FUNCS->jump_not_zero(
-        inter->REGS->bf_ptr, -distance, obj_code
-    );
+    return inter->jump_not_zero(inter->reg_bf_ptr, -distance, obj_code);
 }
 
 /* 4 of the 8 brainfuck instructions can be compiled with instructions that take
  * the same set of parameters, so this expands to a call to the appropriate
  * function. */
-#define COMPILE_WITH(f) f(inter->REGS->bf_ptr, obj_code)
+#define COMPILE_WITH(f) f(inter->reg_bf_ptr, obj_code)
 
 /* compile an individual instruction (c), to the file descriptor fd.
  * passes fd along with the appropriate arguments to a function to compile that
@@ -356,18 +352,17 @@ static bool comp_instr(
     switch (c) {
     /* start with the simple cases handled with COMPILE_WITH */
     /* decrement the tape pointer register */
-    case '<': return COMPILE_WITH(inter->FUNCS->dec_reg);
+    case '<': return COMPILE_WITH(inter->dec_reg);
     /* increment the tape pointer register */
-    case '>': return COMPILE_WITH(inter->FUNCS->inc_reg);
+    case '>': return COMPILE_WITH(inter->inc_reg);
     /* increment the current tape value */
-    case '+': return COMPILE_WITH(inter->FUNCS->inc_byte);
+    case '+': return COMPILE_WITH(inter->inc_byte);
     /* decrement the current tape value */
-    case '-': return COMPILE_WITH(inter->FUNCS->dec_byte);
+    case '-': return COMPILE_WITH(inter->dec_byte);
     /* write to stdout */
-    case '.':
-        return bf_io(obj_code, STDOUT_FILENO, inter->SC_NUMS->write, inter);
+    case '.': return bf_io(obj_code, STDOUT_FILENO, inter->sc_write, inter);
     /* read from stdin */
-    case ',': return bf_io(obj_code, STDIN_FILENO, inter->SC_NUMS->read, inter);
+    case ',': return bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
     /* `[` and `]` do their own error handling. */
     case '[': return bf_jump_open(obj_code, inter, in_name);
     case ']': return bf_jump_close(obj_code, inter);
@@ -383,7 +378,7 @@ static bool comp_instr(
 
 /* similar to the above COMPILE_WITH, but with an extra parameter passed to the
  * function, so that can't be reused. */
-#define IR_COMPILE_WITH(f) f(inter->REGS->bf_ptr, count, obj_code)
+#define IR_COMPILE_WITH(f) f(inter->reg_bf_ptr, count, obj_code)
 
 /* Compile an ir instruction */
 static bool comp_ir_instr(
@@ -407,11 +402,11 @@ static bool comp_ir_instr(
         }
         return true;
     /* if it's @, then zero the byte pointed to by bf_ptr */
-    case '@': return inter->FUNCS->zero_byte(inter->REGS->bf_ptr, obj_code);
-    case '+': return IR_COMPILE_WITH(inter->FUNCS->add_byte);
-    case '-': return IR_COMPILE_WITH(inter->FUNCS->sub_byte);
-    case '>': return IR_COMPILE_WITH(inter->FUNCS->add_reg);
-    case '<': return IR_COMPILE_WITH(inter->FUNCS->sub_reg);
+    case '@': return inter->zero_byte(inter->reg_bf_ptr, obj_code);
+    case '+': return IR_COMPILE_WITH(inter->add_byte);
+    case '-': return IR_COMPILE_WITH(inter->sub_byte);
+    case '>': return IR_COMPILE_WITH(inter->add_reg);
+    case '<': return IR_COMPILE_WITH(inter->sub_reg);
     default: internal_err(BF_ICE_INVALID_IR, "Invalid IR Opcode"); return false;
     }
 }
@@ -476,7 +471,7 @@ bool bf_compile(
     col = 0;
 
     /* set the bf_ptr register to the address of the start of the tape */
-    ret &= inter->FUNCS->set_reg(inter->REGS->bf_ptr, TAPE_ADDRESS, &obj_code);
+    ret &= inter->set_reg(inter->reg_bf_ptr, TAPE_ADDRESS, &obj_code);
 
     /* compile the actual source code to object code */
     if (optimize) {
@@ -493,13 +488,11 @@ bool bf_compile(
 
     /* write code to perform the exit(0) syscall */
     /* set system call register to exit system call number */
-    ret &= inter->FUNCS->set_reg(
-        inter->REGS->sc_num, inter->SC_NUMS->exit, &obj_code
-    );
+    ret &= inter->set_reg(inter->reg_sc_num, inter->sc_exit, &obj_code);
     /* set system call register to the desired exit code (0) */
-    ret &= inter->FUNCS->set_reg(inter->REGS->arg1, 0, &obj_code);
+    ret &= inter->set_reg(inter->reg_arg1, 0, &obj_code);
     /* perform a system call */
-    ret &= inter->FUNCS->syscall(&obj_code);
+    ret &= inter->syscall(&obj_code);
 
     /* now, obj_code size is known, so we can write the headers and padding */
     ret &= write_ehdr(out_fd, tape_blocks, inter, out_name);

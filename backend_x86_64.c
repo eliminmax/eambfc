@@ -219,41 +219,33 @@ static bool zero_byte(u8 reg, sized_buf *dst_buf) {
     return append_obj(dst_buf, (u8[]){INSTRUCTION(0xc6, reg, 0x00)}, 3);
 }
 
-static const arch_funcs FUNCS = {
-    set_reg,
-    reg_copy,
-    syscall,
-    nop_loop_open,
-    jump_zero,
-    jump_not_zero,
-    inc_reg,
-    dec_reg,
-    inc_byte,
-    dec_byte,
-    add_reg,
-    sub_reg,
-    add_byte,
-    sub_byte,
-    zero_byte,
-};
-
-static const arch_sc_nums SC_NUMS = {.read = 0, .write = 1, .exit = 60};
-
-static const arch_registers REGS = {
-    .sc_num = X86_64_RAX,
-    .arg1 = X86_64_RDI,
-    .arg2 = X86_64_RSI,
-    .arg3 = X86_64_RDX,
-    .bf_ptr = X86_64_RBX,
-};
-
 const arch_inter X86_64_INTER = {
-    .FUNCS = &FUNCS,
-    .SC_NUMS = &SC_NUMS,
-    .REGS = &REGS,
-    .FLAGS = 0 /* no flags are defined for this architecture */,
-    .ELF_ARCH = EM_X86_64,
-    .ELF_DATA = ELFDATA2LSB,
+    .sc_read = 0,
+    .sc_write = 1,
+    .sc_exit = 60,
+    .set_reg = set_reg,
+    .reg_copy = reg_copy,
+    .syscall = syscall,
+    .nop_loop_open = nop_loop_open,
+    .jump_zero = jump_zero,
+    .jump_not_zero = jump_not_zero,
+    .inc_reg = inc_reg,
+    .dec_reg = dec_reg,
+    .inc_byte = inc_byte,
+    .dec_byte = dec_byte,
+    .add_reg = add_reg,
+    .sub_reg = sub_reg,
+    .add_byte = add_byte,
+    .sub_byte = sub_byte,
+    .zero_byte = zero_byte,
+    .flags = 0 /* no flags are defined for this architecture */,
+    .elf_arch = EM_X86_64,
+    .elf_data = ELFDATA2LSB,
+    .reg_sc_num = X86_64_RAX,
+    .reg_arg1 = X86_64_RDI,
+    .reg_arg2 = X86_64_RSI,
+    .reg_arg3 = X86_64_RDX,
+    .reg_bf_ptr = X86_64_RBX,
 };
 
 #ifdef BFC_TEST

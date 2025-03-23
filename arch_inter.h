@@ -22,28 +22,6 @@
 
 /* registers that can be passed to the functions in `arch_funcs`, for the
  * documented purposes */
-typedef const struct arch_registers {
-    /* register Linux uses for system call number */
-    u8 sc_num;
-    /* registers Linux uses for system call arg1 */
-    u8 arg1;
-    /* registers Linux uses for system call arg2 */
-    u8 arg2;
-    /* registers Linux uses for system call arg3 */
-    u8 arg3;
-    /* ideally, a register not clobbered during syscalls in the ABI for the
-     * architecture, to use to store address of current tape cell. If no such
-     * register exists, the `arch_funcs->syscall` function must save the value
-     * in this register, and restore it after the system call is complete. */
-    u8 bf_ptr;
-} arch_registers;
-
-/* system call numbers target platform uses for each of the needed syscalls. */
-typedef const struct arch_sc_nums {
-    i64 read;
-    i64 write;
-    i64 exit;
-} arch_sc_nums;
 
 /* This struct contains pointers to the functions that are actually used to
  * implement the backend.
@@ -57,8 +35,14 @@ typedef const struct arch_sc_nums {
  * they can be opaque identifiers that a function not included in this struct
  * can handle as needed. The registers passed to calls through these pointers
  * must be from the corresponding `arch_regsiters` */
-typedef const struct arch_funcs {
-    /* General and Register Functions */
+typedef const struct arch_inter {
+    /* the read system call number */
+    i64 sc_read;
+    /* the write system call number */
+    i64 sc_write;
+    /* the exit system call number */
+    i64 sc_exit;
+
     /* Write instruction/s to dst_buf to store immediate imm in register reg. */
     bool (*const set_reg)(u8 reg, i64 imm, sized_buf *dst_buf);
 
@@ -144,21 +128,29 @@ typedef const struct arch_funcs {
      *
      * Used to implement the `[-]` and `[+]` brainfuck instruction sequences. */
     bool (*const zero_byte)(u8 reg, sized_buf *dst_buf);
-} arch_funcs;
 
-/* This struct contains all architecture-specific information needed for eambfc,
- * and can be passed as an argument to functions. */
-typedef const struct arch_inter {
-    arch_funcs *FUNCS;
-    arch_sc_nums *SC_NUMS;
-    arch_registers *REGS;
     /* CPU flags that should be set for executables for this architecture. */
-    u32 FLAGS;
+    u32 flags;
     /* The 16-bit EM_* identifier for the architecture, from elf.h */
-    u16 ELF_ARCH;
+    u16 elf_arch;
     /* ELF EHDR value for endianness - either `ELFDATA2LSB` or `ELFDATA2MSB`,
      * depending on byte ordering of the backend. */
-    unsigned char ELF_DATA;
+    unsigned char elf_data;
+
+    /* register Linux uses for system call number */
+    u8 reg_sc_num;
+    /* registers Linux uses for system call arg1 */
+    u8 reg_arg1;
+    /* registers Linux uses for system call arg2 */
+    u8 reg_arg2;
+    /* registers Linux uses for system call arg3 */
+    u8 reg_arg3;
+    /* ideally, a register not clobbered during syscalls in the ABI for the
+     * architecture, to use to store address of current tape cell. If no such
+     * register exists, the `arch_funcs->syscall` function must save the value
+     * in this register, and restore it after the system call is complete. */
+    u8 reg_bf_ptr;
+
 } arch_inter;
 
 /* __BACKENDS__ */
