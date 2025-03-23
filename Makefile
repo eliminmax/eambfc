@@ -70,3 +70,4 @@ unit_test_driver: $(UNIT_TEST_DEPS)
 clean:
 	rm -rf $(EAMBFC_DEPS) eambfc alt-builds unit_test_driver
 	(cd tests; make clean)
+	(cd tools; make clean)
