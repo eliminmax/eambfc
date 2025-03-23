@@ -115,6 +115,9 @@ nonnull_args int subprocess(const char *args[]) {
     if (chld == 0) execv_const(args);
     int chld_status;
     CHECKED(waitpid(chld, &chld_status, 0) != -1);
-    CHECKED(WIFEXITED(chld_status));
+    if (!WIFEXITED(chld_status)) {
+        fputs("subbrocess stopped abnormally\n", stderr);
+        abort();
+    }
     return WEXITSTATUS(chld_status);
 }
