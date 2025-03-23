@@ -107,7 +107,7 @@ nonnull_arg(1) int run_capturing(
 
 nonnull_args int subprocess(const char *args[]) {
     if (args[0] == NULL) {
-        fputs("exec_args called with empty args.\n", stderr);
+        fputs("subprocess called with empty args.\n", stderr);
         abort();
     }
     pid_t chld;
