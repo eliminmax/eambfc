@@ -844,15 +844,19 @@ int main(int argc, char *argv[]) {
     *last_sep = '/';
 
     signal(SIGPIPE, SIG_IGN);
+
     EAMBFC = getenv("EAMBFC");
     if (EAMBFC == NULL) EAMBFC = "../eambfc";
+
     load_arch_support();
     result_tracker results = {0, 0, 0};
+
     run_bad_arg_tests(&results);
     run_perm_err_tests(&results);
     run_bin_tests(&results);
     run_alt_hello_tests(&results);
     run_misc_tests(&results);
+
     printf(
         "\n#################\nRESULTS\n\n"
         "SUCCESSES: %" PRIu8 "\nFAILURES:  %" PRIu8 "\nSKIPPED:   %" PRIu8 "\n",
@@ -860,7 +864,7 @@ int main(int argc, char *argv[]) {
         results.failed,
         results.skipped
     );
-    /* clang-format on */
+
     if (results.failed || (getenv("BFC_DONT_SKIP_TESTS") && results.skipped)) {
         return EXIT_FAILURE;
     }
