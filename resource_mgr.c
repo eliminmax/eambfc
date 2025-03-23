@@ -55,20 +55,21 @@ malloc_like nonnull_ret void *mgr_malloc(size_t size) {
 }
 
 void mgr_free(void *ptr) {
+    ifast_8 index = alloc_index((uintptr_t)ptr);
     free(ptr);
-    ifast_8 index;
-    if ((index = alloc_index((uintptr_t)ptr)) == -1) return;
-    memmove(
-        &(resources.allocs[index]),
-        &(resources.allocs[index + 1]),
-        (resources.next_a - index) * sizeof(void *)
-    );
-    resources.next_a--;
+    if ((index) != -1) {
+        memmove(
+            &(resources.allocs[index]),
+            &(resources.allocs[index + 1]),
+            (resources.next_a - index) * sizeof(void *)
+        );
+        resources.next_a--;
+    }
 }
 
 nonnull_args nonnull_ret void *mgr_realloc(void *ptr, size_t size) {
-    void *new_ptr = realloc(ptr, size);
     ifast_8 index = alloc_index((uintptr_t)ptr);
+    void *new_ptr = realloc(ptr, size);
     if (new_ptr == NULL) {
         /* if it's a managed pointer, it will be freed when alloc_err calls
          * mgr_cleanup. Otherwise, free it here. */
