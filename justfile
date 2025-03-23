@@ -88,7 +88,7 @@ int-torture-test: alt-builds-dir test_driver
 [group("tests")]
 [working-directory('./tests')]
 test eambfc="eambfc": test_driver
-    ./test_driver {{ join(invocation_dir(), eambfc) }}
+    env EAMBFC={{ quote(join(invocation_dir(), eambfc)) }} ./test_driver
 
 [doc("Run through the unit tests")]
 [group("tests")]
