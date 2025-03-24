@@ -33,6 +33,7 @@ static nonnull_args void filter_non_bf(sized_buf *code) {
     instr = '\0';
     /* null terminate it */
     append_obj(&tmp, &instr, 1);
+    mgr_free(code->buf);
     code->sz = tmp.sz;
     code->capacity = tmp.capacity;
     code->buf = tmp.buf;
