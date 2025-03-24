@@ -26,7 +26,7 @@ gcc_strict_flags := (
 )
 
 gcc_ubsan_flags := gcc_strict_flags + ' ' + (
-    '-fsanitize=undefined -fno-sanitize-recover=all'
+    '-fsanitize=leak,address,undefined -fno-sanitize-recover=all'
 )
 
 
