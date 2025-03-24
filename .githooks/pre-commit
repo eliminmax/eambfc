@@ -17,5 +17,5 @@ if [ "$(git tag --list "v$(cat version)" | wc -c)" -gt 0 ]; then
     exit 1
 fi
 
-# requires GNU xargs -0 option to be supported
-git diff --cached --name-only -z | xargs -0 just all-lints
+# requires GNU xargs -0 and -r options to be supported
+git diff --cached --name-only -z | xargs -r0 just all-lints
