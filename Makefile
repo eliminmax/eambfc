@@ -59,7 +59,7 @@ test: eambfc
 	(cd tests; make clean test)
 
 unit_test_driver: $(UNIT_TEST_DEPS)
-	$(CC) $$(llvm-config --cflags) -DBFC_TEST=1 -o $@ \
+	$(CC) $$(llvm-config --cflags) -DBFC_TEST=1 $(CFLAGS) -o $@ \
 		$(LDFLAGS) $(ALL_SOURCES) $(LDLIBS) \
 		-lcunit $$(llvm-config --ldflags --libs)
 
