@@ -6,18 +6,13 @@
 
 # __BACKENDS__: add backend here
 backends := 'arm64 riscv64 s390x x86_64'
-
-version_string := (
-    trim(read("version")) +
-    "-git-" +
-    trim(shell("git describe --tags")) +
-    replace_regex(shell("git status --short | tr -d '\n'"), ".+", "-localchg")
-)
+build_name := "eambfc-" + trim(shell("git describe --tags"))
+src_tarball_name := build_name + "-src.tar"
+src_tarball_path := justfile_dir() / "releases" / src_tarball_name
 backend_sources := replace_regex(backends, '\b([^ ]+)\b', 'backend_${1}.c')
-
 unibuild_files := (
     'serialize.c compile.c optimize.c ' + backend_sources +
-    ' err.c util.c resource_mgr.c parse_args.c main.c '
+    ' err.c util.c resource_mgr.c parse_args.c main.c'
 )
 
 # aligning it like this was not easy, but it sure is satisfying
@@ -27,14 +22,16 @@ gcc_strict_flags := (
     '-Wformat-overflow=2 -Wformat-signedness -Wbad-function-cast -Winit-self ' +
     '-Wnull-dereference -Wredundant-decls -Wduplicated-cond -Warray-bounds=2 ' +
     '-Wuninitialized -Wlogical-op -Wwrite-strings -Wformat=2 -Wunused-macros ' +
-    '-Wcast-align=strict -Wcast-qual -Wtrampolines'
+    '-Wcast-align=strict -Wcast-qual -Wtrampolines -Wvla'
 )
 
 gcc_ubsan_flags := gcc_strict_flags + ' ' + (
-    '-fsanitize=address,undefined -fno-sanitize-recover=all'
+    '-fsanitize=undefined -fno-sanitize-recover=all'
 )
 
 
+export MAKEFLAGS := '-se'
+export BFC_DONT_SKIP_TESTS := '1'
 
 # GENERAL
 
@@ -43,12 +40,63 @@ gcc_ubsan_flags := gcc_strict_flags + ' ' + (
 eambfc:
     make eambfc
 
-[doc("Create a release build of `eambfc`")]
+[doc("test a release tarball of `eambfc`, and build a ")]
 [group("general")]
-eambfc-release:
-    # TODO: migrate this into justfile
-    ./release.sh
+release-build: release-tarball pdpmake valgrind_test \
+    (valgrind_test '-D_GNU_SOURCE -DBFC_LONGOPTS=1 -O2 -g3')
+    #!/bin/sh
+    set -eux
+    for o_lvl in 0 1 2 3 s g z; do
+        # compile with a bunch of different compilers/setups
+        printf 'gcc\nmusl-gcc\nclang\nzig cc\n' |\
+            parallel -I_cc just --no-deps test_build \
+                _cc "-O$o_lvl" -Wall -Werror -Wextra -pedantic -std=c99
+        # build for specific architectures now - these were chosen to catch bugs
+        # that are 32-bit-only, 64-bit-only, and/or endianness-specific.
+        printf '%s-linux-gnu-gcc\n' i686 aarch64 mips s390x |\
+            LDFLAGS=-static parallel -I_cc just --no-deps test_build \
+                _cc "-O$o_lvl" -Wall -Werror -Wextra -pedantic -std=c99 -static
+    done
+    # this has caught loss of *const qualifier that the bigger compilers did not
+    just --no-deps test_build tcc -Wall -Wwrite-strings -Werror
 
+    # if none of those tests hit any issues, make the compressed archives and
+    # the actual build
+    gzip -9 --keep {{quote(src_tarball_name)}}
+    xz -9 --keep {{quote(src_tarball_name)}}
+    build_dir="$(mktemp -d "/tmp/eambfc-release-XXXXXXXXXX")"
+    cd "$build_dir"
+    tar --strip-components=1 -xf {{quote(src_tarball_path)}}
+    make CC=gcc CFLAGS="-O3 -flto" LDFLAGS="-flto"
+    strip eambfc
+    mv eambfc {{quote(justfile_dir() / 'releases' / build_name)}}
+    cd {{quote(justfile_dir() / 'releases')}}
+    rm -rf "$build_dir"
+
+[doc("Create release tarball")]
+[group("general")]
+release-tarball: pre-tarball-checks
+    #!/bin/sh -xeu
+    make clean
+    make release.make
+    sed '/git commit: /s/"/"source tarball from /' -i version.h
+    mkdir -p releases
+    # finding the way to exclude files this way was not easy - it's under the
+    # gitglossary docs for pathspec, but until I found an example, I still
+    # couldn't get it quite right.
+    # the glossary is at <https://git-scm.com/docs/gitglossary>, and the
+    # example was in the StackOverflow question at
+    # <https://stackoverflow.com/q/57730171>.
+    #
+    # the first --transform flag substitutes the Makefile with release.make
+    # the second one prepends "(build_name)-src/" to all files in the tarball
+    #
+    # version.h and the release Makefile are included explicitly as they're
+    # not passed by `git ls-files`.
+    git ls-files -z --exclude-standard -- ':(attr:!no-tar)' | \
+        xargs -0 tar --transform='s/release[.]make/Makefile/' \
+            --transform='s#^#{{build_name}}-src/#' \
+            -cf 'releases/{{src_tarball_name}}' version.h release.make
 
 
 # TESTS - static analysis, unit tests, cli tests, etc.
@@ -61,35 +109,35 @@ strict-gcc:
 [doc("Run the full project through the `cppcheck` static analyzer")]
 [group("tests")]
 cppcheck-full:
-    cppcheck -q --std=c99 -D__GNUC__ --error-exitcode=1 \
+    cppcheck -q --std=c99 -D__GNUC__ --error-exitcode=1 --platform=unspecified \
         --check-level=exhaustive --enable=all --disable=missingInclude \
         --suppress=checkersReport {{ unibuild_files }}
 
 [doc("Run `eambfc` through LLVM's `scan-build` static analyzer")]
 [group("tests")]
 scan-build:
-    scan-build-19 --status-bugs make -s CFLAGS=-O3 clean eambfc
-    scan-build-19 --status-bugs make -s CFLAGS=-O3 unit_test_driver
-    make -s clean
+    scan-build-19 --status-bugs make CFLAGS=-O3 clean eambfc
+    scan-build-19 --status-bugs make CFLAGS=-O3 unit_test_driver
+    make clean
 
 [doc("Build `eambfc` with **UBsan**, and run through the test suite")]
 [group("tests")]
-ubsan-test: alt-builds-dir
+ubsan-test: alt-builds-dir test_driver
     gcc {{ gcc_ubsan_flags }} {{ unibuild_files }} -o alt-builds/eambfc-ubsan
-    just test alt-builds/eambfc-ubsan
+    just --no-deps test alt-builds/eambfc-ubsan
 
 [doc("Build and test `eambfc` with 64-bit integer fallback hackery")]
 [group("tests")]
 int-torture-test: alt-builds-dir test_driver
     gcc -D INT_TORTURE_TEST=1 {{gcc_ubsan_flags}} -Wno-pedantic \
         {{ unibuild_files }} -o alt-builds/eambfc-itt
-    just test alt-builds/eambfc-itt
+    just test --no-deps alt-builds/eambfc-itt
 
 [doc("Test provided `eambfc` build using its cli")]
 [group("tests")]
 [working-directory('./tests')]
 test eambfc="eambfc": test_driver
-    env EAMBFC={{ quote(join(invocation_dir(), eambfc)) }} ./test_driver
+    env EAMBFC={{ quote(join(justfile_dir(), eambfc)) }} ./test_driver
 
 [doc("Run through the unit tests")]
 [group("tests")]
@@ -145,6 +193,15 @@ clang-fmt-check +files:
 
 
 
+[group("lints")]
+[doc("run all lints other than copyright_check on all `files`")]
+timeless-lints +files: runmatch reuse
+    tools/runmatch '*.[ch]' just --no-deps clang-fmt-check '{-}' {{ files }}
+    tools/runmatch '*.c' just --no-deps cppcheck-single '{-}' {{ files }}
+    tools/runmatch '*.sh' checkbashims -f '{-}' {{ files }}
+    tools/runmatch '*.sh' shellcheck '{-}' {{ files }}
+    codespell {{ files }}
+
 # TOOLS - compiled tools needed for other jobs
 
 [doc("Compile the `tools/runmatch` helper binary")]
@@ -174,30 +231,22 @@ all-tools: unit_test_driver runmatch test_driver
 
 [group("meta")]
 [doc("run all tests")]
-all-tests:
-    just strict-gcc
-    just cppcheck-full
-    just scan-build
-    env BFC_DONT_SKIP_TESTS=1 just ubsan-test
-    env BFC_DONT_SKIP_TESTS=1 just int-torture-test
-    env BFC_DONT_SKIP_TESTS=1 just unit-test
+all-tests: \
+    strict-gcc cppcheck-full scan-build test_driver alt-builds-dir unit-test
+    env BFC_DONT_SKIP_TESTS=1 just --no-deps ubsan-test int-torture-test
 
 [group("meta")]
 [doc("run all applicable lints on **files**")]
 all-lints +files: (copyright_check files) (timeless-lints files)
 
-[group("meta")]
-[doc("run all lints other than copyright_check on all files")]
-timeless-lints +files: runmatch reuse
-    tools/runmatch '*.[ch]' just clang-fmt-check '{-}' {{ files }}
-    tools/runmatch '*.c' just cppcheck-single '{-}' {{ files }}
-    tools/runmatch '*.sh' checkbashims -f '{-}' {{ files }}
-    tools/runmatch '*.sh' shellcheck '{-}' {{ files }}
-    codespell {{ files }}
+# PRIVATE - used to help implement other rules
 
-
-
-# PRIVATE
+[private]
+@pre-tarball-checks: scan-build cppcheck-full git-clean-check
+    make clean eambfc
+    ./eambfc -V | grep -q "$(date +'Copyright (c) .*%Y')"
+    git ls-files -z --exclude-standard -- ':(attr:!no-tar)' |\
+        xargs -0 just timeless-lints version.h
 
 [private]
 [working-directory('./tools/execfmt_support')]
@@ -207,8 +256,65 @@ can_run arch:
 
 [private]
 can_run_all:
-    @for arch in {{ backends }}; do just can_run "$arch"; done
+    @for arch in {{ backends }}; do just --no-deps can_run "$arch"; done
 
 [private]
 alt-builds-dir:
     mkdir -p alt-builds
+
+[private]
+git-clean-check:
+    #!/bin/sh
+    if [ -n "$(git status --short)" ]; then
+        printf 'Uncommitted changes!\n' >&2
+        if [ -z "$ALLOW_UNCOMMITTED" ]; then
+            printf 'IF TESTING: ' >&2
+            printf 'To forcibly proceed, rerun with the ALLOW_UNCOMMITTED ' >&2
+            printf 'environment variable set to a non-empty value.\n' >&2
+            exit 1
+        fi
+    fi
+
+
+[private]
+test_build cc *cflags: release-tarball
+    #!/bin/sh
+    set -e
+    build_dir="$(mktemp -d "/tmp/eambfc-test_build-XXXXXXXXXX")"
+    cd "$build_dir"
+    tar --strip-components=1 -xf {{quote(src_tarball_path)}}
+    make CC={{cc}} CFLAGS={{quote(cflags)}} eambfc test
+    cd {{justfile_dir()}}
+    rm -rf "$build_dir"
+
+[private]
+valgrind_test cflags='-O2 -g3': release-tarball
+    #!/bin/sh
+    set -e
+    build_dir="$(mktemp -d "/tmp/eambfc-valgrind_test-XXXXXXXXXX")"
+    cd "$build_dir"
+    tar --strip-components=1 -xf {{quote(src_tarball_path)}}
+    make CC=gcc CFLAGS='{{cflags}}' eambfc unit_test_driver
+    valgrind --error-exitcode=1 ./unit_test_driver
+    cd tests
+    make CC=gcc CFLAGS='{{cflags}}' test_driver
+    valgrind --trace-children=yes --exit-on-first-error=yes --track-fds=yes \
+        ./test_driver
+    cd {{ quote(justfile_dir()) }}
+    rm -rf "$build_dir"
+
+[private]
+pdpmake: release-tarball
+    #!/bin/sh
+    set -e
+    build_dir="$(mktemp -d "/tmp/eambfc-pdpmake-XXXXXXXXXX")"
+    cd "$build_dir"
+    tar --strip-components=1 -xf {{quote(src_tarball_path)}}
+    mkdir bin
+    cd bin
+    ln -s {{require('pdpmake')}} make
+    cd ..
+    PATH="$build_dir/bin:$PATH"
+    make clean test unit_test_driver
+    cd {{ quote(justfile_dir()) }}
+    rm -rf "$build_dir"
