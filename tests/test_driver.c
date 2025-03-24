@@ -593,6 +593,7 @@ test_unseekable(const sized_buf *const hello_code) {
     };
     while (read_chunk(&output, fifo_fd));
     CHECKED((waitpid(chld, &chld_status, 0) != -1));
+    CHECKED(close(fifo_fd) == 0);
     CHECKED(unlink("unseekable") == 0);
     CHECKED(unlink("unseekable.bf") == 0);
     if (!WIFEXITED(chld_status)) {
