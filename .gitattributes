@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2025 Eli Array Minkoff
+#
+# SPDX-License-Identifier: 0BSD
+
+# configuration files for git and for editors and linters shouldn't be in
+# release tarballs
+/**/.gitignore no-tar
+/.clang-format no-tar
+/.clangd no-tar
+/.codespellrc no-tar
+/.editorconfig no-tar
+/.gitattributes no-tar
+/.githooks/* no-tar
+/.shellcheckrc no-tar
+
+# Tools for pre-release testing should also be excluded
+/justfile no-tar
+/tools/Makefile no-tar
+/tools/print_syscalls.c no-tar
+/tools/runmatch.c no-tar
+/tools/test-build.sh no-tar
+/tools/valgrind-eambfc.sh no-tar
+
+# the release tarballs have their own version.h, and a modified Makefile which
+# removes the rule to overwrite it, so these files should be excluded as well
+/version no-tar
+/version.license no-tar
+/gen_version_h.sh no-tar
+/Makefile no-tar

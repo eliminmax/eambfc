@@ -40,9 +40,6 @@ install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
 	cp -f eambfc.1 $(DESTDIR)$(PREFIX)/share/man/man1/eambfc.1
 
-version.h: version gen_version_h.sh
-	./gen_version_h.sh
-
 resource_mgr.o: resource_mgr.c $(COMMON_HEADERS)
 serialize.o: serialize.c $(COMMON_HEADERS) serialize.h
 compile.o: compile.c $(COMMON_HEADERS)
@@ -70,4 +67,14 @@ unit_test_driver: $(UNIT_TEST_DEPS)
 clean:
 	rm -rf $(EAMBFC_DEPS) eambfc alt-builds unit_test_driver
 	(cd tests; make clean)
+	# DELETE LINES AFTER THIS in "release" Makefile to avoid clobbering
+	# release build's "version.h" and including nonportable tools
 	(cd tools; make clean)
+	rm -f release.make version.h
+
+# version.h
+version.h: version gen_version_h.sh
+	./gen_version_h.sh
+
+release.make: Makefile
+	sed '/DELETE[ ]LINES AFTER/,$$d;s/version[.]h //g' Makefile >$@
