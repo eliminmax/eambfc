@@ -406,6 +406,8 @@ static void test_set_reg_32(void) {
         "lui a1, 0x1\n"
         "addiw a1, a1, 0x1\n"
     );
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
 }
 
 static void test_set_reg_64(void) {
