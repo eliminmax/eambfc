@@ -71,6 +71,8 @@ clean:
 	# release build's "version.h" and including nonportable tools
 	(cd tools; make clean)
 	rm -f release.make version.h
+	# make sure to regenerate version.h right away to avoid any failures
+	./gen_version_h.sh
 
 # version.h
 version.h: version gen_version_h.sh
