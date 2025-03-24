@@ -295,11 +295,11 @@ valgrind_test cflags='-O2 -g3': release-tarball
     cd "$build_dir"
     tar --strip-components=1 -xf {{quote(src_tarball_path)}}
     make CC=gcc CFLAGS='{{cflags}}' eambfc unit_test_driver
-    valgrind --error-exitcode=1 ./unit_test_driver
+    valgrind --error-exitcode=1 --track-fds=yes -q ./unit_test_driver
     cd tests
     make CC=gcc CFLAGS='{{cflags}}' test_driver
-    valgrind --trace-children=yes --exit-on-first-error=yes --track-fds=yes \
-        ./test_driver
+    valgrind --trace-children=yes --error-exitcode=1 --exit-on-first-error=yes \
+        --track-fds=yes -q ./test_driver
     cd {{ quote(justfile_dir()) }}
     rm -rf "$build_dir"
 
