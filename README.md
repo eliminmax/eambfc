@@ -58,8 +58,10 @@ supports the APIs specified in the POSIX.1-2008 version of the POSIX standard,
 using a compiler targeting any version of C from C99 on.
 
 All Makefiles aim to use **only** functionality POSIX.1-2008 requires `make` to
-support, which is very limited, and other than the `unit_test_driver` target as
-documented below, no Makefile targets depend on non-standard tools or behavior.
+support, which is very limited, and other than the `unit_test_driver` target
+[as documented below](#unit-tests), no Makefile targets depend on non-POSIX
+tools, libraries, or behavior, or behavior POSIX lists as
+implementation-defined.
 
 ### Non-portable functionality
 
@@ -67,9 +69,9 @@ If the `BFC_LONGOPTS` macro is defined to have a nonzero value at compile time,
 the GNU C library's `getopts_long` function is used instead of the
 POSIX-standard `getopts`, to support GNU-style `--long-options`.
 
-In the C Source code, GCC attributes and pragmas are used, but only if they work
-with both `gcc` and `clang`, and preprocessor directives are used to ensure that
-they are only exposed if the `__GNUC__` macro is defined.
+In the C Source code, GCC attributes and pragmas are used, but preprocessor
+directives are used to ensure that they are only exposed if the `__GNUC__` macro
+is defined.
 
 #### Unit tests
 
