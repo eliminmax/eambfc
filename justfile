@@ -131,7 +131,7 @@ ubsan-test: alt-builds-dir test_driver
 int-torture-test: alt-builds-dir test_driver
     gcc -D INT_TORTURE_TEST=1 {{gcc_ubsan_flags}} -Wno-pedantic \
         {{ unibuild_files }} -o alt-builds/eambfc-itt
-    just test --no-deps alt-builds/eambfc-itt
+    just --no-deps test alt-builds/eambfc-itt
 
 [doc("Test provided `eambfc` build using its cli")]
 [group("tests")]
