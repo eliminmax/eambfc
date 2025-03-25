@@ -22,6 +22,7 @@ AttributeMacros:
   - nonnull_args
   - nonnull_arg
   - nonnull_ret
+  - malloc_like
   - const_fn
 BinPackArguments: false
 BinPackParameters: false
