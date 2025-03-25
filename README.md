@@ -193,7 +193,7 @@ unsupported formats.
 Unit tests are run with `unit_test_driver`, which does not aim to hold up the
 same level of portability as the rest of the project. It uses the CUnit
 framework to run the tests, and uses LLVM's C interface to validate codegen,
-as explained [above](unit-tests).
+as explained [above](#unit-tests).
 
 Additionally, the `justfile` has rules to use various static and dynamic
 analysis tools, and githooks are used to ensure that they all run successfully
