@@ -18,38 +18,78 @@ As it went on, I added more and more features, created
 [a Rust rewrite](https://github.com/eliminmax/eambfc-rs), and have maintained
 feature parity between them.
 
+<!-- vim-markdown-toc GFM -->
+
+* [Usage](#usage)
+* [Supported platforms](#supported-platforms)
+  * [Non-portable functionality](#non-portable-functionality)
+    * [Unit tests](#unit-tests)
+* [Building and Installing](#building-and-installing)
+* [Development Process](#development-process)
+  * [Testing](#testing)
+* [Dependencies](#dependencies)
+  * [Debian dependencies](#debian-dependencies)
+  * [Non-Debian Dependencies](#non-debian-dependencies)
+* [Legal Stuff](#legal-stuff)
+
+<!-- vim-markdown-toc -->
+
 ## Usage
 
+The most basic way to use `eambfc` is to simply run it, passing files to compile
+as command-line arguments:
+
+```sh
+eambfc foo.bf
 ```
-Usage: eambfc [options] <program.bf> [<program2.bf> ...]
 
- -h    display this help text and exit
- -V    print version information and exit
- -j    print errors in JSON format*
- -q    don't print any errors*
- -O    enable optimization**
- -m    continue to the next file on failure
- -A    list supported targets and exit
- -k    keep files that failed to compile
+It expects brainfuck source files to use the file extension `.bf`.
 
-* -q and -j will not affect arguments passed before they were.
+That will compile `foo.bf` into an ELF executable file named `foo`.
 
-** Optimization can make error reporting less precise.
+If passed multiple files to compile, `eambfc` will compile them in the provided
+order, stopping on the first error.
 
-PARAMETER OPTIONS (provide at most once each)
- -t count    use <count> 4-KiB blocks for the tape
- -e ext      use 'ext' as the source extension
- -a arch     compile for the specified architecture
- -s suf      append 'suf' to output file names
+Compiled files have a tape size of 8 4-KiB blocks, for a total of 32 KiB, so any
+program that works with Urban Müller's original implementation's 30 KB tape
+should work fine.
 
-If not provided, it falls back to 8 as the tape-size count, ".bf" as the source
-extension, x86_64 as the target-arch, and an empty output-suffix.
+| option     | effect                                                   |
+|------------|----------------------------------------------------------|
+| `-h`       | Display basic usage information, then exit               |
+| `-V`       | Display version and copyright information, then exit     |
+| `-j`       | Write JSON-formatted error messages to `stdout`          |
+| `-q`       | Don't write error messages to `stderr`                   |
+| `-O`       | Perform basic optimizations                              |
+| `-c`       | Continue to the next file instead of aborting on failure |
+| `-A`       | Display info about supported targets, and exit           |
+| `-k`       | Don't delete files after failed compilation              |
+| `-t count` | Use `count` 4-KiB blocks instead of the default 8        |
+| `-e ext`   | Use `ext` instead of `.bf` as the source extension       |
+| `-a arch`  | Use the `arch` backend instead of the default            |
+| `-s suf`   | Append `suf` to the ends of output filenames             |
 
-Remaining options are treated as source file names. If they don't end with the
-right extension, the program will raise an error.
-Additionally, passing "--" as a standalone argument will stop argument parsing,
-and treat remaining arguments as source file names.
-```
+
+If compiled with long options enabled\*, the following options are the long
+equivalents to the short options:
+
+| short      | long                     |
+|------------|--------------------------|
+| `-h`       | `--help`                 |
+| `-V`       | `--version`              |
+| `-j`       | `--json`                 |
+| `-q`       | `--quiet`                |
+| `-O`       | `--optimize`             |
+| `-c`       | `--continue`             |
+| `-A`       | `--list-targets`         |
+| `-k`       | `--keep-failed`          |
+| `-t count` | `--tape-size=count`      |
+| `-e ext`   | `--source-extension=ext` |
+| `-a arch`  | `--target-arch=arch`     |
+| `-s suf`   | `--output-suffix=suf`    |
+
+\* *long options require `eambfc` to be compiled with
+`'-D_GNU_SOURCE -DBFC_LONGOPT=1'` included in the `CFLAGS` passed to `make`.*
 
 ## Supported platforms
 
