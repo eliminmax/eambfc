@@ -282,7 +282,7 @@ run_cfg parse_args(int argc, char *argv[]) {
 
     const char *progname = (argc && argv[0] != NULL) ? argv[0] : "eambfc";
 
-    while ((opt = getopt(argc, argv, ":hVqjOkmcAa:e:t:s:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hVqjOkcAa:e:t:s:")) != -1) {
         switch (opt) {
         case 'h':
             printf(HELP_TEMPLATE, progname);
@@ -300,7 +300,6 @@ run_cfg parse_args(int argc, char *argv[]) {
             break;
         case 'O': rc.optimize = true; break;
         case 'k': rc.keep = true; break;
-        case 'm': /* undocumented legacy alias for 'c' */
         case 'c': rc.cont_on_fail = true; break;
         case 'e':
             /* Print an error if ext was already set. */
