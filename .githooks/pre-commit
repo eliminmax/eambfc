@@ -6,11 +6,16 @@
 
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
+if [ "$(git branch --show-current)" = 'main' ]; then
+    printf 'ERROR! Committing directly to main!\n' >&2
+    exit 1
+fi
+
 # ensure that the version file is not associated with an existing version
 if [ "$(git tag --list "v$(cat version)" | wc -c)" -gt 0 ]; then
     printf 'ERROR! Version file corresponds to an existing tag!\n'
     exit 1
 fi
 
-# requires GNU xargs -0 option to be supported
-git diff --cached --name-only -z | xargs -0 just all-lints
+# requires GNU xargs -0 and -r options to be supported
+git diff --cached --name-only -z | xargs -r0 just all-lints

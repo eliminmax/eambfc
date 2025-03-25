@@ -4,17 +4,17 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-if command -v git >/dev/null && [ -e .git ]; then
-    git_str="$(git log -n1 --pretty=format:'git commit: %h')";
-    if [ -n "$(git status --short)" ]; then
-        git_str="$git_str (with local changes)";
-    fi
-else
-    git_str='Not built from git repo';
-fi;
+git_str="$(git log -n1 --pretty=format:'git commit: %h')";
+if [ -n "$(git status --short)" ]; then
+    git_str="$git_str (with local changes)";
+fi
 
 cat >version.h <<EOF
-/* generated header file with version information */
+/* SPDX-FileCopyrightText: NONE
+ *
+ * SPDX-License-Identifier: CC0-1.0
+ *
+ * generated header file with version information */
 #ifndef BFC_VERSION_H
 #define BFC_VERSION_H 1
 

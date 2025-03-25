@@ -282,139 +282,150 @@ run_cfg parse_args(int argc, char *argv[]) {
 
     const char *progname = (argc && argv[0] != NULL) ? argv[0] : "eambfc";
 
-    while ((opt = getopt(argc, argv, ":hVqjOkmcAa:e:t:s:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hVqjOkcAa:e:t:s:")) != -1) {
         switch (opt) {
-        case 'h':
-            printf(HELP_TEMPLATE, progname);
-            mgr_cleanup();
-            exit(EXIT_SUCCESS);
-        case 'V': report_version(progname);
-        case 'A': list_arches();
-        case 'q':
-            show_hint = false;
-            quiet_mode();
-            break;
-        case 'j':
-            show_hint = false;
-            json_mode();
-            break;
-        case 'O': rc.optimize = true; break;
-        case 'k': rc.keep = true; break;
-        case 'm': /* undocumented legacy alias for 'c' */
-        case 'c': rc.cont_on_fail = true; break;
-        case 'e':
-            /* Print an error if ext was already set. */
-            if (rc.ext != NULL) {
+            case 'h':
+                printf(HELP_TEMPLATE, progname);
+                mgr_cleanup();
+                exit(EXIT_SUCCESS);
+            case 'V':
+                report_version(progname);
+            case 'A':
+                list_arches();
+            case 'q':
+                show_hint = false;
+                quiet_mode();
+                break;
+            case 'j':
+                show_hint = false;
+                json_mode();
+                break;
+            case 'O':
+                rc.optimize = true;
+                break;
+            case 'k':
+                rc.keep = true;
+                break;
+            case 'c':
+                rc.cont_on_fail = true;
+                break;
+            case 'e':
+                /* Print an error if ext was already set. */
+                if (rc.ext != NULL) {
+                    bad_arg(
+                        progname,
+                        BF_ERR_MULTIPLE_EXTENSIONS,
+                        "passed -e multiple times.",
+                        show_hint
+                    );
+                }
+                rc.ext = optarg;
+                break;
+            case 's':
+                /* Print an error if out_ext was already set. */
+                if (rc.out_ext != NULL) {
+                    bad_arg(
+                        progname,
+                        BF_ERR_MULTIPLE_OUTPUT_EXTENSIONS,
+                        "passed -s multiple times.",
+                        show_hint
+                    );
+                }
+                rc.out_ext = optarg;
+                break;
+            case 't':
+                /* Print an error if tape_blocks has already been set */
+                if (rc.tape_blocks != 0) {
+                    bad_arg(
+                        progname,
+                        BF_ERR_MULTIPLE_TAPE_BLOCK_COUNTS,
+                        "passed -t multiple times.",
+                        show_hint
+                    );
+                }
+                char *endptr;
+                /* casting unsigned long long instead of using scanf as scanf
+                 * can lead to undefined behavior if input isn't well-crafted,
+                 * and unsigned long long is guaranteed to be at least 64 bits.
+                 */
+                unsigned long long int holder = strtoull(optarg, &endptr, 10);
+                /* if the full opt_arg wasn't consumed, it's not a numeric
+                 * value. */
+                if (*endptr != '\0') {
+                    bad_arg(
+                        progname,
+                        BF_ERR_TAPE_SIZE_NOT_NUMERIC,
+                        "tape size could not be parsed as a numeric value",
+                        show_hint
+                    );
+                }
+                if (holder == 0) {
+                    bad_arg(
+                        progname,
+                        BF_ERR_TAPE_SIZE_ZERO,
+                        "Tape value for -t must be at least 1",
+                        show_hint
+                    );
+                }
+                /* if it's any larger than this, the tape size would exceed the
+                 * 64-bit integer limit. */
+                if (holder >= (UINT64_MAX >> 12)) {
+                    bad_arg(
+                        progname,
+                        BF_ERR_TAPE_TOO_LARGE,
+                        "tape size too large to avoid overflow",
+                        show_hint
+                    );
+                }
+                rc.tape_blocks = (u64)holder;
+                break;
+            case 'a':
+                if (rc.inter != NULL) {
+                    bad_arg(
+                        progname,
+                        BF_ERR_MULTIPLE_ARCHES,
+                        "passed -a multiple times.",
+                        show_hint
+                    );
+                }
+                if (!select_inter(optarg, &rc.inter)) {
+                    mgr_cleanup();
+                    exit(EXIT_FAILURE);
+                }
+                break;
+            case ':': /* one of -a, -e, or -t is missing an argument */
+                missing_op_msg[1] = optopt;
                 bad_arg(
-                    progname,
-                    BF_ERR_MULTIPLE_EXTENSIONS,
-                    "passed -e multiple times.",
-                    show_hint
+                    progname, BF_ERR_MISSING_OPERAND, missing_op_msg, show_hint
                 );
-            }
-            rc.ext = optarg;
-            break;
-        case 's':
-            /* Print an error if out_ext was already set. */
-            if (rc.out_ext != NULL) {
-                bad_arg(
-                    progname,
-                    BF_ERR_MULTIPLE_OUTPUT_EXTENSIONS,
-                    "passed -s multiple times.",
-                    show_hint
-                );
-            }
-            rc.out_ext = optarg;
-            break;
-        case 't':
-            /* Print an error if tape_blocks has already been set */
-            if (rc.tape_blocks != 0) {
-                bad_arg(
-                    progname,
-                    BF_ERR_MULTIPLE_TAPE_BLOCK_COUNTS,
-                    "passed -t multiple times.",
-                    show_hint
-                );
-            }
-            char *endptr;
-            /* casting unsigned long long instead of using scanf as scanf can
-             * lead to undefined behavior if input isn't well-crafted, and
-             * unsigned long long is guaranteed to be at least 64 bits. */
-            unsigned long long int holder = strtoull(optarg, &endptr, 10);
-            /* if the full opt_arg wasn't consumed, it's not a numeric value. */
-            if (*endptr != '\0') {
-                bad_arg(
-                    progname,
-                    BF_ERR_TAPE_SIZE_NOT_NUMERIC,
-                    "tape size could not be parsed as a numeric value",
-                    show_hint
-                );
-            }
-            if (holder == 0) {
-                bad_arg(
-                    progname,
-                    BF_ERR_TAPE_SIZE_ZERO,
-                    "Tape value for -t must be at least 1",
-                    show_hint
-                );
-            }
-            /* if it's any larger than this, the tape size would exceed the
-             * 64-bit integer limit. */
-            if (holder >= (UINT64_MAX >> 12)) {
-                bad_arg(
-                    progname,
-                    BF_ERR_TAPE_TOO_LARGE,
-                    "tape size too large to avoid overflow",
-                    show_hint
-                );
-            }
-            rc.tape_blocks = (u64)holder;
-            break;
-        case 'a':
-            if (rc.inter != NULL) {
-                bad_arg(
-                    progname,
-                    BF_ERR_MULTIPLE_ARCHES,
-                    "passed -a multiple times.",
-                    show_hint
-                );
-            }
-            if (!select_inter(optarg, &rc.inter)) {
+            case '?': /* unknown argument */
+#if BFC_LONGOPTS
+                unknown_arg_msg =
+                    malloc(optopt ? 21 : 20 + strlen(argv[optind - 1]));
+                if (unknown_arg_msg == NULL) alloc_err();
+                strcpy(unknown_arg_msg, "Unknown argument: -%");
+                if (optopt) {
+                    unknown_arg_msg[19] = optopt;
+                } else {
+                    strcpy(&unknown_arg_msg[18], argv[optind - 1]);
+                }
+                /* can't just use bad_arg as unknown_arg_msg won't be freed. */
+                display_err((bf_comp_err){
+                    .id = BF_ERR_UNKNOWN_ARG,
+                    .msg = unknown_arg_msg,
+                    .file = NULL,
+                    .has_instr = false,
+                    .has_location = false,
+                });
+                if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
+                free(unknown_arg_msg);
                 mgr_cleanup();
                 exit(EXIT_FAILURE);
-            }
-            break;
-        case ':': /* one of -a, -e, or -t is missing an argument */
-            missing_op_msg[1] = optopt;
-            bad_arg(
-                progname, BF_ERR_MISSING_OPERAND, missing_op_msg, show_hint
-            );
-        case '?': /* unknown argument */
-#if BFC_LONGOPTS
-            unknown_arg_msg =
-                malloc(optopt ? 21 : 20 + strlen(argv[optind - 1]));
-            if (unknown_arg_msg == NULL) alloc_err();
-            strcpy(unknown_arg_msg, "Unknown argument: -%");
-            if (optopt) {
-                unknown_arg_msg[19] = optopt;
-            } else {
-                strcpy(&unknown_arg_msg[18], argv[optind - 1]);
-            }
-            /* can't just use bad_arg as unknown_arg_msg won't be freed. */
-            display_err((bf_comp_err){
-                .id = BF_ERR_UNKNOWN_ARG,
-                .msg = unknown_arg_msg,
-                .file = NULL,
-                .has_instr = false,
-                .has_location = false,
-            });
-            if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
-            free(unknown_arg_msg);
-            mgr_cleanup();
-            exit(EXIT_FAILURE);
 #else
-            unknown_arg_msg[19] = optopt;
-            bad_arg(progname, BF_ERR_UNKNOWN_ARG, unknown_arg_msg, show_hint);
+                unknown_arg_msg[19] = optopt;
+                bad_arg(
+                    progname, BF_ERR_UNKNOWN_ARG, unknown_arg_msg, show_hint
+                );
 #endif
         }
     }

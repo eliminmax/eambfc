@@ -19,12 +19,15 @@ POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 test: test_driver
 	./test_driver
 
-test_driver.o: test_driver.c
+test_driver.o: test_driver.c colortest_output.h
 test_utils.o: test_utils.c
 
 test_driver: test_driver.o test_utils.o
 	$(CC) $(CFLAGS) $(POSIX_CFLAG) $(LDFLAGS) \
 		-o $@ test_driver.o test_utils.o $(LDLIBS)
+
+colortest_output.h: colortest_output.awk
+	awk -f colortest_output.awk > $@
 
 clean:
 	rm -f hello rw loop null wrap wrap2 colortest dead_code unseekable \

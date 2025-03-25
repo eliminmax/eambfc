@@ -2,16 +2,24 @@
  *
  * SPDX-License-Identifier: 0BSD
  *
- * Internal tool for eambfc testing
+ * Internal tool for eambfc testing - filter passed filenames to make sure they
+ * actually exist, then exec a provided command, passing the filtered filenames.
  *
- * USAGSE:
+ * Used in pre-commit checks, to run language-specific linting/analysis tools on
+ * all undeleted, changed files they're appropriate for.
+ *
+ * USAGE:
  * pass a fnmatch-compatible glob pattern as argv[1].
  *
  * pass the command and flags to run, followed by the files to run the glob
  * against, the remaining args, separated by "{-}", as it's not meaningful to
- * any of the commands this tool is needed for */
+ * any of the commands this tool is needed for.
+ *
+ * This tool will then exec the command, passing all files that match the glob
+ * and actually exist. */
 
-/* stdlib */
+/* C99 */
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,17 +60,30 @@ int main(int argc, char *argv[]) {
     }
 
     for (argi++; argi < argc; argi++) {
+        if (access(argv[argi], F_OK) == -1) {
+            if (errno == ENOENT) break;
+            fprintf(
+                stderr,
+                "Could not determine state of file %s: %s.\n",
+                argv[argi],
+                strerror(errno)
+            );
+            return EXIT_FAILURE;
+        }
         switch (fnmatch(pat, argv[argi], 0)) {
-        case 0:
-            if (chld_argc == MAX_ARGS) {
-                fputs("Too many arguments to pass to child\n", stderr);
+            case 0:
+                if (chld_argc == MAX_ARGS) {
+                    fputs("Too many arguments to pass to child\n", stderr);
+                    return EXIT_FAILURE;
+                }
+
+                matched = 1;
+                chld_args[chld_argc++] = argv[argi];
+                break;
+            case FNM_NOMATCH:
+                break;
+            default:
                 return EXIT_FAILURE;
-            }
-            matched = 1;
-            chld_args[chld_argc++] = argv[argi];
-            break;
-        case FNM_NOMATCH: break;
-        default: return EXIT_FAILURE;
         }
     }
 

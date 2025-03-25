@@ -333,46 +333,34 @@ static bool zero_byte(u8 reg, sized_buf *dst_buf) {
     return append_obj(dst_buf, i_bytes, 4);
 }
 
-static const arch_funcs FUNCS = {
-    set_reg,
-    reg_copy,
-    syscall,
-    nop_loop_open,
-    jump_zero,
-    jump_not_zero,
-    inc_reg,
-    dec_reg,
-    inc_byte,
-    dec_byte,
-    add_reg,
-    sub_reg,
-    add_byte,
-    sub_byte,
-    zero_byte,
-};
-
-static const arch_sc_nums SC_NUMS = {
-    .read = 63,
-    .write = 64,
-    .exit = 93,
-};
-
-static const arch_registers REGS = {
-    .sc_num = RISCV_A7,
-    .arg1 = RISCV_A0,
-    .arg2 = RISCV_A1,
-    .arg3 = RISCV_A2,
-    .bf_ptr = RISCV_S0,
-};
-
 const arch_inter RISCV64_INTER = {
-    .FUNCS = &FUNCS,
-    .SC_NUMS = &SC_NUMS,
-    .REGS = &REGS,
+    .sc_read = 63,
+    .sc_write = 64,
+    .sc_exit = 93,
+    .set_reg = set_reg,
+    .reg_copy = reg_copy,
+    .syscall = syscall,
+    .nop_loop_open = nop_loop_open,
+    .jump_zero = jump_zero,
+    .jump_not_zero = jump_not_zero,
+    .inc_reg = inc_reg,
+    .dec_reg = dec_reg,
+    .inc_byte = inc_byte,
+    .dec_byte = dec_byte,
+    .add_reg = add_reg,
+    .sub_reg = sub_reg,
+    .add_byte = add_byte,
+    .sub_byte = sub_byte,
+    .zero_byte = zero_byte,
     /* EF_RISCV_RVC | EF_RISCV_FLOAT_ABI_DOUBLE (chosen to match Debian) */
-    .FLAGS = 5,
-    .ELF_ARCH = EM_RISCV,
-    .ELF_DATA = ELFDATA2LSB,
+    .flags = 5,
+    .elf_arch = EM_RISCV,
+    .elf_data = ELFDATA2LSB,
+    .reg_sc_num = RISCV_A7,
+    .reg_arg1 = RISCV_A0,
+    .reg_arg2 = RISCV_A1,
+    .reg_arg3 = RISCV_A2,
+    .reg_bf_ptr = RISCV_S0,
 };
 
 #ifdef BFC_TEST
@@ -418,6 +406,8 @@ static void test_set_reg_32(void) {
         "lui a1, 0x1\n"
         "addiw a1, a1, 0x1\n"
     );
+    mgr_free(dis.buf);
+    mgr_free(sb.buf);
 }
 
 static void test_set_reg_64(void) {
@@ -656,14 +646,14 @@ static void sub_reg_is_neg_add_reg(void) {
     a = newbuf(32);
     b = newbuf(32);
 
-    sub_reg(REGS.bf_ptr, 0, &a);
+    sub_reg(RISCV64_INTER.reg_bf_ptr, 0, &a);
     add_reg(RISCV_S0, 0, &b);
     CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
     CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
     for (ufast_8 i = 0; i < 63; i++) {
         a.sz = 0;
         b.sz = 0;
-        sub_reg(REGS.bf_ptr, INT64_C(1) << i, &a);
+        sub_reg(RISCV64_INTER.reg_bf_ptr, INT64_C(1) << i, &a);
         add_reg(RISCV_S0, -(INT64_C(1) << i), &b);
         CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
         CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
@@ -709,12 +699,12 @@ static void test_add_sub_byte(void) {
     sized_buf sb = newbuf(28);
     sized_buf dis = newbuf(96);
 
-    add_byte(REGS.arg1, 0, &sb);
-    sub_byte(REGS.arg1, 0, &sb);
+    add_byte(RISCV64_INTER.reg_arg1, 0, &sb);
+    sub_byte(RISCV64_INTER.reg_arg1, 0, &sb);
     CU_ASSERT_EQUAL(sb.sz, 0);
 
-    add_byte(REGS.arg2, 0x10, &sb);
-    sub_byte(REGS.arg2, 0x10, &sb);
+    add_byte(RISCV64_INTER.reg_arg2, 0x10, &sb);
+    sub_byte(RISCV64_INTER.reg_arg2, 0x10, &sb);
     CU_ASSERT_EQUAL(sb.sz, 20);
     DISASM_TEST(
         sb,
@@ -730,8 +720,8 @@ static void test_add_sub_byte(void) {
 
     /* 0x70 is too large to fit in the compressed add instruction, so 2 extra
      * bytes per addi are needed */
-    add_byte(REGS.arg2, 0x70, &sb);
-    sub_byte(REGS.arg2, 0x70, &sb);
+    add_byte(RISCV64_INTER.reg_arg2, 0x70, &sb);
+    sub_byte(RISCV64_INTER.reg_arg2, 0x70, &sb);
     CU_ASSERT_EQUAL(sb.sz, 24);
     DISASM_TEST(
         sb,
@@ -747,8 +737,8 @@ static void test_add_sub_byte(void) {
 
     /* if the imm is >= 0x80, it will become negative due to the casting that's
      * done, but will have the same byte value once truncated down. */
-    add_byte(REGS.arg3, 0x80, &sb);
-    sub_byte(REGS.arg3, 0x80, &sb);
+    add_byte(RISCV64_INTER.reg_arg3, 0x80, &sb);
+    sub_byte(RISCV64_INTER.reg_arg3, 0x80, &sb);
     CU_ASSERT_EQUAL((i8)(INT16_C(1) + 0x80), (i8)(INT16_C(1) - 0x80));
     (void)0;
     DISASM_TEST(

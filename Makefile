@@ -14,7 +14,7 @@ EAMBFC_DEPS = serialize.o backend_arm64.o backend_riscv64.o backend_s390x.o \
 		compile.o parse_args.o main.o
 
 # if these are changed, rebuild everything
-COMMON_HEADERS = err.h types.h config.h
+COMMON_HEADERS = err.h types.h config.h post_config.h
 
 # __BACKENDS__ add backend source file to ALL_SOURCES
 ALL_SOURCES = serialize.c compile.c optimize.c err.c util.c resource_mgr.c \
@@ -40,9 +40,6 @@ install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
 	cp -f eambfc.1 $(DESTDIR)$(PREFIX)/share/man/man1/eambfc.1
 
-version.h: version gen_version_h.sh
-	./gen_version_h.sh
-
 resource_mgr.o: resource_mgr.c $(COMMON_HEADERS)
 serialize.o: serialize.c $(COMMON_HEADERS) serialize.h
 compile.o: compile.c $(COMMON_HEADERS)
@@ -62,7 +59,7 @@ test: eambfc
 	(cd tests; make clean test)
 
 unit_test_driver: $(UNIT_TEST_DEPS)
-	$(CC) $$(llvm-config --cflags) -DBFC_TEST=1 -o $@ \
+	$(CC) $$(llvm-config --cflags) -DBFC_TEST=1 $(CFLAGS) -o $@ \
 		$(LDFLAGS) $(ALL_SOURCES) $(LDLIBS) \
 		-lcunit $$(llvm-config --ldflags --libs)
 
@@ -70,4 +67,16 @@ unit_test_driver: $(UNIT_TEST_DEPS)
 clean:
 	rm -rf $(EAMBFC_DEPS) eambfc alt-builds unit_test_driver
 	(cd tests; make clean)
+	# DELETE LINES AFTER THIS in "release" Makefile to avoid clobbering
+	# release build's "version.h" and including nonportable tools
 	(cd tools; make clean)
+	rm -f release.make version.h
+	# make sure to regenerate version.h right away to avoid any failures
+	./gen_version_h.sh
+
+# version.h
+version.h: version gen_version_h.sh
+	./gen_version_h.sh
+
+release.make: Makefile
+	sed '/DELETE[ ]LINES AFTER/,$$d;s/version[.]h //g' Makefile >$@

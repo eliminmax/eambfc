@@ -404,49 +404,37 @@ static bool zero_byte(u8 reg, sized_buf *dst_buf) {
     return store_to_byte(reg, 0, dst_buf);
 }
 
-static const arch_funcs FUNCS = {
-    set_reg,
-    reg_copy,
-    syscall,
-    nop_loop_open,
-    jump_zero,
-    jump_not_zero,
-    inc_reg,
-    dec_reg,
-    inc_byte,
-    dec_byte,
-    add_reg,
-    sub_reg,
-    add_byte,
-    sub_byte,
-    zero_byte,
-};
-
-static const arch_sc_nums SC_NUMS = {
-    .read = 3,
-    .write = 4,
-    .exit = 1,
-};
-
-static const arch_registers REGS = {
-    .sc_num = 1,
-    .arg1 = 2,
-    .arg2 = 3,
-    .arg3 = 4,
+const arch_inter S390X_INTER = {
+    .sc_read = 3,
+    .sc_write = 4,
+    .sc_exit = 1,
+    .set_reg = set_reg,
+    .reg_copy = reg_copy,
+    .syscall = syscall,
+    .nop_loop_open = nop_loop_open,
+    .jump_zero = jump_zero,
+    .jump_not_zero = jump_not_zero,
+    .inc_reg = inc_reg,
+    .dec_reg = dec_reg,
+    .inc_byte = inc_byte,
+    .dec_byte = dec_byte,
+    .add_reg = add_reg,
+    .sub_reg = sub_reg,
+    .add_byte = add_byte,
+    .sub_byte = sub_byte,
+    .zero_byte = zero_byte,
+    .flags = 0 /* no flags are defined for this architecture */,
+    .elf_arch = EM_S390,
+    .elf_data = ELFDATA2MSB,
+    .reg_sc_num = 1,
+    .reg_arg1 = 2,
+    .reg_arg2 = 3,
+    .reg_arg3 = 4,
     /* NOTE: the s390x-abi specifies that registers r6 through r13, as well as
      * r15, are not clobbered by function calls. The linux kernel uses r6 and r7
      * for syscall args, not r8, so it should be fine to use.
      * See https://www.kernel.org/doc/html/v5.3/s390/debugging390.html */
-    .bf_ptr = 8,
-};
-
-const arch_inter S390X_INTER = {
-    .FUNCS = &FUNCS,
-    .SC_NUMS = &SC_NUMS,
-    .REGS = &REGS,
-    .FLAGS = 0 /* no flags are defined for this architecture */,
-    .ELF_ARCH = EM_S390,
-    .ELF_DATA = ELFDATA2MSB,
+    .reg_bf_ptr = 8,
 };
 
 #ifdef BFC_TEST
@@ -622,7 +610,7 @@ static void test_zero_byte(void) {
     sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(24);
 
-    zero_byte(REGS.bf_ptr, &sb);
+    zero_byte(S390X_INTER.reg_bf_ptr, &sb);
     DISASM_TEST(sb, dis, "stc %r0, 0(%r8,0)\n");
 
     mgr_free(sb.buf);
