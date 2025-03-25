@@ -48,7 +48,7 @@ release-build: release-tarball pdpmake valgrind_test \
     set -eux
     for o_lvl in 0 1 2 3 s g z; do
         # compile with a bunch of different compilers/setups
-        printf 'gcc\nmusl-gcc\nclang\nzig cc\n' |\
+        printf 'gcc\nmusl-gcc\nclang-19\nzig cc\n' |\
             parallel -I_cc just --no-deps test_build \
                 _cc "-O$o_lvl" -Wall -Werror -Wextra -pedantic -std=c99
         # build for specific architectures now - these were chosen to catch bugs
