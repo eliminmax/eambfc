@@ -140,6 +140,24 @@ typedef enum test_outcome {
     TEST_SKIPPED = 1,
 } test_outcome;
 
+#define SKIP_IF_UNSUPPORTED(arch) \
+    switch (support_status(arch)) { \
+        case ARCH_DISABLED: \
+            MSG("SKIPPED", "architecture support disabled"); \
+            return TEST_SKIPPED; \
+        case CANT_RUN: \
+            MSG("SKIPPED", "can't run target binaries"); \
+            return TEST_SKIPPED; \
+        case UNKNOWN_ARCH: \
+            fputs( \
+                "Unknown or uninitialized architecture support status\n", \
+                stderr \
+            ); \
+            abort(); \
+        default: \
+            break; \
+    }
+
 /* test a binary which takes no input, making sure it exists successfully after
  * writing the expected data to stdout */
 static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
@@ -150,22 +168,7 @@ static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
         arch, \
         opt ? ", optimized" : "" \
     )
-
-    switch (support_status(arch)) {
-        case ARCH_DISABLED:
-            MSG("SKIPPED", "architecture support disabled");
-            return TEST_SKIPPED;
-        case CANT_RUN:
-            MSG("SKIPPED", "can't run target binaries");
-            return TEST_SKIPPED;
-        case UNKNOWN_ARCH:
-            EPRINTF(
-                "Unreachable branch at " __FILE__ ":%d reached\n", __LINE__
-            );
-            abort();
-        default:
-            break;
-    }
+    SKIP_IF_UNSUPPORTED(arch);
 
     size_t nbytes = BINTESTS[bt].expected_sz;
     /* + 3 for ".bf", + 1 for NUL terminator, - 2 for the skipped bytes */
@@ -292,21 +295,7 @@ static test_outcome rw_test(const char *arch, bool opt) {
     const char *variant = opt ? ", optimized" : "";
 #define MSG(outcome, reason) \
     EPRINTF(outcome ": rw (%s%s): " reason "\n", arch, opt ? ", optimized" : "")
-    switch (support_status(arch)) {
-        case ARCH_DISABLED:
-            MSG("SKIPPED", "architecture support disabled");
-            return TEST_SKIPPED;
-        case CANT_RUN:
-            MSG("SKIPPED", "can't run target binaries");
-            return TEST_SKIPPED;
-        case UNKNOWN_ARCH:
-            EPRINTF(
-                "Unreachable branch at " __FILE__ ":%d reached\n", __LINE__
-            );
-            abort();
-        default:
-            break;
-    }
+    SKIP_IF_UNSUPPORTED(arch);
 
     const char **args = ARGS(opt ? "-Oa" : "-a", arch, "rw.bf");
 
@@ -411,21 +400,7 @@ static test_outcome tm_test(const char *arch, bool opt) {
         opt ? ", optimized" : "" \
     )
 
-    switch (support_status(arch)) {
-        case ARCH_DISABLED:
-            MSG("SKIPPED", "architecture support disabled");
-            return TEST_SKIPPED;
-        case CANT_RUN:
-            MSG("SKIPPED", "can't run target binaries");
-            return TEST_SKIPPED;
-        case UNKNOWN_ARCH:
-            EPRINTF(
-                "Unreachable branch at " __FILE__ ":%d reached\n", __LINE__
-            );
-            abort();
-        default:
-            break;
-    }
+    SKIP_IF_UNSUPPORTED(arch);
     const char *args[] = {
         EAMBFC, opt ? "-Oa" : "-a", arch, "truthmachine.bf", NULL
     };
@@ -433,7 +408,6 @@ static test_outcome tm_test(const char *arch, bool opt) {
         MSG("FAILURE", "failed to compile");
         return TEST_FAILED;
     }
-
     test_outcome ret;
 
     char outbuf[2][16] = {{0}, {0}};
