@@ -16,7 +16,6 @@ AlignEscapedNewlines: DontAlign
 AlignTrailingComments:
   Kind: Never
 AllowShortBlocksOnASingleLine: Always
-AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: None
 AttributeMacros:
   - noreturn
@@ -44,8 +43,6 @@ IncludeCategories:
     Priority: 3
     SortPriority: 0
     CaseSensitive: false
-IndentCaseLabels: false
-IndentGotoLabels: false
 IndentWidth: 4
 InsertNewlineAtEOF: true
 InsertTrailingCommas: Wrapped

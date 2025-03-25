@@ -20,14 +20,16 @@ static nonnull_args void filter_non_bf(sized_buf *code) {
     char instr;
     for (size_t i = 0; i < code->sz; i++) {
         switch (instr = code->buf[i]) {
-        case '[':
-        case '-':
-        case '.':
-        case '<':
-        case '>':
-        case ',':
-        case '+':
-        case ']': append_obj(&tmp, &instr, 1); break;
+            case '[':
+            case '-':
+            case '.':
+            case '<':
+            case '>':
+            case ',':
+            case '+':
+            case ']':
+                append_obj(&tmp, &instr, 1);
+                break;
         }
     }
     instr = '\0';
@@ -239,15 +241,18 @@ static void strip_dead_code_test(void) {
     append_obj(&filterable, "[->+<][,.]", 10);
     for (size_t i = 0; i < filterable.sz; ++i) {
         switch (filterable.buf[i]) {
-        case '<':
-        case '>':
-        case '+':
-        case '-':
-        case '[':
-        case ']':
-        case '.':
-        case ',': continue;
-        default: CU_FAIL_FATAL("filterable contains non-bf bytes"); return;
+            case '<':
+            case '>':
+            case '+':
+            case '-':
+            case '[':
+            case ']':
+            case '.':
+            case ',':
+                continue;
+            default:
+                CU_FAIL_FATAL("filterable contains non-bf bytes");
+                return;
         }
     }
     filter_dead(&filterable, "test");

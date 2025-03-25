@@ -350,29 +350,38 @@ static bool comp_instr(
 ) {
     col++;
     switch (c) {
-    /* start with the simple cases handled with COMPILE_WITH */
-    /* decrement the tape pointer register */
-    case '<': return COMPILE_WITH(inter->dec_reg);
-    /* increment the tape pointer register */
-    case '>': return COMPILE_WITH(inter->inc_reg);
-    /* increment the current tape value */
-    case '+': return COMPILE_WITH(inter->inc_byte);
-    /* decrement the current tape value */
-    case '-': return COMPILE_WITH(inter->dec_byte);
-    /* write to stdout */
-    case '.': return bf_io(obj_code, STDOUT_FILENO, inter->sc_write, inter);
-    /* read from stdin */
-    case ',': return bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
-    /* `[` and `]` do their own error handling. */
-    case '[': return bf_jump_open(obj_code, inter, in_name);
-    case ']': return bf_jump_close(obj_code, inter);
-    /* on a newline, add 1 to the line number and reset the column */
-    case '\n':
-        line++;
-        col = 0;
-        return true;
-    /* any other characters are comments, so silently continue. */
-    default: return true;
+        /* start with the simple cases handled with COMPILE_WITH */
+        /* decrement the tape pointer register */
+        case '<':
+            return COMPILE_WITH(inter->dec_reg);
+        /* increment the tape pointer register */
+        case '>':
+            return COMPILE_WITH(inter->inc_reg);
+        /* increment the current tape value */
+        case '+':
+            return COMPILE_WITH(inter->inc_byte);
+        /* decrement the current tape value */
+        case '-':
+            return COMPILE_WITH(inter->dec_byte);
+        /* write to stdout */
+        case '.':
+            return bf_io(obj_code, STDOUT_FILENO, inter->sc_write, inter);
+        /* read from stdin */
+        case ',':
+            return bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
+        /* `[` and `]` do their own error handling. */
+        case '[':
+            return bf_jump_open(obj_code, inter, in_name);
+        case ']':
+            return bf_jump_close(obj_code, inter);
+        /* on a newline, add 1 to the line number and reset the column */
+        case '\n':
+            line++;
+            col = 0;
+            return true;
+        /* any other characters are comments, so silently continue. */
+        default:
+            return true;
     }
 }
 
@@ -392,22 +401,29 @@ static bool comp_ir_instr(
     if (count == 1 && instr != '@')
         return comp_instr(instr, obj_code, inter, in_name);
     switch (instr) {
-    /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
-    case '.':
-    case ',':
-    case '[':
-    case ']':
-        for (size_t i = 0; i < count; i++) {
-            if (!comp_instr(instr, obj_code, inter, in_name)) return false;
-        }
-        return true;
-    /* if it's @, then zero the byte pointed to by bf_ptr */
-    case '@': return inter->zero_byte(inter->reg_bf_ptr, obj_code);
-    case '+': return IR_COMPILE_WITH(inter->add_byte);
-    case '-': return IR_COMPILE_WITH(inter->sub_byte);
-    case '>': return IR_COMPILE_WITH(inter->add_reg);
-    case '<': return IR_COMPILE_WITH(inter->sub_reg);
-    default: internal_err(BF_ICE_INVALID_IR, "Invalid IR Opcode"); return false;
+        /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
+        case '.':
+        case ',':
+        case '[':
+        case ']':
+            for (size_t i = 0; i < count; i++) {
+                if (!comp_instr(instr, obj_code, inter, in_name)) return false;
+            }
+            return true;
+        /* if it's @, then zero the byte pointed to by bf_ptr */
+        case '@':
+            return inter->zero_byte(inter->reg_bf_ptr, obj_code);
+        case '+':
+            return IR_COMPILE_WITH(inter->add_byte);
+        case '-':
+            return IR_COMPILE_WITH(inter->sub_byte);
+        case '>':
+            return IR_COMPILE_WITH(inter->add_reg);
+        case '<':
+            return IR_COMPILE_WITH(inter->sub_reg);
+        default:
+            internal_err(BF_ICE_INVALID_IR, "Invalid IR Opcode");
+            return false;
     }
 }
 

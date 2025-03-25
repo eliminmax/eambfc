@@ -71,17 +71,19 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
         switch (fnmatch(pat, argv[argi], 0)) {
-        case 0:
-            if (chld_argc == MAX_ARGS) {
-                fputs("Too many arguments to pass to child\n", stderr);
-                return EXIT_FAILURE;
-            }
+            case 0:
+                if (chld_argc == MAX_ARGS) {
+                    fputs("Too many arguments to pass to child\n", stderr);
+                    return EXIT_FAILURE;
+                }
 
-            matched = 1;
-            chld_args[chld_argc++] = argv[argi];
-            break;
-        case FNM_NOMATCH: break;
-        default: return EXIT_FAILURE;
+                matched = 1;
+                chld_args[chld_argc++] = argv[argi];
+                break;
+            case FNM_NOMATCH:
+                break;
+            default:
+                return EXIT_FAILURE;
         }
     }
 
