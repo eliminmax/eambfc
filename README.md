@@ -181,7 +181,7 @@ The following packages are used in testing or release automation:
 * `gcc-s390x-linux-gnu`
 * `gcc`
 * `git`
-* `gzip
+* `gzip`
 * `libasan6`
 * `libcunit1-dev`
 * `libubsan1`
