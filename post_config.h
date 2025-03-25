@@ -63,7 +63,7 @@
 
 #if BFC_LONGOPTS && !defined _GNU_SOURCE
 #error "BFC_LONGOPTS requires _GNU_SOURCE"
-#endif
+#endif /* BFC_LONGOPTS && !defined _GNU_SOURCE */
 
 #define BFC_CHUNK_MASK (BFC_CHUNK_SIZE - 1)
 
