@@ -14,7 +14,7 @@ EAMBFC_DEPS = serialize.o backend_arm64.o backend_riscv64.o backend_s390x.o \
 		compile.o parse_args.o main.o
 
 # if these are changed, rebuild everything
-COMMON_HEADERS = err.h types.h config.h
+COMMON_HEADERS = err.h types.h config.h post_config.h
 
 # __BACKENDS__ add backend source file to ALL_SOURCES
 ALL_SOURCES = serialize.c compile.c optimize.c err.c util.c resource_mgr.c \
