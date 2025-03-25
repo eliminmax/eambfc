@@ -110,6 +110,14 @@ noreturn void alloc_err(void) {
     exit(EXIT_FAILURE);
 }
 
+/* Write the escaped byte `c` to `dest`. `dest` MUST have at least 5 bytes
+ * available.
+ * If it's an ASCII character and is not a control character, it will be printed
+ * as-is.
+ * If it's one of '\n', '\r', '\f', '\t', or '\b', then it's backslash-escaped.
+ * If it's another ASCII control character, it's  written in the form "\xNN",
+ * where NN is its byte value, hex-encoded.
+ * Returns the number of bytes written, not including the null terminator. */
 nonnull_args static int char_esc(char c, char *dest) {
     /* escaped characters with single-letter ids */
     switch ((uchar)c) {
@@ -128,8 +136,6 @@ nonnull_args static int char_esc(char c, char *dest) {
     }
     /* ASCII control characters */
     if ((uchar)c < 040) { return sprintf(dest, "\\x%02hhx", (uchar)c); }
-    /* non-ASCII */
-    if ((uchar)c & 0x80) { return sprintf(dest, "�"); }
     /* default */
     return sprintf(dest, "%c", c);
 }
