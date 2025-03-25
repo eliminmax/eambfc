@@ -3,9 +3,15 @@
  * SPDX-License-Identifier: GPL-3.0-only
  *
  * Preprocessor directives for compile-time validation that config.h is usable,
- * and setting of some macro constants based on it if so. */
+ * and setting of some macro constants based on it if so, as well as inferring
+ * the default backend to use based on the target architecture */
+
+/* internal */
+#include "compat/elf.h"
+
 #ifndef BFC_POST_CONFIG_H
 #define BFC_POST_CONFIG_H 1
+
 #ifndef BFC_PREPROC_POST_CONFIG
 #error "post_config.h should only be #included by config.h"
 #endif /* BFC_PREPROC_POST_CONFIG */
@@ -23,6 +29,38 @@
 #if defined(BFC_TEST) && (BFC_NUM_BACKENDS != 4)
 #error "unit testing is unsupported without all backends enabled"
 #endif /* defined(BFC_TEST) && ... */
+
+/* __BACKENDS__ add logic for the new backend
+ *
+ * Each backend block should check if the backend is enabled, and if the GCC
+ * macro for the backend is defined, and use it if so
+ * For a list of macros to use, see
+ * https://github.com/cpredef/predef/blob/master/Architectures.md */
+
+#ifndef BFC_DEFAULT_TARGET
+#if BFC_TARGET_X86_64 && defined __x86_64__
+#define BFC_DEFAULT_TARGET EM_X86_64
+#elif BFC_TARGET_ARM64 && defined __aarch64__
+#define BFC_DEFAULT_TARGET EM_AARCH64
+#elif BFC_TARGET_RISCV64 && defined __riscv
+#define BFC_DEFAULT_TARGET EM_RISCV
+#elif BFC_TARGET_S390X && defined __s390x__
+#define BFC_DEFAULT_TARGET EM_S390
+
+/* __BACKENDS__ Add fallback case here - these are used if none of the macros
+ * to determine target architecture are defined, or the system's architecture is
+ * disabled */
+
+#elif BFC_TARGET_X86_64
+#define BFC_DEFAULT_TARGET EM_X86_64
+#elif BFC_TARGET_ARM64
+#define BFC_DEFAULT_TARGET EM_AARCH64
+#elif BFC_TARGET_RISCV64
+#define BFC_DEFAULT_TARGET EM_RISCV
+#else /* must be BFC_TARGET_S390X as established by previous check */
+#define BFC_DEFAULT_TARGET EM_S390
+#endif /* BFC_DEFAULT_TARGET */
+#endif /* BFC_DEFAULT_TARGET */
 
 /* __BACKENDS__ add a block for the new backend
  * Each listed backend should first check if it's enabled, and result in a

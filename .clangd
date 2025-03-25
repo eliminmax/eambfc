@@ -63,6 +63,6 @@ CompileFlags:
     - "-DBFC_TARGET_RISCV64=1"
     - "-DBFC_TARGET_S390X=1"
     - "-DBFC_TARGET_X86_64=1"
-    - "-DBFC_DEFAULT_TARGET=EM_X86_64"
+    - "-DBFC_INFER_DEFAULT"
 
 # vi: ft=yaml ts=2 sts=2 sw=2 et

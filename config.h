@@ -8,8 +8,6 @@
 
 #ifndef BFC_CONFIG_H
 #define BFC_CONFIG_H 1
-/* internal */
-#include "compat/elf.h"
 
 /* whether or not to support GNU argument parsing - requires _GNU_SOURCE to be
  * defined if enabled */
@@ -43,7 +41,7 @@
 /* The target architecture - should be the same as the ELF e_machine value for
  * that architecture for consistency's sake. */
 #ifndef BFC_DEFAULT_TARGET
-#define BFC_DEFAULT_TARGET EM_X86_64
+#define BFC_INFER_DEFAULT 1
 #endif /* BFC_DEFAULT_TARGET */
 
 /* runs some preprocessor validation that the above settings are sane, and
