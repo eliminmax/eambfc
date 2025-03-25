@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
 SPDX-License-Identifier: GPL-3.0-only
 -->
 
-# Eli Array Minkoff's BFC (original version)
+# Eli Array Minkoff's BFC (C Version)
 
 An optimizing compiler for brainfuck, written in C for Unix-like systems.
 
