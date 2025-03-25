@@ -156,6 +156,100 @@ Additionally, the `justfile` has rules to use various static and dynamic
 analysis tools, and githooks are used to ensure that they all run successfully
 before anything is merged into main.
 
+## Dependencies
+
+Developtment is done on Debian Bookworm with Backports enabled. Some development
+tooling is not portalbe to other environments. Most development/testing
+utilities are installed from the Debian repos:
+
+### Debian dependencies
+
+The following packages are used in testing or release automation:
+
+* `binutils`
+* `clang-19`
+* `clang-format-19`
+* `clang-tools-19`
+* `codespell`
+* `coreutils`
+* `devscripts`
+* `findutils`
+* `gawk`
+* `gcc-aarch64-linux-gnu`
+* `gcc-i686-linux-gnu`
+* `gcc-mips-linux-gnu`
+* `gcc-s390x-linux-gnu`
+* `gcc`
+* `git`
+* `gzip
+* `libasan6`
+* `libcunit1-dev`
+* `libubsan1`
+* `llvm-19-dev`
+* `make`
+* `musl-tools`
+* `parallel`
+* `qemu-user-binfmt`
+  * I use the backports version, as the stable version segfaults
+* `sed`
+* `shellcheck`
+* `tar`
+* `tcc`
+* `valgrind`
+* `xz-utils`
+
+With the `equivs` package installed, the following control file will generate a
+metapackage depending on them:
+
+```debcontrol
+Section: misc
+Priority: optional
+Homepage: https://github.com/eliminmax/eambfc
+Standards-Version: 3.9.2
+
+Package: eambfc-dev-deps
+Version: 4.0.0
+Maintainer: Eli Array Minkoff <eli@planetminkoff.com>
+Depends: awk, binutils, clang-19, clang-format-19,
+ clang-tools-19, codespell, coreutils, devscripts, findutils, gcc,
+ gcc-aarch64-linux-gnu, gcc-i686-linux-gnu, gcc-mips-linux-gnu,
+ gcc-s390x-linux-gnu, git, gzip, libasan6, libcunit1-dev, libubsan1,
+ llvm-19-dev, make, musl-tools, parallel,
+ qemu-user-binfmt (>= 1:9.0.0), sed, shellcheck, tar, tcc,
+ valgrind, xz-utils
+Suggests: clangd-19
+Description: Dependencies of eambfc's development workflow
+ While eambfc is written with portability to POSIX systems
+ as an explicit goal, the test suite makes heavy use of 3rd-party
+ tools.
+ .
+ This metapackage depends on Debian packages which comprise the
+ majority of those tools, only excluding those not packaged by Debian
+```
+
+Alternatively, run the following as root:
+
+```sh
+apt install awk binutils clang-19 clang-format-19 clang-tools-19 codespell \
+    coreutils devscripts findutils gcc gcc-aarch64-linux-gnu \
+    gcc-i686-linux-gnu gcc-mips-linux-gnu gcc-s390x-linux-gnu git gzip \
+    libasan6 libcunit1-dev libubsan1 llvm-19-dev make musl-tools parallel \
+    qemu-user-binfmt/bookworm-backports sed shellcheck tar tcc valgrind xz-utils
+```
+
+### Non-Debian Dependencies
+
+* [The Zig compiler](https://ziglang.org)
+  * used for its built-in C compiler and cross-compilation support
+* [Ron Yorston's Public Domain POSIX make](https://frippery.org/make)
+  * used to check for non-portable make functionality
+* [reuse helper tool >= 5.0.0](https://git.fsfe.org/reuse/tool)
+  * newer than Debian-packaged version, used to validate license data
+* [cppcheck](https://github.com/danmar/cppcheck)
+  * newer than Debian-packaged version, abd supports more checks
+* [just](https://github.com/casey/just)
+  * command runner used to drive testing and release automation
+
 ## Legal Stuff
 
 `eambfc` as a whole is licensed under the GNU General Public License version 3.
