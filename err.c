@@ -107,7 +107,7 @@ noreturn void alloc_err(void) {
         case OUTMODE_QUIET:
             break;
     }
-    exit(EXIT_FAILURE);
+    abort();
 }
 
 /* Write the escaped byte `c` to `dest`. `dest` MUST have at least 5 bytes
@@ -375,5 +375,5 @@ noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg) {
         .id = err_id
     };
     display_err(e);
-    exit(EXIT_FAILURE);
+    abort();
 }
