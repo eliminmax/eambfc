@@ -177,11 +177,13 @@ nonnull_args static bool select_inter(
         strcat(unknown_msg, "...");
     }
     strcat(unknown_msg, " is not a recognized target");
-    display_err((bf_comp_err){.file = NULL,
-                              .has_instr = false,
-                              .has_location = false,
-                              .id = BF_ERR_UNKNOWN_ARCH,
-                              .msg = unknown_msg});
+    display_err((bf_comp_err){
+        .id = BF_ERR_UNKNOWN_ARCH,
+        .msg = unknown_msg,
+        .file = NULL,
+        .has_instr = false,
+        .has_location = false,
+    });
     return false;
 }
 
