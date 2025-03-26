@@ -7,6 +7,7 @@
 #define BFC_UTIL_H 1
 /* C99 */
 #include <limits.h>
+#include <string.h>
 /* internal */
 #include "attributes.h"
 #include "config.h"
@@ -83,6 +84,13 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes);
 nonnull_args bool append_obj(
     sized_buf *restrict dst, const void *restrict bytes, size_t bytes_sz
 );
+
+/* append `str` to `dst` with `append_obj`, and adjust `dst->sz` to exclude the
+ * null terminator */
+inline_impl void append_str(sized_buf *restrict dst, const char *restrict str) {
+    append_obj(dst, str, strlen(str) + 1);
+    dst->sz--;
+}
 
 /* Reads the contents of fd into a sized_buf. If a read error occurs, frees
  * what's already been read, and sets the sized_buf to {0, 0, NULL}. */
