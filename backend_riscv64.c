@@ -191,10 +191,9 @@ static bool syscall(sized_buf *dst_buf) {
 }
 
 static bool pad_loop_open(sized_buf *dst_buf) {
-    /* nop */
-#define NOP 0x13, 0, 0, 0
-    return append_obj(dst_buf, (u8[]){NOP, NOP, NOP}, 12);
-#undef NOP
+    /* ILLEGAL; NOP; NOP */
+    uchar instr_seq[3][4] = {{0x0}, {0x13}, {0x13}};
+    return append_obj(dst_buf, instr_seq, 12);
 }
 
 static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
@@ -578,13 +577,15 @@ static void test_zero_byte(void) {
     mgr_free(sb.buf);
 }
 
-static void test_nop_pad(void) {
+static void test_jump_pad(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(16);
 
     pad_loop_open(&sb);
     CU_ASSERT_EQUAL(sb.sz, 12);
-    DISASM_TEST(sb, dis, "nop\nnop\nnop\n");
+    /* the defined illegal instruction 0x0000_0000 is interpreted as two
+     * unimplemented 0x0000 instructions by LLVM */
+    DISASM_TEST(sb, dis, "unimp\nunimp\nnop\nnop\n");
 
     mgr_free(dis.buf);
     mgr_free(sb.buf);
@@ -779,7 +780,7 @@ CU_pSuite register_riscv64_tests(void) {
     ADD_TEST(suite, test_reg_copies);
     ADD_TEST(suite, test_load_and_store);
     ADD_TEST(suite, test_zero_byte);
-    ADD_TEST(suite, test_nop_pad);
+    ADD_TEST(suite, test_jump_pad);
     ADD_TEST(suite, test_successful_jumps);
     ADD_TEST(suite, test_inc_dec);
     ADD_TEST(suite, sub_reg_is_neg_add_reg);

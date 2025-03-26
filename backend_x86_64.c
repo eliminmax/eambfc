@@ -157,10 +157,10 @@ static bool syscall(sized_buf *dst_buf) {
  * * bytes with NOP instructins to leave room for it. */
 #define NOP 0x90
 
-/* times 9 NOP */
+/* UD2; times 7 NOP */
 static bool pad_loop_open(sized_buf *dst_buf) {
-    u8 nops[9] = {NOP, NOP, NOP, NOP, NOP, NOP, NOP, NOP, NOP};
-    return append_obj(dst_buf, &nops, 9);
+    u8 padding[9] = {0x0f, 0x0b, NOP, NOP, NOP, NOP, NOP, NOP, NOP};
+    return append_obj(dst_buf, &padding, 9);
 }
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
@@ -288,9 +288,8 @@ static void test_jump_instructions(void) {
         "je 0x9\n"
         "test byte ptr [rdi], -0x1\n"
         "jne -0x12\n"
-        "nop\nnop\nnop\n"
-        "nop\nnop\nnop\n"
-        "nop\nnop\nnop\n"
+        "ud2\n"
+        "nop\nnop\nnop\nnop\nnop\nnop\nnop\n"
     );
 
     mgr_free(sb.buf);

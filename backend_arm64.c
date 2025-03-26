@@ -115,11 +115,16 @@ static bool syscall(sized_buf *dst_buf) {
     return append_obj(dst_buf, (u8[]){0x01, 0x00, 0x00, 0xd4}, 4);
 }
 
-static bool pad_loop_open(sized_buf *dst_buf) {
 #define NOP 0x1f, 0x20, 0x03, 0xd5
-    return append_obj(dst_buf, (u8[]){NOP, NOP, NOP}, 12);
-#undef NOP
+
+static bool pad_loop_open(sized_buf *dst_buf) {
+    /* BRK 1; NOP; NOP; */
+    uchar instr_seq[3][4] = {{0x00}, {NOP}, {NOP}};
+    serialize32le(0xd4200020, instr_seq[0]);
+    return append_obj(dst_buf, instr_seq, 12);
 }
+
+#undef NOP
 
 /* LDRB w17, x.reg; TST w17, 0xff; B.cond offset */
 static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
@@ -560,11 +565,11 @@ static void test_syscall(void) {
     mgr_free(dis.buf);
 }
 
-static void test_nops(void) {
+static void test_jmp_padding(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(16);
     pad_loop_open(&sb);
-    DISASM_TEST(sb, dis, "nop\nnop\nnop\n");
+    DISASM_TEST(sb, dis, "brk #0x1\nnop\nnop\n");
 
     mgr_free(sb.buf);
     mgr_free(dis.buf);
@@ -616,7 +621,7 @@ CU_pSuite register_arm64_tests(void) {
     ADD_TEST(suite, test_inc_dec_wrapper);
     ADD_TEST(suite, test_reg_copy);
     ADD_TEST(suite, test_syscall);
-    ADD_TEST(suite, test_nops);
+    ADD_TEST(suite, test_jmp_padding);
     ADD_TEST(suite, test_successful_jumps);
     ADD_TEST(suite, test_bad_jump_offset);
     ADD_TEST(suite, test_jump_too_long);
