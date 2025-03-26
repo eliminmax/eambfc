@@ -96,6 +96,7 @@ noreturn void alloc_err(void) {
                 "{\"errorId:\":\"Fatal:AllocFailure\","
                 "\"message\":\"A call to malloc or realloc returned NULL.\"}"
             );
+            fflush(stdout);
             break;
         case OUTMODE_NORMAL:
             fputs(
@@ -375,5 +376,6 @@ noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg) {
         .id = err_id
     };
     display_err(e);
+    fflush(stdout);
     abort();
 }
