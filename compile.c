@@ -290,7 +290,7 @@ static bool bf_jump_open(
     jump_stack.next_index++;
     /* fill space jump open will take with NOP instructions of the same length,
      * so that obj_code->sz remains properly sized. */
-    return inter->nop_loop_open(obj_code);
+    return inter->pad_loop_open(obj_code);
 }
 
 /* compile matching `[` and `]` instructions

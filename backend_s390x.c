@@ -317,7 +317,7 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
 /* NOPR is an extended mnemonic for BCR 0, 0 {RR} */
 #define NOPR 0x07, 0x00
 
-static bool nop_loop_open(sized_buf *dst_buf) {
+static bool pad_loop_open(sized_buf *dst_buf) {
     u8 i_bytes[18] = {NOP, NOP, NOP, NOP, NOPR};
     return append_obj(dst_buf, &i_bytes, 18);
 }
@@ -414,7 +414,7 @@ const arch_inter S390X_INTER = {
     .set_reg = set_reg,
     .reg_copy = reg_copy,
     .syscall = syscall,
-    .nop_loop_open = nop_loop_open,
+    .pad_loop_open = pad_loop_open,
     .jump_zero = jump_zero,
     .jump_not_zero = jump_not_zero,
     .inc_reg = inc_reg,
@@ -568,7 +568,7 @@ static void test_successful_jumps(void) {
 
     jump_zero(3, 18, &sb);
     jump_not_zero(3, -36, &sb);
-    nop_loop_open(&sb);
+    pad_loop_open(&sb);
     /* For some reason, LLVM treats jump offset operand as an unsigned immediate
      * after sign extending it to the full 64 bits, so -36 becomes
      * 0xffffffffffffffdc */

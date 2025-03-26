@@ -190,7 +190,7 @@ static bool syscall(sized_buf *dst_buf) {
     return append_obj(dst_buf, (u8[]){0x73, 0, 0, 0}, 4);
 }
 
-static bool nop_loop_open(sized_buf *dst_buf) {
+static bool pad_loop_open(sized_buf *dst_buf) {
     /* nop */
 #define NOP 0x13, 0, 0, 0
     return append_obj(dst_buf, (u8[]){NOP, NOP, NOP}, 12);
@@ -343,7 +343,7 @@ const arch_inter RISCV64_INTER = {
     .set_reg = set_reg,
     .reg_copy = reg_copy,
     .syscall = syscall,
-    .nop_loop_open = nop_loop_open,
+    .pad_loop_open = pad_loop_open,
     .jump_zero = jump_zero,
     .jump_not_zero = jump_not_zero,
     .inc_reg = inc_reg,
@@ -582,7 +582,7 @@ static void test_nop_pad(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(16);
 
-    nop_loop_open(&sb);
+    pad_loop_open(&sb);
     CU_ASSERT_EQUAL(sb.sz, 12);
     DISASM_TEST(sb, dis, "nop\nnop\nnop\n");
 

@@ -115,7 +115,7 @@ static bool syscall(sized_buf *dst_buf) {
     return append_obj(dst_buf, (u8[]){0x01, 0x00, 0x00, 0xd4}, 4);
 }
 
-static bool nop_loop_open(sized_buf *dst_buf) {
+static bool pad_loop_open(sized_buf *dst_buf) {
 #define NOP 0x1f, 0x20, 0x03, 0xd5
     return append_obj(dst_buf, (u8[]){NOP, NOP, NOP}, 12);
 #undef NOP
@@ -293,7 +293,7 @@ const arch_inter ARM64_INTER = {
     .set_reg = set_reg,
     .reg_copy = reg_copy,
     .syscall = syscall,
-    .nop_loop_open = nop_loop_open,
+    .pad_loop_open = pad_loop_open,
     .jump_zero = jump_zero,
     .jump_not_zero = jump_not_zero,
     .inc_reg = inc_reg,
@@ -563,7 +563,7 @@ static void test_syscall(void) {
 static void test_nops(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(16);
-    nop_loop_open(&sb);
+    pad_loop_open(&sb);
     DISASM_TEST(sb, dis, "nop\nnop\nnop\n");
 
     mgr_free(sb.buf);

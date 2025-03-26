@@ -158,7 +158,7 @@ static bool syscall(sized_buf *dst_buf) {
 #define NOP 0x90
 
 /* times 9 NOP */
-static bool nop_loop_open(sized_buf *dst_buf) {
+static bool pad_loop_open(sized_buf *dst_buf) {
     u8 nops[9] = {NOP, NOP, NOP, NOP, NOP, NOP, NOP, NOP, NOP};
     return append_obj(dst_buf, &nops, 9);
 }
@@ -229,7 +229,7 @@ const arch_inter X86_64_INTER = {
     .set_reg = set_reg,
     .reg_copy = reg_copy,
     .syscall = syscall,
-    .nop_loop_open = nop_loop_open,
+    .pad_loop_open = pad_loop_open,
     .jump_zero = jump_zero,
     .jump_not_zero = jump_not_zero,
     .inc_reg = inc_reg,
@@ -279,7 +279,7 @@ static void test_jump_instructions(void) {
 
     jump_zero(X86_64_RDI, 9, &sb);
     jump_not_zero(X86_64_RDI, -18, &sb);
-    nop_loop_open(&sb);
+    pad_loop_open(&sb);
     CU_ASSERT_EQUAL(sb.sz, 27);
     DISASM_TEST(
         sb,

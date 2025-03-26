@@ -57,7 +57,7 @@ typedef const struct arch_inter {
      * instruction output, to be overwritten once jump_zero is called, but allow
      * for a semi-functional program to analyze if compilation fails due to
      * an unclosed loop. */
-    bool (*const nop_loop_open)(sized_buf *dst_buf);
+    bool (*const pad_loop_open)(sized_buf *dst_buf);
 
     /* Functions that correspond 1 to 1 with brainfuck instructions.
      * Note that the `.` and `,` instructions are implemented using more complex
