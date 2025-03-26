@@ -140,6 +140,86 @@ nonnull_args static int char_esc(char c, char *dest) {
     return sprintf(dest, "%c", c);
 }
 
+typedef struct {
+    u8 src_used;
+    u8 dst_used;
+} json_trans;
+
+/* reads a UTF-8 encoded Unicode scalar value from `src`, escapes any characters
+ * needing escaping, and replaces bytes that are invalid UTF-8 with the `U+FFFD`
+ * REPLACEMENT CHARACTER codepoint.
+ *
+ * Returns a struct with 2 u8 members - `src_used` and `dst_used`, containing
+ * the number of bytes read from `src` and written to `dst` (not including the
+ * null terminator), respectively.
+ *
+ * `dst` must have at least 7 bytes available for writing to avoid buffer
+ * overflow. */
+static nonnull_args json_trans
+json_utf8_next(const char *restrict src, char *restrict dst) {
+    /* handle ASCII control characters as a special case first */
+    json_trans ret;
+    if ((uchar)(*src) < 040) {
+        ret.src_used = 1;
+        char c;
+        switch (*src) {
+            case '\n':
+                c = 'n';
+                break;
+            case '\r':
+                c = 'r';
+                break;
+            case '\f':
+                c = 'f';
+                break;
+            case '\t':
+                c = 't';
+                break;
+            case '\b':
+                c = 'b';
+                break;
+            default:
+                ret.dst_used = sprintf(dst, "\\u%05hhx", (uchar)*src);
+                return ret;
+        }
+        ret.dst_used = sprintf(dst, "\\%c", c);
+        return ret;
+    }
+    if ((schar)src[0] >= 0) {
+        dst[0] = src[0];
+        dst[1] = '\0';
+        ret.src_used = ret.dst_used = 1;
+        return ret;
+    }
+
+    u8 seq_size;
+    if (((uchar)src[0] & 0xe0) == 0xc0) {
+        seq_size = 2;
+    } else if (((uchar)src[0] & 0xf0) == 0xe0) {
+        seq_size = 3;
+    } else if (((uchar)src[0] & 0xf8) == 0xf0) {
+        seq_size = 3;
+    } else {
+        goto invalid;
+    }
+
+    for (u8 i = 1; i < seq_size; i++) {
+        if (((uchar)src[i] & 0xc0) != 0x80) goto invalid;
+    }
+
+    memcpy(dst, src, seq_size);
+    dst[seq_size] = 0;
+    ret.src_used = ret.dst_used = seq_size;
+    return ret;
+
+invalid:
+    /* either there was not a continuation byte where required, or the leading
+     * byte was invalid. */
+    /* U+FFFD REPLACEMENT CHARACTER, UTF-8 encoded. */
+    return (json_trans){.src_used = 1, .dst_used = sprintf(dst, "\xef\xbf\xbd")
+    };
+}
+
 /* return a pointer to a JSON-escaped version of the input string
  * calling function is responsible for freeing it */
 nonnull_ret nonnull_args static char *json_str(const char *str) {
@@ -149,39 +229,8 @@ nonnull_ret nonnull_args static char *json_str(const char *str) {
     if (escaped == NULL) alloc_err();
     size_t index = 0;
     while (*p) {
-        switch (*p) {
-            case '\n':
-                index += sprintf(&escaped[index], "\\n");
-                break;
-            case '\r':
-                index += sprintf(&escaped[index], "\\r");
-                break;
-            case '\f':
-                index += sprintf(&escaped[index], "\\f");
-                break;
-            case '\t':
-                index += sprintf(&escaped[index], "\\t");
-                break;
-            case '\b':
-                index += sprintf(&escaped[index], "\\b");
-                break;
-            case '\\':
-                index += sprintf(&escaped[index], "\\\\");
-                break;
-            case '\"':
-                index += sprintf(&escaped[index], "\\\"");
-                break;
-            default:
-                /* would prefer a pure switch statement, but `case a ... d` is
-                 * a non-standard (though common) extension to C, and is not
-                 * portable.
-                 * Using this `if`-within-a-`switch` instead. */
-                if ((uchar)(*p) < 040) { /* control chars are 000 to 037 */
-                    index += sprintf(&escaped[index], "\\u%04hhx", (uchar)*p);
-                }
-                /* the true default case. Character needs no escaping. */
-                escaped[index++] = *p;
-        }
+        json_trans transfer = json_utf8_next(p, &escaped[index]);
+        index += transfer.dst_used;
         /* If less than 8 chars are left before overflow, allocate more space */
         if (index > bufsz - 8) {
             bufsz += BFC_CHUNK_SIZE;
@@ -192,7 +241,7 @@ nonnull_ret nonnull_args static char *json_str(const char *str) {
             }
             escaped = reallocator;
         }
-        p++;
+        p += transfer.src_used;
     }
     escaped[index] = 0;
     return escaped;
