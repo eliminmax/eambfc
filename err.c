@@ -139,7 +139,7 @@ nonnull_args static int char_esc(char c, char *dest) {
             break;
     }
     /* ASCII control characters */
-    if ((uchar)c < 040) { return sprintf(dest, "\\x%02hhx", (uchar)c); }
+    if ((uchar)c < 040) return sprintf(dest, "\\x%02hhx", (uchar)c);
     /* default */
     return sprintf(dest, "%c", c);
 }
