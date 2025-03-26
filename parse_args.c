@@ -266,11 +266,7 @@ static noreturn nonnull_args void bad_arg(
 run_cfg parse_args(int argc, char *argv[]) {
     int opt;
     char missing_op_msg[35] = "-% requires an additional argument";
-#if BFC_LONGOPTS
-    char *unknown_arg_msg;
-#else
-    char unknown_arg_msg[21] = "Unknown argument: -%";
-#endif
+    char unknown_arg_msg[24] = "Unknown argument: -%";
     bool show_hint = true;
     run_cfg rc = {
         .inter = NULL,
@@ -402,33 +398,33 @@ run_cfg parse_args(int argc, char *argv[]) {
                 );
             case '?': /* unknown argument */
 #if BFC_LONGOPTS
-                unknown_arg_msg =
-                    malloc(optopt ? 21 : 20 + strlen(argv[optind - 1]));
-                if (unknown_arg_msg == NULL) alloc_err();
-                strcpy(unknown_arg_msg, "Unknown argument: -%");
-                if (optopt) {
+                if (!optopt) {
+                    char *msg = malloc(20 + strlen(argv[optind - 1]));
+                    if (!msg) alloc_err();
+                    strncpy(msg, unknown_arg_msg, 18);
+                    strcpy(&unknown_arg_msg[18], argv[optind - 1]);
+                    /* can't just use bad_arg as msg won't be freed. */
+                    display_err((bf_comp_err){
+                        .id = BF_ERR_UNKNOWN_ARG,
+                        .msg = msg,
+                        .file = NULL,
+                        .has_instr = false,
+                        .has_location = false,
+                    });
+                    if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
+                    free(msg);
+                    mgr_cleanup();
+                    exit(EXIT_FAILURE);
+                }
+#endif
+                if (optopt >= 040 && optopt < 0x80) {
                     unknown_arg_msg[19] = optopt;
                 } else {
-                    strcpy(&unknown_arg_msg[18], argv[optind - 1]);
+                    sprintf(&unknown_arg_msg[19], "\\x%02hhx", (uchar)optopt);
                 }
-                /* can't just use bad_arg as unknown_arg_msg won't be freed. */
-                display_err((bf_comp_err){
-                    .id = BF_ERR_UNKNOWN_ARG,
-                    .msg = unknown_arg_msg,
-                    .file = NULL,
-                    .has_instr = false,
-                    .has_location = false,
-                });
-                if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
-                free(unknown_arg_msg);
-                mgr_cleanup();
-                exit(EXIT_FAILURE);
-#else
-                unknown_arg_msg[19] = optopt;
                 bad_arg(
                     progname, BF_ERR_UNKNOWN_ARG, unknown_arg_msg, show_hint
                 );
-#endif
         }
     }
 
