@@ -134,10 +134,13 @@ static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
      * them as though they're followed by an implicit 0b00, so it needs to fit
      * within the range of possible 21-bit 2's complement values. */
     if (!bit_fits(offset, 21)) {
-        basic_err(
-            BF_ERR_JUMP_TOO_LONG,
-            "offset is outside the range of possible 21-bit signed values"
-        );
+        display_err((bf_comp_err){
+            .id = BF_ERR_JUMP_TOO_LONG,
+            .msg =
+                "offset is outside the range of possible 21-bit signed values",
+            .has_location = 0,
+            .has_instr = 0,
+        });
         return false;
     }
     u32 off_val = ((offset >> 2) + 1) & 0x7ffff;

@@ -143,10 +143,13 @@ static bool cond_jump(u8 reg, i64 distance, bool eq, sized_buf *dst_buf) {
      * register, but they only work with a specific subset of registers, all of
      * which are non-volatile. */
     if (!bit_fits(distance, 21)) {
-        basic_err(
-            BF_ERR_JUMP_TOO_LONG,
-            "offset is outside the range of possible 21-bit signed values"
-        );
+        display_err((bf_comp_err){
+            .id = BF_ERR_JUMP_TOO_LONG,
+            .msg =
+                "offset is outside the range of possible 21-bit signed values",
+            .has_location = 0,
+            .has_instr = 0,
+        });
         return false;
     }
     if ((distance % 2) != 0) {
