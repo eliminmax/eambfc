@@ -88,7 +88,7 @@ void json_mode(void) {
     err_mode = OUTMODE_JSON;
 }
 
-/* avoid using json_str for this special case, as malloc may fail again,
+/* avoid using err_to_json for this special case, as malloc may fail again,
  * causing a loop of failures to generate json error messages properly.
  * If puts or fputs call malloc internally, then there's nothing to be done. */
 noreturn void alloc_err(void) {
@@ -180,6 +180,17 @@ json_utf8_next(const char *restrict src, char dst[restrict 8]) {
                 return 1;
         }
         sprintf(dst, "\\%c", c);
+        return 1;
+    }
+    if (src[0] == '\\') {
+        dst[0] = dst[1] = '\\';
+        dst[2] = '\0';
+        return 1;
+    }
+    if (src[0] == '"') {
+        dst[0] = '\\';
+        dst[1] = '"';
+        dst[2] = '\0';
         return 1;
     }
     if ((schar)src[0] >= 0) {
