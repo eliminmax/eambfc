@@ -295,7 +295,6 @@ static void normal_eprint(bf_comp_err err) {
 static void json_eprint(bf_comp_err err) {
     if (err.msg == NULL) abort();
     char *msg = json_str(err.msg);
-    if (msg == NULL) alloc_err();
 
     printf("{\"errorId\": \"%s\", ", ERR_IDS[err.id]);
     if (err.file != NULL) {
