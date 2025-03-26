@@ -16,7 +16,7 @@
 #include "../types.h"
 
 #ifdef BFC_TEST_UTILS_C
-#define inline_impl extern
+#define inline_impl extern inline
 #else /* BFC_TEST_UTILS_C */
 #define inline_impl inline
 #endif /* BFC_TEST_UTILS_C */

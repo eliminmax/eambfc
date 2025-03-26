@@ -16,8 +16,8 @@
 /* by defining BFC_UTIL_C in util.c, the normal need for duplicate definitions
  * of these functions is avoided */
 #ifdef BFC_UTIL_C
-#define inline_impl extern
-#else
+#define inline_impl extern inline
+#else /* BFC_UTIL_C */
 #define inline_impl inline
 #endif /* BFC_UTIL_C */
 
