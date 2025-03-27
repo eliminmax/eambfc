@@ -49,7 +49,7 @@ void mgr_free(void *ptr);
  *  - if internal call to `malloc` fails, calls `alloc_err`
  *
  * Because it calls `alloc_err` on failure, it never returns `NULL`. */
-malloc_like nonnull_ret void *mgr_malloc(size_t size);
+must_use malloc_like nonnull_ret void *mgr_malloc(size_t size);
 
 /* mgr_realloc has the same semantics as a realloc call where the reallocation
  * succeeded, but on failure, it calls alloc_err. Because of that, unlike
@@ -59,7 +59,7 @@ malloc_like nonnull_ret void *mgr_malloc(size_t size);
  * does not, it just provides the checked reallocation.
  *
  * Because it calls `alloc_err` on failure, it never returns `NULL`. */
-nonnull_args nonnull_ret void *mgr_realloc(void *ptr, size_t size);
+must_use nonnull_args nonnull_ret void *mgr_realloc(void *ptr, size_t size);
 
 /* mgr_open_m and mgr_open have the same semantics as a call to open with and
  * without a mode specified respectively. Both register the file descriptors
@@ -73,7 +73,9 @@ nonnull_args nonnull_ret void *mgr_realloc(void *ptr, size_t size);
  * Fatal Error Calls:
  *  - if called with MAX_FDS file descriptors already registered, call
  *    internal_err with error code ICE:MgrTooManyOpens. */
-nonnull_args int mgr_open_m(const char *pathname, int flags, mode_t mode);
+must_use nonnull_args int mgr_open_m(
+    const char *pathname, int flags, mode_t mode
+);
 
 /* repeat docstring for clangd to use for both functions */
 
@@ -89,7 +91,7 @@ nonnull_args int mgr_open_m(const char *pathname, int flags, mode_t mode);
  * Fatal Error Calls:
  *  - if called with MAX_FDS file descriptors already registered, call
  *    internal_err with error code ICE:MgrTooManyOpens. */
-nonnull_args int mgr_open(const char *pathname, int flags);
+must_use nonnull_args int mgr_open(const char *pathname, int flags);
 
 /* mgr_close calls close, but if fd was opened by mgr_open or mgr_open_m, it
  * also unregisters it from the resource manager, so that it doesn't try to
