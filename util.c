@@ -6,6 +6,7 @@
 
 /* C99 */
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 /* POSIX */
@@ -93,6 +94,7 @@ nonnull_args bool append_obj(
             .has_instr = false,
             .has_location = false,
         });
+        fflush(stdout);
         abort();
     }
 

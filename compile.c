@@ -288,9 +288,10 @@ static bool bf_jump_open(
     jump_stack.locations[jump_stack.next_index].src_col = col;
     jump_stack.locations[jump_stack.next_index].dst_loc = obj_code->sz;
     jump_stack.next_index++;
-    /* fill space jump open will take with NOP instructions of the same length,
-     * so that obj_code->sz remains properly sized. */
-    return inter->nop_loop_open(obj_code);
+    /* insert an architecture-specific illegal/trap instruction, then pad to
+     * proper size with no-op instructions so that the space for the jump open
+     * is reserved before the address is known. */
+    return inter->pad_loop_open(obj_code);
 }
 
 /* compile matching `[` and `]` instructions

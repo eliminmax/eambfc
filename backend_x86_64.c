@@ -47,10 +47,13 @@ typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
 /* TEST byte [reg], 0xff; Jcc|tttn offset */
 static bool test_jcc(char tttn, u8 reg, i64 offset, sized_buf *dst_buf) {
     if (offset > INT32_MAX || offset < INT32_MIN) {
-        basic_err(
-            BF_ERR_JUMP_TOO_LONG,
-            "offset is outside the range of possible 32-bit signed values"
-        );
+        display_err((bf_comp_err){
+            .id = BF_ERR_JUMP_TOO_LONG,
+            .msg =
+                "offset is outside the range of possible 32-bit signed values",
+            .has_location = 0,
+            .has_instr = 0,
+        });
         return false;
     }
     u8 i_bytes[9] = {
@@ -154,10 +157,10 @@ static bool syscall(sized_buf *dst_buf) {
  * * bytes with NOP instructins to leave room for it. */
 #define NOP 0x90
 
-/* times 9 NOP */
-static bool nop_loop_open(sized_buf *dst_buf) {
-    u8 nops[9] = {NOP, NOP, NOP, NOP, NOP, NOP, NOP, NOP, NOP};
-    return append_obj(dst_buf, &nops, 9);
+/* UD2; times 7 NOP */
+static bool pad_loop_open(sized_buf *dst_buf) {
+    u8 padding[9] = {0x0f, 0x0b, NOP, NOP, NOP, NOP, NOP, NOP, NOP};
+    return append_obj(dst_buf, &padding, 9);
 }
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
@@ -226,7 +229,7 @@ const arch_inter X86_64_INTER = {
     .set_reg = set_reg,
     .reg_copy = reg_copy,
     .syscall = syscall,
-    .nop_loop_open = nop_loop_open,
+    .pad_loop_open = pad_loop_open,
     .jump_zero = jump_zero,
     .jump_not_zero = jump_not_zero,
     .inc_reg = inc_reg,
@@ -276,7 +279,7 @@ static void test_jump_instructions(void) {
 
     jump_zero(X86_64_RDI, 9, &sb);
     jump_not_zero(X86_64_RDI, -18, &sb);
-    nop_loop_open(&sb);
+    pad_loop_open(&sb);
     CU_ASSERT_EQUAL(sb.sz, 27);
     DISASM_TEST(
         sb,
@@ -285,9 +288,8 @@ static void test_jump_instructions(void) {
         "je 0x9\n"
         "test byte ptr [rdi], -0x1\n"
         "jne -0x12\n"
-        "nop\nnop\nnop\n"
-        "nop\nnop\nnop\n"
-        "nop\nnop\nnop\n"
+        "ud2\n"
+        "nop\nnop\nnop\nnop\nnop\nnop\nnop\n"
     );
 
     mgr_free(sb.buf);

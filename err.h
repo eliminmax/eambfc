@@ -77,11 +77,6 @@ void json_mode(void);
 /* function to display error messages, depending on the current error mode. */
 void display_err(bf_comp_err e);
 
-/* compatibility macros to ease transition to updated error handling system */
-#define basic_err(i, m) \
-    display_err((bf_comp_err \
-    ){.id = (i), .msg = (m), .has_location = false, .has_instr = false})
-
 /* special handling for malloc/realloc failure error messages, which avoids any
  * further use of malloc/realloc for purposes like generating JSON-escaped
  * strings.

@@ -86,13 +86,19 @@
  *  - bits 12-15: lower 4 bits of opcode
  *  - bits 16-31: immediate
  *
+ * * RI-c (2 halfwords, 12-bit opcode, [register, relative halfword immediate])
+ *  - bits 0-7: higher 8 bits of opcode
+ *  - bits 8-11: register
+ *  - bits 12-15: lower 4 bits of opcode
+ *  - bits 16-31: immediate
+ *
  * * RIL-a (3 halfwords, 12-bit opcode, [register, word immediate])
  *  - bits 0-7: higher 8 bits of opcode
  *  - bits 8-11: register
  *  - bits 12-15: lower 4 bits of opcode
  *  - bits 16-47: immediate
  *
- * * RIL-c (3 halfwords, 12-bit opcode, [mask, 32-bit relative immediate])
+ * * RIL-c (3 halfwords, 12-bit opcode, [mask, relative word immediate])
  *  - bits 0-7: higher 8 bits of opcode
  *  - bits 8-11: mask
  *  - bits 12-15: lower 4 bits of opcode
@@ -259,9 +265,12 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
      * offset of halfwords, so offset must be even and fit within a 17-bit
      * signed (2's complement) integer */
     if (offset < -0x10000 || offset > 0xffff) {
-        basic_err(
-            BF_ERR_JUMP_TOO_LONG, "offset is out-of-range for this architecture"
-        );
+        display_err((bf_comp_err){
+            .id = BF_ERR_JUMP_TOO_LONG,
+            .msg = "offset is out-of-range for this architecture",
+            .has_location = 0,
+            .has_instr = 0,
+        });
         return false;
     }
     /* addressing halfwords is possible in compare instructions, but not
@@ -314,8 +323,13 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
 /* NOPR is an extended mnemonic for BCR 0, 0 {RR} */
 #define NOPR 0x07, 0x00
 
-static bool nop_loop_open(sized_buf *dst_buf) {
-    u8 i_bytes[18] = {NOP, NOP, NOP, NOP, NOPR};
+static bool pad_loop_open(sized_buf *dst_buf) {
+    /* start with a jump into its own second haflword - both gcc and clang
+     * generate that for `__builtin_trap()`.
+     *
+     * Follow up with NOP and NOPR instructions to pad to the needed size  */
+    /* BRC 15, 0x2 {RI-c}; NOP; NOP; NOP; NOP; NOPR; */
+    u8 i_bytes[18] = {0xa7, 0xf4, 0x00, 0x01, NOP, NOP, NOP, NOPR};
     return append_obj(dst_buf, &i_bytes, 18);
 }
 
@@ -411,7 +425,7 @@ const arch_inter S390X_INTER = {
     .set_reg = set_reg,
     .reg_copy = reg_copy,
     .syscall = syscall,
-    .nop_loop_open = nop_loop_open,
+    .pad_loop_open = pad_loop_open,
     .jump_zero = jump_zero,
     .jump_not_zero = jump_not_zero,
     .inc_reg = inc_reg,
@@ -565,7 +579,7 @@ static void test_successful_jumps(void) {
 
     jump_zero(3, 18, &sb);
     jump_not_zero(3, -36, &sb);
-    nop_loop_open(&sb);
+    pad_loop_open(&sb);
     /* For some reason, LLVM treats jump offset operand as an unsigned immediate
      * after sign extending it to the full 64 bits, so -36 becomes
      * 0xffffffffffffffdc */
@@ -583,7 +597,8 @@ static void test_successful_jumps(void) {
         "cfi %r5, 0\n"
         /* lh for low | high (i.e. not equal). */
         "jglh 0xffffffffffffffdc\n"
-        "nop 0\n"
+        /* instruction used for __builtin_trap() */
+        "j 0x2\n"
         "nop 0\n"
         "nop 0\n"
         "nop 0\n"

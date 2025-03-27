@@ -15,7 +15,7 @@
 /* by defining BFC_SERIALIZE_C in serialize.c, needing duplicate definitions of
  * these functions is avoided */
 #ifdef BFC_SERIALIZE_C
-#define inline_impl extern
+#define inline_impl extern inline
 #else
 #define inline_impl inline
 #endif /* BFC_SERIALIZE_C */

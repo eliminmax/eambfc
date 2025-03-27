@@ -53,11 +53,9 @@ typedef const struct arch_inter {
     /* Write the system call instruction to dst_buf. */
     bool (*const syscall)(sized_buf *dst_buf);
 
-    /* write NOP instruction/s that take the same space as the jump_zero
-     * instruction output, to be overwritten once jump_zero is called, but allow
-     * for a semi-functional program to analyze if compilation fails due to
-     * an unclosed loop. */
-    bool (*const nop_loop_open)(sized_buf *dst_buf);
+    /* write an instruction, then pad with no-op instructions. Must use the same
+     * number of bytes as `jump_zero` */
+    bool (*const pad_loop_open)(sized_buf *dst_buf);
 
     /* Functions that correspond 1 to 1 with brainfuck instructions.
      * Note that the `.` and `,` instructions are implemented using more complex
