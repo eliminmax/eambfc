@@ -328,6 +328,13 @@ void display_err(const bf_comp_err e) {
             errmsg = err_to_json(e);
             puts(errmsg);
             break;
+        default:
+#if defined __GNUC__ && defined __has_builtin
+#if __has_builtin(__builtin_unreachable)
+            __builtin_unreachable();
+#endif /* __has_builtin(__builtin_unreachable) */
+#endif /* defined __GNUC__ && defined __has_builtin */
+            abort();
     }
     mgr_free(errmsg);
 }
