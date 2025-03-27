@@ -171,7 +171,8 @@ static bool cond_jump(u8 reg, i64 distance, bool eq, sized_buf *dst_buf) {
                        ((jump_dist & 0x7fe) << 20) |
                        ((jump_dist & (1 << 11)) << 9) | (jump_dist & 0xff000);
     serialize32le(encoded_dist | 0x6f, &i_bytes[8]);
-    return append_obj(dst_buf, i_bytes, 12);
+    append_obj(dst_buf, i_bytes, 12);
+    return true;
 }
 
 static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {

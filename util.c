@@ -76,7 +76,7 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
 
 /* Append bytes to dst, handling reallocs as needed.
  * Assumes that dst has been allocated with resource_mgr. */
-nonnull_args bool append_obj(
+nonnull_args void append_obj(
     sized_buf *restrict dst, const void *restrict bytes, size_t bytes_sz
 ) {
     if (dst->buf == NULL) {
@@ -106,7 +106,6 @@ nonnull_args bool append_obj(
     /* actually append the object now that prep work is done */
     memcpy(dst->buf + dst->sz, bytes, bytes_sz);
     dst->sz += bytes_sz;
-    return true;
 }
 
 /* Reads the contents of fd into sb. If a read error occurs, frees what's

@@ -81,7 +81,7 @@ nonnull_args bool write_obj(
 nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes);
 
 /* Appends first bytes_sz of bytes to dst, reallocating dst as needed. */
-nonnull_args bool append_obj(
+nonnull_args void append_obj(
     sized_buf *restrict dst, const void *restrict bytes, size_t bytes_sz
 );
 
