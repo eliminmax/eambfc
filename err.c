@@ -135,6 +135,8 @@ nonnull_args static int char_esc(char c, char dest[5]) {
             return sprintf(dest, "\\t");
         case '\b':
             return sprintf(dest, "\\b");
+        case '\a':
+            return sprintf(dest, "\\a");
         default:
             break;
     }
