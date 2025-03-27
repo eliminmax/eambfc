@@ -122,7 +122,7 @@ noreturn void alloc_err(void) {
  * If it's another ASCII control character, it's  written in the form "\xNN",
  * where NN is its byte value, hex-encoded.
  * Returns the number of bytes written, not including the null terminator. */
-nonnull_args static int char_esc(char c, char *dest) {
+nonnull_args static int char_esc(char c, char dest[5]) {
     /* escaped characters with single-letter ids */
     switch ((uchar)c) {
         case '\n':
@@ -229,7 +229,7 @@ invalid:
 #define METASTRINGIFY(x) STRINGIFY(x)
 #define MAX_SIZE_STRLEN (sizeof(METASTRINGIFY(SIZE_MAX)))
 
-static char *err_to_json(bf_comp_err err) {
+static nonnull_ret char *err_to_json(const bf_comp_err err) {
     if (!err.msg) abort();
     sized_buf json_err = newbuf(BFC_CHUNK_SIZE);
     append_str(&json_err, "{\"errorId\": \"");
@@ -356,7 +356,7 @@ static void normal_eprint(bf_comp_err err) {
     }
 }
 
-void display_err(bf_comp_err e) {
+void display_err(const bf_comp_err e) {
     ERR_CALLBACK(e.id);
     switch (err_mode) {
         case OUTMODE_QUIET:
