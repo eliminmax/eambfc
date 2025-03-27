@@ -249,6 +249,7 @@ static nonnull_ret char *err_to_json(const bf_comp_err err) {
         append_str(&json_err, "\", ");
     }
     if (err.has_location) {
+        /* size of template - 7 + maximum space needed for 2 size_t */
         char loc_info[22 + (2 * MAX_SIZE_STRLEN)];
         size_t loc_info_sz = sprintf(
             loc_info,
