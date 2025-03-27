@@ -262,40 +262,11 @@ static nonnull_ret char *err_to_json(const bf_comp_err err) {
 
     if (err.has_instr) {
         append_str(&json_err, "\"instruction\": \"");
-        if ((schar)err.instr > 040) {
-            if (err.instr == '\\') {
-                append_str(&json_err, "\\\\\"");
-            } else if (err.instr == '"') {
-                append_str(&json_err, "\\\"");
-            } else {
-                const char stringified[2] = {err.instr};
-                append_str(&json_err, stringified);
-            }
-        } else if ((uchar)err.instr & 0x80) {
-            append_str(&json_err, UNICODE_REPLACEMENT);
-        } else {
-            char escaped[8] = {'\\'};
-            switch (err.instr) {
-                case '\n':
-                    escaped[1] = 'n';
-                    break;
-                case '\r':
-                    escaped[1] = 'r';
-                    break;
-                case '\f':
-                    escaped[1] = 'f';
-                    break;
-                case '\t':
-                    escaped[1] = 't';
-                    break;
-                case '\b':
-                    escaped[1] = 'b';
-                    break;
-                default:
-                    sprintf(&escaped[1], "u%04hhx", (uchar)err.instr);
-            }
-            append_str(&json_err, escaped);
-        }
+        /* because 0 is not a valid utf-8 continuation byte, json_utf8_next
+         * will only consume the first byte, and will both JSON-escape and
+         * utf8-sanitize it. */
+        json_utf8_next((const char[]){err.instr, 0}, transfer);
+        append_str(&json_err, transfer);
         append_str(&json_err, "\", ");
     }
 
@@ -309,68 +280,56 @@ static nonnull_ret char *err_to_json(const bf_comp_err err) {
     return json_err.buf;
 }
 
-static void json_eprint(bf_comp_err err) {
-    char *p = err_to_json(err);
-    puts(p);
-    mgr_free(p);
-}
-
-static void normal_eprint(bf_comp_err err) {
-    if (err.msg == NULL) abort();
-    /* 75 is the maximum possible length needed, assuming that size_t is at
-     * most 128 bits long. If it's longer, a file would need to be at least tens
-     * of yottabytes in size to need more than 75, which is unsupported. */
-    char extra_info[75] = {'\0'};
-    int i = 0;
+static nonnull_ret char *err_to_string(const bf_comp_err err) {
+    if (!err.msg) abort();
+    sized_buf err_str = newbuf(BFC_CHUNK_SIZE);
+    append_str(&err_str, "Error ");
+    append_str(&err_str, ERR_IDS[err.id]);
+    if (err.file) {
+        append_str(&err_str, " in file ");
+        append_str(&err_str, err.file);
+    }
     if (err.has_location) {
-        i = sprintf(
-            extra_info,
-            /* assuming 128-bit uintmax_t, and a file with over 2^126 lines and
-             * over 2^126 columns, this could take up at most 56 bytes. That
-             * file would take at least 12.9 yottabytes, so it's already
-             * unreasonably large, but 56 is still small enough to accommodate
-             * for. */
+        /* size of template - 7 + maximum space needed for 2 size_t */
+        char loc_info[18 + (2 * MAX_SIZE_STRLEN)];
+        size_t loc_info_sz = sprintf(
+            loc_info,
             " at line %ju, column %ju",
             (uintmax_t)err.line,
             (uintmax_t)err.col
         );
+        append_obj(&err_str, loc_info, loc_info_sz);
     }
     if (err.has_instr) {
-        /* this will be 15-18 non-null characters long */
-        strcpy(&extra_info[i], " (instruction ");
-        i += 14;
-        i += char_esc(err.instr, &extra_info[i]);
-        extra_info[i++] = ')';
-        extra_info[i] = '\0';
+        char instr[5];
+        append_str(&err_str, " (instruction ");
+        char_esc(err.instr, instr);
+        append_str(&err_str, instr);
+        append_str(&err_str, ")");
     }
-    if (err.file != NULL) {
-        fprintf(
-            stderr,
-            "Error %s in file %s%s: %s\n",
-            ERR_IDS[err.id],
-            err.file,
-            extra_info,
-            err.msg
-        );
-    } else {
-        fprintf(
-            stderr, "Error %s%s: %s\n", ERR_IDS[err.id], extra_info, err.msg
-        );
-    }
+    append_str(&err_str, ": ");
+    append_str(&err_str, err.msg);
+    append_str(&err_str, "\n");
+    return err_str.buf;
 }
 
 void display_err(const bf_comp_err e) {
     ERR_CALLBACK(e.id);
+    if (e.msg == NULL) abort();
+    char *errmsg;
     switch (err_mode) {
         case OUTMODE_QUIET:
-            break;
+            return;
         case OUTMODE_NORMAL:
-            normal_eprint(e);
+            errmsg = err_to_string(e);
+            fputs(errmsg, stderr);
             break;
         case OUTMODE_JSON:
-            json_eprint(e);
+            errmsg = err_to_json(e);
+            puts(errmsg);
             break;
     }
+    mgr_free(errmsg);
 }
 
 noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg) {
