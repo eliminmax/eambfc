@@ -44,18 +44,18 @@ typedef const struct arch_inter {
     i64 sc_exit;
 
     /* Write instruction/s to dst_buf to store immediate imm in register reg. */
-    bool (*const set_reg)(u8 reg, i64 imm, sized_buf *dst_buf);
+    void (*const set_reg)(u8 reg, i64 imm, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to copy value stored in register src into
      * register dst. */
-    bool (*const reg_copy)(u8 dst, u8 src, sized_buf *dst_buf);
+    void (*const reg_copy)(u8 dst, u8 src, sized_buf *dst_buf);
 
     /* Write the system call instruction to dst_buf. */
-    bool (*const syscall)(sized_buf *dst_buf);
+    void (*const syscall)(sized_buf *dst_buf);
 
     /* write an instruction, then pad with no-op instructions. Must use the same
      * number of bytes as `jump_zero` */
-    bool (*const pad_loop_open)(sized_buf *dst_buf);
+    void (*const pad_loop_open)(sized_buf *dst_buf);
 
     /* Functions that correspond 1 to 1 with brainfuck instructions.
      * Note that the `.` and `,` instructions are implemented using more complex
@@ -78,54 +78,54 @@ typedef const struct arch_inter {
     /* Write instruction/s to dst_buf to increment register reg by one.
      *
      * Used to implement the `>` brainfuck instruction. */
-    bool (*const inc_reg)(u8 reg, sized_buf *dst_buf);
+    void (*const inc_reg)(u8 reg, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to decrement register reg by one.
      *
      * Used to implement the `<` brainfuck instruction. */
-    bool (*const dec_reg)(u8 reg, sized_buf *dst_buf);
+    void (*const dec_reg)(u8 reg, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to increment byte stored at address in
      * register reg by one.
      *
      * Used to implement the `+` brainfuck instruction. */
-    bool (*const inc_byte)(u8 reg, sized_buf *dst_buf);
+    void (*const inc_byte)(u8 reg, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to decrement byte stored at address in
      * register reg by one.
      *
      * Used to implement the `-` brainfuck instruction. */
-    bool (*const dec_byte)(u8 reg, sized_buf *dst_buf);
+    void (*const dec_byte)(u8 reg, sized_buf *dst_buf);
 
     /* functions used for optimized instructions */
 
     /* Write instruction/s to dst_buf to add imm to register reg.
      *
      * Used to implement sequences of consecutive `>` brainfuck instructions. */
-    bool (*const add_reg)(u8 reg, u64 imm, sized_buf *dst_buf);
+    void (*const add_reg)(u8 reg, u64 imm, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to subtract imm from register reg.
      *
      * Used to implement sequences of consecutive `<` brainfuck instructions. */
-    bool (*const sub_reg)(u8 reg, u64 imm, sized_buf *dst_buf);
+    void (*const sub_reg)(u8 reg, u64 imm, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to add imm8 to byte stored at address in
      * register reg.
      *
      * Used to implement sequences of consecutive `+` brainfuck instructions. */
-    bool (*const add_byte)(u8 reg, u8 imm8, sized_buf *dst_buf);
+    void (*const add_byte)(u8 reg, u8 imm8, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to subtract imm8 from byte stored at
      * address in register reg.
      *
      * Used to implement sequences of consecutive `-` brainfuck instructions. */
-    bool (*const sub_byte)(u8 reg, u8 imm8, sized_buf *dst_buf);
+    void (*const sub_byte)(u8 reg, u8 imm8, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to set the value of byte stored at address
      * in register reg to 0.
      *
      * Used to implement the `[-]` and `[+]` brainfuck instruction sequences. */
-    bool (*const zero_byte)(u8 reg, sized_buf *dst_buf);
+    void (*const zero_byte)(u8 reg, sized_buf *dst_buf);
 
     /* CPU flags that should be set for executables for this architecture. */
     u32 flags;

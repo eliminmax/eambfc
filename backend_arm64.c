@@ -60,7 +60,7 @@ static void mov(mov_type mt, u16 imm, shift_lvl shift, u8 reg, u8 *dst) {
 
 /* Choose a combination of MOVZ, MOVK, and MOVN that sets register x.reg to
  * the immediate imm */
-static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     u16 default_val;
     mov_type lead_mt;
 
@@ -101,27 +101,26 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         /* (MOVZ|MOVN) x.reg, default_val */
         mov(lead_mt, default_val, A64_SL_NO_SHIFT, reg, sb_reserve(dst_buf, 4));
     }
-    return true;
 }
 
 /* MOV x.dst, x.src
  * technically an alias for ORR x.dst, XZR, x.src */
-static bool reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
-    return append_obj(dst_buf, (u8[]){0xe0 | dst, 0x03, src, 0xaa}, 4);
+static void reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
+    append_obj(dst_buf, (u8[]){0xe0 | dst, 0x03, src, 0xaa}, 4);
 }
 
 /* SVC 0 */
-static bool syscall(sized_buf *dst_buf) {
-    return append_obj(dst_buf, (u8[]){0x01, 0x00, 0x00, 0xd4}, 4);
+static void syscall(sized_buf *dst_buf) {
+    append_obj(dst_buf, (u8[]){0x01, 0x00, 0x00, 0xd4}, 4);
 }
 
 #define NOP 0x1f, 0x20, 0x03, 0xd5
 
-static bool pad_loop_open(sized_buf *dst_buf) {
+static void pad_loop_open(sized_buf *dst_buf) {
     /* BRK 1; NOP; NOP; */
     uchar instr_seq[3][4] = {{0x00}, {NOP}, {NOP}};
     serialize32le(0xd4200020, instr_seq[0]);
-    return append_obj(dst_buf, instr_seq, 12);
+    append_obj(dst_buf, instr_seq, 12);
 }
 
 #undef NOP
@@ -192,7 +191,7 @@ static bool add_sub_imm(
     return true;
 }
 
-static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
+static void add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
     /* If the immediate fits within 12 bits, it's a far simpler process - simply
      * ADD or SUB the immediate. If it fits within 24 bits, use an ADD or SUB,
      * and shift the higher 12 of the 24 bits. If the 12 lower bits are
@@ -201,65 +200,60 @@ static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
      * If the immediate does not fit within the lower 24 bits, then first set
      * x17 to the immediate, then ADD or SUB it. */
     if (imm < UINT64_C(0x1000)) {
-        return add_sub_imm(reg, imm, false, op, dst_buf);
+        add_sub_imm(reg, imm, false, op, dst_buf);
     } else if (imm < UINT64_C(0x1000000)) {
-        bool ret = add_sub_imm(reg, imm & 0xfff000, true, op, dst_buf);
-        if (ret && ((imm & 0xfff) != 0)) {
-            ret &= add_sub_imm(reg, imm & 0xfff, false, op, dst_buf);
-        }
-        return ret;
+        add_sub_imm(reg, imm & 0xfff000, true, op, dst_buf);
+        if (imm & 0xfff) add_sub_imm(reg, imm & 0xfff, false, op, dst_buf);
     } else {
         /* different byte values are needed than normal here */
         u8 op_byte = (op == A64_OP_ADD) ? 0x8b : 0xcb;
         /* set register x17 to the target value */
-        if (!set_reg(TEMP_REG, (i64)imm, dst_buf)) return false;
+        set_reg(TEMP_REG, (i64)imm, dst_buf);
         /* either ADD x.reg, x.reg, x17 or SUB x.reg, x.reg, x17 */
         serialize32le(
             (u32)op_byte << 24 | TEMP_REG << 16 | reg | reg << 5,
             sb_reserve(dst_buf, 4)
         );
-        return true;
     }
 }
 
 /* add_reg, sub_reg, inc_reg, and dec_reg are all simple wrappers around
  * add_sub. */
-static bool add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
-    return add_sub(reg, A64_OP_ADD, imm, dst_buf);
+static void add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+    add_sub(reg, A64_OP_ADD, imm, dst_buf);
 }
 
-static bool sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
-    return add_sub(reg, A64_OP_SUB, imm, dst_buf);
+static void sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+    add_sub(reg, A64_OP_SUB, imm, dst_buf);
 }
 
-static bool inc_reg(u8 reg, sized_buf *dst_buf) {
-    return add_sub(reg, A64_OP_ADD, 1, dst_buf);
+static void inc_reg(u8 reg, sized_buf *dst_buf) {
+    add_sub(reg, A64_OP_ADD, 1, dst_buf);
 }
 
-static bool dec_reg(u8 reg, sized_buf *dst_buf) {
-    return add_sub(reg, A64_OP_SUB, 1, dst_buf);
+static void dec_reg(u8 reg, sized_buf *dst_buf) {
+    add_sub(reg, A64_OP_SUB, 1, dst_buf);
 }
 
 /* to increment or decrement a byte, first load it into TEMP_REG,
  * then call an inner function (either inc_reg or dec_reg) on TEMP_REG,
  * and finally, store the least significant byte of TEMP_REG into the byte */
-typedef bool (*inc_dec_fn)(u8 reg, sized_buf *dst_buf);
+typedef void (*inc_dec_fn)(u8 reg, sized_buf *dst_buf);
 
-static bool inc_dec_byte(u8 reg, sized_buf *dst_buf, inc_dec_fn inner_fn) {
+static void inc_dec_byte(u8 reg, sized_buf *dst_buf, inc_dec_fn inner_fn) {
     load_from_byte(reg, sb_reserve(dst_buf, 4));
-    if (!inner_fn(TEMP_REG, dst_buf)) return false;
+    inner_fn(TEMP_REG, dst_buf);
     store_to_byte(reg, sb_reserve(dst_buf, 4));
-    return true;
 }
 
 /* next, some thin wrappers around the inc_dec_byte function that can be used in
  * the arch_funcs struct */
-static bool inc_byte(u8 reg, sized_buf *dst_buf) {
-    return inc_dec_byte(reg, dst_buf, &inc_reg);
+static void inc_byte(u8 reg, sized_buf *dst_buf) {
+    inc_dec_byte(reg, dst_buf, &inc_reg);
 }
 
-static bool dec_byte(u8 reg, sized_buf *dst_buf) {
-    return inc_dec_byte(reg, dst_buf, &dec_reg);
+static void dec_byte(u8 reg, sized_buf *dst_buf) {
+    inc_dec_byte(reg, dst_buf, &dec_reg);
 }
 
 /* similar to add_sub_reg, but operating on an auxiliary register, after loading
@@ -276,19 +270,18 @@ static bool add_sub_byte(u8 reg, u8 imm8, arith_op op, sized_buf *dst_buf) {
 }
 
 /* a function to zero out a memory address. */
-static bool zero_byte(u8 reg, sized_buf *dst_buf) {
+static void zero_byte(u8 reg, sized_buf *dst_buf) {
     serialize32le(0x3800041f | reg << 5, sb_reserve(dst_buf, 4));
-    return true;
 }
 
 /* now, the last few thin wrapper functions */
 
-static bool add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
-    return add_sub_byte(reg, imm8, A64_OP_ADD, dst_buf);
+static void add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+    add_sub_byte(reg, imm8, A64_OP_ADD, dst_buf);
 }
 
-static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
-    return add_sub_byte(reg, imm8, A64_OP_SUB, dst_buf);
+static void sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+    add_sub_byte(reg, imm8, A64_OP_SUB, dst_buf);
 }
 
 const arch_inter ARM64_INTER = {

@@ -220,24 +220,22 @@ static bool write_phtb(
  *  - arg3 is the number of bytes to write/read
  *
  * Due to their similarity, ',' and '.' are both implemented with bf_io. */
-static bool bf_io(
+static void bf_io(
     sized_buf *obj_code, int bf_fd, int sc, const arch_inter *inter
 ) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
-    return (
-        /* load the number for the write system call into sc_num */
-        inter->set_reg(inter->reg_sc_num, sc, obj_code) &&
-        /* load the number for the stdout file descriptor into arg1 */
-        inter->set_reg(inter->reg_arg1, bf_fd, obj_code) &&
-        /* copy the address in bf_ptr to arg2 */
-        inter->reg_copy(inter->reg_arg2, inter->reg_bf_ptr, obj_code) &&
-        /* load # of bytes to read/write (1, specifically) into arg3 */
-        inter->set_reg(inter->reg_arg3, 1, obj_code) &&
-        /* finally, call the syscall instruction */
-        inter->syscall(obj_code)
-    );
+    /* load the number for the write system call into sc_num */
+    inter->set_reg(inter->reg_sc_num, sc, obj_code);
+    /* load the number for the stdout file descriptor into arg1 */
+    inter->set_reg(inter->reg_arg1, bf_fd, obj_code);
+    /* copy the address in bf_ptr to arg2 */
+    inter->reg_copy(inter->reg_arg2, inter->reg_bf_ptr, obj_code);
+    /* load # of bytes to read/write (1, specifically) into arg3 */
+    inter->set_reg(inter->reg_arg3, 1, obj_code);
+    /* finally, call the syscall instruction */
+    inter->syscall(obj_code);
 }
 
 /* number of indexes in the jump stack to allocate for at a time */
@@ -291,7 +289,8 @@ static bool bf_jump_open(
     /* insert an architecture-specific illegal/trap instruction, then pad to
      * proper size with no-op instructions so that the space for the jump open
      * is reserved before the address is known. */
-    return inter->pad_loop_open(obj_code);
+    inter->pad_loop_open(obj_code);
+    return true;
 }
 
 /* compile matching `[` and `]` instructions
@@ -354,22 +353,28 @@ static bool comp_instr(
         /* start with the simple cases handled with COMPILE_WITH */
         /* decrement the tape pointer register */
         case '<':
-            return COMPILE_WITH(inter->dec_reg);
+            COMPILE_WITH(inter->dec_reg);
+            return true;
         /* increment the tape pointer register */
         case '>':
-            return COMPILE_WITH(inter->inc_reg);
+            COMPILE_WITH(inter->inc_reg);
+            return true;
         /* increment the current tape value */
         case '+':
-            return COMPILE_WITH(inter->inc_byte);
+            COMPILE_WITH(inter->inc_byte);
+            return true;
         /* decrement the current tape value */
         case '-':
-            return COMPILE_WITH(inter->dec_byte);
+            COMPILE_WITH(inter->dec_byte);
+            return true;
         /* write to stdout */
         case '.':
-            return bf_io(obj_code, STDOUT_FILENO, inter->sc_write, inter);
+            bf_io(obj_code, STDOUT_FILENO, inter->sc_write, inter);
+            return true;
         /* read from stdin */
         case ',':
-            return bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
+            bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
+            return true;
         /* `[` and `]` do their own error handling. */
         case '[':
             return bf_jump_open(obj_code, inter, in_name);
@@ -413,15 +418,20 @@ static bool comp_ir_instr(
             return true;
         /* if it's @, then zero the byte pointed to by bf_ptr */
         case '@':
-            return inter->zero_byte(inter->reg_bf_ptr, obj_code);
+            inter->zero_byte(inter->reg_bf_ptr, obj_code);
+            return true;
         case '+':
-            return IR_COMPILE_WITH(inter->add_byte);
+            IR_COMPILE_WITH(inter->add_byte);
+            return true;
         case '-':
-            return IR_COMPILE_WITH(inter->sub_byte);
+            IR_COMPILE_WITH(inter->sub_byte);
+            return true;
         case '>':
-            return IR_COMPILE_WITH(inter->add_reg);
+            IR_COMPILE_WITH(inter->add_reg);
+            return true;
         case '<':
-            return IR_COMPILE_WITH(inter->sub_reg);
+            IR_COMPILE_WITH(inter->sub_reg);
+            return true;
         default:
             internal_err(BF_ICE_INVALID_IR, "Invalid IR Opcode");
             return false;
@@ -488,7 +498,7 @@ bool bf_compile(
     col = 0;
 
     /* set the bf_ptr register to the address of the start of the tape */
-    ret &= inter->set_reg(inter->reg_bf_ptr, TAPE_ADDRESS, &obj_code);
+    inter->set_reg(inter->reg_bf_ptr, TAPE_ADDRESS, &obj_code);
 
     /* compile the actual source code to object code */
     if (optimize) {
@@ -505,11 +515,11 @@ bool bf_compile(
 
     /* write code to perform the exit(0) syscall */
     /* set system call register to exit system call number */
-    ret &= inter->set_reg(inter->reg_sc_num, inter->sc_exit, &obj_code);
+    inter->set_reg(inter->reg_sc_num, inter->sc_exit, &obj_code);
     /* set system call register to the desired exit code (0) */
-    ret &= inter->set_reg(inter->reg_arg1, 0, &obj_code);
+    inter->set_reg(inter->reg_arg1, 0, &obj_code);
     /* perform a system call */
-    ret &= inter->syscall(&obj_code);
+    inter->syscall(&obj_code);
 
     /* now, obj_code size is known, so we can write the headers and padding */
     ret &= write_ehdr(out_fd, tape_blocks, inter, out_name);

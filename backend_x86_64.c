@@ -63,20 +63,21 @@ static bool test_jcc(char tttn, u8 reg, i64 offset, sized_buf *dst_buf) {
         INSTRUCTION(0x0f, 0x80 | tttn, IMM32_PADDING),
     };
     serialize32le(offset, &(i_bytes[5]));
-    return append_obj(dst_buf, &i_bytes, 9);
+    append_obj(dst_buf, &i_bytes, 9);
+    return true;
 }
 
-static bool reg_arith(u8 reg, u64 imm, arith_op op, sized_buf *dst_buf) {
+static void reg_arith(u8 reg, u64 imm, arith_op op, sized_buf *dst_buf) {
     if (imm == 0) {
-        return true;
+        return;
     } else if (imm <= INT8_MAX) {
         /* ADD/SUB reg, byte imm */
-        return append_obj(dst_buf, (u8[]){0x83, op + reg, imm}, 3);
+        append_obj(dst_buf, (u8[]){0x83, op + reg, imm}, 3);
     } else if (imm <= INT32_MAX) {
         /* ADD/SUB reg, imm */
         u8 i_bytes[6] = {INSTRUCTION(0x81, op + reg, IMM32_PADDING)};
         serialize32le(imm, &(i_bytes[2]));
-        return append_obj(dst_buf, &i_bytes, 6);
+        append_obj(dst_buf, &i_bytes, 6);
     } else {
         /* There are no instructions to add or subtract a 64-bit immediate.
          * Instead, the approach  to use is first PUSH the value of a different
@@ -94,7 +95,7 @@ static bool reg_arith(u8 reg, u64 imm, arith_op op, sized_buf *dst_buf) {
         };
         /* replace 0x0000000000000000 with imm64 */
         serialize64le(imm, &(instr_bytes[2]));
-        return append_obj(dst_buf, &instr_bytes, 13);
+        append_obj(dst_buf, &instr_bytes, 13);
     }
 }
 
@@ -111,8 +112,8 @@ static bool reg_arith(u8 reg, u64 imm, arith_op op, sized_buf *dst_buf) {
  * Therefore, setting op to 0 for INC and 8 for DEC and adm (Address Mode) to 3
  * when working on registers and 0 when working on memory, then doing some messy
  * bitwise hackery, the following function can be used. */
-static bool x86_offset(char op, u8 adm, u8 reg, sized_buf *dst_buf) {
-    return append_obj(
+static void x86_offset(char op, u8 adm, u8 reg, sized_buf *dst_buf) {
+    append_obj(
         dst_buf,
         (u8[]){INSTRUCTION(0xfe | (adm & 1), (op | reg | (adm << 6)))},
         2
@@ -121,35 +122,33 @@ static bool x86_offset(char op, u8 adm, u8 reg, sized_buf *dst_buf) {
 
 /* now, the functions exposed through X86_64_INTER */
 /* use the most efficient way to set a register to imm */
-static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     if (imm == 0) {
         /* XOR reg, reg */
-        return append_obj(
+        append_obj(
             dst_buf, (u8[]){INSTRUCTION(0x31, 0xc0 | (reg << 3) | reg)}, 2
         );
     } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
         /* MOV reg, imm32 */
         u8 instr_bytes[5] = {INSTRUCTION(0xb8 | reg, IMM32_PADDING)};
         serialize32le(imm, &(instr_bytes[1]));
-        return append_obj(dst_buf, &instr_bytes, 5);
+        append_obj(dst_buf, &instr_bytes, 5);
     } else {
         /* MOV reg, imm64 */
         u8 instr_bytes[10] = {INSTRUCTION(0x48, 0xb8 | reg, IMM64_PADDING)};
         serialize64le(imm, &(instr_bytes[2]));
-        return append_obj(dst_buf, &instr_bytes, 10);
+        append_obj(dst_buf, &instr_bytes, 10);
     }
 }
 
 /* MOV rs, rd */
-static bool reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
-    return append_obj(
-        dst_buf, (u8[]){INSTRUCTION(0x89, 0xc0 + (src << 3) + dst)}, 2
-    );
+static void reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
+    append_obj(dst_buf, (u8[]){INSTRUCTION(0x89, 0xc0 + (src << 3) + dst)}, 2);
 }
 
 /* SYSCALL */
-static bool syscall(sized_buf *dst_buf) {
-    return append_obj(dst_buf, (u8[]){INSTRUCTION(0x0f, 0x05)}, 2);
+static void syscall(sized_buf *dst_buf) {
+    append_obj(dst_buf, (u8[]){INSTRUCTION(0x0f, 0x05)}, 2);
 }
 
 /* In this backend, `[` and `]` are both compiled to TEST (3 bytes), followed by
@@ -158,9 +157,9 @@ static bool syscall(sized_buf *dst_buf) {
 #define NOP 0x90
 
 /* UD2; times 7 NOP */
-static bool pad_loop_open(sized_buf *dst_buf) {
+static void pad_loop_open(sized_buf *dst_buf) {
     u8 padding[9] = {0x0f, 0x0b, NOP, NOP, NOP, NOP, NOP, NOP, NOP};
-    return append_obj(dst_buf, &padding, 9);
+    append_obj(dst_buf, &padding, 9);
 }
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
@@ -176,50 +175,50 @@ static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
 }
 
 /* INC reg */
-static bool inc_reg(u8 reg, sized_buf *dst_buf) {
+static void inc_reg(u8 reg, sized_buf *dst_buf) {
     /* 0 is INC, 3 is register mode */
-    return x86_offset(0x0, 0x3, reg, dst_buf);
+    x86_offset(0x0, 0x3, reg, dst_buf);
 }
 
 /* DEC reg */
-static bool dec_reg(u8 reg, sized_buf *dst_buf) {
+static void dec_reg(u8 reg, sized_buf *dst_buf) {
     /* 8 is DEC, 3 is register mode */
-    return x86_offset(0x8, 0x3, reg, dst_buf);
+    x86_offset(0x8, 0x3, reg, dst_buf);
 }
 
 /* INC byte [reg] */
-static bool inc_byte(u8 reg, sized_buf *dst_buf) {
+static void inc_byte(u8 reg, sized_buf *dst_buf) {
     /* 0 is INC, 0 is memory pointer mode */
-    return x86_offset(0x0, 0x0, reg, dst_buf);
+    x86_offset(0x0, 0x0, reg, dst_buf);
 }
 
 /* DEC byte [reg] */
-static bool dec_byte(u8 reg, sized_buf *dst_buf) {
+static void dec_byte(u8 reg, sized_buf *dst_buf) {
     /* 8 is DEC, 0 is memory pointer mode */
-    return x86_offset(0x8, 0x0, reg, dst_buf);
+    x86_offset(0x8, 0x0, reg, dst_buf);
 }
 
-static bool add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
-    return reg_arith(reg, imm, X64_OP_ADD, dst_buf);
+static void add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+    reg_arith(reg, imm, X64_OP_ADD, dst_buf);
 }
 
-static bool sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
-    return reg_arith(reg, imm, X64_OP_SUB, dst_buf);
+static void sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+    reg_arith(reg, imm, X64_OP_SUB, dst_buf);
 }
 
-static bool add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+static void add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     /* ADD byte [reg], imm8 */
-    return append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, reg, imm8)}, 3);
+    append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, reg, imm8)}, 3);
 }
 
-static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+static void sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     /* SUB byte [reg], imm8 */
-    return append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, 0x28 + reg, imm8)}, 3);
+    append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, 0x28 + reg, imm8)}, 3);
 }
 
-static bool zero_byte(u8 reg, sized_buf *dst_buf) {
+static void zero_byte(u8 reg, sized_buf *dst_buf) {
     /* MOV byte [reg], 0 */
-    return append_obj(dst_buf, (u8[]){INSTRUCTION(0xc6, reg, 0x00)}, 3);
+    append_obj(dst_buf, (u8[]){INSTRUCTION(0xc6, reg, 0x00)}, 3);
 }
 
 const arch_inter X86_64_INTER = {
