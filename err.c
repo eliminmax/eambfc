@@ -124,7 +124,7 @@ noreturn void alloc_err(void) {
  * Returns the number of bytes written, not including the null terminator. */
 nonnull_args static int char_esc(char c, char dest[5]) {
     /* escaped characters with single-letter ids */
-    switch ((uchar)c) {
+    switch (c) {
         case '\n':
             return sprintf(dest, "\\n");
         case '\r':
