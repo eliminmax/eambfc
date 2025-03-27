@@ -18,12 +18,13 @@ AlignTrailingComments:
 AllowShortBlocksOnASingleLine: Always
 AllowShortFunctionsOnASingleLine: None
 AttributeMacros:
-  - noreturn
-  - nonnull_args
-  - nonnull_arg
-  - nonnull_ret
-  - malloc_like
   - const_fn
+  - malloc_like
+  - must_use
+  - nonnull_arg
+  - nonnull_args
+  - nonnull_ret
+  - noreturn
 BinPackArguments: false
 BinPackParameters: false
 BitFieldColonSpacing: After
