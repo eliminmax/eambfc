@@ -329,12 +329,18 @@ void display_err(const bf_comp_err e) {
             puts(errmsg);
             break;
         default:
+
 #if defined __GNUC__ && defined __has_builtin
+
 #if __has_builtin(__builtin_unreachable)
             __builtin_unreachable();
-#endif /* __has_builtin(__builtin_unreachable) */
-#endif /* defined __GNUC__ && defined __has_builtin */
+#else /* __has_builtin(__builtin_unreachable) */
             abort();
+#endif /* __has_builtin(__builtin_unreachable) */
+
+#else /* defined __GNUC__ && defined __has_builtin */
+            abort();
+#endif /* defined __GNUC__ && defined __has_builtin */
     }
     mgr_free(errmsg);
 }
