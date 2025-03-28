@@ -7,6 +7,7 @@
 #define BFC_TYPES_H 1
 /* C99 */
 #include <stdbool.h> /* IWYU pragma: export */
+#include <stddef.h> /* IWYU pragma: export */
 /* POSIX */
 #include <sys/types.h> /* IWYU pragma: export */
 /* internal */
