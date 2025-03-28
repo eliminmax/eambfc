@@ -61,5 +61,4 @@
 #define must_use __attribute__((__warn_unused_result__))
 #endif /* HAS_GCC_ATTR(__warn_unused_result__) */
 
-#undef HAS_GCC_ATTR
 #endif /* BFC_NOATTRIBUTES */
