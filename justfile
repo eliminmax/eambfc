@@ -42,7 +42,7 @@ eambfc:
 
 [doc("test a release tarball of `eambfc`, and build a ")]
 [group("general")]
-release-build: release-tarball pdpmake valgrind_test \
+release-build: scan-build cppcheck-full tarball pdpmake valgrind_test \
     (valgrind_test '-D_GNU_SOURCE -DBFC_LONGOPTS=1 -O2 -g3')
     #!/bin/sh
     set -eux
@@ -75,7 +75,7 @@ release-build: release-tarball pdpmake valgrind_test \
 
 [doc("Create release tarball")]
 [group("general")]
-release-tarball: pre-tarball-checks
+tarball: pre-tarball-checks
     #!/bin/sh -xeu
     make clean
     make release.make
@@ -242,7 +242,7 @@ all-lints +files: (copyright_check files) (timeless-lints files)
 # PRIVATE - used to help implement other rules
 
 [private]
-@pre-tarball-checks: scan-build cppcheck-full git-clean-check
+@pre-tarball-checks: git-clean-check
     make clean eambfc
     ./eambfc -V | grep -q "$(date +'Copyright (c) .*%Y')"
     git ls-files -z --exclude-standard -- ':(attr:!no-tar)' |\
@@ -277,7 +277,7 @@ git-clean-check:
 
 
 [private]
-test_build cc *cflags: release-tarball
+test_build cc *cflags: tarball
     #!/bin/sh
     set -e
     build_dir="$(mktemp -d "/tmp/eambfc-test_build-XXXXXXXXXX")"
@@ -288,7 +288,7 @@ test_build cc *cflags: release-tarball
     rm -rf "$build_dir"
 
 [private]
-valgrind_test cflags='-O2 -g3': release-tarball
+valgrind_test cflags='-O2 -g3': tarball
     #!/bin/sh
     set -e
     build_dir="$(mktemp -d "/tmp/eambfc-valgrind_test-XXXXXXXXXX")"
@@ -310,7 +310,7 @@ valgrind_test cflags='-O2 -g3': release-tarball
     rm -rf "$build_dir"
 
 [private]
-pdpmake: release-tarball
+pdpmake: tarball
     #!/bin/sh
     set -e
     build_dir="$(mktemp -d "/tmp/eambfc-pdpmake-XXXXXXXXXX")"
