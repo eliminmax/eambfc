@@ -36,8 +36,14 @@ typedef uint_fast16_t ufast_16;
 typedef uint_fast32_t ufast_32;
 typedef uint_fast64_t ufast_64;
 
+/* A pointer to memory, accompanied by size and capacity information.
+ * Functions that take a `sized_buf *` can freely assume that `buf` is not
+ * `NULL`, and that either caller ensured enough space was available, or that
+ * `buf` can be reallocated with `mgr_realloc`. If a function returns a
+ * `sized_buf`, it should be assumed that the caller is supposed to free it with
+ * `mgr_free`, and functions should only be passed pointers to sized_bufs. */
 typedef struct sized_buf {
-    char *buf;
+    char *buf; /* a buffer of data in memory */
     size_t sz; /* size of data used in buffer */
     size_t capacity; /* amount of space allocated for buffer */
 } sized_buf;
