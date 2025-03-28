@@ -176,20 +176,19 @@ static nonnull_args void remove_dead(sized_buf *ir, const char *in_name) {
 
 /* Merge `[-]` and `[+]` into `@` */
 static nonnull_args void merge_set_zero(sized_buf *ir) {
-    char *str = ir->buf;
     char *p;
-
     /* handle [-] */
-    while ((p = strstr(str, "[-]"))) {
+    while ((p = strstr(ir->buf, "[-]"))) {
         *p = '@';
         memmove(p + 1, p + 3, strlen(p + 3) + 1);
+        ir->sz -= 2;
     }
     /* handle [+] */
-    while ((p = strstr(str, "[+]"))) {
+    while ((p = strstr(ir->buf, "[+]"))) {
         *p = '@';
         memmove(p + 1, p + 3, strlen(p + 3) + 1);
+        ir->sz -= 2;
     }
-    ir->sz = strlen(str);
 }
 
 /* filter out all non-BF bytes, and anything that is trivially determined to be
