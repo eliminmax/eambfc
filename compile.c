@@ -503,6 +503,7 @@ bool bf_compile(
     if (optimize) {
         if (!filter_dead(&src_code, in_name)) {
             free(jump_stack.locations);
+            free(obj_code.buf);
             return false;
         }
         ret &= compile_condensed(src_code.buf, &obj_code, inter, in_name);
