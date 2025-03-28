@@ -358,11 +358,11 @@ static void add_reg_signed(u8 reg, i64 imm, sized_buf *dst_buf) {
     }
 }
 
-static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
+static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf) {
     return branch_cond(reg, offset, MASK_EQ, dst_buf);
 }
 
-static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
+static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
     return branch_cond(reg, offset, MASK_NE, dst_buf);
 }
 
@@ -421,8 +421,8 @@ const arch_inter S390X_INTER = {
     .reg_copy = reg_copy,
     .syscall = syscall,
     .pad_loop_open = pad_loop_open,
-    .jump_zero = jump_zero,
-    .jump_not_zero = jump_not_zero,
+    .jump_open = jump_open,
+    .jump_close = jump_close,
     .inc_reg = inc_reg,
     .dec_reg = dec_reg,
     .inc_byte = inc_byte,
@@ -572,8 +572,8 @@ static void test_successful_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(128);
 
-    jump_zero(3, 18, &sb);
-    jump_not_zero(3, -36, &sb);
+    jump_open(3, 18, &sb);
+    jump_close(3, -36, &sb);
     pad_loop_open(&sb);
     /* For some reason, LLVM treats jump offset operand as an unsigned immediate
      * after sign extending it to the full 64 bits, so -36 becomes
@@ -786,12 +786,12 @@ static void test_byte_arith(void) {
 
 static void test_bad_jump_offset(void) {
     EXPECT_BF_ERR(BF_ICE_INVALID_JUMP_ADDRESS);
-    jump_not_zero(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_close(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 static void test_jump_too_long(void) {
     EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_zero(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_open(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 CU_pSuite register_s390x_tests(void) {

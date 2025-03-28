@@ -196,11 +196,11 @@ static void pad_loop_open(sized_buf *dst_buf) {
     append_obj(dst_buf, instr_seq, 12);
 }
 
-static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
+static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf) {
     return cond_jump(reg, offset, true, dst_buf);
 }
 
-static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
+static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
     return cond_jump(reg, offset, false, dst_buf);
 }
 
@@ -341,8 +341,8 @@ const arch_inter RISCV64_INTER = {
     .reg_copy = reg_copy,
     .syscall = syscall,
     .pad_loop_open = pad_loop_open,
-    .jump_zero = jump_zero,
-    .jump_not_zero = jump_not_zero,
+    .jump_open = jump_open,
+    .jump_close = jump_close,
     .inc_reg = inc_reg,
     .dec_reg = dec_reg,
     .inc_byte = inc_byte,
@@ -593,8 +593,8 @@ static void test_successful_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(72);
 
-    jump_zero(RISCV_S0, 32, &sb);
-    jump_not_zero(RISCV_S0, -32, &sb);
+    jump_open(RISCV_S0, 32, &sb);
+    jump_close(RISCV_S0, -32, &sb);
     DISASM_TEST(
         sb,
         dis,
@@ -760,12 +760,12 @@ static void test_add_sub_byte(void) {
 
 static void test_bad_jump_offset(void) {
     EXPECT_BF_ERR(BF_ICE_INVALID_JUMP_ADDRESS);
-    jump_not_zero(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_close(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 static void test_jump_too_long(void) {
     EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_zero(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_open(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 CU_pSuite register_riscv64_tests(void) {

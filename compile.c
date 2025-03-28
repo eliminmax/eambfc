@@ -328,12 +328,12 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
         .buf = obj_code->buf, .sz = open_addr, .capacity = obj_code->capacity
     };
 
-    if (!inter->jump_zero(inter->reg_bf_ptr, distance, &tmp_buf)) {
+    if (!inter->jump_open(inter->reg_bf_ptr, distance, &tmp_buf)) {
         return false;
     }
 
     /* jumps to right after the `[` instruction, to skip a redundant check */
-    return inter->jump_not_zero(inter->reg_bf_ptr, -distance, obj_code);
+    return inter->jump_close(inter->reg_bf_ptr, -distance, obj_code);
 }
 
 /* 4 of the 8 brainfuck instructions can be compiled with instructions that take

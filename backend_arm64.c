@@ -159,13 +159,13 @@ static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
 }
 
 /* LDRB w17, x.reg; TST w17, 0xff; B.NE offset */
-static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
+static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
     /* 1 is the not zero / not equal condition code */
     return branch_cond(reg, offset, dst_buf, 1);
 }
 
 /* LDRB w17, x.reg; TST w17, 0xff; B.E offset */
-static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
+static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf) {
     /* 0 is the zero / equal condition code */
     return branch_cond(reg, offset, dst_buf, 0);
 }
@@ -292,8 +292,8 @@ const arch_inter ARM64_INTER = {
     .reg_copy = reg_copy,
     .syscall = syscall,
     .pad_loop_open = pad_loop_open,
-    .jump_zero = jump_zero,
-    .jump_not_zero = jump_not_zero,
+    .jump_open = jump_open,
+    .jump_close = jump_close,
     .inc_reg = inc_reg,
     .dec_reg = dec_reg,
     .inc_byte = inc_byte,
@@ -571,8 +571,8 @@ static void test_jmp_padding(void) {
 static void test_successful_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(104);
-    jump_zero(0, 32, &sb);
-    jump_not_zero(0, -32, &sb);
+    jump_open(0, 32, &sb);
+    jump_close(0, -32, &sb);
     DISASM_TEST(
         sb,
         dis,
@@ -590,12 +590,12 @@ static void test_successful_jumps(void) {
 
 static void test_bad_jump_offset(void) {
     EXPECT_BF_ERR(BF_ICE_INVALID_JUMP_ADDRESS);
-    jump_not_zero(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_close(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 static void test_jump_too_long(void) {
     EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_zero(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_open(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 CU_pSuite register_arm64_tests(void) {

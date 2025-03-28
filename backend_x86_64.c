@@ -163,13 +163,13 @@ static void pad_loop_open(sized_buf *dst_buf) {
 }
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
-static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
+static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf) {
     /* Jcc with tttn=0b0100 is JZ or JE, so use 4 for tttn */
     return test_jcc(0x4, reg, offset, dst_buf);
 }
 
 /* TEST byte [reg], 0xff; JNZ jmp_offset */
-static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
+static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
     /* Jcc with tttn=0b0101 is JNZ or JNE, so use 5 for tttn */
     return test_jcc(0x5, reg, offset, dst_buf);
 }
@@ -229,8 +229,8 @@ const arch_inter X86_64_INTER = {
     .reg_copy = reg_copy,
     .syscall = syscall,
     .pad_loop_open = pad_loop_open,
-    .jump_zero = jump_zero,
-    .jump_not_zero = jump_not_zero,
+    .jump_open = jump_open,
+    .jump_close = jump_close,
     .inc_reg = inc_reg,
     .dec_reg = dec_reg,
     .inc_byte = inc_byte,
@@ -276,8 +276,8 @@ static void test_jump_instructions(void) {
     sized_buf sb = newbuf(27);
     sized_buf dis = newbuf(160);
 
-    jump_zero(X86_64_RDI, 9, &sb);
-    jump_not_zero(X86_64_RDI, -18, &sb);
+    jump_open(X86_64_RDI, 9, &sb);
+    jump_close(X86_64_RDI, -18, &sb);
     pad_loop_open(&sb);
     CU_ASSERT_EQUAL(sb.sz, 27);
     DISASM_TEST(
@@ -373,7 +373,7 @@ static void test_zero_byte(void) {
 
 static void test_jump_too_long(void) {
     EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_zero(0, INT64_MAX, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_open(0, INT64_MAX, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 CU_pSuite register_x86_64_tests(void) {

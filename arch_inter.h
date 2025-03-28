@@ -54,7 +54,7 @@ typedef const struct arch_inter {
     void (*const syscall)(sized_buf *dst_buf);
 
     /* write an instruction, then pad with no-op instructions. Must use the same
-     * number of bytes as `jump_zero` */
+     * number of bytes as `jump_open` */
     void (*const pad_loop_open)(sized_buf *dst_buf);
 
     /* Functions that correspond 1 to 1 with brainfuck instructions.
@@ -67,13 +67,13 @@ typedef const struct arch_inter {
      * address in register reg is set to zero.
      *
      * Used to implement the `[` brainfuck instruction. */
-    bool (*const jump_zero)(u8 reg, i64 offset, sized_buf *dst_buf);
+    bool (*const jump_open)(u8 reg, i64 offset, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to jump <offset> bytes if the byte stored
      * at address in register reg is not set to zero.
      *
      * Used to implement the `]` brainfuck instruction. */
-    bool (*const jump_not_zero)(u8 reg, i64 offset, sized_buf *dst_buf);
+    bool (*const jump_close)(u8 reg, i64 offset, sized_buf *dst_buf);
 
     /* Write instruction/s to dst_buf to increment register reg by one.
      *
