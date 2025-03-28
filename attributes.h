@@ -21,7 +21,7 @@
 #define malloc_like
 #define must_use
 
-#if __STDC_VERSION__ == 202311L
+#if __STDC_VERSION__ >= 202311L
 #undef noreturn
 #define noreturn [[noreturn]]
 
