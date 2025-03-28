@@ -339,8 +339,8 @@ static void test_set_reg_simple(void) {
         DISASM_TEST(sb, dis, test_sets[i].disasm);
     }
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_multiple(void) {
@@ -355,8 +355,8 @@ static void test_reg_multiple(void) {
         "movk x0, #0xdead, lsl #16\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_split(void) {
@@ -371,8 +371,8 @@ static void test_reg_split(void) {
         "movk x19, #0xdead, lsl #32\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_neg(void) {
@@ -388,8 +388,8 @@ static void test_reg_neg(void) {
         "movk x19, #0x2152, lsl #16\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_neg_split(void) {
@@ -417,8 +417,8 @@ static void test_reg_neg_split(void) {
         "movk x8, #0x2152, lsl #32\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_inc_dec_reg(void) {
@@ -437,8 +437,8 @@ static void test_inc_dec_reg(void) {
     dec_reg(19, &sb);
     DISASM_TEST(sb, dis, "sub x19, x19, #0x1\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_load_store(void) {
@@ -451,8 +451,8 @@ static void test_load_store(void) {
     store_to_byte(19, sb_reserve(&sb, 4));
     DISASM_TEST(sb, dis, "strb w17, [x19], #0x0\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_add_sub_reg(void) {
@@ -473,8 +473,8 @@ static void test_add_sub_reg(void) {
         "mov x17, #0xbeef\nmovk x17, #0xdead, lsl #16\nsub x8, x8, x17\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_add_sub_byte(void) {
@@ -495,8 +495,8 @@ static void test_add_sub_byte(void) {
         "strb w17, [x19], #0x0\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_zero_byte(void) {
@@ -506,8 +506,8 @@ static void test_zero_byte(void) {
     zero_byte(19, &sb);
     DISASM_TEST(sb, dis, "strb wzr, [x19], #0x0\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_inc_dec_wrapper(void) {
@@ -526,8 +526,8 @@ static void test_inc_dec_wrapper(void) {
         "strb w17, [x8], #0x0\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_copy(void) {
@@ -544,8 +544,8 @@ static void test_reg_copy(void) {
         "mov x8, x8\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_syscall(void) {
@@ -554,8 +554,8 @@ static void test_syscall(void) {
     syscall(&sb);
     DISASM_TEST(sb, dis, "svc #0\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_jmp_padding(void) {
@@ -564,8 +564,8 @@ static void test_jmp_padding(void) {
     pad_loop_open(&sb);
     DISASM_TEST(sb, dis, "brk #0x1\nnop\nnop\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_successful_jumps(void) {
@@ -584,8 +584,8 @@ static void test_successful_jumps(void) {
         "b.ne #-0x1c\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_bad_jump_offset(void) {

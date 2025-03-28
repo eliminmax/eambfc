@@ -7,11 +7,12 @@
 #define BFC_UTIL_H 1
 /* C99 */
 #include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 /* internal */
 #include "attributes.h"
 #include "config.h"
-#include "resource_mgr.h"
+#include "err.h"
 #include "types.h"
 
 /* by defining BFC_UTIL_C in util.c, the normal need for duplicate definitions
@@ -21,6 +22,25 @@
 #else /* BFC_UTIL_C */
 #define inline_impl inline
 #endif /* BFC_UTIL_C */
+
+/* Try to `malloc(size)`. On success, pass the returned pointer.
+ * On failure, call `alloc_err` */
+inline_impl malloc_like nonnull_ret void *checked_malloc(size_t size) {
+    void *ptr = malloc(size);
+    if (!ptr) alloc_err();
+    return ptr;
+}
+
+/* Try to `realloc(ptr, size)`. On success, pass the returned pointer.
+ * On failure, call `alloc_err` */
+inline_impl nonnull_ret void *checked_realloc(void *ptr, size_t size) {
+    void *newptr = realloc(ptr, size);
+    if (!newptr) {
+        free(ptr);
+        alloc_err();
+    }
+    return newptr;
+}
 
 /* return the number of trailing zeroes in val */
 const_fn inline_impl u8 trailing_0s(u64 val) {
@@ -48,11 +68,10 @@ const_fn inline_impl bool bit_fits(i64 val, u8 bits) {
            val < (INT64_C(1) << (bits - 1));
 }
 
-/* create a new sized_buf with the provided capacity, and a buffer allocated
- * through resource_mgr */
+/* create a new sized_buf with the provided capacity, and an allocated buffer */
 inline_impl sized_buf newbuf(size_t sz) {
     sized_buf newbuf = {
-        .buf = mgr_malloc(sz),
+        .buf = checked_malloc(sz),
         .sz = 0,
         .capacity = sz,
     };

@@ -15,8 +15,8 @@
 #include "compile.h"
 #include "err.h"
 #include "parse_args.h"
-#include "resource_mgr.h"
 #include "types.h"
+#include "util.h"
 
 /* remove ext from end of str. If str doesn't end with ext, return false. */
 static bool rm_ext(char *str, const char *ext) {
@@ -35,7 +35,7 @@ static bool rm_ext(char *str, const char *ext) {
 
 /* compile a file */
 static bool compile_file(const char *filename, const run_cfg *rc) {
-    char *outname = mgr_malloc(strlen(filename) + 1);
+    char *outname = checked_malloc(strlen(filename) + 1);
     strcpy(outname, filename);
 
     if (!rm_ext(outname, rc->ext)) {
@@ -47,30 +47,31 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
             .has_instr = false,
         };
         display_err(e);
-        mgr_free(outname);
+        free(outname);
         return false;
     }
     if (rc->out_ext != NULL) {
         size_t outname_sz = strlen(outname);
-        outname = mgr_realloc(outname, outname_sz + strlen(rc->out_ext) + 1);
+        outname =
+            checked_realloc(outname, outname_sz + strlen(rc->out_ext) + 1);
         strcat(outname, rc->out_ext);
     }
 
-    int src_fd = mgr_open(filename, O_RDONLY);
+    int src_fd = open(filename, O_RDONLY);
     if (src_fd < 0) {
         display_err((bf_comp_err){.file = filename,
                                   .id = BF_ERR_OPEN_R_FAILED,
                                   .msg = "Failed to open file for reading"});
-        mgr_free(outname);
+        free(outname);
         return false;
     }
-    int dst_fd = mgr_open_m(outname, O_WRONLY | O_CREAT | O_TRUNC, 0755);
+    int dst_fd = open(outname, O_WRONLY | O_CREAT | O_TRUNC, 0755);
     if (dst_fd < 0) {
         display_err((bf_comp_err){.file = outname,
                                   .id = BF_ERR_OPEN_W_FAILED,
                                   .msg = "Failed to open file for writing"});
-        mgr_close(src_fd);
-        mgr_free(outname);
+        close(src_fd);
+        free(outname);
         return false;
     }
     bool result = bf_compile(
@@ -83,9 +84,9 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
         rc->tape_blocks
     );
     if ((!result) && (!rc->keep)) remove(outname);
-    mgr_close(src_fd);
-    mgr_close(dst_fd);
-    mgr_free(outname);
+    close(src_fd);
+    close(dst_fd);
+    free(outname);
     return result;
 }
 

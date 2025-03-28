@@ -13,7 +13,6 @@
 #include "attributes.h"
 #include "config.h"
 #include "err.h"
-#include "resource_mgr.h"
 #include "types.h"
 #include "util.h"
 
@@ -342,7 +341,7 @@ void display_err(const bf_comp_err e) {
             abort();
 #endif /* defined __GNUC__ && defined __has_builtin */
     }
-    mgr_free(errmsg);
+    free(errmsg);
 }
 
 noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg) {

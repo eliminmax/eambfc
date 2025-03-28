@@ -15,7 +15,6 @@
 #include "compat/elf.h"
 #include "err.h"
 #include "optimize.h"
-#include "resource_mgr.h"
 #include "serialize.h"
 #include "types.h"
 #include "util.h"
@@ -276,7 +275,7 @@ static bool bf_jump_open(
             return false;
         }
 
-        jump_stack.locations = mgr_realloc(
+        jump_stack.locations = checked_realloc(
             jump_stack.locations,
             (jump_stack.next_index + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
         );
@@ -490,7 +489,7 @@ bool bf_compile(
 
     /* reset the jump stack for the new file */
     jump_stack.next_index = 0;
-    jump_stack.locations = mgr_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
+    jump_stack.locations = checked_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
 
     /* reset the current line and column */
@@ -503,7 +502,7 @@ bool bf_compile(
     /* compile the actual source code to object code */
     if (optimize) {
         if (!filter_dead(&src_code, in_name)) {
-            mgr_free(jump_stack.locations);
+            free(jump_stack.locations);
             return false;
         }
         ret &= compile_condensed(src_code.buf, &obj_code, inter, in_name);
@@ -544,9 +543,9 @@ bool bf_compile(
         ret = false;
     }
 
-    mgr_free(obj_code.buf);
-    mgr_free(src_code.buf);
-    mgr_free(jump_stack.locations);
+    free(obj_code.buf);
+    free(src_code.buf);
+    free(jump_stack.locations);
 
     return ret;
 }

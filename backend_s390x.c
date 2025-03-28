@@ -472,8 +472,8 @@ static void test_load_store(void) {
     store_to_byte(5, 8, &sb);
     DISASM_TEST(sb, dis, "stc %r8, 0(%r5,0)\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_copy(void) {
@@ -483,8 +483,8 @@ static void test_reg_copy(void) {
     reg_copy(2, 1, &sb);
     DISASM_TEST(sb, dis, "lgr %r2, %r1\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_set_reg_zero(void) {
@@ -496,12 +496,12 @@ static void test_set_reg_zero(void) {
     set_reg(2, 0, &alt);
     CU_ASSERT_EQUAL(sb.sz, alt.sz);
     CU_ASSERT(memcmp(sb.buf, alt.buf, sb.sz) == 0);
-    mgr_free(alt.buf);
+    free(alt.buf);
 
     DISASM_TEST(sb, dis, "lgr %r2, %r0\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_set_reg_small_imm(void) {
@@ -512,8 +512,8 @@ static void test_set_reg_small_imm(void) {
     set_reg(8, -12345, &sb);
     DISASM_TEST(sb, dis, "lghi %r5, 12345\nlghi %r8, -12345\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_set_reg_medium_imm(void) {
@@ -525,8 +525,8 @@ static void test_set_reg_medium_imm(void) {
     GIVEN_THAT(INT64_C(0x1234abcd) == INT64_C(305441741));
     DISASM_TEST(sb, dis, "lgfi %r4, 305441741\nlgfi %r4, -305441741\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_set_reg_large_imm(void) {
@@ -564,8 +564,8 @@ static void test_set_reg_large_imm(void) {
     set_reg(8, INT64_C(-0x123456789abcdef0), &sb);
     DISASM_TEST(sb, dis, "lgfi %r8, 1698898192\niihf %r8, 3989547399\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_successful_jumps(void) {
@@ -600,8 +600,8 @@ static void test_successful_jumps(void) {
         "nopr %r0\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_syscall(void) {
@@ -612,8 +612,8 @@ static void test_syscall(void) {
     CU_ASSERT_EQUAL(sb.sz, 2);
     DISASM_TEST(sb, dis, "svc 0\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_zero_byte(void) {
@@ -623,8 +623,8 @@ static void test_zero_byte(void) {
     zero_byte(S390X_INTER.reg_bf_ptr, &sb);
     DISASM_TEST(sb, dis, "stc %r0, 0(%r8,0)\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_arith_small_imm(void) {
@@ -659,9 +659,9 @@ static void test_reg_arith_small_imm(void) {
     CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
     DISASM_TEST(a, dis, "aghi %r8, 12345\naghi %r8, -12345\n");
 
-    mgr_free(a.buf);
-    mgr_free(b.buf);
-    mgr_free(dis.buf);
+    free(a.buf);
+    free(b.buf);
+    free(dis.buf);
 }
 
 static void test_reg_arith_medium_imm(void) {
@@ -676,8 +676,8 @@ static void test_reg_arith_medium_imm(void) {
     sub_reg(8, 0x123456, &sb);
     DISASM_TEST(sb, dis, "agfi %r8, -1193046\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_arith_large_imm(void) {
@@ -702,8 +702,8 @@ static void test_reg_arith_large_imm(void) {
     GIVEN_THAT(0x1234abcd00000000 >> 32 == 305441741L);
     DISASM_TEST(sb, dis, "aih %r8, 305441741\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_add_sub_i64_min(void) {
@@ -715,8 +715,8 @@ static void test_add_sub_i64_min(void) {
     CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
     CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
 
-    mgr_free(a.buf);
-    mgr_free(b.buf);
+    free(a.buf);
+    free(b.buf);
 }
 
 static void test_byte_arith(void) {
@@ -778,10 +778,10 @@ static void test_byte_arith(void) {
         "stc %r5, 0(%r8,0)\n"
     );
 
-    mgr_free(a.buf);
-    mgr_free(b.buf);
-    mgr_free(expected.buf);
-    mgr_free(dis.buf);
+    free(a.buf);
+    free(b.buf);
+    free(expected.buf);
+    free(dis.buf);
 }
 
 static void test_bad_jump_offset(void) {

@@ -15,7 +15,6 @@
 #include "attributes.h"
 #include "config.h"
 #include "err.h"
-#include "resource_mgr.h"
 #include "types.h"
 
 #define BFC_UTIL_C
@@ -60,14 +59,14 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
         /* will reallocate with 0x1000 to 0x2000 bytes of extra space */
         size_t needed_cap = (sb->sz + nbytes + 0x1000) & (~0xfff);
         if (needed_cap < sb->capacity) {
-            mgr_free(sb->buf);
+            free(sb->buf);
             sb->capacity = 0;
             sb->sz = 0;
             sb->buf = NULL;
             alloc_err();
         }
         /* reallocate to new capacity */
-        sb->buf = mgr_realloc(sb->buf, needed_cap);
+        sb->buf = checked_realloc(sb->buf, needed_cap);
         sb->capacity = needed_cap;
     }
     sb->sz += nbytes;
@@ -75,7 +74,7 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
 }
 
 /* Append bytes to dst, handling reallocs as needed.
- * Assumes that dst has been allocated with resource_mgr. */
+ * Assumes that dst has been allocated with `malloc`. */
 nonnull_args void append_obj(
     sized_buf *restrict dst, const void *restrict bytes, size_t bytes_sz
 ) {
@@ -100,7 +99,7 @@ nonnull_args void append_obj(
 
     if (needed_cap > dst->capacity) {
         /* reallocate to new capacity */
-        dst->buf = mgr_realloc(dst->buf, chunk_pad(needed_cap));
+        dst->buf = checked_realloc(dst->buf, chunk_pad(needed_cap));
         dst->capacity = needed_cap;
     }
     /* actually append the object now that prep work is done */
@@ -125,7 +124,7 @@ sized_buf read_to_sized_buf(int fd, const char *in_name) {
                 .has_instr = false,
                 .has_location = false,
             });
-            mgr_free(sb.buf);
+            free(sb.buf);
             sb.sz = 0;
             sb.capacity = 0;
             sb.buf = NULL;

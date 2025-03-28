@@ -10,14 +10,14 @@ POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 
 # __BACKENDS__ add backend object file to EAMBFC_DEPS
 EAMBFC_DEPS = serialize.o backend_arm64.o backend_riscv64.o backend_s390x.o \
-		backend_x86_64.o optimize.o err.o util.o resource_mgr.o \
+		backend_x86_64.o optimize.o err.o util.o \
 		compile.o parse_args.o main.o
 
 # if these are changed, rebuild everything
 COMMON_HEADERS = err.h types.h config.h post_config.h
 
 # __BACKENDS__ add backend source file to ALL_SOURCES
-ALL_SOURCES = serialize.c compile.c optimize.c err.c util.c resource_mgr.c \
+ALL_SOURCES = serialize.c compile.c optimize.c err.c util.c \
 		backend_arm64.c backend_riscv64.c backend_s390x.c \
 		backend_x86_64.c parse_args.c main.c unit_test.c
 
@@ -40,7 +40,6 @@ install: eambfc
 	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
 	cp -f eambfc.1 $(DESTDIR)$(PREFIX)/share/man/man1/eambfc.1
 
-resource_mgr.o: resource_mgr.c $(COMMON_HEADERS)
 serialize.o: serialize.c $(COMMON_HEADERS) serialize.h
 compile.o: compile.c $(COMMON_HEADERS)
 parse_args.o: parse_args.c parse_args.h version.h $(COMMON_HEADERS)

@@ -10,7 +10,6 @@
 /* internal */
 #include "attributes.h"
 #include "err.h"
-#include "resource_mgr.h"
 #include "types.h"
 #include "util.h"
 
@@ -35,7 +34,7 @@ static nonnull_args void filter_non_bf(sized_buf *code) {
     instr = '\0';
     /* null terminate it */
     append_obj(&tmp, &instr, 1);
-    mgr_free(code->buf);
+    free(code->buf);
     code->sz = tmp.sz;
     code->capacity = tmp.capacity;
     code->buf = tmp.buf;
@@ -142,7 +141,7 @@ static nonnull_args void remove_dead(sized_buf *ir, const char *in_name) {
             matched = true;
             loop_end = find_loop_end(str, in_name);
             if (loop_end == NULL) {
-                mgr_free(ir->buf);
+                free(ir->buf);
                 ir->buf = NULL;
                 return;
             }
@@ -165,7 +164,7 @@ static nonnull_args void remove_dead(sized_buf *ir, const char *in_name) {
             /* skip past the closing `]` */
             loop_end = find_loop_end(++match_start, in_name);
             if (loop_end == NULL) {
-                mgr_free(ir->buf);
+                free(ir->buf);
                 ir->buf = NULL;
                 return;
             }
@@ -202,18 +201,18 @@ static nonnull_args void merge_set_zero(sized_buf *ir) {
 nonnull_args bool filter_dead(sized_buf *bf_code, const char *in_name) {
     filter_non_bf(bf_code);
     if (bf_code->buf == NULL) {
-        mgr_free(bf_code->buf);
+        free(bf_code->buf);
         bf_code->buf = NULL;
         return false;
     }
     if (!loops_match(bf_code->buf, in_name)) {
-        mgr_free(bf_code->buf);
+        free(bf_code->buf);
         bf_code->buf = NULL;
         return false;
     }
     remove_dead(bf_code, in_name);
     if (bf_code->buf == NULL) {
-        mgr_free(bf_code->buf);
+        free(bf_code->buf);
         bf_code->buf = NULL;
         return false;
     }
@@ -260,7 +259,7 @@ static void strip_dead_code_test(void) {
     tgt = sb_reserve(&filterable, 1);
     *tgt = '\0';
     CU_ASSERT_STRING_EQUAL(filterable.buf, ">[->+<]");
-    mgr_free(filterable.buf);
+    free(filterable.buf);
 }
 
 CU_pSuite register_optimize_tests(void) {

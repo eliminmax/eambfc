@@ -268,8 +268,8 @@ static void test_set_reg(void) {
     set_reg(X86_64_RBX, INT64_MAX - INT64_C(0xffff), &sb);
     DISASM_TEST(sb, dis, "movabs rbx, 0x7fffffffffff0000\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_jump_instructions(void) {
@@ -291,8 +291,8 @@ static void test_jump_instructions(void) {
         "nop\nnop\nnop\nnop\nnop\nnop\nnop\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_add_sub_small_imm(void) {
@@ -307,8 +307,8 @@ static void test_add_sub_small_imm(void) {
     CU_ASSERT_EQUAL(sb.sz, 3);
     DISASM_TEST(sb, dis, "sub esi, 0x20\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_add_sub_medium_imm(void) {
@@ -323,8 +323,8 @@ static void test_add_sub_medium_imm(void) {
     CU_ASSERT_EQUAL(sb.sz, 6);
     DISASM_TEST(sb, dis, "sub edx, 0xbeef\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_add_sub_large_imm(void) {
@@ -337,8 +337,8 @@ static void test_add_sub_large_imm(void) {
     sub_reg(X86_64_RBX, 0xdeadbeef, &sb);
     DISASM_TEST(sb, dis, "movabs rcx, 0xdeadbeef\nsub rbx, rcx\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_add_sub_byte(void) {
@@ -356,8 +356,8 @@ static void test_add_sub_byte(void) {
         "sub byte ptr [rdi], 0x23\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_zero_byte(void) {
@@ -367,8 +367,8 @@ static void test_zero_byte(void) {
     zero_byte(X86_64_RDX, &sb);
     DISASM_TEST(sb, dis, "mov byte ptr [rdx], 0x0\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_jump_too_long(void) {
