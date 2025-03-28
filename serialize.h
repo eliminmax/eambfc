@@ -12,24 +12,16 @@
 #include "compat/elf.h"
 #include "types.h"
 
-/* by defining BFC_SERIALIZE_C in serialize.c, needing duplicate definitions of
- * these functions is avoided */
-#ifdef BFC_SERIALIZE_C
-#define inline_impl extern inline
-#else
-#define inline_impl inline
-#endif /* BFC_SERIALIZE_C */
-
 /* given an unsigned integer of a given size and destination pointer, these
  * write the bytes of the value to that pointer in LSB order.
  * This requires CHAR_BIT to be 8, which is required by POSIX anyway. */
-nonnull_args inline_impl size_t serialize16le(u16 v16, void *dest) {
+nonnull_args inline size_t serialize16le(u16 v16, void *dest) {
     ((u8 *)dest)[0] = v16;
     ((u8 *)dest)[1] = (v16 >> 8);
     return 2;
 }
 
-nonnull_args inline_impl size_t serialize32le(u32 v32, void *dest) {
+nonnull_args inline size_t serialize32le(u32 v32, void *dest) {
     ((u8 *)dest)[0] = v32;
     ((u8 *)dest)[1] = (v32 >> 8);
     ((u8 *)dest)[2] = (v32 >> 16);
@@ -37,7 +29,7 @@ nonnull_args inline_impl size_t serialize32le(u32 v32, void *dest) {
     return 4;
 }
 
-nonnull_args inline_impl size_t serialize64le(u64 v64, void *dest) {
+nonnull_args inline size_t serialize64le(u64 v64, void *dest) {
     ((u8 *)dest)[0] = v64;
     ((u8 *)dest)[1] = (v64 >> 8);
     ((u8 *)dest)[2] = (v64 >> 16);
@@ -57,13 +49,13 @@ nonnull_args size_t
 serialize_phdr64_le(const Elf64_Phdr *phdr, void *dest); /* Elf64_Phdr */
 
 /* The same as the above, except in MSB order. */
-nonnull_args inline_impl size_t serialize16be(u16 v16, void *dest) {
+nonnull_args inline size_t serialize16be(u16 v16, void *dest) {
     ((u8 *)dest)[0] = (v16 >> 8);
     ((u8 *)dest)[1] = v16;
     return 2;
 }
 
-nonnull_args inline_impl size_t serialize32be(u32 v32, void *dest) {
+nonnull_args inline size_t serialize32be(u32 v32, void *dest) {
     ((u8 *)dest)[0] = (v32 >> 24);
     ((u8 *)dest)[1] = (v32 >> 16);
     ((u8 *)dest)[2] = (v32 >> 8);
@@ -71,7 +63,7 @@ nonnull_args inline_impl size_t serialize32be(u32 v32, void *dest) {
     return 4;
 }
 
-nonnull_args inline_impl size_t serialize64be(u64 v64, void *dest) {
+nonnull_args inline size_t serialize64be(u64 v64, void *dest) {
     ((u8 *)dest)[0] = (v64 >> 56);
     ((u8 *)dest)[1] = (v64 >> 48);
     ((u8 *)dest)[2] = (v64 >> 40);
@@ -88,5 +80,4 @@ serialize_ehdr64_be(const Elf64_Ehdr *ehdr, void *dest); /* Elf64_Ehdr */
 nonnull_args size_t
 serialize_phdr64_be(const Elf64_Phdr *phdr, void *dest); /* Elf64_Phdr */
 
-#undef inline_impl
 #endif /* BFC_SERIALIZE_H */

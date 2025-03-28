@@ -16,9 +16,17 @@
 #include "config.h"
 #include "err.h"
 #include "types.h"
-
-#define BFC_UTIL_C
 #include "util.h"
+
+extern inline void *checked_malloc(size_t size);
+extern inline void *checked_realloc(void *ptr, size_t size);
+extern inline u8 trailing_0s(u64 val);
+extern inline bool bit_fits(i64 val, u8 bits);
+extern inline sized_buf newbuf(size_t sz);
+extern inline i64 sign_extend(i64 val, u8 nbits);
+extern inline void append_str(
+    sized_buf *restrict dst, const char *restrict str
+);
 
 /* Wrapper around write.3POSIX that returns true if all bytes were written, and
  * prints an error and returns false otherwise.
