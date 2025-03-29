@@ -21,21 +21,19 @@
 #include "types.h"
 
 #ifdef UNIT_TEST_C
-#define unit_extern
-#else /* UNIT_TEST_C */
-#define unit_extern extern
+#define extern
 #endif /* UNIT_TEST_C */
 
 typedef LLVMDisasmContextRef disasm_ref;
 
 /* __BACKENDS__ add a declaration of the disasm_ref here */
-unit_extern disasm_ref ARM64_DIS;
-unit_extern disasm_ref RISCV64_DIS;
-unit_extern disasm_ref S390X_DIS;
-unit_extern disasm_ref X86_64_DIS;
+extern disasm_ref ARM64_DIS;
+extern disasm_ref RISCV64_DIS;
+extern disasm_ref S390X_DIS;
+extern disasm_ref X86_64_DIS;
 
-unit_extern bool testing_err;
-unit_extern jmp_buf etest_stack;
+extern bool testing_err;
+extern jmp_buf etest_stack;
 
 /* disassemble the contents of bytes, and return a sized_buf containing the
  * diassembly - instructions are separated by newlines, and the disassembly as a
