@@ -1,6 +1,7 @@
 /* SPDX-FileCopyrightText: 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only */
+
 /* C99 */
 #include <stdarg.h>
 #include <stdio.h>
@@ -16,6 +17,7 @@
 #include "version.h"
 
 #if BFC_LONGOPTS
+#include "util.h"
 /* GNU C */
 #include <getopt.h>
 const struct option longopts[] = {
@@ -391,17 +393,10 @@ run_cfg parse_args(int argc, char *argv[]) {
             case '?': /* unknown argument */
 #if BFC_LONGOPTS
                 if (!optopt) {
-                    char *msg = malloc(20 + strlen(argv[optind - 1]));
-                    if (!msg) alloc_err();
-#ifndef __clang__ /* GCC warning is unknown to clang */
-#pragma GCC diagnostic push /* truncation is intended here */
-#pragma GCC diagnostic ignored "-Wstringop-truncation"
-#endif /* __clang__ */
-                    strncpy(msg, unknown_arg_msg, 18);
-#ifndef __clang__
-#pragma GCC diagnostic pop
-#endif /* __clang__ */
-                    strcpy(&unknown_arg_msg[18], argv[optind - 1]);
+                    int badarg = optind - 1;
+                    char *msg = checked_malloc(strlen(argv[badarg]) + 19);
+                    memcpy(msg, unknown_arg_msg, 18);
+                    strcpy(&msg[18], argv[badarg]);
                     /* can't just use bad_arg as msg won't be freed. */
                     display_err((bf_comp_err){
                         .id = BF_ERR_UNKNOWN_ARG,
