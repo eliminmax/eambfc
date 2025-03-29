@@ -163,7 +163,7 @@ static bool cond_jump(u8 reg, i64 distance, bool eq, char dst[JUMP_SIZE]) {
     }
     u32 jump_dist = distance + 4;
     serialize32le(load_from_byte(reg), dst);
-    // `BNEZ t1, 8` if comp_type == Eq, otherwise `BEQZ t1, 8`
+    /* `BNEZ t1, 8` if comp_type == Eq, otherwise `BEQZ t1, 8` */
     serialize32le(eq ? 0x31463 : 0x30463, &dst[4]);
     /* J-type is a variant of U-type with the bits scrambled around to simplify
      * hardware implementation at the expense of compiler/assembler
