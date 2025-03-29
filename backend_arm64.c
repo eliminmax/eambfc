@@ -37,12 +37,12 @@ typedef enum {
 } mov_type;
 
 /* set dst to the machine code for STRB w17, x.reg */
-static void store_to_byte(u8 src, u8 dst[4]) {
+static void store_to_byte(u8 src, char dst[4]) {
     serialize32le(0x38000411 | (((u32)src) << 5), dst);
 }
 
 /* set dst to the machine code for LDRB w17, x.reg */
-static void load_from_byte(u8 reg, u8 dst[4]) {
+static void load_from_byte(u8 reg, char dst[4]) {
     serialize32le(0x38400411 | (((u32)reg) << 5), dst);
 }
 
@@ -50,7 +50,7 @@ const u8 TEMP_REG = 17;
 
 /* set dst to the machine code for one of MOVK, MOVN, or MOVZ, depending on mt,
  * with the given operands. */
-static void mov(mov_type mt, u16 imm, shift_lvl shift, u8 reg, u8 *dst) {
+static void mov(mov_type mt, u16 imm, shift_lvl shift, u8 reg, char *dst) {
     /* for MOVN, the bits need to be inverted. Ask Arm, not me. */
     if (mt == A64_MT_INVERT) imm = ~imm;
     u32 instr = 0x92800000 | ((u32)mt << 29) | ((u32)shift << 16) |
@@ -125,8 +125,10 @@ static void pad_loop_open(sized_buf *dst_buf) {
 
 #undef NOP
 
+#define JUMP_SIZE 12
+
 /* LDRB w17, x.reg; TST w17, 0xff; B.cond offset */
-static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
+static bool branch_cond(u8 reg, i64 offset, char dst[JUMP_SIZE], u8 cond) {
     if ((offset % 4) != 0) {
         internal_err(
             BF_ICE_INVALID_JUMP_ADDRESS,
@@ -148,26 +150,25 @@ static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
         return false;
     }
     u32 off_val = ((offset >> 2) + 1) & 0x7ffff;
-    u8 *test_and_branch = sb_reserve(dst_buf, 12);
     /* LDRB w17, x.reg */
-    load_from_byte(reg, test_and_branch);
+    load_from_byte(reg, &dst[0]);
     /* TST x17, 0xff */
-    serialize32le(0xf2401e3f, &test_and_branch[4]);
+    serialize32le(0xf2401e3f, &dst[4]);
     /* B.cond offset */
-    serialize32le(0x54000000 | cond | (off_val << 5), &test_and_branch[8]);
+    serialize32le(0x54000000 | cond | (off_val << 5), &dst[8]);
     return true;
+}
+
+/* LDRB w17, x.reg; TST w17, 0xff; B.E offset */
+static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf, size_t index) {
+    /* 0 is the zero / equal condition code */
+    return branch_cond(reg, offset, &dst_buf->buf[index], 0);
 }
 
 /* LDRB w17, x.reg; TST w17, 0xff; B.NE offset */
 static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
     /* 1 is the not zero / not equal condition code */
-    return branch_cond(reg, offset, dst_buf, 1);
-}
-
-/* LDRB w17, x.reg; TST w17, 0xff; B.E offset */
-static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf) {
-    /* 0 is the zero / equal condition code */
-    return branch_cond(reg, offset, dst_buf, 0);
+    return branch_cond(reg, offset, sb_reserve(dst_buf, 12), 1);
 }
 
 static bool add_sub_imm(
@@ -259,7 +260,7 @@ static void dec_byte(u8 reg, sized_buf *dst_buf) {
 /* similar to add_sub_reg, but operating on an auxiliary register, after loading
  * from byte and before restoring to that byte, much like inc_dec_byte */
 static bool add_sub_byte(u8 reg, u8 imm8, arith_op op, sized_buf *dst_buf) {
-    u8 *i_bytes = sb_reserve(dst_buf, 12);
+    char *i_bytes = sb_reserve(dst_buf, 12);
     /* load the byte in address stored in x.reg into x17 */
     load_from_byte(reg, i_bytes);
     /* (ADD|SUB) x.17, x.17, imm8 */
@@ -571,7 +572,8 @@ static void test_jmp_padding(void) {
 static void test_successful_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(104);
-    jump_open(0, 32, &sb);
+    sb_reserve(&sb, JUMP_SIZE);
+    jump_open(0, 32, &sb, 0);
     jump_close(0, -32, &sb);
     DISASM_TEST(
         sb,
@@ -595,7 +597,7 @@ static void test_bad_jump_offset(void) {
 
 static void test_jump_too_long(void) {
     EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_open(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_close(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 CU_pSuite register_arm64_tests(void) {

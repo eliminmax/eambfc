@@ -160,10 +160,9 @@ static void store_to_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
     append_obj(dst_buf, &i_bytes, 4);
 }
 
-static void load_from_byte(u8 reg, sized_buf *dst_buf) {
+static void load_from_byte(u8 reg, char dst[6]) {
     /* LLGC TMP_REG, 0(reg) {RXY-a} */
-    u8 i_bytes[6] = {0xe3, (TMP_REG << 4) | reg, 0x00, 0x00, 0x00, 0x90};
-    append_obj(dst_buf, &i_bytes, 6);
+    memcpy(dst, (u8[6]){0xe3, (TMP_REG << 4) | reg, 0x00, 0x00, 0x00, 0x90}, 6);
 }
 
 /* declared before set_reg as it's used in set_reg, even though it's not first
@@ -252,7 +251,11 @@ typedef enum {
     MASK_NOP = 0
 } comp_mask;
 
-static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
+#define JUMP_SIZE 18
+
+static bool branch_cond(
+    u8 reg, i64 offset, comp_mask mask, char dst[JUMP_SIZE]
+) {
     /* jumps are done by Halfwords, not bytes, so must ensure it's valid. */
     if ((offset % 2) != 0) {
         internal_err(
@@ -276,8 +279,6 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
      * addressing individual bytes, so instead load the byte of interest into
      * an auxiliary register and compare with that, much like the ARM
      * implementation. */
-    /* load the value to compare with into the auxiliary register */
-    load_from_byte(reg, dst);
     /* set condition code according to contents of the auxiliary register, then
      * conditionally branch if the condition code's corresponding mask bit is
      * set to one.
@@ -305,12 +306,14 @@ static bool branch_cond(u8 reg, i64 offset, comp_mask mask, sized_buf *dst) {
         ENCODE_RI_OP(0xc2d, TMP_REG),
         ENCODE_RI_OP(0xc04, mask),
     };
+    /* load the value to compare with into the auxiliary register */
+    load_from_byte(reg, dst);
     /* no need to serialize the immediate in the first instruction, as it's
      * already initialized to zero. The offset, on the other hand, still needs
      * to be set. Cast offset to u64 to avoid portability issues with signed
      * bit shifts. */
     serialize32be(((u64)offset >> 1), &i_bytes[1][2]);
-    append_obj(dst, &i_bytes, 12);
+    memcpy(&dst[6], i_bytes, 12);
     return true;
 }
 
@@ -358,12 +361,12 @@ static void add_reg_signed(u8 reg, i64 imm, sized_buf *dst_buf) {
     }
 }
 
-static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return branch_cond(reg, offset, MASK_EQ, dst_buf);
+static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf, size_t index) {
+    return branch_cond(reg, offset, MASK_EQ, &dst_buf->buf[index]);
 }
 
 static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return branch_cond(reg, offset, MASK_NE, dst_buf);
+    return branch_cond(reg, offset, MASK_NE, sb_reserve(dst_buf, JUMP_SIZE));
 }
 
 static void add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
@@ -389,13 +392,13 @@ static void dec_reg(u8 reg, sized_buf *dst_buf) {
 }
 
 static void add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
-    load_from_byte(reg, dst_buf);
+    load_from_byte(reg, sb_reserve(dst_buf, 6));
     add_reg_signed(TMP_REG, imm8, dst_buf);
     store_to_byte(reg, TMP_REG, dst_buf);
 }
 
 static void sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
-    load_from_byte(reg, dst_buf);
+    load_from_byte(reg, sb_reserve(dst_buf, 6));
     add_reg_signed(TMP_REG, -imm8, dst_buf);
     store_to_byte(reg, TMP_REG, dst_buf);
 }
@@ -461,7 +464,7 @@ static void test_load_store(void) {
     sized_buf sb = newbuf(6);
     sized_buf dis = newbuf(24);
 
-    load_from_byte(8, &sb);
+    load_from_byte(8, sb_reserve(&sb, 6));
     DISASM_TEST(sb, dis, "llgc %r5, 0(%r8,0)\n");
     memset(dis.buf, 0, dis.capacity);
 
@@ -571,8 +574,8 @@ static void test_set_reg_large_imm(void) {
 static void test_successful_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(128);
-
-    jump_open(3, 18, &sb);
+    sb_reserve(&sb, JUMP_SIZE);
+    jump_open(3, 18, &sb, 0);
     jump_close(3, -36, &sb);
     pad_loop_open(&sb);
     /* For some reason, LLVM treats jump offset operand as an unsigned immediate
@@ -725,7 +728,7 @@ static void test_byte_arith(void) {
     sized_buf dis = newbuf(120);
     sized_buf expected = newbuf(14);
 
-    load_from_byte(8, &expected);
+    load_from_byte(8, sb_reserve(&expected, 6));
     inc_reg(TMP_REG, &expected);
     store_to_byte(8, TMP_REG, &expected);
     inc_byte(8, &a);
@@ -745,7 +748,7 @@ static void test_byte_arith(void) {
     memset(dis.buf, 0, dis.sz);
     expected.sz = b.sz = 0;
 
-    load_from_byte(8, &expected);
+    load_from_byte(8, sb_reserve(&expected, 6));
     dec_reg(TMP_REG, &expected);
     store_to_byte(8, TMP_REG, &expected);
     dec_byte(8, &a);
@@ -791,7 +794,7 @@ static void test_bad_jump_offset(void) {
 
 static void test_jump_too_long(void) {
     EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_open(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_close(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 CU_pSuite register_s390x_tests(void) {

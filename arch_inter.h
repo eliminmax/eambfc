@@ -63,11 +63,14 @@ typedef const struct arch_inter {
      * argument registers to either fixed values or the contents of the bf_ptr
      * register, and calling the syscall instruction. */
 
-    /* Write instruction/s to dst_buf to jump offset bytes if the byte stored at
-     * address in register reg is set to zero.
+    /* Overwrite the existing data starting at `dst_buf->buf[index]` with
+     * machine code to test if the byte pointed to by `reg` is zero, and jump
+     * `offset` bytes away if so
      *
      * Used to implement the `[` brainfuck instruction. */
-    bool (*const jump_open)(u8 reg, i64 offset, sized_buf *dst_buf);
+    bool (*const jump_open)(
+        u8 reg, i64 offset, sized_buf *dst_buf, size_t index
+    );
 
     /* Write instruction/s to dst_buf to jump <offset> bytes if the byte stored
      * at address in register reg is not set to zero.

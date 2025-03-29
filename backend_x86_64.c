@@ -44,8 +44,10 @@ enum X86_REGS {
 /* most common values for opcodes in add/sub instructions */
 typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
 
+#define JUMP_SIZE 9
+
 /* TEST byte [reg], 0xff; Jcc|tttn offset */
-static bool test_jcc(char tttn, u8 reg, i64 offset, sized_buf *dst_buf) {
+static bool test_jcc(char tttn, u8 reg, i64 offset, char dst[JUMP_SIZE]) {
     if (offset > INT32_MAX || offset < INT32_MIN) {
         display_err((bf_comp_err){
             .id = BF_ERR_JUMP_TOO_LONG,
@@ -56,14 +58,17 @@ static bool test_jcc(char tttn, u8 reg, i64 offset, sized_buf *dst_buf) {
         });
         return false;
     }
-    u8 i_bytes[9] = {
-        /* TEST byte [reg], 0xff */
-        INSTRUCTION(0xf6, reg, 0xff),
-        /* Jcc|tttn 0x00000000 (will replace with jump offset) */
-        INSTRUCTION(0x0f, 0x80 | tttn, IMM32_PADDING),
-    };
-    serialize32le(offset, &(i_bytes[5]));
-    append_obj(dst_buf, &i_bytes, 9);
+    memcpy(
+        dst,
+        (u8[5]){
+            /* TEST byte [reg], 0xff */
+            INSTRUCTION(0xf6, reg, 0xff),
+            /* Jcc|tttn (must append jump offset) */
+            INSTRUCTION(0x0f, 0x80 | tttn),
+        },
+        5
+    );
+    serialize32le(offset, &(dst[5]));
     return true;
 }
 
@@ -162,16 +167,17 @@ static void pad_loop_open(sized_buf *dst_buf) {
     append_obj(dst_buf, &padding, 9);
 }
 
+// public: bool (*const jump_open)(u8, i64, sized_buf *, size_t)
 /* TEST byte [reg], 0xff; JZ jmp_offset */
-static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf) {
+static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf, size_t index) {
     /* Jcc with tttn=0b0100 is JZ or JE, so use 4 for tttn */
-    return test_jcc(0x4, reg, offset, dst_buf);
+    return test_jcc(0x4, reg, offset, &dst_buf->buf[index]);
 }
 
 /* TEST byte [reg], 0xff; JNZ jmp_offset */
 static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
     /* Jcc with tttn=0b0101 is JNZ or JNE, so use 5 for tttn */
-    return test_jcc(0x5, reg, offset, dst_buf);
+    return test_jcc(0x5, reg, offset, sb_reserve(dst_buf, JUMP_SIZE));
 }
 
 /* INC reg */
@@ -275,8 +281,8 @@ static void test_set_reg(void) {
 static void test_jump_instructions(void) {
     sized_buf sb = newbuf(27);
     sized_buf dis = newbuf(160);
-
-    jump_open(X86_64_RDI, 9, &sb);
+    sb_reserve(&sb, JUMP_SIZE);
+    jump_open(X86_64_RDI, 9, &sb, 0);
     jump_close(X86_64_RDI, -18, &sb);
     pad_loop_open(&sb);
     CU_ASSERT_EQUAL(sb.sz, 27);
@@ -373,7 +379,7 @@ static void test_zero_byte(void) {
 
 static void test_jump_too_long(void) {
     EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_open(0, INT64_MAX, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_close(0, INT64_MAX, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 CU_pSuite register_x86_64_tests(void) {

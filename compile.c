@@ -324,11 +324,7 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
      * conditional jump instruction without any risk of unnecessary reallocation
      * or any temporary buffer, sized or not. */
 
-    sized_buf tmp_buf = {
-        .buf = obj_code->buf, .sz = open_addr, .capacity = obj_code->capacity
-    };
-
-    if (!inter->jump_open(inter->reg_bf_ptr, distance, &tmp_buf)) {
+    if (!inter->jump_open(inter->reg_bf_ptr, distance, obj_code, open_addr)) {
         return false;
     }
 

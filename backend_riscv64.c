@@ -129,7 +129,9 @@ static u32 load_from_byte(u8 addr) {
     return (((u32)addr) << 15) | (((u32)RISCV_T1) << 7) | 0x03;
 }
 
-static bool cond_jump(u8 reg, i64 distance, bool eq, sized_buf *dst_buf) {
+#define JUMP_SIZE 12
+
+static bool cond_jump(u8 reg, i64 distance, bool eq, char dst[JUMP_SIZE]) {
     /* there are 2 types of instructions used here for control flow - branches,
      * which can conditionally move up to 4 KiB away, and jumps, which
      * unconditionally move up to 1MiB away. The former is too short, and the
@@ -159,19 +161,17 @@ static bool cond_jump(u8 reg, i64 distance, bool eq, sized_buf *dst_buf) {
         /* internal_err never returns, so this will not run */
         return false;
     }
-    u8 i_bytes[12];
     u32 jump_dist = distance + 4;
-    serialize32le(load_from_byte(reg), i_bytes);
+    serialize32le(load_from_byte(reg), dst);
     // `BNEZ t1, 8` if comp_type == Eq, otherwise `BEQZ t1, 8`
-    serialize32le(eq ? 0x31463 : 0x30463, &i_bytes[4]);
+    serialize32le(eq ? 0x31463 : 0x30463, &dst[4]);
     /* J-type is a variant of U-type with the bits scrambled around to simplify
      * hardware implementation at the expense of compiler/assembler
      * implementation. */
     u32 encoded_dist = ((jump_dist & (1 << 20)) << 11) |
                        ((jump_dist & 0x7fe) << 20) |
                        ((jump_dist & (1 << 11)) << 9) | (jump_dist & 0xff000);
-    serialize32le(encoded_dist | 0x6f, &i_bytes[8]);
-    append_obj(dst_buf, i_bytes, 12);
+    serialize32le(encoded_dist | 0x6f, &dst[8]);
     return true;
 }
 
@@ -196,12 +196,12 @@ static void pad_loop_open(sized_buf *dst_buf) {
     append_obj(dst_buf, instr_seq, 12);
 }
 
-static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return cond_jump(reg, offset, true, dst_buf);
+static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf, size_t index) {
+    return cond_jump(reg, offset, true, &dst_buf->buf[index]);
 }
 
 static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return cond_jump(reg, offset, false, dst_buf);
+    return cond_jump(reg, offset, false, sb_reserve(dst_buf, JUMP_SIZE));
 }
 
 static void inc_reg(u8 reg, sized_buf *dst_buf) {
@@ -592,8 +592,8 @@ static void test_jump_pad(void) {
 static void test_successful_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(72);
-
-    jump_open(RISCV_S0, 32, &sb);
+    sb_reserve(&sb, JUMP_SIZE);
+    jump_open(RISCV_S0, 32, &sb, 0);
     jump_close(RISCV_S0, -32, &sb);
     DISASM_TEST(
         sb,
@@ -765,7 +765,7 @@ static void test_bad_jump_offset(void) {
 
 static void test_jump_too_long(void) {
     EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_open(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_close(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 CU_pSuite register_riscv64_tests(void) {
