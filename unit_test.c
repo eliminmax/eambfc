@@ -113,6 +113,7 @@ int main(void) {
     ERRORCHECKED(register_optimize_tests());
     ERRORCHECKED(register_util_tests());
     ERRORCHECKED(register_serialize_tests());
+    ERRORCHECKED(register_err_tests());
 
     /* __BACKENDS__ add your test suite here */
     ERRORCHECKED(register_arm64_tests());

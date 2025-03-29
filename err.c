@@ -34,7 +34,8 @@
 
 /* to keep the order consistent with the bf_err_id enum, do normal errors, then
  * ICEs, and finally "Fatal:AllocFailure", with each group sorted
- * alphabetically */
+ * alphabetically, except for ICE:InvalidErrId, which must come at the end and
+ * has no string equivalent. */
 const char *ERR_IDS[] = {
     "BadSourceExtension",
     "BufferTooLarge",
@@ -357,3 +358,180 @@ noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg) {
     fflush(stdout);
     abort();
 }
+
+#ifdef BFC_TEST
+/* C99 */
+#include <errno.h>
+/* internal */
+#include "unit_test.h"
+/* json-c */
+#include <json.h>
+
+static bool err_eq(
+    const bf_comp_err *restrict a, const bf_comp_err *restrict b
+) {
+    if (!(a->msg && b->msg)) return false;
+    if (a->has_instr != b->has_instr) return false;
+    if (a->has_instr && a->instr != b->instr) return false;
+    if (a->has_location != b->has_location) return false;
+    if (a->has_location && (a->line != b->line || a->col != b->col)) {
+        return false;
+    }
+    if ((a->file == NULL) != (b->file == NULL)) return false;
+    if (a->file && strcmp(a->file, b->file) != 0) return false;
+    return (strcmp(a->msg, b->msg) == 0 && a->id == b->id);
+}
+
+static bf_err_id text_to_errid(const char *text) {
+    for (size_t i = 0; i < (sizeof(ERR_IDS) / sizeof(const char *)); i++) {
+        if (strcmp(ERR_IDS[i], text) == 0) return i;
+    }
+    return BF_ICE_INVALID_ERR_ID;
+}
+
+static bool check_err_json(const char *json_text, const bf_comp_err *expected) {
+    struct json_object *err_jobj, *transfer;
+    bool ret = false;
+
+#define JSON_TYPE_CHECK(key, type) \
+    if (json_object_get_type(transfer) != json_type_##type) { \
+        fputs("\"" key "\" is not a \"" #type "\"!\n", stderr); \
+        goto cleanup; \
+    }
+
+    err_jobj = json_tokener_parse(json_text);
+
+    struct partial_comp_error {
+        char *msg;
+        char *file;
+        size_t line;
+        size_t col;
+        bf_err_id id;
+        char instr;
+        bool has_instr   : 1;
+        bool has_location: 1;
+    } partial_err = {NULL, NULL, 0, 0, BF_ICE_INVALID_ERR_ID, 0, false, false};
+
+    if (!json_object_object_get_ex(err_jobj, "message", &transfer)) {
+        fputs("Could not get \"message\"!\n", stderr);
+        goto cleanup;
+    }
+
+    JSON_TYPE_CHECK("message", string);
+
+    if (!(partial_err.msg = strdup(json_object_get_string(transfer)))) {
+        alloc_err();
+    }
+
+    if (!json_object_object_get_ex(err_jobj, "errorId", &transfer)) {
+        fputs("Could not get \"errorId\"!\n", stderr);
+        goto cleanup;
+    }
+
+    const char *copystr = json_object_get_string(transfer);
+
+    if (!copystr) {
+        fputs("Could not get \"errorId\" as string!\n", stderr);
+        goto cleanup;
+    }
+
+    partial_err.id = text_to_errid(copystr);
+    if (partial_err.id == BF_ICE_INVALID_ERR_ID) {
+        fprintf(
+            stderr, "Unrecognized value for \"errorId\": \"%s\"!\n", copystr
+        );
+        goto cleanup;
+    }
+
+    if (json_object_object_get_ex(err_jobj, "file", &transfer)) {
+        JSON_TYPE_CHECK("file", string);
+        if (!(partial_err.file = strdup(json_object_get_string(transfer)))) {
+            alloc_err();
+        }
+    }
+
+    if (json_object_object_get_ex(err_jobj, "line", &transfer)) {
+        JSON_TYPE_CHECK("instr", int);
+        errno = 0;
+        size_t line = json_object_get_int64(transfer);
+        if (errno) {
+            fputs("failed to get value of \"line\"!\n", stderr);
+            goto cleanup;
+        }
+        if (!json_object_object_get_ex(err_jobj, "column", &transfer)) {
+            fputs("line without column provided!\n", stderr);
+            goto cleanup;
+        }
+        errno = 0;
+        size_t col = json_object_get_int64(transfer);
+        if (errno) {
+            fputs("failed to get value of \"column\"!\n", stderr);
+            goto cleanup;
+        }
+        partial_err.has_location = 1;
+        partial_err.col = col;
+        partial_err.line = line;
+    } else if (json_object_object_get_ex(err_jobj, "column", &transfer)) {
+        fputs("column without line provided!\n", stderr);
+        goto cleanup;
+    }
+    if (json_object_object_get_ex(err_jobj, "instr", &transfer)) {
+        JSON_TYPE_CHECK("instr", string);
+        copystr = json_object_get_string(transfer);
+        size_t len;
+        if ((len = strlen(copystr)) != 1) {
+            fprintf(
+                stderr,
+                "length of obj[\"instr\"] is %ju, not 0\n",
+                (uintmax_t)len
+            );
+            goto cleanup;
+        }
+        partial_err.has_instr = true;
+        partial_err.instr = *copystr;
+    }
+
+    ;
+    ret = err_eq(
+        expected,
+        &(bf_comp_err){
+            .msg = partial_err.msg,
+            .file = partial_err.file,
+            .line = partial_err.line,
+            .col = partial_err.col,
+            .id = partial_err.id,
+            .instr = partial_err.instr,
+            .has_instr = partial_err.has_instr,
+            .has_location = partial_err.has_location,
+        }
+    );
+
+cleanup:
+    if (partial_err.msg) free(partial_err.msg);
+    if (partial_err.file) free(partial_err.file);
+    json_object_put(err_jobj);
+    return ret;
+#undef JSON_TYPE_CHECK
+}
+
+static void json_sanity_test(void) {
+    const char *err_text =
+        "{\"errorId\":\"Fatal:AllocFailure\","
+        "\"message\":\"A call to malloc or realloc returned NULL.\"}";
+    bf_comp_err expected = {
+        .msg = "A call to malloc or realloc returned NULL.",
+        .id = BF_FATAL_ALLOC_FAILURE,
+        .has_instr = false,
+        .has_location = false,
+    };
+    CU_ASSERT(check_err_json(err_text, &expected));
+}
+
+CU_pSuite register_err_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, json_sanity_test);
+    return suite;
+}
+
+#endif

@@ -94,6 +94,7 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
 CU_pSuite register_util_tests(void);
 CU_pSuite register_serialize_tests(void);
 CU_pSuite register_optimize_tests(void);
+CU_pSuite register_err_tests(void);
 
 /* __BACKENDS__ add your test suite here */
 CU_pSuite register_arm64_tests(void);

@@ -23,6 +23,7 @@ CompileFlags:
   Add:
     # flags needed for test suite
     - "-I/usr/lib/llvm-19/include"
+    - "-I/usr/include/json-c"
     - "-DBFC_TEST"
 
 ---
