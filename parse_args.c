@@ -37,13 +37,14 @@ const struct option longopts[] = {
 };
 
 /* use this macro in place of normal getopt */
-#define getopt(c, v, opts) getopt_long(c, v, opts, longopts, NULL)
+#define GETOPT_FN(c, v, opts) getopt_long(c, v, opts, longopts, NULL)
 #define OPTION(l, s, pad, msg) " --" l ", " pad "-" s ":   " msg
 #define PARAM_OPT(l, s, a, spad, lpad, msg) \
     " --" l "=" a ", " lpad " -" s " " a ":    " spad msg
 #else
 #define OPTION(l, s, pad, msg) " -" s ":   " msg
 #define PARAM_OPT(l, s, a, spad, lpad, msg) " -" s " " spad a ":   " msg
+#define GETOPT_FN(c, v, opts) getopt(c, v, opts)
 #endif
 
 /* this macro hell defines the help template. If using GNU longopts, pads with
@@ -278,7 +279,7 @@ run_cfg parse_args(int argc, char *argv[]) {
 
     const char *progname = (argc && argv[0] != NULL) ? argv[0] : "eambfc";
 
-    while ((opt = getopt(argc, argv, ":hVqjOkcAa:e:t:s:")) != -1) {
+    while ((opt = GETOPT_FN(argc, argv, ":hVqjOkcAa:e:t:s:")) != -1) {
         switch (opt) {
             case 'h':
                 printf(HELP_TEMPLATE, progname);
