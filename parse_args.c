@@ -126,6 +126,7 @@ const struct option longopts[] = {
     "\n" \
     "Remaining options are treated as source file names. If they don't " \
     "end with the right extension, the program will raise an error.\n" \
+    "\n" \
     "Additionally, passing \"--\" as a standalone argument will stop " \
     "argument parsing, and treat remaining arguments as source file names.\n"
 
