@@ -44,7 +44,7 @@ typedef uint_fast64_t ufast_64;
  * `sized_buf`, it should be assumed that the caller is supposed to free it with
  * `free`, and functions should only be passed pointers to sized_bufs. */
 typedef struct sized_buf {
-    char *buf; /* a buffer of data in memory */
+    char *restrict buf; /* a buffer of data in memory */
     size_t sz; /* size of data used in buffer */
     size_t capacity; /* amount of space allocated for buffer */
 } sized_buf;
