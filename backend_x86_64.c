@@ -167,7 +167,6 @@ static void pad_loop_open(sized_buf *dst_buf) {
     append_obj(dst_buf, &padding, 9);
 }
 
-// public: bool (*const jump_open)(u8, i64, sized_buf *, size_t)
 /* TEST byte [reg], 0xff; JZ jmp_offset */
 static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf, size_t index) {
     /* Jcc with tttn=0b0100 is JZ or JE, so use 4 for tttn */
