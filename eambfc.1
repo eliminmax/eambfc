@@ -5,74 +5,91 @@
 .\" The man page for eambfc, handwritten as part of the final preparation
 .\" for the release of eambfc 2.0.0, and has been updated since.
 
-.TH EAMBFC 1 2025-02-13 EAMBFC
+.TH EAMBFC 1 2025-03-29 EAMBFC
+
 .SH NAME
-eambfc \- a brainfuck compiler that outputs x86_64 Linux ELF executables
+eambfc \- a brainfuck compiler that outputs 64-bit Linux ELF executables
 
 .SH SYNOPSIS
-.B eambfc [-O] [-q] [-j] [-k] [-c] src0.bf [src1.bf ...]
+.B eambfc [-O] [-q] [-j] [-k] [-c]
+.I src0.bf [src1.bf ...]
 
-.B eambfc [-O] [-q] [-j] [-k] [-c] -e b src0.b [src1.b ...]
+.B eambfc [-O] [-q] [-j] [-k] [-c] -e b
+.I src0.b [src1.b ...]
 
 .SH DESCRIPTION
 
 .PP
 .B eambfc
-is a brainfuck compiler that outputs x86_64 Linux ELF executables.
+is a brainfuck compiler that outputs 64-bit Linux ELF executables.
 By default, it's a rather straightforward, direct single-pass compiler,
-which translates each instruction directly to x86_64 machine code, but it
+which translates each instruction directly to machine code, but it
 can optionally be used as an optimizing compiler as well.
 .PP
 It can compile any number of brainfuck source files in sequence, and will
 always write the output to a file with the same name as the source file,
 but with the extension (which is
-.B .bf
+.RI \*(lq .bf \*(rq
 by default) removed.
 
-.B eambfc
-takes the following options:
+.SH OPTIONS
+.PP
+.B Note:
+long option variants require compilation with longopts enabled, which is
+not the default because it requires a non-standard GNU extension to libc.
 
 .TP
-.B -h
+.BR -h ,\  --help
 show help text
 
 .TP
-.B -V
+.BR -V ,\  --version
 show version, build configuration, and copyright information
 
 .TP
-.B -j
+.BR -j ,\  --json
 Don't write further error messages to the standard error stream.
 Instead, write them to the standard output stream, formatted as JSON.
-Assumes that filenames are UTF-8-encoded - see
-.B BUGS
-section below for more details.
+Any byte within filenames that is not valid UTF-8 will be replaced by the
+Unicode
 
 .TP
-.B -q
+.BR -q ,\  --quiet
 Don't write further error messaages to the standard error stream. Does
 not prevent JSON-formatted messages from being printed if
 .B -j
 was passed as well.
 
 .TP
-.B -O
+.BI -O ,\  --optimize
 enable optimizations - see
 .B OPTIMIZATIONS
 section below for more details.
 
 .TP
-.B -k
+.BI -k ,\  --keep
 keep output executables even if they are malformed due to failed
 compilation, for debugging or analysis.
 
 .TP
-.B -c
+.BI -c ,\  --continue
 If passed multiple source files, and one fails to compile, don't abort
 immediately, and still try to compile the remaining files.
 
 .TP
-.BI -t\  count
+.BI -A ,\  --list-targets
+List available architectures that this build of
+.B eambfc
+includes. Standard builds include all architectures that have been fully
+implemented and passed the full test suite, which as of version 4.0.0, are
+.\" __BACKENDS__ add backend to this list
+.BR arm64 ,
+.BR riscv64 ,
+.BR s390x ,\ and
+.BR x86_64 .
+
+.TP
+.BI -t\ count ,\  --tape-size=count
 Allocate
 .I count
 4-KiB (i.e. 4096-byte) blocks of memory for the tape. If passed more than
@@ -81,7 +98,7 @@ once,
 will abort without compiling anything.
 
 .TP
-.BI -e\  ext
+.BI -e\ ext ,\  --source-extension=ext
 Use
 .I ext
 instead of
@@ -92,7 +109,7 @@ once,
 will abort without compiling anything.
 
 .TP
-.BI -s\  ext
+.BI -s\ ext ,\  --output-suffix=ext
 Use
 .I ext
 as the extension for compiled output files. If not passed, they'll have no
@@ -101,32 +118,19 @@ extension. If passed more than once,
 will abort without compiling anything.
 
 .TP
-.BI -a\  arch
+.BI -a\ arch ,\  --target-arch=arch
 Compile for
 .I arch
-instead of the default, which is
-.I x86_64
-in standard
-.B eambfc
-builds, but can be customized when compiling
-.B eambfc
-itself. If passed more than once,
+instead of the default. If passed more than once,
 .B eambfc
 will abort without compiling anything.
-
-.TP
-.B -A
-List available architectures that this build of
-.B eambfc
-includes. Standard builds include all architectures that have been fully
-implemented and passed the full test suite.
 
 .SH OPTIMIZATIONS
 
 .PP
-There are 3 stages of optimizations that are performed if
+There are a few stages to optimization that are run before compilation if
 .B -O
-was passed. Each one is more complex than the last.
+was passed.
 
 .PP
 .B Stage 1
@@ -137,16 +141,16 @@ Any characters that are not brainfuck instructions are removed.
 .PP
 This stage repeatedly alternates between two steps. First, any sequences
 of consecutive instructions that would cancel out are removed - that's any
-of the following:
-.BR <> ,
-.BR >< ,
-.BR +- ,\ and
-.BR -+ .
-Additionally, 256 consecutive
-.B +
+of
+.RB \*(lq <> \*(rq,
+.RB \*(lq >< \*(rq,
+.RB \*(lq +- \*(rq,
+.RB \*(lq -+ \*(rq,
+or sequences of 256 consecutive
+.RB \*(lq + \*(rq
 or
-.B -
-instructions are removed, as they would just wrap around.
+.RB \*(lq - \*(rq
+instructions.
 
 Next, any conditional loops that are trivially able to be determined never
 to run, either because they are at the very beginning of the code, or
@@ -158,52 +162,40 @@ program designed to have a lot of dead or useless code.
 
 .B Stage 3
 .PP
-Consecutive
-.BR > ,
-.BR < ,
-.BR + ,\ and
-.B -
-instructions are merged into other, more efficient instructions, and
-.B [-]
+.RB \*(lq [-] \*(rq
 and
-.B [+]
-instruction sequences are both condensed into single instructions. These
-instructions can compile into more efficient machine code, as it takes
-only one instruction, for instance, to add 31 to the value of the current
-cell, rather than 31 individual increment instructions. If there are too
-many
-.B <
+.RB \*(lq [+] \*(rq
+instruction sequences are replaced with an internal \*(lqset zero\*(rq
+instruction.
+
+.B Compilation Pass
+.PP
+In addition to handling the internal \*(lqset zero\*(rq instruction,
+consecutive
+.RB \*(lq < \*(rq,
+.RB \*(lq > \*(rq,
+.RB \*(lq + \*(rq,
+and
+.RB \*(lq - \*(rq
+instructions are combined into single add or sub instructions, either for
+the tape pointer in the case of
+.RB \*(lq < \*(rq
 or
-.B >
-instructions in a row, optimized compilation will fail. The maximum is the
-64-bit signed integer limit, so that limitation is unlikely to ever matter
-in any context. See
-.B BUGS
-section below.
+.RB \*(lq > \*(rq,
+or the current cell in the case of
+.RB \*(lq - \*(rq
+or
+.RB \*(lq + \*(rq.
 
 .SH EXAMPLES
 
-Download a file to compile:
-
-.B wget https://raw.githubusercontent.com/eliminmax/eambfc/main/tests/\
-hello.bf
-
-Compile it with a 4-KiB tape size and with optimizations enabled:
+Compile a
+.I hello.bf
+source file with a 4-KiB tape size and with optimizations enabled:
 
 .B eambfc -Ot1 hello.bf
 
-.SH BUGS
-
-When passed the
-.B -j
-flag,
-.B eambfc
-assumes that file names are UTF-8 encoded. There are no plans to fix this,
-as it's an explicit goal for the
-.B eambfc
-source to be portable to any POSIX.1-2008 system, and it's beyond the
-scope of the project to handle different text encoding schemes.
-
-.SH AUTHOR
-Eli Array Minkoff <eli@planetminkoff.com>
+.SH COPYRIGHT
+Copyright 2024 - 2025 Eli Array Minkoff
+.IR <eli@planetminkoff.com>
 .\" vi: cc=75
