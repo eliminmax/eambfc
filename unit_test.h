@@ -72,7 +72,7 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
 
 /* utility macro to set up a CUnit suite with the current file name */
 #define INIT_SUITE(suite_var) \
-    ERRORCHECKED(suite_var = CU_add_suite(__BASE_FILE__, NULL, NULL))
+    ERRORCHECKED(suite_var = CU_add_suite(__FILE__, NULL, NULL))
 
 /* simple self-explanatory ERRORCHECKED wrapper around CU_ADD_TEST */
 #define ADD_TEST(suite, test) ERRORCHECKED(CU_ADD_TEST(suite, test))
