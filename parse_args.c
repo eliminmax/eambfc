@@ -405,7 +405,6 @@ run_cfg parse_args(int argc, char *argv[]) {
                     });
                     if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
                     free(msg);
-                    mgr_cleanup();
                     exit(EXIT_FAILURE);
                 }
 #endif
