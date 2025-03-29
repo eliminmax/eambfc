@@ -29,6 +29,7 @@ gcc_ubsan_flags := gcc_strict_flags + ' ' + (
     '-fsanitize=leak,address,undefined -fno-sanitize-recover=all -g3'
 )
 
+gcc_longopts_flags := '-D_GNU_SOURCE -DBFC_LONGOPTS=1'
 
 export MAKEFLAGS := '-se'
 export BFC_DONT_SKIP_TESTS := '1'
@@ -105,6 +106,8 @@ tarball: pre-tarball-checks
 [group("tests")]
 strict-gcc:
     gcc {{ gcc_strict_flags }} {{ unibuild_files }} -o /dev/null
+    gcc {{ gcc_strict_flags }} {{ gcc_longopts_flags }} {{ unibuild_files }} \
+        -o /dev/null
 
 [doc("Run the full project through the `cppcheck` static analyzer")]
 [group("tests")]
@@ -117,6 +120,8 @@ cppcheck-full:
 [group("tests")]
 scan-build:
     scan-build-19 --status-bugs make CFLAGS=-O3 clean eambfc
+    scan-build-19 --status-bugs make \
+        CFLAGS={{quote('-O3 ' + gcc_longopts_flags) }} clean eambfc
     scan-build-19 --status-bugs make CFLAGS=-O3 unit_test_driver
     make clean
 
@@ -125,6 +130,9 @@ scan-build:
 ubsan-test: alt-builds-dir test_driver
     gcc {{ gcc_ubsan_flags }} {{ unibuild_files }} -o alt-builds/eambfc-ubsan
     just --no-deps test alt-builds/eambfc-ubsan
+    gcc {{ gcc_ubsan_flags }} {{ unibuild_files }} {{ gcc_longopts_flags }} \
+        -o alt-builds/eambfc-ubsan-longopts
+    just --no-deps test alt-builds/eambfc-ubsan-longopts
 
 [doc("Build and test `eambfc` with 64-bit integer fallback hackery")]
 [group("tests")]
@@ -132,6 +140,10 @@ int-torture-test: alt-builds-dir test_driver
     gcc -D INT_TORTURE_TEST=1 {{gcc_ubsan_flags}} -Wno-pedantic \
         {{ unibuild_files }} -o alt-builds/eambfc-itt
     just --no-deps test alt-builds/eambfc-itt
+    gcc -D INT_TORTURE_TEST=1 {{gcc_ubsan_flags}} -Wno-pedantic \
+        {{ gcc_longopts_flags }} {{ unibuild_files }} \
+            -o alt-builds/eambfc-itt-longopts
+    just --no-deps test alt-builds/eambfc-itt-longopts
 
 [doc("Test provided `eambfc` build using its cli")]
 [group("tests")]

@@ -393,7 +393,14 @@ run_cfg parse_args(int argc, char *argv[]) {
                 if (!optopt) {
                     char *msg = malloc(20 + strlen(argv[optind - 1]));
                     if (!msg) alloc_err();
+#ifndef __clang__ /* GCC warning is unknown to clang */
+#pragma GCC diagnostic push /* truncation is intended here */
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
+#endif /* __clang__ */
                     strncpy(msg, unknown_arg_msg, 18);
+#ifndef __clang__
+#pragma GCC diagnostic pop
+#endif /* __clang__ */
                     strcpy(&unknown_arg_msg[18], argv[optind - 1]);
                     /* can't just use bad_arg as msg won't be freed. */
                     display_err((bf_comp_err){
