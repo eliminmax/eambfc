@@ -95,7 +95,7 @@ noreturn void alloc_err(void) {
     switch (err_mode) {
         case OUTMODE_JSON:
             puts(
-                "{\"errorId:\":\"Fatal:AllocFailure\","
+                "{\"errorId\":\"Fatal:AllocFailure\","
                 "\"message\":\"A call to malloc or realloc returned NULL.\"}"
             );
             fflush(stdout);
