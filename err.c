@@ -357,3 +357,17 @@ noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg) {
     fflush(stdout);
     abort();
 }
+
+#ifdef BFC_TEST
+/* json-c */
+#include <json.h>
+/* internal */
+#include "unit_test.h"
+
+CU_pSuite register_err_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    return suite;
+}
+
+#endif
