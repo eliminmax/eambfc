@@ -605,7 +605,7 @@ static int test_compile(const char *src, bool optimize) {
         optimize,
         8
     );
-    if (close(pipe_fds[0]) == -1) {
+    if (close(pipe_fds[0]) == -1 || close(null_fd) == -1) {
         perror("close");
         abort();
     }
