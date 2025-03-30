@@ -26,7 +26,15 @@
  * the original setjmp return value of 0, and the final one of the error id,
  * which also could be 0. */
 #define ERR_CALLBACK(e_id) \
-    if (testing_err) longjmp(etest_stack, e_id << 1 | 1)
+    switch (testing_err) { \
+        case TEST_INTERCEPT: \
+            longjmp(etest_stack, ((e_id) << 1) | 1); \
+        case TEST_SET: \
+            current_err = e_id; \
+            break; \
+        default: \
+            break; \
+    }
 
 #else /* BFC_TEST */
 #define ERR_CALLBACK(e_id) (void)0

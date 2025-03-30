@@ -18,6 +18,7 @@
 #include <CUnit/CUnit.h> /* IWYU pragma: export */
 
 /* internal */
+#include "err.h"
 #include "types.h"
 
 #ifdef UNIT_TEST_C
@@ -32,7 +33,16 @@ extern disasm_ref RISCV64_DIS;
 extern disasm_ref S390X_DIS;
 extern disasm_ref X86_64_DIS;
 
-extern bool testing_err;
+extern bf_err_id current_err;
+
+enum test_status {
+    TEST_SET = -1,
+    NOT_TESTING = 0,
+    TEST_INTERCEPT = 1,
+};
+
+extern enum test_status testing_err;
+
 extern jmp_buf etest_stack;
 
 /* disassemble the contents of bytes, and return a sized_buf containing the
@@ -82,12 +92,12 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
  * in one of `internal_err`, `alloc_err`, or `display_err` being called later */
 #define EXPECT_BF_ERR(eid) \
     do { \
-        testing_err = true; \
+        testing_err = TEST_INTERCEPT; \
         int returned_err; \
         if ((returned_err = setjmp(etest_stack))) { \
             CU_ASSERT_EQUAL(eid << 0 | 1, returned_err); \
         } \
-        testing_err = false; \
+        testing_err = NOT_TESTING; \
         return; \
     } while (0);
 
