@@ -561,7 +561,6 @@ static void json_escape_test(void) {
         CU_ASSERT_EQUAL(json_utf8_next((char[2]){i, 0}, transfer), 1);
         append_str(&output, transfer);
     }
-    puts(output.buf);
     CU_ASSERT_STRING_EQUAL(
         output.buf,
         "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007"
