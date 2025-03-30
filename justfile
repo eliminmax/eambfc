@@ -17,12 +17,12 @@ unibuild_files := (
 
 # aligning it like this was not easy, but it sure is satisfying
 gcc_strict_flags := (
-    '-std=c99 -D_POSIX_C_SOURCE=200908L -O3 -fanalyzer -Wall -Wextra -Werror ' +
+    '-std=c99 -D_POSIX_C_SOURCE=200908L -fanalyzer -Wall -Wextra -Wcast-qual ' +
     '-Wpedantic -Wformat-truncation=2 -Wduplicated-branches -Wshadow -Wundef ' +
     '-Wformat-overflow=2 -Wformat-signedness -Wbad-function-cast -Winit-self ' +
     '-Wnull-dereference -Wredundant-decls -Wduplicated-cond -Warray-bounds=2 ' +
     '-Wuninitialized -Wlogical-op -Wwrite-strings -Wformat=2 -Wunused-macros ' +
-    '-Wcast-align=strict -Wcast-qual -Wtrampolines -Wvla'
+    '-Wcast-align=strict -Wtrampolines -Wvla -Werror'
 )
 
 gcc_ubsan_flags := gcc_strict_flags + ' ' + (
@@ -108,6 +108,9 @@ strict-gcc:
     gcc {{ gcc_strict_flags }} {{ unibuild_files }} -o /dev/null
     gcc {{ gcc_strict_flags }} {{ gcc_longopts_flags }} {{ unibuild_files }} \
         -o /dev/null
+    gcc {{ gcc_strict_flags }} -O2 {{ unibuild_files }} -o /dev/null
+    gcc {{ gcc_strict_flags }} -O2 {{ gcc_longopts_flags }} \
+        {{ unibuild_files }} -o /dev/null
 
 [doc("Run the full project through the `cppcheck` static analyzer")]
 [group("tests")]
