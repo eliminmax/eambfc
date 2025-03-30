@@ -227,13 +227,15 @@ The following packages are used in testing or release automation:
 * `gzip`
 * `libasan6`
 * `libcunit1-dev`
+* `libcjson-c-dev`
 * `libubsan1`
 * `llvm-19-dev`
 * `make`
 * `musl-tools`
 * `parallel`
 * `qemu-user-binfmt`
-  * I use the backports version, as the stable version segfaults
+  * I use the backports version, as the stable version segfaults seemingly at
+    random with `s390x` binaries
 * `sed`
 * `shellcheck`
 * `tar`
@@ -257,7 +259,7 @@ Depends: awk, binutils, clang-19, clang-format-19,
  clang-tools-19, codespell, coreutils, devscripts, findutils, gcc,
  gcc-aarch64-linux-gnu, gcc-i686-linux-gnu, gcc-mips-linux-gnu,
  gcc-s390x-linux-gnu, git, gzip, libasan6, libcunit1-dev, libubsan1,
- llvm-19-dev, make, musl-tools, parallel,
+ libcjson-dev, llvm-19-dev, make, musl-tools, parallel, pkg-config,
  qemu-user-binfmt (>= 1:9.0.0), sed, shellcheck, tar, tcc,
  valgrind, xz-utils
 Suggests: clangd-19
@@ -268,6 +270,7 @@ Description: Dependencies of eambfc's development workflow
  .
  This metapackage depends on Debian packages which comprise the
  majority of those tools, only excluding those not packaged by Debian
+ at all.
 ```
 
 Alternatively, run the following as root:
@@ -276,8 +279,9 @@ Alternatively, run the following as root:
 apt install awk binutils clang-19 clang-format-19 clang-tools-19 codespell \
     coreutils devscripts findutils gcc gcc-aarch64-linux-gnu \
     gcc-i686-linux-gnu gcc-mips-linux-gnu gcc-s390x-linux-gnu git gzip \
-    libasan6 libcunit1-dev libubsan1 llvm-19-dev make musl-tools parallel \
-    qemu-user-binfmt/bookworm-backports sed shellcheck tar tcc valgrind xz-utils
+    libasan6 libcunit1-dev libubsan1 libjson-c-dev llvm-19-dev make musl-tools \
+    parallel pkg-config qemu-user-binfmt/bookworm-backports sed shellcheck tar \
+    tcc valgrind xz-utils
 ```
 
 ### Non-Debian Dependencies
