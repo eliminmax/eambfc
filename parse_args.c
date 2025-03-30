@@ -190,7 +190,7 @@ nonnull_args static bool select_inter(
     return false;
 }
 
-static noreturn nonnull_args void report_version(const char *progname) {
+noreturn static nonnull_args void report_version(const char *progname) {
     /* strip leading path from progname */
     const char *filename;
     while ((filename = strchr(progname, '/'))) progname = filename + 1;
@@ -226,7 +226,7 @@ static noreturn nonnull_args void report_version(const char *progname) {
     "."
 #endif /* BFC_NUM_BACKENDS */
 
-static noreturn nonnull_args void list_arches(void) {
+noreturn static nonnull_args void list_arches(void) {
     puts(ARCH_LIST_START
 /* __BACKENDS__ add backend and any aliases in a block here*/
 #if BFC_TARGET_X86_64
@@ -249,7 +249,7 @@ static noreturn nonnull_args void list_arches(void) {
 #undef ARCH_LIST_START
 #undef ARCH_LIST_END
 
-static noreturn nonnull_args void bad_arg(
+noreturn static nonnull_args void bad_arg(
     const char *progname, bf_err_id id, const char *msg, bool show_hint
 ) {
     display_err((bf_comp_err){
