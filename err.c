@@ -533,10 +533,81 @@ static void json_sanity_test(void) {
     CU_ASSERT(check_err_json(err_text, &expected));
 }
 
+static void non_utf8_filename(void) {
+    bf_comp_err expected = {
+        .msg = "Some error occurred in a file with a non-UTF8 name.",
+        .id = BF_ERR_BAD_EXTENSION,
+        .has_instr = false,
+        .has_location = false,
+        .file = "somefile.b" UNICODE_REPLACEMENT "f"
+    };
+    bf_comp_err test_err;
+    memcpy(&test_err, &expected, sizeof(bf_comp_err));
+    test_err.file =
+        "somefile.b"
+        "\xee"
+        "f";
+    char *err_json = err_to_json(test_err);
+    CU_ASSERT(check_err_json(err_json, &expected));
+    free(err_json);
+}
+
+static void json_escape_test(void) {
+    char transfer[8];
+    size_t read_sz;
+    sized_buf output = newbuf(128);
+
+    for (char i = 0; i < 0x10; i++) {
+        CU_ASSERT_EQUAL(json_utf8_next((char[2]){i, 0}, transfer), 1);
+        append_str(&output, transfer);
+    }
+    puts(output.buf);
+    CU_ASSERT_STRING_EQUAL(
+        output.buf,
+        "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007"
+        "\\b\\t\\n\\u000b\\f\\r\\u000e\\u000f"
+    );
+    output.sz = 0;
+
+    CU_ASSERT_EQUAL(json_utf8_next("\"", transfer), 1);
+    append_str(&output, transfer);
+    CU_ASSERT_EQUAL(json_utf8_next("\'", transfer), 1);
+    append_str(&output, transfer);
+    CU_ASSERT_EQUAL(json_utf8_next("\\", transfer), 1);
+    append_str(&output, transfer);
+    CU_ASSERT_STRING_EQUAL(output.buf, "\\\"'\\\\");
+    output.sz = 0;
+
+    CU_ASSERT_EQUAL(json_utf8_next(" ", transfer), 1);
+    append_str(&output, transfer);
+    CU_ASSERT_EQUAL(json_utf8_next("\x90", transfer), 1);
+    append_str(&output, transfer);
+    CU_ASSERT_STRING_EQUAL(output.buf, " " UNICODE_REPLACEMENT);
+    output.sz = 0;
+
+    CU_ASSERT_EQUAL(json_utf8_next(UNICODE_REPLACEMENT, transfer), 3);
+    append_str(&output, transfer);
+    CU_ASSERT_EQUAL(output.sz, 3);
+    CU_ASSERT_STRING_EQUAL(output.buf, UNICODE_REPLACEMENT);
+    output.sz = 0;
+
+    const char *readptr = "Hello, world!\n";
+    while (*readptr) {
+        read_sz = json_utf8_next(readptr, transfer);
+        CU_ASSERT_EQUAL(read_sz, 1);
+        append_str(&output, transfer);
+        readptr += read_sz;
+    }
+    CU_ASSERT_STRING_EQUAL(output.buf, "Hello, world!\\n");
+    free(output.buf);
+}
+
 CU_pSuite register_err_tests(void) {
     CU_pSuite suite;
     INIT_SUITE(suite);
     ADD_TEST(suite, json_sanity_test);
+    ADD_TEST(suite, non_utf8_filename);
+    ADD_TEST(suite, json_escape_test);
     return suite;
 }
 
