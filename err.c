@@ -186,7 +186,7 @@ json_utf8_next(const char *restrict src, char dst[restrict 8]) {
                 c = 'b';
                 break;
             default:
-                sprintf(dst, "\\u%05hhx", (uchar)*src);
+                sprintf(dst, "\\u%04hhx", (uchar)*src);
                 return 1;
         }
         sprintf(dst, "\\%c", c);
