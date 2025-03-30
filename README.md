@@ -289,7 +289,7 @@ apt install awk binutils clang-19 clang-format-19 clang-tools-19 codespell \
 * [reuse helper tool >= 5.0.0](https://git.fsfe.org/reuse/tool)
   * newer than Debian-packaged version, used to validate license data
 * [cppcheck](https://github.com/danmar/cppcheck)
-  * newer than Debian-packaged version, abd supports more checks
+  * newer than Debian-packaged version, and supports more checks
 * [just](https://github.com/casey/just)
   * command runner used to drive testing and release automation
 
