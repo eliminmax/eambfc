@@ -15,18 +15,12 @@
 #include "../config.h"
 #include "../types.h"
 
-#ifdef BFC_TEST_UTILS_C
-#define inline_impl extern inline
-#else /* BFC_TEST_UTILS_C */
-#define inline_impl inline
-#endif /* BFC_TEST_UTILS_C */
-
-nonnull_args inline_impl bool sb_eq(const sized_buf *a, const sized_buf *b) {
+nonnull_args inline bool sb_eq(const sized_buf *a, const sized_buf *b) {
     return a->sz == b->sz && memcmp(a->buf, b->buf, a->sz) == 0;
 }
 
 /* malloc, aborting on failure*/
-nonnull_ret malloc_like inline_impl void *checked_malloc(size_t sz) {
+nonnull_ret malloc_like inline void *checked_malloc(size_t sz) {
     void *ret = malloc(sz);
     if (ret == NULL) {
         perror("Failed allocation");
@@ -36,7 +30,7 @@ nonnull_ret malloc_like inline_impl void *checked_malloc(size_t sz) {
 }
 
 /* realloc, freeing ptr and aborting on failure */
-nonnull_ret inline_impl void *checked_realloc(void *ptr, size_t sz) {
+nonnull_ret inline void *checked_realloc(void *ptr, size_t sz) {
     void *ret = realloc(ptr, sz);
     if (ret == NULL) {
         perror("Failed allocation");
@@ -55,7 +49,7 @@ nonnull_args size_t read_chunk(sized_buf *dst, int fd);
  * If sz is already a multiple of `BFC_CHUNK_SIZE`, or if there are no multiples
  * of `BFC_CHUNK_SIZE` greater than `sz` but less than `SIZE_MAX`, `sz` is
  * returned unchanged. */
-inline_impl const_fn size_t mempad(size_t sz) {
+inline const_fn size_t mempad(size_t sz) {
     size_t alloc_sz = (sz & (BFC_CHUNK_SIZE - 1)) ?
                           (sz & ~(BFC_CHUNK_SIZE - 1)) + BFC_CHUNK_SIZE :
                           sz;
@@ -123,5 +117,4 @@ nonnull_arg(1) int run_capturing(
         } \
     } while (false)
 
-#undef inline_impl
 #endif /* TEST_UTILS_H */

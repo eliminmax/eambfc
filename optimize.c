@@ -10,7 +10,6 @@
 /* internal */
 #include "attributes.h"
 #include "err.h"
-#include "resource_mgr.h"
 #include "types.h"
 #include "util.h"
 
@@ -35,10 +34,9 @@ static nonnull_args void filter_non_bf(sized_buf *code) {
     instr = '\0';
     /* null terminate it */
     append_obj(&tmp, &instr, 1);
-    mgr_free(code->buf);
-    code->sz = tmp.sz;
-    code->capacity = tmp.capacity;
-    code->buf = tmp.buf;
+    code->sz = 0;
+    append_obj(code, tmp.buf, tmp.sz);
+    free(tmp.buf);
 }
 
 static void instr_err(
@@ -116,7 +114,7 @@ static nonnull_args bool loops_match(const char *code, const char *in_name) {
 #define REPSTR256(s) REPSTR64(s) REPSTR64(s) REPSTR64(s) REPSTR64(s)
 
 /* remove redundant instruction sequences like `<>` */
-static nonnull_args void remove_dead(sized_buf *ir, const char *in_name) {
+static nonnull_args bool remove_dead(sized_buf *ir, const char *in_name) {
     /* code constructs that do nothing - either 2 adjacent instructions that
      * cancel each other out, or 256 consecutive `+` or `-` instructions that
      * loop the current cell back to its current value */
@@ -141,11 +139,7 @@ static nonnull_args void remove_dead(sized_buf *ir, const char *in_name) {
         if (*str == '[') {
             matched = true;
             loop_end = find_loop_end(str, in_name);
-            if (loop_end == NULL) {
-                mgr_free(ir->buf);
-                ir->buf = NULL;
-                return;
-            }
+            if (loop_end == NULL) return false;
             memmove(str, loop_end, strlen(loop_end) + 1);
         }
         /* next, remove any matches for simple_patterns[*] */
@@ -164,33 +158,29 @@ static nonnull_args void remove_dead(sized_buf *ir, const char *in_name) {
             matched = true;
             /* skip past the closing `]` */
             loop_end = find_loop_end(++match_start, in_name);
-            if (loop_end == NULL) {
-                mgr_free(ir->buf);
-                ir->buf = NULL;
-                return;
-            }
+            if (loop_end == NULL) return false;
             memmove(match_start, loop_end, strlen(loop_end) + 1);
         }
     } while (matched);
     ir->sz = strlen(str) + 1;
+    return true;
 }
 
 /* Merge `[-]` and `[+]` into `@` */
 static nonnull_args void merge_set_zero(sized_buf *ir) {
-    char *str = ir->buf;
     char *p;
-
     /* handle [-] */
-    while ((p = strstr(str, "[-]"))) {
+    while ((p = strstr(ir->buf, "[-]"))) {
         *p = '@';
         memmove(p + 1, p + 3, strlen(p + 3) + 1);
+        ir->sz -= 2;
     }
     /* handle [+] */
-    while ((p = strstr(str, "[+]"))) {
+    while ((p = strstr(ir->buf, "[+]"))) {
         *p = '@';
         memmove(p + 1, p + 3, strlen(p + 3) + 1);
+        ir->sz -= 2;
     }
-    ir->sz = strlen(str);
 }
 
 /* filter out all non-BF bytes, and anything that is trivially determined to be
@@ -201,22 +191,10 @@ static nonnull_args void merge_set_zero(sized_buf *ir) {
  * messages. */
 nonnull_args bool filter_dead(sized_buf *bf_code, const char *in_name) {
     filter_non_bf(bf_code);
-    if (bf_code->buf == NULL) {
-        mgr_free(bf_code->buf);
-        bf_code->buf = NULL;
-        return false;
-    }
-    if (!loops_match(bf_code->buf, in_name)) {
-        mgr_free(bf_code->buf);
-        bf_code->buf = NULL;
-        return false;
-    }
+    if (bf_code->buf == NULL) return false;
+    if (!loops_match(bf_code->buf, in_name)) return false;
     remove_dead(bf_code, in_name);
-    if (bf_code->buf == NULL) {
-        mgr_free(bf_code->buf);
-        bf_code->buf = NULL;
-        return false;
-    }
+    if (bf_code->buf == NULL) return false;
     merge_set_zero(bf_code);
     return true;
 }
@@ -260,7 +238,7 @@ static void strip_dead_code_test(void) {
     tgt = sb_reserve(&filterable, 1);
     *tgt = '\0';
     CU_ASSERT_STRING_EQUAL(filterable.buf, ">[->+<]");
-    mgr_free(filterable.buf);
+    free(filterable.buf);
 }
 
 CU_pSuite register_optimize_tests(void) {

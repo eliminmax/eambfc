@@ -18,24 +18,32 @@
 #include <CUnit/CUnit.h> /* IWYU pragma: export */
 
 /* internal */
+#include "err.h"
 #include "types.h"
 
 #ifdef UNIT_TEST_C
-#define unit_extern
-#else /* UNIT_TEST_C */
-#define unit_extern extern
+#define extern
 #endif /* UNIT_TEST_C */
 
 typedef LLVMDisasmContextRef disasm_ref;
 
 /* __BACKENDS__ add a declaration of the disasm_ref here */
-unit_extern disasm_ref ARM64_DIS;
-unit_extern disasm_ref RISCV64_DIS;
-unit_extern disasm_ref S390X_DIS;
-unit_extern disasm_ref X86_64_DIS;
+extern disasm_ref ARM64_DIS;
+extern disasm_ref RISCV64_DIS;
+extern disasm_ref S390X_DIS;
+extern disasm_ref X86_64_DIS;
 
-unit_extern bool testing_err;
-unit_extern jmp_buf etest_stack;
+extern bf_err_id current_err;
+
+enum test_status {
+    TEST_SET = -1,
+    NOT_TESTING = 0,
+    TEST_INTERCEPT = 1,
+};
+
+extern enum test_status testing_err;
+
+extern jmp_buf etest_stack;
 
 /* disassemble the contents of bytes, and return a sized_buf containing the
  * diassembly - instructions are separated by newlines, and the disassembly as a
@@ -74,7 +82,7 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
 
 /* utility macro to set up a CUnit suite with the current file name */
 #define INIT_SUITE(suite_var) \
-    ERRORCHECKED(suite_var = CU_add_suite(__BASE_FILE__, NULL, NULL))
+    ERRORCHECKED(suite_var = CU_add_suite(__FILE__, NULL, NULL))
 
 /* simple self-explanatory ERRORCHECKED wrapper around CU_ADD_TEST */
 #define ADD_TEST(suite, test) ERRORCHECKED(CU_ADD_TEST(suite, test))
@@ -84,18 +92,20 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
  * in one of `internal_err`, `alloc_err`, or `display_err` being called later */
 #define EXPECT_BF_ERR(eid) \
     do { \
-        testing_err = true; \
+        testing_err = TEST_INTERCEPT; \
         int returned_err; \
         if ((returned_err = setjmp(etest_stack))) { \
             CU_ASSERT_EQUAL(eid << 0 | 1, returned_err); \
         } \
-        testing_err = false; \
+        testing_err = NOT_TESTING; \
         return; \
     } while (0);
 
 CU_pSuite register_util_tests(void);
 CU_pSuite register_serialize_tests(void);
 CU_pSuite register_optimize_tests(void);
+CU_pSuite register_err_tests(void);
+CU_pSuite register_compile_tests(void);
 
 /* __BACKENDS__ add your test suite here */
 CU_pSuite register_arm64_tests(void);

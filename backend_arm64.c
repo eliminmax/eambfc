@@ -37,12 +37,12 @@ typedef enum {
 } mov_type;
 
 /* set dst to the machine code for STRB w17, x.reg */
-static void store_to_byte(u8 src, u8 dst[4]) {
+static void store_to_byte(u8 src, char dst[4]) {
     serialize32le(0x38000411 | (((u32)src) << 5), dst);
 }
 
 /* set dst to the machine code for LDRB w17, x.reg */
-static void load_from_byte(u8 reg, u8 dst[4]) {
+static void load_from_byte(u8 reg, char dst[4]) {
     serialize32le(0x38400411 | (((u32)reg) << 5), dst);
 }
 
@@ -50,7 +50,7 @@ const u8 TEMP_REG = 17;
 
 /* set dst to the machine code for one of MOVK, MOVN, or MOVZ, depending on mt,
  * with the given operands. */
-static void mov(mov_type mt, u16 imm, shift_lvl shift, u8 reg, u8 *dst) {
+static void mov(mov_type mt, u16 imm, shift_lvl shift, u8 reg, char *dst) {
     /* for MOVN, the bits need to be inverted. Ask Arm, not me. */
     if (mt == A64_MT_INVERT) imm = ~imm;
     u32 instr = 0x92800000 | ((u32)mt << 29) | ((u32)shift << 16) |
@@ -60,7 +60,7 @@ static void mov(mov_type mt, u16 imm, shift_lvl shift, u8 reg, u8 *dst) {
 
 /* Choose a combination of MOVZ, MOVK, and MOVN that sets register x.reg to
  * the immediate imm */
-static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     u16 default_val;
     mov_type lead_mt;
 
@@ -101,33 +101,34 @@ static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         /* (MOVZ|MOVN) x.reg, default_val */
         mov(lead_mt, default_val, A64_SL_NO_SHIFT, reg, sb_reserve(dst_buf, 4));
     }
-    return true;
 }
 
 /* MOV x.dst, x.src
  * technically an alias for ORR x.dst, XZR, x.src */
-static bool reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
-    return append_obj(dst_buf, (u8[]){0xe0 | dst, 0x03, src, 0xaa}, 4);
+static void reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
+    append_obj(dst_buf, (u8[]){0xe0 | dst, 0x03, src, 0xaa}, 4);
 }
 
 /* SVC 0 */
-static bool syscall(sized_buf *dst_buf) {
-    return append_obj(dst_buf, (u8[]){0x01, 0x00, 0x00, 0xd4}, 4);
+static void syscall(sized_buf *dst_buf) {
+    append_obj(dst_buf, (u8[]){0x01, 0x00, 0x00, 0xd4}, 4);
 }
 
 #define NOP 0x1f, 0x20, 0x03, 0xd5
 
-static bool pad_loop_open(sized_buf *dst_buf) {
+static void pad_loop_open(sized_buf *dst_buf) {
     /* BRK 1; NOP; NOP; */
     uchar instr_seq[3][4] = {{0x00}, {NOP}, {NOP}};
     serialize32le(0xd4200020, instr_seq[0]);
-    return append_obj(dst_buf, instr_seq, 12);
+    append_obj(dst_buf, instr_seq, 12);
 }
 
 #undef NOP
 
+#define JUMP_SIZE 12
+
 /* LDRB w17, x.reg; TST w17, 0xff; B.cond offset */
-static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
+static bool branch_cond(u8 reg, i64 offset, char dst[JUMP_SIZE], u8 cond) {
     if ((offset % 4) != 0) {
         internal_err(
             BF_ICE_INVALID_JUMP_ADDRESS,
@@ -149,26 +150,25 @@ static bool branch_cond(u8 reg, i64 offset, sized_buf *dst_buf, u8 cond) {
         return false;
     }
     u32 off_val = ((offset >> 2) + 1) & 0x7ffff;
-    u8 *test_and_branch = sb_reserve(dst_buf, 12);
     /* LDRB w17, x.reg */
-    load_from_byte(reg, test_and_branch);
+    load_from_byte(reg, &dst[0]);
     /* TST x17, 0xff */
-    serialize32le(0xf2401e3f, &test_and_branch[4]);
+    serialize32le(0xf2401e3f, &dst[4]);
     /* B.cond offset */
-    serialize32le(0x54000000 | cond | (off_val << 5), &test_and_branch[8]);
+    serialize32le(0x54000000 | cond | (off_val << 5), &dst[8]);
     return true;
 }
 
-/* LDRB w17, x.reg; TST w17, 0xff; B.NE offset */
-static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
-    /* 1 is the not zero / not equal condition code */
-    return branch_cond(reg, offset, dst_buf, 1);
+/* LDRB w17, x.reg; TST w17, 0xff; B.E offset */
+static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf, size_t index) {
+    /* 0 is the zero / equal condition code */
+    return branch_cond(reg, offset, &dst_buf->buf[index], 0);
 }
 
-/* LDRB w17, x.reg; TST w17, 0xff; B.E offset */
-static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
-    /* 0 is the zero / equal condition code */
-    return branch_cond(reg, offset, dst_buf, 0);
+/* LDRB w17, x.reg; TST w17, 0xff; B.NE offset */
+static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
+    /* 1 is the not zero / not equal condition code */
+    return branch_cond(reg, offset, sb_reserve(dst_buf, 12), 1);
 }
 
 static bool add_sub_imm(
@@ -192,7 +192,7 @@ static bool add_sub_imm(
     return true;
 }
 
-static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
+static void add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
     /* If the immediate fits within 12 bits, it's a far simpler process - simply
      * ADD or SUB the immediate. If it fits within 24 bits, use an ADD or SUB,
      * and shift the higher 12 of the 24 bits. If the 12 lower bits are
@@ -201,71 +201,66 @@ static bool add_sub(u8 reg, arith_op op, u64 imm, sized_buf *dst_buf) {
      * If the immediate does not fit within the lower 24 bits, then first set
      * x17 to the immediate, then ADD or SUB it. */
     if (imm < UINT64_C(0x1000)) {
-        return add_sub_imm(reg, imm, false, op, dst_buf);
+        add_sub_imm(reg, imm, false, op, dst_buf);
     } else if (imm < UINT64_C(0x1000000)) {
-        bool ret = add_sub_imm(reg, imm & 0xfff000, true, op, dst_buf);
-        if (ret && ((imm & 0xfff) != 0)) {
-            ret &= add_sub_imm(reg, imm & 0xfff, false, op, dst_buf);
-        }
-        return ret;
+        add_sub_imm(reg, imm & 0xfff000, true, op, dst_buf);
+        if (imm & 0xfff) add_sub_imm(reg, imm & 0xfff, false, op, dst_buf);
     } else {
         /* different byte values are needed than normal here */
         u8 op_byte = (op == A64_OP_ADD) ? 0x8b : 0xcb;
         /* set register x17 to the target value */
-        if (!set_reg(TEMP_REG, (i64)imm, dst_buf)) return false;
+        set_reg(TEMP_REG, (i64)imm, dst_buf);
         /* either ADD x.reg, x.reg, x17 or SUB x.reg, x.reg, x17 */
         serialize32le(
             (u32)op_byte << 24 | TEMP_REG << 16 | reg | reg << 5,
             sb_reserve(dst_buf, 4)
         );
-        return true;
     }
 }
 
 /* add_reg, sub_reg, inc_reg, and dec_reg are all simple wrappers around
  * add_sub. */
-static bool add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
-    return add_sub(reg, A64_OP_ADD, imm, dst_buf);
+static void add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+    add_sub(reg, A64_OP_ADD, imm, dst_buf);
 }
 
-static bool sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
-    return add_sub(reg, A64_OP_SUB, imm, dst_buf);
+static void sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+    add_sub(reg, A64_OP_SUB, imm, dst_buf);
 }
 
-static bool inc_reg(u8 reg, sized_buf *dst_buf) {
-    return add_sub(reg, A64_OP_ADD, 1, dst_buf);
+static void inc_reg(u8 reg, sized_buf *dst_buf) {
+    add_sub(reg, A64_OP_ADD, 1, dst_buf);
 }
 
-static bool dec_reg(u8 reg, sized_buf *dst_buf) {
-    return add_sub(reg, A64_OP_SUB, 1, dst_buf);
+static void dec_reg(u8 reg, sized_buf *dst_buf) {
+    add_sub(reg, A64_OP_SUB, 1, dst_buf);
 }
 
 /* to increment or decrement a byte, first load it into TEMP_REG,
  * then call an inner function (either inc_reg or dec_reg) on TEMP_REG,
  * and finally, store the least significant byte of TEMP_REG into the byte */
-typedef bool (*inc_dec_fn)(u8 reg, sized_buf *dst_buf);
+typedef void (*inc_dec_fn)(u8 reg, sized_buf *dst_buf);
 
-static bool inc_dec_byte(u8 reg, sized_buf *dst_buf, inc_dec_fn inner_fn) {
+static void inc_dec_byte(u8 reg, sized_buf *dst_buf, inc_dec_fn inner_fn) {
     load_from_byte(reg, sb_reserve(dst_buf, 4));
-    if (!inner_fn(TEMP_REG, dst_buf)) return false;
+    inner_fn(TEMP_REG, dst_buf);
     store_to_byte(reg, sb_reserve(dst_buf, 4));
-    return true;
 }
 
 /* next, some thin wrappers around the inc_dec_byte function that can be used in
  * the arch_funcs struct */
-static bool inc_byte(u8 reg, sized_buf *dst_buf) {
-    return inc_dec_byte(reg, dst_buf, &inc_reg);
+static void inc_byte(u8 reg, sized_buf *dst_buf) {
+    inc_dec_byte(reg, dst_buf, &inc_reg);
 }
 
-static bool dec_byte(u8 reg, sized_buf *dst_buf) {
-    return inc_dec_byte(reg, dst_buf, &dec_reg);
+static void dec_byte(u8 reg, sized_buf *dst_buf) {
+    inc_dec_byte(reg, dst_buf, &dec_reg);
 }
 
 /* similar to add_sub_reg, but operating on an auxiliary register, after loading
  * from byte and before restoring to that byte, much like inc_dec_byte */
 static bool add_sub_byte(u8 reg, u8 imm8, arith_op op, sized_buf *dst_buf) {
-    u8 *i_bytes = sb_reserve(dst_buf, 12);
+    char *i_bytes = sb_reserve(dst_buf, 12);
     /* load the byte in address stored in x.reg into x17 */
     load_from_byte(reg, i_bytes);
     /* (ADD|SUB) x.17, x.17, imm8 */
@@ -276,19 +271,18 @@ static bool add_sub_byte(u8 reg, u8 imm8, arith_op op, sized_buf *dst_buf) {
 }
 
 /* a function to zero out a memory address. */
-static bool zero_byte(u8 reg, sized_buf *dst_buf) {
+static void zero_byte(u8 reg, sized_buf *dst_buf) {
     serialize32le(0x3800041f | reg << 5, sb_reserve(dst_buf, 4));
-    return true;
 }
 
 /* now, the last few thin wrapper functions */
 
-static bool add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
-    return add_sub_byte(reg, imm8, A64_OP_ADD, dst_buf);
+static void add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+    add_sub_byte(reg, imm8, A64_OP_ADD, dst_buf);
 }
 
-static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
-    return add_sub_byte(reg, imm8, A64_OP_SUB, dst_buf);
+static void sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+    add_sub_byte(reg, imm8, A64_OP_SUB, dst_buf);
 }
 
 const arch_inter ARM64_INTER = {
@@ -299,8 +293,8 @@ const arch_inter ARM64_INTER = {
     .reg_copy = reg_copy,
     .syscall = syscall,
     .pad_loop_open = pad_loop_open,
-    .jump_zero = jump_zero,
-    .jump_not_zero = jump_not_zero,
+    .jump_open = jump_open,
+    .jump_close = jump_close,
     .inc_reg = inc_reg,
     .dec_reg = dec_reg,
     .inc_byte = inc_byte,
@@ -346,8 +340,8 @@ static void test_set_reg_simple(void) {
         DISASM_TEST(sb, dis, test_sets[i].disasm);
     }
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_multiple(void) {
@@ -362,8 +356,8 @@ static void test_reg_multiple(void) {
         "movk x0, #0xdead, lsl #16\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_split(void) {
@@ -378,8 +372,8 @@ static void test_reg_split(void) {
         "movk x19, #0xdead, lsl #32\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_neg(void) {
@@ -395,8 +389,8 @@ static void test_reg_neg(void) {
         "movk x19, #0x2152, lsl #16\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_neg_split(void) {
@@ -424,8 +418,8 @@ static void test_reg_neg_split(void) {
         "movk x8, #0x2152, lsl #32\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_inc_dec_reg(void) {
@@ -444,8 +438,8 @@ static void test_inc_dec_reg(void) {
     dec_reg(19, &sb);
     DISASM_TEST(sb, dis, "sub x19, x19, #0x1\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_load_store(void) {
@@ -458,8 +452,8 @@ static void test_load_store(void) {
     store_to_byte(19, sb_reserve(&sb, 4));
     DISASM_TEST(sb, dis, "strb w17, [x19], #0x0\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_add_sub_reg(void) {
@@ -480,8 +474,8 @@ static void test_add_sub_reg(void) {
         "mov x17, #0xbeef\nmovk x17, #0xdead, lsl #16\nsub x8, x8, x17\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_add_sub_byte(void) {
@@ -502,8 +496,8 @@ static void test_add_sub_byte(void) {
         "strb w17, [x19], #0x0\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_zero_byte(void) {
@@ -513,8 +507,8 @@ static void test_zero_byte(void) {
     zero_byte(19, &sb);
     DISASM_TEST(sb, dis, "strb wzr, [x19], #0x0\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_inc_dec_wrapper(void) {
@@ -533,8 +527,8 @@ static void test_inc_dec_wrapper(void) {
         "strb w17, [x8], #0x0\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_reg_copy(void) {
@@ -551,8 +545,8 @@ static void test_reg_copy(void) {
         "mov x8, x8\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_syscall(void) {
@@ -561,8 +555,8 @@ static void test_syscall(void) {
     syscall(&sb);
     DISASM_TEST(sb, dis, "svc #0\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_jmp_padding(void) {
@@ -571,15 +565,16 @@ static void test_jmp_padding(void) {
     pad_loop_open(&sb);
     DISASM_TEST(sb, dis, "brk #0x1\nnop\nnop\n");
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_successful_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(104);
-    jump_zero(0, 32, &sb);
-    jump_not_zero(0, -32, &sb);
+    sb_reserve(&sb, JUMP_SIZE);
+    jump_open(0, 32, &sb, 0);
+    jump_close(0, -32, &sb);
     DISASM_TEST(
         sb,
         dis,
@@ -591,18 +586,18 @@ static void test_successful_jumps(void) {
         "b.ne #-0x1c\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_bad_jump_offset(void) {
     EXPECT_BF_ERR(BF_ICE_INVALID_JUMP_ADDRESS);
-    jump_not_zero(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_close(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 static void test_jump_too_long(void) {
     EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_zero(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_close(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 CU_pSuite register_arm64_tests(void) {

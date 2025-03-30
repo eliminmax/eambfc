@@ -15,7 +15,6 @@
 #include "compat/elf.h"
 #include "err.h"
 #include "optimize.h"
-#include "resource_mgr.h"
 #include "serialize.h"
 #include "types.h"
 #include "util.h"
@@ -220,24 +219,22 @@ static bool write_phtb(
  *  - arg3 is the number of bytes to write/read
  *
  * Due to their similarity, ',' and '.' are both implemented with bf_io. */
-static bool bf_io(
+static void bf_io(
     sized_buf *obj_code, int bf_fd, int sc, const arch_inter *inter
 ) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
-    return (
-        /* load the number for the write system call into sc_num */
-        inter->set_reg(inter->reg_sc_num, sc, obj_code) &&
-        /* load the number for the stdout file descriptor into arg1 */
-        inter->set_reg(inter->reg_arg1, bf_fd, obj_code) &&
-        /* copy the address in bf_ptr to arg2 */
-        inter->reg_copy(inter->reg_arg2, inter->reg_bf_ptr, obj_code) &&
-        /* load # of bytes to read/write (1, specifically) into arg3 */
-        inter->set_reg(inter->reg_arg3, 1, obj_code) &&
-        /* finally, call the syscall instruction */
-        inter->syscall(obj_code)
-    );
+    /* load the number for the write system call into sc_num */
+    inter->set_reg(inter->reg_sc_num, sc, obj_code);
+    /* load the number for the stdout file descriptor into arg1 */
+    inter->set_reg(inter->reg_arg1, bf_fd, obj_code);
+    /* copy the address in bf_ptr to arg2 */
+    inter->reg_copy(inter->reg_arg2, inter->reg_bf_ptr, obj_code);
+    /* load # of bytes to read/write (1, specifically) into arg3 */
+    inter->set_reg(inter->reg_arg3, 1, obj_code);
+    /* finally, call the syscall instruction */
+    inter->syscall(obj_code);
 }
 
 /* number of indexes in the jump stack to allocate for at a time */
@@ -278,7 +275,7 @@ static bool bf_jump_open(
             return false;
         }
 
-        jump_stack.locations = mgr_realloc(
+        jump_stack.locations = checked_realloc(
             jump_stack.locations,
             (jump_stack.next_index + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
         );
@@ -291,7 +288,8 @@ static bool bf_jump_open(
     /* insert an architecture-specific illegal/trap instruction, then pad to
      * proper size with no-op instructions so that the space for the jump open
      * is reserved before the address is known. */
-    return inter->pad_loop_open(obj_code);
+    inter->pad_loop_open(obj_code);
+    return true;
 }
 
 /* compile matching `[` and `]` instructions
@@ -326,16 +324,12 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
      * conditional jump instruction without any risk of unnecessary reallocation
      * or any temporary buffer, sized or not. */
 
-    sized_buf tmp_buf = {
-        .buf = obj_code->buf, .sz = open_addr, .capacity = obj_code->capacity
-    };
-
-    if (!inter->jump_zero(inter->reg_bf_ptr, distance, &tmp_buf)) {
+    if (!inter->jump_open(inter->reg_bf_ptr, distance, obj_code, open_addr)) {
         return false;
     }
 
     /* jumps to right after the `[` instruction, to skip a redundant check */
-    return inter->jump_not_zero(inter->reg_bf_ptr, -distance, obj_code);
+    return inter->jump_close(inter->reg_bf_ptr, -distance, obj_code);
 }
 
 /* 4 of the 8 brainfuck instructions can be compiled with instructions that take
@@ -354,22 +348,28 @@ static bool comp_instr(
         /* start with the simple cases handled with COMPILE_WITH */
         /* decrement the tape pointer register */
         case '<':
-            return COMPILE_WITH(inter->dec_reg);
+            COMPILE_WITH(inter->dec_reg);
+            return true;
         /* increment the tape pointer register */
         case '>':
-            return COMPILE_WITH(inter->inc_reg);
+            COMPILE_WITH(inter->inc_reg);
+            return true;
         /* increment the current tape value */
         case '+':
-            return COMPILE_WITH(inter->inc_byte);
+            COMPILE_WITH(inter->inc_byte);
+            return true;
         /* decrement the current tape value */
         case '-':
-            return COMPILE_WITH(inter->dec_byte);
+            COMPILE_WITH(inter->dec_byte);
+            return true;
         /* write to stdout */
         case '.':
-            return bf_io(obj_code, STDOUT_FILENO, inter->sc_write, inter);
+            bf_io(obj_code, STDOUT_FILENO, inter->sc_write, inter);
+            return true;
         /* read from stdin */
         case ',':
-            return bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
+            bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
+            return true;
         /* `[` and `]` do their own error handling. */
         case '[':
             return bf_jump_open(obj_code, inter, in_name);
@@ -413,15 +413,20 @@ static bool comp_ir_instr(
             return true;
         /* if it's @, then zero the byte pointed to by bf_ptr */
         case '@':
-            return inter->zero_byte(inter->reg_bf_ptr, obj_code);
+            inter->zero_byte(inter->reg_bf_ptr, obj_code);
+            return true;
         case '+':
-            return IR_COMPILE_WITH(inter->add_byte);
+            IR_COMPILE_WITH(inter->add_byte);
+            return true;
         case '-':
-            return IR_COMPILE_WITH(inter->sub_byte);
+            IR_COMPILE_WITH(inter->sub_byte);
+            return true;
         case '>':
-            return IR_COMPILE_WITH(inter->add_reg);
+            IR_COMPILE_WITH(inter->add_reg);
+            return true;
         case '<':
-            return IR_COMPILE_WITH(inter->sub_reg);
+            IR_COMPILE_WITH(inter->sub_reg);
+            return true;
         default:
             internal_err(BF_ICE_INVALID_IR, "Invalid IR Opcode");
             return false;
@@ -480,7 +485,7 @@ bool bf_compile(
 
     /* reset the jump stack for the new file */
     jump_stack.next_index = 0;
-    jump_stack.locations = mgr_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
+    jump_stack.locations = checked_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
 
     /* reset the current line and column */
@@ -488,12 +493,14 @@ bool bf_compile(
     col = 0;
 
     /* set the bf_ptr register to the address of the start of the tape */
-    ret &= inter->set_reg(inter->reg_bf_ptr, TAPE_ADDRESS, &obj_code);
+    inter->set_reg(inter->reg_bf_ptr, TAPE_ADDRESS, &obj_code);
 
     /* compile the actual source code to object code */
     if (optimize) {
         if (!filter_dead(&src_code, in_name)) {
-            mgr_free(jump_stack.locations);
+            free(src_code.buf);
+            free(jump_stack.locations);
+            free(obj_code.buf);
             return false;
         }
         ret &= compile_condensed(src_code.buf, &obj_code, inter, in_name);
@@ -505,11 +512,11 @@ bool bf_compile(
 
     /* write code to perform the exit(0) syscall */
     /* set system call register to exit system call number */
-    ret &= inter->set_reg(inter->reg_sc_num, inter->sc_exit, &obj_code);
+    inter->set_reg(inter->reg_sc_num, inter->sc_exit, &obj_code);
     /* set system call register to the desired exit code (0) */
-    ret &= inter->set_reg(inter->reg_arg1, 0, &obj_code);
+    inter->set_reg(inter->reg_arg1, 0, &obj_code);
     /* perform a system call */
-    ret &= inter->syscall(&obj_code);
+    inter->syscall(&obj_code);
 
     /* now, obj_code size is known, so we can write the headers and padding */
     ret &= write_ehdr(out_fd, tape_blocks, inter, out_name);
@@ -534,9 +541,113 @@ bool bf_compile(
         ret = false;
     }
 
-    mgr_free(obj_code.buf);
-    mgr_free(src_code.buf);
-    mgr_free(jump_stack.locations);
+    free(obj_code.buf);
+    free(src_code.buf);
+    free(jump_stack.locations);
 
     return ret;
 }
+
+#ifdef BFC_TEST
+/* POSIX */
+#include <fcntl.h>
+#include <sys/wait.h>
+/* internal */
+#include "unit_test.h"
+
+/* spawn a child process, and pipe `src` in from a child process into
+ * `bf_compile`. If an error occurs, it returns the bf_err_id left-shifted by 1,
+ * with the lowest bit set to 1. Otherwise, it returns 0. */
+static int test_compile(const char *src, bool optimize) {
+    testing_err = TEST_SET;
+    pid_t chld;
+    ssize_t src_sz = strlen(src);
+    int pipe_fds[2];
+    if (pipe(pipe_fds) == -1) {
+        perror("pipe");
+        abort();
+    }
+    if ((chld = fork()) == -1) {
+        perror("fork");
+        abort();
+    }
+    if (chld == 0) {
+        if (close(pipe_fds[0]) == -1) abort();
+        const char *p = src;
+        ssize_t write_sz;
+        while (src_sz) {
+            write_sz = write(pipe_fds[1], p, src_sz);
+            if (write_sz == -1) abort();
+            p -= write_sz;
+            src_sz -= write_sz;
+        }
+        if (close(pipe_fds[1]) == -1) abort();
+        exit(EXIT_SUCCESS);
+    }
+    if (close(pipe_fds[1]) == -1) {
+        perror("close");
+        abort();
+    }
+
+    testing_err = TEST_SET;
+    int null_fd = open("/dev/null", O_WRONLY);
+    if (null_fd == -1) {
+        perror("open");
+        abort();
+    }
+
+    bool comp_ret = bf_compile(
+        &BFC_DEFAULT_INTER,
+        "dummy.bf",
+        "dummy",
+        pipe_fds[0],
+        null_fd,
+        optimize,
+        8
+    );
+    if (close(pipe_fds[0]) == -1) {
+        perror("close");
+        abort();
+    }
+    int chld_stat;
+    if (waitpid(chld, &chld_stat, 0) == -1) {
+        perror("waitpid");
+        abort();
+    }
+    if (!WIFEXITED(chld_stat) || WEXITSTATUS(chld_stat) != EXIT_SUCCESS) {
+        fputs("Child exited abnormally\n", stderr);
+        abort();
+    }
+
+    return comp_ret ? 0 : (current_err << 1) | 1;
+}
+
+static void compile_all_bf_instructions(void) {
+    CU_ASSERT(test_compile("+[>]<-,.", false) == 0);
+}
+
+static void compile_nested_loops(void) {
+    CU_ASSERT(test_compile(">+[-->---[-<]>]>+", false) == 0);
+}
+
+static void unmatched_open(void) {
+    CU_ASSERT(test_compile("[", false) == ((BF_ERR_UNMATCHED_OPEN << 1) | 1));
+    CU_ASSERT(test_compile("[", true) == ((BF_ERR_UNMATCHED_OPEN << 1) | 1));
+}
+
+static void unmatched_close(void) {
+    CU_ASSERT(test_compile("]", false) == ((BF_ERR_UNMATCHED_CLOSE << 1) | 1));
+    CU_ASSERT(test_compile("]", true) == ((BF_ERR_UNMATCHED_CLOSE << 1) | 1));
+}
+
+CU_pSuite register_compile_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, compile_all_bf_instructions);
+    ADD_TEST(suite, compile_nested_loops);
+    ADD_TEST(suite, unmatched_open);
+    ADD_TEST(suite, unmatched_close);
+    return suite;
+}
+
+#endif /* BFC_TEST */

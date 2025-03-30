@@ -48,6 +48,8 @@ typedef enum {
     BF_ICE_TOO_MANY_OPENS,
     /* AllocFailure divider */
     BF_FATAL_ALLOC_FAILURE,
+    /* InvalidErrId divider */
+    BF_ICE_INVALID_ERR_ID = -1,
 } bf_err_id;
 
 typedef enum {
@@ -75,7 +77,7 @@ void quiet_mode(void);
 void json_mode(void);
 
 /* function to display error messages, depending on the current error mode. */
-void display_err(bf_comp_err e);
+void display_err(const bf_comp_err e);
 
 /* special handling for malloc/realloc failure error messages, which avoids any
  * further use of malloc/realloc for purposes like generating JSON-escaped

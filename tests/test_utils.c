@@ -16,8 +16,12 @@
 
 /* internal */
 #include "../types.h"
-#define BFC_TEST_UTILS_C
 #include "test_utils.h"
+
+extern inline bool sb_eq(const sized_buf *a, const sized_buf *b);
+extern inline void *checked_malloc(size_t sz);
+extern inline void *checked_realloc(void *ptr, size_t sz);
+extern inline size_t mempad(size_t sz);
 
 /* read up to `BFC_CHUNK_SIZE` from `fd` and append the bytes that were read to
  * `dst`, reallocating as needed. */

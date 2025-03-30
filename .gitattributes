@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: 0BSD
 
+# Style.md is information about expected code style, and is not needed in
+# release tarballs
+/Style.md no-tar
 # configuration files for git and for editors and linters shouldn't be in
 # release tarballs
 /**/.gitignore no-tar

@@ -43,7 +43,13 @@ BEGIN {
     # now, use the output variable to generate the header
 
     outlen = length(output)
-    print "/* header generated with colortest_output.awk */"
+    # REUSE-IgnoreStart
+    print "/* SPDX-FileCopyrightText: NONE"
+    print " *"
+    print " * SPDX-License-Identifier: CC0-1.0"
+    # REUSE-IgnoreStart
+    print " *"
+    print " * header generated with colortest_output.awk */"
     print "/* clang-format off */"
     print "#define COLORTEST_OUTPUT_LEN " outlen
     printf  "#define COLORTEST_OUTPUT"

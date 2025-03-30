@@ -46,7 +46,7 @@ enum RISCV_REGS {
  * to find everyone who had contributed as of 2022, because I didn't want to
  * just go "Copyright 2018-2022 LLVM Contributors"
  * and call it a day - I believe firmly in giving credit where credit is do. */
-bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
+static void encode_li(sized_buf *code_buf, u8 reg, i64 val) {
     u8 i_bytes[4];
     u32 lo12 = sign_extend(val, 12);
     if (bit_fits(val, 32)) {
@@ -55,10 +55,10 @@ bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
             u16 instr =
                 0x6001 | (((hi20 & 0x20) | reg) << 7) | ((hi20 & 0x1f) << 2);
             serialize16le(instr, &i_bytes);
-            if (!append_obj(code_buf, &i_bytes, 2)) return false;
+            append_obj(code_buf, &i_bytes, 2);
         } else if (hi20) {
             serialize32le((hi20 << 12) | (reg << 7) | 0x37, &i_bytes);
-            if (!append_obj(code_buf, &i_bytes, 4)) return false;
+            append_obj(code_buf, &i_bytes, 4);
         }
         if (lo12 || !hi20) {
             if (bit_fits((i32)lo12, 6)) {
@@ -67,7 +67,7 @@ bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
                 u16 instr = (hi20 ? 0x2001 : 0x4001) |
                             (((lo12 & 0x20) | reg) << 7) | ((lo12 & 0x1f) << 2);
                 serialize16le(instr, &i_bytes);
-                if (!append_obj(code_buf, &i_bytes, 2)) return false;
+                append_obj(code_buf, &i_bytes, 2);
             } else {
                 /* if n != 0: `ADDIW reg, reg, lo12`
                  * else `ADDI reg, zero, lo12` */
@@ -75,10 +75,10 @@ bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
                 u32 rs1 = hi20 ? (((u32)reg) << 15) : 0;
                 u32 instr = (lo12 << 20) | rs1 | (((u32)reg) << 7) | opcode;
                 serialize32le(instr, &i_bytes);
-                if (!append_obj(code_buf, &i_bytes, 4)) return false;
+                append_obj(code_buf, &i_bytes, 4);
             }
         }
-        return true;
+        return;
     }
     i64 hi52 = ((u64)val + 0x800) >> 12;
     uint shift = trailing_0s(hi52) + 12;
@@ -96,21 +96,20 @@ bool encode_li(sized_buf *code_buf, u8 reg, i64 val) {
         /* C.SLLI reg, shift_amount */
         u16 instr = (((shift & 0x20) | reg) << 7) | ((shift & 0x1f) << 2) | 2;
         serialize16le(instr, &i_bytes);
-        if (!append_obj(code_buf, i_bytes, 2)) return false;
+        append_obj(code_buf, i_bytes, 2);
     }
     if (lo12 && bit_fits((i16)lo12, 6)) {
         /* C.ADDI reg, reg, lo12 */
         u16 instr =
             0x0001 | (((lo12 & 0x20) | reg) << 7) | ((lo12 & 0x1f) << 2);
         serialize16le(instr, &i_bytes);
-        return append_obj(code_buf, i_bytes, 2);
+        append_obj(code_buf, i_bytes, 2);
     } else if (lo12) {
         /* ADDI, reg, reg, lo12 */
         u32 instr = (lo12 << 20) | ((u32)reg << 15) | ((u32)reg << 7) | 0x13;
         serialize32le(instr, &i_bytes);
-        return append_obj(code_buf, i_bytes, 4);
+        append_obj(code_buf, i_bytes, 4);
     }
-    return true;
 }
 
 /* SPDX-SnippetEnd */
@@ -130,7 +129,9 @@ static u32 load_from_byte(u8 addr) {
     return (((u32)addr) << 15) | (((u32)RISCV_T1) << 7) | 0x03;
 }
 
-static bool cond_jump(u8 reg, i64 distance, bool eq, sized_buf *dst_buf) {
+#define JUMP_SIZE 12
+
+static bool cond_jump(u8 reg, i64 distance, bool eq, char dst[JUMP_SIZE]) {
     /* there are 2 types of instructions used here for control flow - branches,
      * which can conditionally move up to 4 KiB away, and jumps, which
      * unconditionally move up to 1MiB away. The former is too short, and the
@@ -160,63 +161,62 @@ static bool cond_jump(u8 reg, i64 distance, bool eq, sized_buf *dst_buf) {
         /* internal_err never returns, so this will not run */
         return false;
     }
-    u8 i_bytes[12];
     u32 jump_dist = distance + 4;
-    serialize32le(load_from_byte(reg), i_bytes);
-    // `BNEZ t1, 8` if comp_type == Eq, otherwise `BEQZ t1, 8`
-    serialize32le(eq ? 0x31463 : 0x30463, &i_bytes[4]);
+    serialize32le(load_from_byte(reg), dst);
+    /* `BNEZ t1, 8` if comp_type == Eq, otherwise `BEQZ t1, 8` */
+    serialize32le(eq ? 0x31463 : 0x30463, &dst[4]);
     /* J-type is a variant of U-type with the bits scrambled around to simplify
      * hardware implementation at the expense of compiler/assembler
      * implementation. */
     u32 encoded_dist = ((jump_dist & (1 << 20)) << 11) |
                        ((jump_dist & 0x7fe) << 20) |
                        ((jump_dist & (1 << 11)) << 9) | (jump_dist & 0xff000);
-    serialize32le(encoded_dist | 0x6f, &i_bytes[8]);
-    return append_obj(dst_buf, i_bytes, 12);
+    serialize32le(encoded_dist | 0x6f, &dst[8]);
+    return true;
 }
 
-static bool set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
-    return encode_li(dst_buf, reg, imm);
+static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+    encode_li(dst_buf, reg, imm);
 }
 
-static bool reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
+static void reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
     /* C.MV dst, src */
     u16 instr = 0x8002 | (((u16)dst) << 7) | (((u16)src) << 2);
-    return append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
+    append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
 }
 
-static bool syscall(sized_buf *dst_buf) {
+static void syscall(sized_buf *dst_buf) {
     /* ecall */
-    return append_obj(dst_buf, (u8[]){0x73, 0, 0, 0}, 4);
+    append_obj(dst_buf, (u8[]){0x73, 0, 0, 0}, 4);
 }
 
-static bool pad_loop_open(sized_buf *dst_buf) {
+static void pad_loop_open(sized_buf *dst_buf) {
     /* ILLEGAL; NOP; NOP */
     uchar instr_seq[3][4] = {{0x0}, {0x13}, {0x13}};
-    return append_obj(dst_buf, instr_seq, 12);
+    append_obj(dst_buf, instr_seq, 12);
 }
 
-static bool jump_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return cond_jump(reg, offset, true, dst_buf);
+static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf, size_t index) {
+    return cond_jump(reg, offset, true, &dst_buf->buf[index]);
 }
 
-static bool jump_not_zero(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return cond_jump(reg, offset, false, dst_buf);
+static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
+    return cond_jump(reg, offset, false, sb_reserve(dst_buf, JUMP_SIZE));
 }
 
-static bool inc_reg(u8 reg, sized_buf *dst_buf) {
+static void inc_reg(u8 reg, sized_buf *dst_buf) {
     /* c.addi reg, 1 */
     u16 instr = 5 | (((u16)reg) << 7);
-    return append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
+    append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
 }
 
-static bool dec_reg(u8 reg, sized_buf *dst_buf) {
+static void dec_reg(u8 reg, sized_buf *dst_buf) {
     /* c.addi reg, -1 */
     u16 instr = 0x107d | (((u16)reg) << 7);
-    return append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
+    append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
 }
 
-static bool inc_byte(u8 reg, sized_buf *dst_buf) {
+static void inc_byte(u8 reg, sized_buf *dst_buf) {
     u8 i_bytes[10] = {
         PAD_INSTRUCTION,
         /* c.addi t1, 1 */
@@ -226,10 +226,10 @@ static bool inc_byte(u8 reg, sized_buf *dst_buf) {
     };
     serialize32le(load_from_byte(reg), &i_bytes);
     serialize32le(store_to_byte(reg), &i_bytes[6]);
-    return append_obj(dst_buf, i_bytes, 10);
+    append_obj(dst_buf, i_bytes, 10);
 }
 
-static bool dec_byte(u8 reg, sized_buf *dst_buf) {
+static void dec_byte(u8 reg, sized_buf *dst_buf) {
     u8 i_bytes[10] = {
         PAD_INSTRUCTION,
         /* c.addi t1, -1 */
@@ -239,17 +239,16 @@ static bool dec_byte(u8 reg, sized_buf *dst_buf) {
     };
     serialize32le(load_from_byte(reg), &i_bytes);
     serialize32le(store_to_byte(reg), &i_bytes[6]);
-    return append_obj(dst_buf, i_bytes, 10);
+    append_obj(dst_buf, i_bytes, 10);
 }
 
-static bool add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
-    if (!imm) return true;
+static void add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+    if (!imm) return;
     if (bit_fits(imm, 6)) {
         /* c.addi reg, imm */
         u16 c_addi = (((imm & 0x20) | reg) << 7) | ((imm & 0x1f) << 2) | 1;
-        return append_obj(
-            dst_buf, (u8[]){c_addi & 0xff, (c_addi & 0xff00) >> 8}, 2
-        );
+        append_obj(dst_buf, (u8[]){c_addi & 0xff, (c_addi & 0xff00) >> 8}, 2);
+        return;
     }
     if (bit_fits(imm, 12)) {
         /* addi reg, reg, imm */
@@ -258,26 +257,25 @@ static bool add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
             (((u32)imm) << 20) | (((u32)reg) << 15) | (((u32)reg) << 7) | 0x13,
             &i_bytes
         );
-        return append_obj(dst_buf, i_bytes, 4);
+        append_obj(dst_buf, i_bytes, 4);
+        return;
     }
     /* c.add reg, t1 */
     u16 add_regs = 0x9002 | (((u16)reg) << 7) | (((u16)RISCV_T1) << 2);
-    return encode_li(dst_buf, RISCV_T1, imm) &&
-           append_obj(
-               dst_buf, (u8[]){add_regs & 0xff, (add_regs & 0xff00) >> 8}, 2
-           );
+    encode_li(dst_buf, RISCV_T1, imm);
+    append_obj(dst_buf, (u8[]){add_regs & 0xff, (add_regs & 0xff00) >> 8}, 2);
 }
 
-static bool sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+static void sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
     /* adding and subtracting INT64_MIN result in the same value, but negating
      * INT64_MIN is undefined behavior, so this is the way to go. */
     i64 neg_imm = imm;
     if (neg_imm != INT64_MIN) neg_imm = -neg_imm;
-    return add_reg(reg, neg_imm, dst_buf);
+    add_reg(reg, neg_imm, dst_buf);
 }
 
-static bool add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
-    if (!imm8) return true;
+static void add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+    if (!imm8) return;
     u8 i_bytes[12];
     uint sz;
     i16 imm = sign_extend(imm8, 8);
@@ -299,11 +297,11 @@ static bool add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
         );
     }
     serialize32le(store_to_byte(reg), &i_bytes[sz - 4]);
-    return append_obj(dst_buf, i_bytes, sz);
+    append_obj(dst_buf, i_bytes, sz);
 }
 
-static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
-    if (!imm8) return true;
+static void sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+    if (!imm8) return;
     u8 i_bytes[12];
     uint sz;
     i16 imm = -sign_extend(imm8, 8);
@@ -325,14 +323,14 @@ static bool sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
         );
     }
     serialize32le(store_to_byte(reg), &i_bytes[sz - 4]);
-    return append_obj(dst_buf, i_bytes, sz);
+    append_obj(dst_buf, i_bytes, sz);
 }
 
-static bool zero_byte(u8 reg, sized_buf *dst_buf) {
+static void zero_byte(u8 reg, sized_buf *dst_buf) {
     u32 instr = 0x23 | (((u32)reg) << 15);
     u8 i_bytes[4];
     serialize32le(instr, i_bytes);
-    return append_obj(dst_buf, i_bytes, 4);
+    append_obj(dst_buf, i_bytes, 4);
 }
 
 const arch_inter RISCV64_INTER = {
@@ -343,8 +341,8 @@ const arch_inter RISCV64_INTER = {
     .reg_copy = reg_copy,
     .syscall = syscall,
     .pad_loop_open = pad_loop_open,
-    .jump_zero = jump_zero,
-    .jump_not_zero = jump_not_zero,
+    .jump_open = jump_open,
+    .jump_close = jump_close,
     .inc_reg = inc_reg,
     .dec_reg = dec_reg,
     .inc_byte = inc_byte,
@@ -408,15 +406,15 @@ static void test_set_reg_32(void) {
         "lui a1, 0x1\n"
         "addiw a1, a1, 0x1\n"
     );
-    mgr_free(dis.buf);
-    mgr_free(sb.buf);
+    free(dis.buf);
+    free(sb.buf);
 }
 
 static void test_set_reg_64(void) {
     sized_buf dis = newbuf(1024);
     sized_buf sb = newbuf(124);
 
-    char *expected_disasm = mgr_malloc(1024);
+    char *expected_disasm = checked_malloc(1024);
     char *disasm_p = expected_disasm;
     size_t expected_len = 0;
     for (i64 val = ((i64)INT32_MAX) + 1; val < INT64_MAX / 2; val <<= 1) {
@@ -430,7 +428,7 @@ static void test_set_reg_64(void) {
     }
     CU_ASSERT_EQUAL(expected_len, 124);
     DISASM_TEST(sb, dis, expected_disasm);
-    mgr_free(expected_disasm);
+    free(expected_disasm);
 
     /* worst-case scenario is alternating bits. 0b0101 is 0x5. */
     /* first, just a single sequence, but it'll need to be shifted */
@@ -495,8 +493,8 @@ static void test_set_reg_64(void) {
         "addi a7, a7, -0x555\n"
     );
 
-    mgr_free(dis.buf);
-    mgr_free(sb.buf);
+    free(dis.buf);
+    free(sb.buf);
 }
 
 static void test_compressed_set_reg_64(void) {
@@ -525,8 +523,8 @@ static void test_compressed_set_reg_64(void) {
     memset(dis.buf, 0, dis.sz);
     DISASM_TEST(fakesb, dis, "addi a1, a1, 0x10\n");
 
-    mgr_free(dis.buf);
-    mgr_free(sb.buf);
+    free(dis.buf);
+    free(sb.buf);
 }
 
 static void test_syscall(void) {
@@ -536,8 +534,8 @@ static void test_syscall(void) {
     syscall(&sb);
     DISASM_TEST(sb, dis, "ecall\n");
 
-    mgr_free(dis.buf);
-    mgr_free(sb.buf);
+    free(dis.buf);
+    free(sb.buf);
 }
 
 static void test_reg_copies(void) {
@@ -550,8 +548,8 @@ static void test_reg_copies(void) {
     reg_copy(RISCV_S0, RISCV_A7, &sb);
     DISASM_TEST(sb, dis, "mv s0, a7\n");
 
-    mgr_free(dis.buf);
-    mgr_free(sb.buf);
+    free(dis.buf);
+    free(sb.buf);
 }
 
 static void test_load_and_store(void) {
@@ -562,8 +560,8 @@ static void test_load_and_store(void) {
     serialize32le(store_to_byte(RISCV_A0), sb_reserve(&sb, 4));
     DISASM_TEST(sb, dis, "lb t1, 0x0(a0)\nsb t1, 0x0(a0)\n");
 
-    mgr_free(dis.buf);
-    mgr_free(sb.buf);
+    free(dis.buf);
+    free(sb.buf);
 }
 
 static void test_zero_byte(void) {
@@ -573,8 +571,8 @@ static void test_zero_byte(void) {
     zero_byte(RISCV_A2, &sb);
     DISASM_TEST(sb, dis, "sb zero, 0x0(a2)\n");
 
-    mgr_free(dis.buf);
-    mgr_free(sb.buf);
+    free(dis.buf);
+    free(sb.buf);
 }
 
 static void test_jump_pad(void) {
@@ -587,16 +585,16 @@ static void test_jump_pad(void) {
      * unimplemented 0x0000 instructions by LLVM */
     DISASM_TEST(sb, dis, "unimp\nunimp\nnop\nnop\n");
 
-    mgr_free(dis.buf);
-    mgr_free(sb.buf);
+    free(dis.buf);
+    free(sb.buf);
 }
 
 static void test_successful_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(72);
-
-    jump_zero(RISCV_S0, 32, &sb);
-    jump_not_zero(RISCV_S0, -32, &sb);
+    sb_reserve(&sb, JUMP_SIZE);
+    jump_open(RISCV_S0, 32, &sb, 0);
+    jump_close(RISCV_S0, -32, &sb);
     DISASM_TEST(
         sb,
         dis,
@@ -608,8 +606,8 @@ static void test_successful_jumps(void) {
         "j -0x1c\n"
     );
 
-    mgr_free(dis.buf);
-    mgr_free(sb.buf);
+    free(dis.buf);
+    free(sb.buf);
 }
 
 static void test_inc_dec(void) {
@@ -641,8 +639,8 @@ static void test_inc_dec(void) {
         "addi s0, s0, -0x1\n"
     );
 
-    mgr_free(dis.buf);
-    mgr_free(sb.buf);
+    free(dis.buf);
+    free(sb.buf);
 }
 
 static void sub_reg_is_neg_add_reg(void) {
@@ -663,8 +661,8 @@ static void sub_reg_is_neg_add_reg(void) {
         CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
     }
 
-    mgr_free(a.buf);
-    mgr_free(b.buf);
+    free(a.buf);
+    free(b.buf);
 }
 
 static void test_add_reg(void) {
@@ -694,9 +692,9 @@ static void test_add_reg(void) {
     memset(dis.buf, 0, dis.sz);
     DISASM_TEST(fakesb, dis, "add s0, s0, t1\n");
 
-    mgr_free(sb.buf);
-    mgr_free(alt.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(alt.buf);
+    free(dis.buf);
 }
 
 static void test_add_sub_byte(void) {
@@ -756,18 +754,18 @@ static void test_add_sub_byte(void) {
         "sb t1, 0x0(a2)\n"
     );
 
-    mgr_free(sb.buf);
-    mgr_free(dis.buf);
+    free(sb.buf);
+    free(dis.buf);
 }
 
 static void test_bad_jump_offset(void) {
     EXPECT_BF_ERR(BF_ICE_INVALID_JUMP_ADDRESS);
-    jump_not_zero(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_close(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 static void test_jump_too_long(void) {
     EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_zero(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    jump_close(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
 }
 
 CU_pSuite register_riscv64_tests(void) {

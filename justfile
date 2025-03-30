@@ -12,23 +12,24 @@ src_tarball_path := justfile_dir() / "releases" / src_tarball_name
 backend_sources := replace_regex(backends, '\b([^ ]+)\b', 'backend_${1}.c')
 unibuild_files := (
     'serialize.c compile.c optimize.c ' + backend_sources +
-    ' err.c util.c resource_mgr.c parse_args.c main.c'
+    ' err.c util.c parse_args.c main.c'
 )
 
 # aligning it like this was not easy, but it sure is satisfying
 gcc_strict_flags := (
-    '-std=c99 -D_POSIX_C_SOURCE=200908L -O3 -fanalyzer -Wall -Wextra -Werror ' +
+    '-std=c99 -D_POSIX_C_SOURCE=200908L -fanalyzer -Wall -Wextra -Wcast-qual ' +
     '-Wpedantic -Wformat-truncation=2 -Wduplicated-branches -Wshadow -Wundef ' +
     '-Wformat-overflow=2 -Wformat-signedness -Wbad-function-cast -Winit-self ' +
     '-Wnull-dereference -Wredundant-decls -Wduplicated-cond -Warray-bounds=2 ' +
     '-Wuninitialized -Wlogical-op -Wwrite-strings -Wformat=2 -Wunused-macros ' +
-    '-Wcast-align=strict -Wcast-qual -Wtrampolines -Wvla'
+    '-Wcast-align=strict -Wtrampolines -Wvla -Werror'
 )
 
 gcc_ubsan_flags := gcc_strict_flags + ' ' + (
-    '-fsanitize=leak,address,undefined -fno-sanitize-recover=all'
+    '-fsanitize=leak,address,undefined -fno-sanitize-recover=all -g3'
 )
 
+gcc_longopts_flags := '-D_GNU_SOURCE -DBFC_LONGOPTS=1'
 
 export MAKEFLAGS := '-se'
 export BFC_DONT_SKIP_TESTS := '1'
@@ -42,7 +43,7 @@ eambfc:
 
 [doc("test a release tarball of `eambfc`, and build a ")]
 [group("general")]
-release-build: release-tarball pdpmake valgrind_test \
+release-build: scan-build cppcheck-full tarball pdpmake valgrind_test \
     (valgrind_test '-D_GNU_SOURCE -DBFC_LONGOPTS=1 -O2 -g3')
     #!/bin/sh
     set -eux
@@ -75,7 +76,7 @@ release-build: release-tarball pdpmake valgrind_test \
 
 [doc("Create release tarball")]
 [group("general")]
-release-tarball: pre-tarball-checks
+tarball: pre-tarball-checks
     #!/bin/sh -xeu
     make clean
     make release.make
@@ -105,6 +106,11 @@ release-tarball: pre-tarball-checks
 [group("tests")]
 strict-gcc:
     gcc {{ gcc_strict_flags }} {{ unibuild_files }} -o /dev/null
+    gcc {{ gcc_strict_flags }} {{ gcc_longopts_flags }} {{ unibuild_files }} \
+        -o /dev/null
+    gcc {{ gcc_strict_flags }} -O2 {{ unibuild_files }} -o /dev/null
+    gcc {{ gcc_strict_flags }} -O2 {{ gcc_longopts_flags }} \
+        {{ unibuild_files }} -o /dev/null
 
 [doc("Run the full project through the `cppcheck` static analyzer")]
 [group("tests")]
@@ -117,6 +123,8 @@ cppcheck-full:
 [group("tests")]
 scan-build:
     scan-build-19 --status-bugs make CFLAGS=-O3 clean eambfc
+    scan-build-19 --status-bugs make \
+        CFLAGS={{quote('-O3 ' + gcc_longopts_flags) }} clean eambfc
     scan-build-19 --status-bugs make CFLAGS=-O3 unit_test_driver
     make clean
 
@@ -125,6 +133,9 @@ scan-build:
 ubsan-test: alt-builds-dir test_driver
     gcc {{ gcc_ubsan_flags }} {{ unibuild_files }} -o alt-builds/eambfc-ubsan
     just --no-deps test alt-builds/eambfc-ubsan
+    gcc {{ gcc_ubsan_flags }} {{ unibuild_files }} {{ gcc_longopts_flags }} \
+        -o alt-builds/eambfc-ubsan-longopts
+    just --no-deps test alt-builds/eambfc-ubsan-longopts
 
 [doc("Build and test `eambfc` with 64-bit integer fallback hackery")]
 [group("tests")]
@@ -132,6 +143,10 @@ int-torture-test: alt-builds-dir test_driver
     gcc -D INT_TORTURE_TEST=1 {{gcc_ubsan_flags}} -Wno-pedantic \
         {{ unibuild_files }} -o alt-builds/eambfc-itt
     just --no-deps test alt-builds/eambfc-itt
+    gcc -D INT_TORTURE_TEST=1 {{gcc_ubsan_flags}} -Wno-pedantic \
+        {{ gcc_longopts_flags }} {{ unibuild_files }} \
+            -o alt-builds/eambfc-itt-longopts
+    just --no-deps test alt-builds/eambfc-itt-longopts
 
 [doc("Test provided `eambfc` build using its cli")]
 [group("tests")]
@@ -242,7 +257,7 @@ all-lints +files: (copyright_check files) (timeless-lints files)
 # PRIVATE - used to help implement other rules
 
 [private]
-@pre-tarball-checks: scan-build cppcheck-full git-clean-check
+@pre-tarball-checks: git-clean-check
     make clean eambfc
     ./eambfc -V | grep -q "$(date +'Copyright (c) .*%Y')"
     git ls-files -z --exclude-standard -- ':(attr:!no-tar)' |\
@@ -277,7 +292,7 @@ git-clean-check:
 
 
 [private]
-test_build cc *cflags: release-tarball
+test_build cc *cflags: tarball
     #!/bin/sh
     set -e
     build_dir="$(mktemp -d "/tmp/eambfc-test_build-XXXXXXXXXX")"
@@ -288,7 +303,7 @@ test_build cc *cflags: release-tarball
     rm -rf "$build_dir"
 
 [private]
-valgrind_test cflags='-O2 -g3': release-tarball
+valgrind_test cflags='-O2 -g3': tarball
     #!/bin/sh
     set -e
     build_dir="$(mktemp -d "/tmp/eambfc-valgrind_test-XXXXXXXXXX")"
@@ -310,7 +325,7 @@ valgrind_test cflags='-O2 -g3': release-tarball
     rm -rf "$build_dir"
 
 [private]
-pdpmake: release-tarball
+pdpmake: tarball
     #!/bin/sh
     set -e
     build_dir="$(mktemp -d "/tmp/eambfc-pdpmake-XXXXXXXXXX")"

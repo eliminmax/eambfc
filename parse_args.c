@@ -1,6 +1,7 @@
 /* SPDX-FileCopyrightText: 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only */
+
 /* C99 */
 #include <stdarg.h>
 #include <stdio.h>
@@ -13,10 +14,10 @@
 #include "config.h"
 #include "err.h"
 #include "parse_args.h"
-#include "resource_mgr.h"
 #include "version.h"
 
 #if BFC_LONGOPTS
+#include "util.h"
 /* GNU C */
 #include <getopt.h>
 const struct option longopts[] = {
@@ -36,13 +37,14 @@ const struct option longopts[] = {
 };
 
 /* use this macro in place of normal getopt */
-#define getopt(c, v, opts) getopt_long(c, v, opts, longopts, NULL)
+#define GETOPT_FN(c, v, opts) getopt_long(c, v, opts, longopts, NULL)
 #define OPTION(l, s, pad, msg) " --" l ", " pad "-" s ":   " msg
 #define PARAM_OPT(l, s, a, spad, lpad, msg) \
     " --" l "=" a ", " lpad " -" s " " a ":    " spad msg
 #else
 #define OPTION(l, s, pad, msg) " -" s ":   " msg
 #define PARAM_OPT(l, s, a, spad, lpad, msg) " -" s " " spad a ":   " msg
+#define GETOPT_FN(c, v, opts) getopt(c, v, opts)
 #endif
 
 /* this macro hell defines the help template. If using GNU longopts, pads with
@@ -124,6 +126,7 @@ const struct option longopts[] = {
     "\n" \
     "Remaining options are treated as source file names. If they don't " \
     "end with the right extension, the program will raise an error.\n" \
+    "\n" \
     "Additionally, passing \"--\" as a standalone argument will stop " \
     "argument parsing, and treat remaining arguments as source file names.\n"
 
@@ -187,7 +190,7 @@ nonnull_args static bool select_inter(
     return false;
 }
 
-static noreturn nonnull_args void report_version(const char *progname) {
+noreturn static nonnull_args void report_version(const char *progname) {
     /* strip leading path from progname */
     const char *filename;
     while ((filename = strchr(progname, '/'))) progname = filename + 1;
@@ -208,7 +211,6 @@ static noreturn nonnull_args void report_version(const char *progname) {
          * if it's anything else, it'll add ": eambfc" after the progname */
         strcmp(progname, "eambfc") ? ": eambfc" : ""
     );
-    mgr_cleanup();
     exit(EXIT_SUCCESS);
 }
 
@@ -224,7 +226,7 @@ static noreturn nonnull_args void report_version(const char *progname) {
     "."
 #endif /* BFC_NUM_BACKENDS */
 
-static noreturn nonnull_args void list_arches(void) {
+noreturn static nonnull_args void list_arches(void) {
     puts(ARCH_LIST_START
 /* __BACKENDS__ add backend and any aliases in a block here*/
 #if BFC_TARGET_X86_64
@@ -241,14 +243,13 @@ static noreturn nonnull_args void list_arches(void) {
 #endif /* BFC_TARGET_S390X */
 
          ARCH_LIST_END);
-    mgr_cleanup();
     exit(EXIT_SUCCESS);
 }
 
 #undef ARCH_LIST_START
 #undef ARCH_LIST_END
 
-static noreturn nonnull_args void bad_arg(
+noreturn static nonnull_args void bad_arg(
     const char *progname, bf_err_id id, const char *msg, bool show_hint
 ) {
     display_err((bf_comp_err){
@@ -259,7 +260,6 @@ static noreturn nonnull_args void bad_arg(
         .has_location = false,
     });
     if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
-    mgr_cleanup();
     exit(EXIT_FAILURE);
 }
 
@@ -280,11 +280,10 @@ run_cfg parse_args(int argc, char *argv[]) {
 
     const char *progname = (argc && argv[0] != NULL) ? argv[0] : "eambfc";
 
-    while ((opt = getopt(argc, argv, ":hVqjOkcAa:e:t:s:")) != -1) {
+    while ((opt = GETOPT_FN(argc, argv, ":hVqjOkcAa:e:t:s:")) != -1) {
         switch (opt) {
             case 'h':
                 printf(HELP_TEMPLATE, progname);
-                mgr_cleanup();
                 exit(EXIT_SUCCESS);
             case 'V':
                 report_version(progname);
@@ -386,10 +385,7 @@ run_cfg parse_args(int argc, char *argv[]) {
                         show_hint
                     );
                 }
-                if (!select_inter(optarg, &rc.inter)) {
-                    mgr_cleanup();
-                    exit(EXIT_FAILURE);
-                }
+                if (!select_inter(optarg, &rc.inter)) { exit(EXIT_FAILURE); }
                 break;
             case ':': /* one of -a, -e, or -t is missing an argument */
                 missing_op_msg[1] = optopt;
@@ -399,10 +395,10 @@ run_cfg parse_args(int argc, char *argv[]) {
             case '?': /* unknown argument */
 #if BFC_LONGOPTS
                 if (!optopt) {
-                    char *msg = malloc(20 + strlen(argv[optind - 1]));
-                    if (!msg) alloc_err();
-                    strncpy(msg, unknown_arg_msg, 18);
-                    strcpy(&unknown_arg_msg[18], argv[optind - 1]);
+                    int badarg = optind - 1;
+                    char *msg = checked_malloc(strlen(argv[badarg]) + 19);
+                    memcpy(msg, unknown_arg_msg, 18);
+                    strcpy(&msg[18], argv[badarg]);
                     /* can't just use bad_arg as msg won't be freed. */
                     display_err((bf_comp_err){
                         .id = BF_ERR_UNKNOWN_ARG,
@@ -413,7 +409,6 @@ run_cfg parse_args(int argc, char *argv[]) {
                     });
                     if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
                     free(msg);
-                    mgr_cleanup();
                     exit(EXIT_FAILURE);
                 }
 #endif
