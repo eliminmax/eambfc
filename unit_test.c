@@ -21,6 +21,7 @@
 
 #define UNIT_TEST_C 1
 /* internal */
+#include "err.h"
 #include "types.h"
 #include "unit_test.h"
 #include "util.h"
@@ -108,12 +109,14 @@ int main(void) {
         return EXIT_FAILURE;
     }
     llvm_init();
+    quiet_mode();
 
     ERRORCHECKED(CU_initialize_registry());
     ERRORCHECKED(register_optimize_tests());
     ERRORCHECKED(register_util_tests());
     ERRORCHECKED(register_serialize_tests());
     ERRORCHECKED(register_err_tests());
+    ERRORCHECKED(register_compile_tests());
 
     /* __BACKENDS__ add your test suite here */
     ERRORCHECKED(register_arm64_tests());
@@ -121,6 +124,7 @@ int main(void) {
     ERRORCHECKED(register_s390x_tests());
     ERRORCHECKED(register_x86_64_tests());
 
+    testing_err = NOT_TESTING;
     /* Run all tests using the console interface */
     CU_basic_set_mode(CU_BRM_VERBOSE);
 

@@ -105,6 +105,7 @@ CU_pSuite register_util_tests(void);
 CU_pSuite register_serialize_tests(void);
 CU_pSuite register_optimize_tests(void);
 CU_pSuite register_err_tests(void);
+CU_pSuite register_compile_tests(void);
 
 /* __BACKENDS__ add your test suite here */
 CU_pSuite register_arm64_tests(void);

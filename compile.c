@@ -547,3 +547,107 @@ bool bf_compile(
 
     return ret;
 }
+
+#ifdef BFC_TEST
+/* POSIX */
+#include <fcntl.h>
+#include <sys/wait.h>
+/* internal */
+#include "unit_test.h"
+
+/* spawn a child process, and pipe `src` in from a child process into
+ * `bf_compile`. If an error occurs, it returns the bf_err_id left-shifted by 1,
+ * with the lowest bit set to 1. Otherwise, it returns 0. */
+static int test_compile(const char *src, bool optimize) {
+    testing_err = TEST_SET;
+    pid_t chld;
+    ssize_t src_sz = strlen(src);
+    int pipe_fds[2];
+    if (pipe(pipe_fds) == -1) {
+        perror("pipe");
+        abort();
+    }
+    if ((chld = fork()) == -1) {
+        perror("fork");
+        abort();
+    }
+    if (chld == 0) {
+        if (close(pipe_fds[0]) == -1) abort();
+        const char *p = src;
+        ssize_t write_sz;
+        while (src_sz) {
+            write_sz = write(pipe_fds[1], p, src_sz);
+            if (write_sz == -1) abort();
+            p -= write_sz;
+            src_sz -= write_sz;
+        }
+        if (close(pipe_fds[1]) == -1) abort();
+        exit(EXIT_SUCCESS);
+    }
+    if (close(pipe_fds[1]) == -1) {
+        perror("close");
+        abort();
+    }
+
+    testing_err = TEST_SET;
+    int null_fd = open("/dev/null", O_WRONLY);
+    if (null_fd == -1) {
+        perror("open");
+        abort();
+    }
+
+    bool comp_ret = bf_compile(
+        &BFC_DEFAULT_INTER,
+        "dummy.bf",
+        "dummy",
+        pipe_fds[0],
+        null_fd,
+        optimize,
+        8
+    );
+    if (close(pipe_fds[0]) == -1) {
+        perror("close");
+        abort();
+    }
+    int chld_stat;
+    if (waitpid(chld, &chld_stat, 0) == -1) {
+        perror("waitpid");
+        abort();
+    }
+    if (!WIFEXITED(chld_stat) || WEXITSTATUS(chld_stat) != EXIT_SUCCESS) {
+        fputs("Child exited abnormally\n", stderr);
+        abort();
+    }
+
+    return comp_ret ? 0 : (current_err << 1) | 1;
+}
+
+static void compile_all_bf_instructions(void) {
+    CU_ASSERT(test_compile("+[>]<-,.", false) == 0);
+}
+
+static void compile_nested_loops(void) {
+    CU_ASSERT(test_compile(">+[-->---[-<]>]>+", false) == 0);
+}
+
+static void unmatched_open(void) {
+    CU_ASSERT(test_compile("[", false) == ((BF_ERR_UNMATCHED_OPEN << 1) | 1));
+    CU_ASSERT(test_compile("[", true) == ((BF_ERR_UNMATCHED_OPEN << 1) | 1));
+}
+
+static void unmatched_close(void) {
+    CU_ASSERT(test_compile("]", false) == ((BF_ERR_UNMATCHED_CLOSE << 1) | 1));
+    CU_ASSERT(test_compile("]", true) == ((BF_ERR_UNMATCHED_CLOSE << 1) | 1));
+}
+
+CU_pSuite register_compile_tests(void) {
+    CU_pSuite suite;
+    INIT_SUITE(suite);
+    ADD_TEST(suite, compile_all_bf_instructions);
+    ADD_TEST(suite, compile_nested_loops);
+    ADD_TEST(suite, unmatched_open);
+    ADD_TEST(suite, unmatched_close);
+    return suite;
+}
+
+#endif /* BFC_TEST */
