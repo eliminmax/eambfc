@@ -51,7 +51,7 @@ release-build: scan-build cppcheck-full tarball pdpmake valgrind_test \
         # compile with a bunch of different compilers/setups
         printf 'gcc\nmusl-gcc\nclang-19\nzig cc\n' |\
             parallel -I_cc just --no-deps test_build \
-                _cc "-O$o_lvl" -Wall -Werror -Wextra -pedantic -std=c99
+                '"_cc"' "-O$o_lvl" -Wall -Werror -Wextra -pedantic -std=c99
         # build for specific architectures now - these were chosen to catch bugs
         # that are 32-bit-only, 64-bit-only, and/or endianness-specific.
         printf '%s-linux-gnu-gcc\n' i686 aarch64 mips s390x |\
@@ -63,8 +63,8 @@ release-build: scan-build cppcheck-full tarball pdpmake valgrind_test \
 
     # if none of those tests hit any issues, make the compressed archives and
     # the actual build
-    gzip -9 --keep {{quote(src_tarball_name)}}
-    xz -9 --keep {{quote(src_tarball_name)}}
+    gzip -9 --keep {{quote("releases" / src_tarball_name)}}
+    xz -9 --keep {{quote("releases" / src_tarball_name)}}
     build_dir="$(mktemp -d "/tmp/eambfc-release-XXXXXXXXXX")"
     cd "$build_dir"
     tar --strip-components=1 -xf {{quote(src_tarball_path)}}
