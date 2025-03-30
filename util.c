@@ -125,6 +125,7 @@ sized_buf read_to_sized_buf(int fd, const char *in_name) {
         if (count >= 0) {
             append_obj(&sb, &chunk, count);
         } else {
+            free(sb.buf);
             display_err((bf_comp_err){
                 .file = in_name,
                 .id = BF_ERR_FAILED_READ,
@@ -132,7 +133,6 @@ sized_buf read_to_sized_buf(int fd, const char *in_name) {
                 .has_instr = false,
                 .has_location = false,
             });
-            free(sb.buf);
             sb.sz = 0;
             sb.capacity = 0;
             sb.buf = NULL;

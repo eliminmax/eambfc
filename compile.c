@@ -498,6 +498,7 @@ bool bf_compile(
     /* compile the actual source code to object code */
     if (optimize) {
         if (!filter_dead(&src_code, in_name)) {
+            free(src_code.buf);
             free(jump_stack.locations);
             free(obj_code.buf);
             return false;
