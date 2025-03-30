@@ -419,9 +419,8 @@ static bool check_err_json(const char *json_text, const bf_comp_err *expected) {
 
     JSON_TYPE_CHECK("message", string);
 
-    if (!(partial_err.msg = strdup(json_object_get_string(transfer)))) {
-        alloc_err();
-    }
+    partial_err.msg = checked_malloc(json_object_get_string_len(transfer) + 1);
+    strcpy(partial_err.msg, json_object_get_string(transfer));
 
     if (!json_object_object_get_ex(err_jobj, "errorId", &transfer)) {
         fputs("Could not get \"errorId\"!\n", stderr);
@@ -445,9 +444,9 @@ static bool check_err_json(const char *json_text, const bf_comp_err *expected) {
 
     if (json_object_object_get_ex(err_jobj, "file", &transfer)) {
         JSON_TYPE_CHECK("file", string);
-        if (!(partial_err.file = strdup(json_object_get_string(transfer)))) {
-            alloc_err();
-        }
+        partial_err.file =
+            checked_malloc(json_object_get_string_len(transfer) + 1);
+        strcpy(partial_err.file, json_object_get_string(transfer));
     }
 
     if (json_object_object_get_ex(err_jobj, "line", &transfer)) {
@@ -491,7 +490,6 @@ static bool check_err_json(const char *json_text, const bf_comp_err *expected) {
         partial_err.instr = *copystr;
     }
 
-    ;
     ret = err_eq(
         expected,
         &(bf_comp_err){
