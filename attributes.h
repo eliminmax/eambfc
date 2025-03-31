@@ -21,6 +21,8 @@
 #define malloc_like
 #define must_use
 
+#ifndef BFC_NOEXTENSIONS
+
 #if __STDC_VERSION__ >= 202311L
 #undef noreturn
 #define noreturn [[noreturn]]
@@ -60,5 +62,7 @@
 #undef must_use
 #define must_use __attribute__((__warn_unused_result__))
 #endif /* HAS_GCC_ATTR(__warn_unused_result__) */
+
+#endif /* BFC_NOEXTENSIONS */
 
 #endif /* BFC_NOATTRIBUTES */
