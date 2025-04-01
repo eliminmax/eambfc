@@ -39,12 +39,11 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
     strcpy(outname, filename);
 
     if (!rm_ext(outname, rc->ext)) {
-        bf_comp_err e = {
+        display_err((bf_comp_err){
             .file = filename,
             .msg.ref = "File does not end with proper extension",
             .id = BF_ERR_BAD_EXTENSION,
-        };
-        display_err(e);
+        });
         free(outname);
         return false;
     }
