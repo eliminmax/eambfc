@@ -46,7 +46,8 @@ extern inline bf_comp_err basic_err(bf_err_id id, const char *msg);
  * ICEs, and finally "Fatal:AllocFailure", with each group sorted
  * alphabetically, except for ICE:InvalidErrId, which must come at the end and
  * has no string equivalent. */
-const char *ERR_IDS[] = {
+const char *const ERR_IDS[] = {
+    "InvalidErrorId",
     "BadSourceExtension",
     "BufferTooLarge",
     "FailedRead",
@@ -376,7 +377,7 @@ static bf_err_id text_to_errid(const char *text) {
     for (size_t i = 0; i < (sizeof(ERR_IDS) / sizeof(const char *)); i++) {
         if (strcmp(ERR_IDS[i], text) == 0) return i;
     }
-    return BF_ICE_INVALID_ERR_ID;
+    return BF_NOT_ERR;
 }
 
 static bool check_err_json(const char *json_text, const bf_comp_err *expected) {
@@ -400,7 +401,7 @@ static bool check_err_json(const char *json_text, const bf_comp_err *expected) {
         char instr;
         bool has_instr   : 1;
         bool has_location: 1;
-    } partial_err = {NULL, NULL, 0, 0, BF_ICE_INVALID_ERR_ID, 0, false, false};
+    } partial_err = {NULL, NULL, 0, 0, BF_NOT_ERR, 0, false, false};
 
     if (!json_object_object_get_ex(err_jobj, "message", &transfer)) {
         fputs("Could not get \"message\"!\n", stderr);
@@ -425,7 +426,7 @@ static bool check_err_json(const char *json_text, const bf_comp_err *expected) {
     }
 
     partial_err.id = text_to_errid(copystr);
-    if (partial_err.id == BF_ICE_INVALID_ERR_ID) {
+    if (partial_err.id == BF_NOT_ERR) {
         fprintf(
             stderr, "Unrecognized value for \"errorId\": \"%s\"!\n", copystr
         );

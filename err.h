@@ -10,6 +10,7 @@
 #include "types.h"
 
 typedef enum {
+    BF_NOT_ERR,
     BF_ERR_BAD_EXTENSION,
     BF_ERR_BUF_TOO_LARGE,
     BF_ERR_FAILED_READ,
@@ -39,8 +40,6 @@ typedef enum {
     BF_ICE_INVALID_JUMP_ADDRESS,
     /* AllocFailure divider */
     BF_FATAL_ALLOC_FAILURE,
-    /* InvalidErrId divider */
-    BF_ICE_INVALID_ERR_ID = -1,
 } bf_err_id;
 
 typedef enum {
