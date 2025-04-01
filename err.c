@@ -330,18 +330,12 @@ void display_err(bf_comp_err e) {
             puts(errmsg);
             break;
         default:
-
-#if defined __GNUC__ && defined __has_builtin
-
+#if defined __GNUC__ && defined __has_builtin && !defined BFC_NOEXTENSIONS
 #if __has_builtin(__builtin_unreachable)
             __builtin_unreachable();
-#else /* __has_builtin(__builtin_unreachable) */
-            abort();
 #endif /* __has_builtin(__builtin_unreachable) */
-
-#else /* defined __GNUC__ && defined __has_builtin */
+#endif /* defined __GNUC__ && defined __has_builtin && ... */
             abort();
-#endif /* defined __GNUC__ && defined __has_builtin */
     }
     if (e.is_alloc) free(e.msg.alloc);
     free(errmsg);
