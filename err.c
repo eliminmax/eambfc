@@ -40,6 +40,8 @@
 #define ERR_CALLBACK(e_id) (void)0
 #endif /* BFC_TEST */
 
+extern inline bf_comp_err basic_err(bf_err_id id, const char *msg);
+
 /* to keep the order consistent with the bf_err_id enum, do normal errors, then
  * ICEs, and finally "Fatal:AllocFailure", with each group sorted
  * alphabetically, except for ICE:InvalidErrId, which must come at the end and
@@ -231,7 +233,7 @@ invalid:
 #define MAX_SIZE_STRLEN (sizeof(METASTRINGIFY(SIZE_MAX)))
 
 static nonnull_ret char *err_to_json(const bf_comp_err err) {
-    if (!err.msg) abort();
+    if (!err.msg.ref) abort();
     sized_buf json_err = newbuf(BFC_CHUNK_SIZE);
     append_str(&json_err, "{\"errorId\": \"");
     append_str(&json_err, ERR_IDS[err.id]);
@@ -253,8 +255,8 @@ static nonnull_ret char *err_to_json(const bf_comp_err err) {
         size_t loc_info_sz = sprintf(
             loc_info,
             "\"line\": %ju, \"column\": %ju, ",
-            (uintmax_t)err.line,
-            (uintmax_t)err.col
+            (uintmax_t)err.location.line,
+            (uintmax_t)err.location.col
         );
         append_obj(&json_err, loc_info, loc_info_sz);
     }
@@ -270,7 +272,7 @@ static nonnull_ret char *err_to_json(const bf_comp_err err) {
     }
 
     append_str(&json_err, "\"message\": \"");
-    p = err.msg;
+    p = err.msg.ref;
     while (*p) {
         p += json_utf8_next(p, transfer);
         append_str(&json_err, transfer);
@@ -280,7 +282,7 @@ static nonnull_ret char *err_to_json(const bf_comp_err err) {
 }
 
 static nonnull_ret char *err_to_string(const bf_comp_err err) {
-    if (!err.msg) abort();
+    if (!err.msg.ref) abort();
     sized_buf err_str = newbuf(BFC_CHUNK_SIZE);
     append_str(&err_str, "Error ");
     append_str(&err_str, ERR_IDS[err.id]);
@@ -294,8 +296,8 @@ static nonnull_ret char *err_to_string(const bf_comp_err err) {
         size_t loc_info_sz = sprintf(
             loc_info,
             " at line %ju, column %ju",
-            (uintmax_t)err.line,
-            (uintmax_t)err.col
+            (uintmax_t)err.location.line,
+            (uintmax_t)err.location.col
         );
         append_obj(&err_str, loc_info, loc_info_sz);
     }
@@ -307,14 +309,14 @@ static nonnull_ret char *err_to_string(const bf_comp_err err) {
         append_str(&err_str, ")");
     }
     append_str(&err_str, ": ");
-    append_str(&err_str, err.msg);
+    append_str(&err_str, err.msg.ref);
     append_str(&err_str, "\n");
     return err_str.buf;
 }
 
-void display_err(const bf_comp_err e) {
+void display_err(bf_comp_err e) {
     ERR_CALLBACK(e.id);
-    if (e.msg == NULL) abort();
+    if (!e.msg.ref) abort();
     char *errmsg;
     switch (err_mode) {
         case OUTMODE_QUIET:
@@ -341,19 +343,13 @@ void display_err(const bf_comp_err e) {
             abort();
 #endif /* defined __GNUC__ && defined __has_builtin */
     }
+    if (e.is_alloc) free(e.msg.alloc);
     free(errmsg);
 }
 
 noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg) {
     ERR_CALLBACK(err_id);
-    bf_comp_err e = {
-        .msg = msg,
-        .file = NULL,
-        .has_instr = false,
-        .has_location = false,
-        .id = err_id
-    };
-    display_err(e);
+    display_err(basic_err(err_id, msg));
     fflush(stdout);
     abort();
 }
@@ -369,16 +365,17 @@ noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg) {
 static bool err_eq(
     const bf_comp_err *restrict a, const bf_comp_err *restrict b
 ) {
-    if (!(a->msg && b->msg)) return false;
+    if (!(a->msg.ref && b->msg.ref)) return false;
     if (a->has_instr != b->has_instr) return false;
     if (a->has_instr && a->instr != b->instr) return false;
     if (a->has_location != b->has_location) return false;
-    if (a->has_location && (a->line != b->line || a->col != b->col)) {
+    if (a->has_location && (a->location.line != b->location.line ||
+                            a->location.col != b->location.col)) {
         return false;
     }
     if ((a->file == NULL) != (b->file == NULL)) return false;
     if (a->file && strcmp(a->file, b->file) != 0) return false;
-    return (strcmp(a->msg, b->msg) == 0 && a->id == b->id);
+    return (strcmp(a->msg.ref, b->msg.ref) == 0 && a->id == b->id);
 }
 
 static bf_err_id text_to_errid(const char *text) {
@@ -492,10 +489,10 @@ static bool check_err_json(const char *json_text, const bf_comp_err *expected) {
     ret = err_eq(
         expected,
         &(bf_comp_err){
-            .msg = partial_err.msg,
+            .msg.ref = partial_err.msg,
             .file = partial_err.file,
-            .line = partial_err.line,
-            .col = partial_err.col,
+            .location.line = partial_err.line,
+            .location.col = partial_err.col,
             .id = partial_err.id,
             .instr = partial_err.instr,
             .has_instr = partial_err.has_instr,
@@ -516,7 +513,7 @@ static void json_sanity_test(void) {
         "{\"errorId\":\"Fatal:AllocFailure\","
         "\"message\":\"A call to malloc or realloc returned NULL.\"}";
     bf_comp_err expected = {
-        .msg = "A call to malloc or realloc returned NULL.",
+        .msg.ref = "A call to malloc or realloc returned NULL.",
         .id = BF_FATAL_ALLOC_FAILURE,
         .has_instr = false,
         .has_location = false,
@@ -526,7 +523,7 @@ static void json_sanity_test(void) {
 
 static void non_utf8_filename(void) {
     bf_comp_err expected = {
-        .msg = "Some error occurred in a file with a non-UTF8 name.",
+        .msg.ref = "Some error occurred in a file with a non-UTF8 name.",
         .id = BF_ERR_BAD_EXTENSION,
         .has_instr = false,
         .has_location = false,

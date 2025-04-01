@@ -267,12 +267,9 @@ static bool branch_cond(
      * offset of halfwords, so offset must be even and fit within a 17-bit
      * signed (2's complement) integer */
     if (offset < -0x10000 || offset > 0xffff) {
-        display_err((bf_comp_err){
-            .id = BF_ERR_JUMP_TOO_LONG,
-            .msg = "offset is out-of-range for this architecture",
-            .has_location = 0,
-            .has_instr = 0,
-        });
+        display_err(basic_err(
+            BF_ERR_JUMP_TOO_LONG, "offset is out-of-range for this architecture"
+        ));
         return false;
     }
     /* addressing halfwords is possible in compare instructions, but not

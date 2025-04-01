@@ -266,7 +266,8 @@ static bool bf_jump_open(
         } else {
             display_err((bf_comp_err){
                 .id = BF_ERR_NESTED_TOO_DEEP,
-                .msg = "Extending jump stack any more would cause an overflow",
+                .msg.ref =
+                    "Extending jump stack any more would cause an overflow",
                 .file = in_name,
                 .instr = '[',
                 .has_location = false,
@@ -303,12 +304,12 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
         display_err((bf_comp_err){
             .id = BF_ERR_UNMATCHED_CLOSE,
             .file = NULL,
-            .msg = "Found ']' without matching '['.",
+            .msg.ref = "Found ']' without matching '['.",
             .has_instr = true,
             .has_location = true,
             .instr = ']',
-            .line = line,
-            .col = col,
+            .location.line = line,
+            .location.col = col,
         });
         return false;
     }
@@ -531,10 +532,10 @@ bool bf_compile(
         display_err((bf_comp_err){
             .id = BF_ERR_UNMATCHED_OPEN,
             .file = in_name,
-            .msg = "Reached the end of the file with an unmatched '['.",
+            .msg.ref = "Reached the end of the file with an unmatched '['.",
             .instr = '[',
-            .line = jump_stack.locations[i].src_line,
-            .col = jump_stack.locations[i].src_col,
+            .location.line = jump_stack.locations[i].src_line,
+            .location.col = jump_stack.locations[i].src_col,
             .has_instr = true,
             .has_location = true,
         });

@@ -45,9 +45,7 @@ nonnull_args bool write_obj(
 fail:
     display_err((bf_comp_err){
         .id = BF_ERR_FAILED_WRITE,
-        .msg = "Failed to write to file",
-        .has_location = false,
-        .has_instr = false,
+        .msg.ref = "Failed to write to file",
         .file = out_name,
     });
     return false;
@@ -95,13 +93,9 @@ nonnull_args void append_obj(
     /* how much capacity is needed */
     size_t needed_cap = bytes_sz + dst->sz;
     if (needed_cap < dst->sz) {
-        display_err((bf_comp_err){
-            .file = NULL,
-            .id = BF_ERR_BUF_TOO_LARGE,
-            .msg = "reallocating buffer would cause overflow",
-            .has_instr = false,
-            .has_location = false,
-        });
+        display_err(basic_err(
+            BF_ERR_BUF_TOO_LARGE, "reallocating buffer would cause overflow"
+        ));
         fflush(stdout);
         abort();
     }
@@ -130,9 +124,7 @@ sized_buf read_to_sized_buf(int fd, const char *in_name) {
             display_err((bf_comp_err){
                 .file = in_name,
                 .id = BF_ERR_FAILED_READ,
-                .msg = "Failed to read file into buffer",
-                .has_instr = false,
-                .has_location = false,
+                .msg.ref = "Failed to read file into buffer",
             });
             sb.sz = 0;
             sb.capacity = 0;

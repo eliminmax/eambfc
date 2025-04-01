@@ -49,13 +49,10 @@ typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
 /* TEST byte [reg], 0xff; Jcc|tttn offset */
 static bool test_jcc(char tttn, u8 reg, i64 offset, char dst[JUMP_SIZE]) {
     if (offset > INT32_MAX || offset < INT32_MIN) {
-        display_err((bf_comp_err){
-            .id = BF_ERR_JUMP_TOO_LONG,
-            .msg =
-                "offset is outside the range of possible 32-bit signed values",
-            .has_location = 0,
-            .has_instr = 0,
-        });
+        display_err(basic_err(
+            BF_ERR_JUMP_TOO_LONG,
+            "offset is outside the range of possible 32-bit signed values"
+        ));
         return false;
     }
     memcpy(

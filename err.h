@@ -50,14 +50,34 @@ typedef enum {
 } out_mode;
 
 typedef struct {
-    const char *msg;
+    /* error message text */
+    union errmsg {
+        const char *ref;
+        char *alloc;
+    } msg;
+
+    /* file error occurred in. May be NULL. */
     const char *file;
-    size_t line;
-    size_t col;
-    bf_err_id id;
+
+    /* position in file of error - if `has_location` is false, may have an
+     * uninitialized value. */
+    struct {
+        size_t line;
+        size_t col;
+    } location;
+
+    /* character in file that error occurred with - if `has_instr` is false, may
+     * have an uninitialized value. */
     char instr;
+    /* The error ID code for the error */
+    bf_err_id id: 12;
+
+    /* set to true if `instr` is specified */
     bool has_instr   : 1;
+    /* set to true if `location` is specified */
     bool has_location: 1;
+    /* set to true if `msg` is allocated */
+    bool is_alloc    : 1;
 } bf_comp_err;
 
 /* enable quiet mode - this does not print error messages to stderr. Does not
@@ -68,7 +88,15 @@ void quiet_mode(void);
 void json_mode(void);
 
 /* function to display error messages, depending on the current error mode. */
-void display_err(const bf_comp_err e);
+void display_err(bf_comp_err e);
+
+nonnull_args inline bf_comp_err basic_err(bf_err_id id, const char *msg) {
+    return (bf_comp_err){
+        .id = id,
+        .msg.ref = msg,
+        .is_alloc = false,
+    };
+}
 
 /* special handling for malloc/realloc failure error messages, which avoids any
  * further use of malloc/realloc for purposes like generating JSON-escaped
