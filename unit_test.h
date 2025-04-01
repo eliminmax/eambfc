@@ -22,18 +22,20 @@
 #include "types.h"
 
 #ifdef UNIT_TEST_C
-#define extern
+#define TEST_GLOBAL(decl) decl
+#else /* UNIT_TEST_C */
+#define TEST_GLOBAL(decl) extern decl
 #endif /* UNIT_TEST_C */
 
 typedef LLVMDisasmContextRef disasm_ref;
 
 /* __BACKENDS__ add a declaration of the disasm_ref here */
-extern disasm_ref ARM64_DIS;
-extern disasm_ref RISCV64_DIS;
-extern disasm_ref S390X_DIS;
-extern disasm_ref X86_64_DIS;
+TEST_GLOBAL(disasm_ref ARM64_DIS);
+TEST_GLOBAL(disasm_ref RISCV64_DIS);
+TEST_GLOBAL(disasm_ref S390X_DIS);
+TEST_GLOBAL(disasm_ref X86_64_DIS);
 
-extern bf_err_id current_err;
+TEST_GLOBAL(bf_err_id current_err);
 
 enum test_status {
     TEST_SET = -1,
@@ -41,9 +43,9 @@ enum test_status {
     TEST_INTERCEPT = 1,
 };
 
-extern enum test_status testing_err;
+TEST_GLOBAL(enum test_status testing_err);
 
-extern jmp_buf etest_stack;
+TEST_GLOBAL(jmp_buf etest_stack);
 
 /* disassemble the contents of bytes, and return a sized_buf containing the
  * diassembly - instructions are separated by newlines, and the disassembly as a
