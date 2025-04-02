@@ -264,22 +264,27 @@ static struct jump_stack {
  *
  * If too many nested loops are encountered, it exteds the jump stack. */
 static bool bf_jump_open(
-    sized_buf *obj_code, const arch_inter *inter, const char *in_name
+    sized_buf *restrict obj_code,
+    const arch_inter *restrict inter,
+    bf_comp_err *restrict err
 ) {
+    size_t start_loc = obj_code->sz;
+    /* insert an architecture-specific illegal/trap instruction, then pad to
+     * proper size with no-op instructions so that the space for the jump open
+     * is reserved before the address is known. */
+    inter->pad_loop_open(obj_code);
     /* ensure that there are no more than the maximum nesting level */
     if (jump_stack.next_index + 1 == jump_stack.loc_sz) {
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
             jump_stack.loc_sz += JUMP_CHUNK_SZ;
         } else {
-            display_err((bf_comp_err){
+            *err = (bf_comp_err){
                 .id = BF_ERR_NESTED_TOO_DEEP,
                 .msg.ref =
                     "Extending jump stack any more would cause an overflow",
-                .file = in_name,
                 .instr = '[',
-                .has_location = false,
                 .has_instr = true,
-            });
+            };
             return false;
         }
 
@@ -289,14 +294,12 @@ static bool bf_jump_open(
         );
     }
     /* push the current address onto the stack */
-    jump_stack.locations[jump_stack.next_index].src_line = line;
-    jump_stack.locations[jump_stack.next_index].src_col = col;
-    jump_stack.locations[jump_stack.next_index].dst_loc = obj_code->sz;
+    jump_stack.locations[jump_stack.next_index] = (jump_loc){
+        line,
+        col,
+        start_loc,
+    };
     jump_stack.next_index++;
-    /* insert an architecture-specific illegal/trap instruction, then pad to
-     * proper size with no-op instructions so that the space for the jump open
-     * is reserved before the address is known. */
-    inter->pad_loop_open(obj_code);
     return true;
 }
 
@@ -376,8 +379,16 @@ static bool comp_instr(
             bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
             return true;
         /* `[` and `]` do their own error handling. */
-        case '[':
-            return bf_jump_open(obj_code, inter, in_name);
+        case '[': {
+            bf_comp_err err;
+            if (bf_jump_open(obj_code, inter, &err)) return true;
+            err.file = in_name;
+            err.location.line = line;
+            err.location.col = col;
+            err.has_location = true;
+            display_err(err);
+            return false;
+        }
         case ']': {
             bf_comp_err err;
             if (bf_jump_close(obj_code, inter, &err)) return true;
