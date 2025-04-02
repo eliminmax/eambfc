@@ -71,7 +71,6 @@ const char *const ERR_IDS[] = {
     "UnmatchedClose",
     "UnmatchedOpen",
     /* ICE divider */
-    "ICE:AppendToNull",
     "ICE:ImmediateTooLarge",
     "ICE:InvalidIr",
     "ICE:InvalidJump",

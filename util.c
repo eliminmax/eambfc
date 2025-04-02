@@ -49,28 +49,30 @@ fail:
  * `sb->sz` will be increased by `nbytes` */
 nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
     if (sb->buf == NULL) {
-        internal_err(
-            BF_ICE_APPEND_TO_NULL, "sb_reserve called with dst->buf set to NULL"
-        );
+        size_t new_cap = chunk_pad(nbytes);
+        sb->buf = checked_malloc(new_cap);
+        sb->capacity = new_cap;
     }
+
     /* if more space is needed, ensure no overflow occurs when calculating new
      * space requirements, then allocate it. */
+    if (sb->sz + nbytes < sb->sz) {
+        display_err(basic_err(
+            BF_ERR_BUF_TOO_LARGE, "appending bytes would cause overflow"
+        ));
+        fflush(stdout);
+        abort();
+    }
     if (sb->sz + nbytes > sb->capacity) {
         /* will reallocate with 0x1000 to 0x2000 bytes of extra space */
-        size_t needed_cap = (sb->sz + nbytes + 0x1000) & (~0xfff);
-        if (needed_cap < sb->capacity) {
-            free(sb->buf);
-            sb->capacity = 0;
-            sb->sz = 0;
-            sb->buf = NULL;
-            alloc_err();
-        }
+        size_t needed_cap = chunk_pad(sb->sz + nbytes);
         /* reallocate to new capacity */
         sb->buf = checked_realloc(sb->buf, needed_cap);
         sb->capacity = needed_cap;
     }
+    void *ret = &sb->buf[sb->sz];
     sb->sz += nbytes;
-    return sb->buf + sb->sz - nbytes;
+    return ret;
 }
 
 /* Append `bytes` to `dst`. If there's not enough room in `dst`, it will
@@ -80,9 +82,10 @@ nonnull_args void append_obj(
     sized_buf *restrict dst, const void *restrict bytes, size_t bytes_sz
 ) {
     if (dst->buf == NULL) {
-        internal_err(
-            BF_ICE_APPEND_TO_NULL, "append_obj called with dst->buf set to NULL"
-        );
+        size_t new_cap = chunk_pad(bytes_sz);
+        dst->sz = 0;
+        dst->buf = checked_malloc(new_cap);
+        dst->capacity = new_cap;
     }
     /* how much capacity is needed */
     size_t needed_cap = bytes_sz + dst->sz;
