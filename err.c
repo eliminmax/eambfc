@@ -233,16 +233,16 @@ invalid:
 #define METASTRINGIFY(x) STRINGIFY(x)
 #define MAX_SIZE_STRLEN (sizeof(METASTRINGIFY(SIZE_MAX)))
 
-static nonnull_ret char *err_to_json(const bf_comp_err err) {
-    if (!err.msg.ref) abort();
+static nonnull_args nonnull_ret char *err_to_json(const bf_comp_err *err) {
+    if (!err->msg.ref) abort();
     sized_buf json_err = newbuf(BFC_CHUNK_SIZE);
     append_str(&json_err, "{\"errorId\": \"");
-    append_str(&json_err, ERR_IDS[err.id]);
+    append_str(&json_err, ERR_IDS[err->id]);
     append_str(&json_err, "\", ");
 
     char transfer[8];
     const char *p;
-    if ((p = err.file)) {
+    if ((p = err->file)) {
         append_str(&json_err, "\"file\": \"");
         while (*p) {
             p += json_utf8_next(p, transfer);
@@ -250,30 +250,30 @@ static nonnull_ret char *err_to_json(const bf_comp_err err) {
         }
         append_str(&json_err, "\", ");
     }
-    if (err.has_location) {
+    if (err->has_location) {
         /* size of template - 7 + maximum space needed for 2 size_t */
         char loc_info[22 + (2 * MAX_SIZE_STRLEN)];
         size_t loc_info_sz = sprintf(
             loc_info,
             "\"line\": %ju, \"column\": %ju, ",
-            (uintmax_t)err.location.line,
-            (uintmax_t)err.location.col
+            (uintmax_t)err->location.line,
+            (uintmax_t)err->location.col
         );
         append_obj(&json_err, loc_info, loc_info_sz);
     }
 
-    if (err.has_instr) {
+    if (err->has_instr) {
         append_str(&json_err, "\"instruction\": \"");
         /* because 0 is not a valid utf-8 continuation byte, json_utf8_next
          * will only consume the first byte, and will both JSON-escape and
          * utf8-sanitize it. */
-        json_utf8_next((const char[]){err.instr, 0}, transfer);
+        json_utf8_next((const char[]){err->instr, 0}, transfer);
         append_str(&json_err, transfer);
         append_str(&json_err, "\", ");
     }
 
     append_str(&json_err, "\"message\": \"");
-    p = err.msg.ref;
+    p = err->msg.ref;
     while (*p) {
         p += json_utf8_next(p, transfer);
         append_str(&json_err, transfer);
@@ -282,35 +282,35 @@ static nonnull_ret char *err_to_json(const bf_comp_err err) {
     return json_err.buf;
 }
 
-static nonnull_ret char *err_to_string(const bf_comp_err err) {
-    if (!err.msg.ref) abort();
+static nonnull_args nonnull_ret char *err_to_string(const bf_comp_err *err) {
+    if (!err->msg.ref) abort();
     sized_buf err_str = newbuf(BFC_CHUNK_SIZE);
     append_str(&err_str, "Error ");
-    append_str(&err_str, ERR_IDS[err.id]);
-    if (err.file) {
+    append_str(&err_str, ERR_IDS[err->id]);
+    if (err->file) {
         append_str(&err_str, " in file ");
-        append_str(&err_str, err.file);
+        append_str(&err_str, err->file);
     }
-    if (err.has_location) {
+    if (err->has_location) {
         /* size of template - 7 + maximum space needed for 2 size_t */
         char loc_info[18 + (2 * MAX_SIZE_STRLEN)];
         size_t loc_info_sz = sprintf(
             loc_info,
             " at line %ju, column %ju",
-            (uintmax_t)err.location.line,
-            (uintmax_t)err.location.col
+            (uintmax_t)err->location.line,
+            (uintmax_t)err->location.col
         );
         append_obj(&err_str, loc_info, loc_info_sz);
     }
-    if (err.has_instr) {
+    if (err->has_instr) {
         char instr[5];
         append_str(&err_str, " (instruction ");
-        char_esc(err.instr, instr);
+        char_esc(err->instr, instr);
         append_str(&err_str, instr);
         append_str(&err_str, ")");
     }
     append_str(&err_str, ": ");
-    append_str(&err_str, err.msg.ref);
+    append_str(&err_str, err->msg.ref);
     append_str(&err_str, "\n");
     return err_str.buf;
 }
@@ -323,11 +323,12 @@ void display_err(bf_comp_err e) {
         case OUTMODE_QUIET:
             return;
         case OUTMODE_NORMAL:
-            errmsg = err_to_string(e);
+            errmsg = err_to_string(&e);
+
             fputs(errmsg, stderr);
             break;
         case OUTMODE_JSON:
-            errmsg = err_to_json(e);
+            errmsg = err_to_json(&e);
             puts(errmsg);
             break;
         default:
@@ -530,7 +531,7 @@ static void non_utf8_filename(void) {
         "somefile.b"
         "\xee"
         "f";
-    char *err_json = err_to_json(test_err);
+    char *err_json = err_to_json(&test_err);
     CU_ASSERT(check_err_json(err_json, &expected));
     free(err_json);
 }
