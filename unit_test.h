@@ -89,20 +89,6 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
 /* simple self-explanatory ERRORCHECKED wrapper around CU_ADD_TEST */
 #define ADD_TEST(suite, test) ERRORCHECKED(CU_ADD_TEST(suite, test))
 
-/* boilerplate for use of setjmp to test if the right error is hit.
- * will result in undefined behavior if it's in a function that doesn't result
- * in one of `internal_err`, `alloc_err`, or `display_err` being called later */
-#define EXPECT_BF_ERR(eid) \
-    do { \
-        testing_err = TEST_INTERCEPT; \
-        int returned_err; \
-        if ((returned_err = setjmp(etest_stack))) { \
-            CU_ASSERT_EQUAL(eid, returned_err >> 1); \
-            testing_err = NOT_TESTING; \
-            return; \
-        } \
-    } while (0)
-
 CU_pSuite register_util_tests(void);
 CU_pSuite register_serialize_tests(void);
 CU_pSuite register_optimize_tests(void);

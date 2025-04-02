@@ -397,15 +397,15 @@ static void test_zero_byte(void) {
 }
 
 static void test_jump_too_long(void) {
-    EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
     bf_comp_err e;
     char dst[JUMP_SIZE];
-    jump_close(
+    CU_ASSERT_FALSE(jump_close(
         0,
         INT64_MAX,
         &(sized_buf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE},
         &e
-    );
+    ));
+    CU_ASSERT_EQUAL(e.id, BF_ERR_JUMP_TOO_LONG);
 }
 
 CU_pSuite register_x86_64_tests(void) {

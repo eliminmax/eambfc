@@ -808,12 +808,19 @@ static void test_byte_arith(void) {
 }
 
 static void test_bad_jump_offset(void) {
-    EXPECT_BF_ERR(BF_ICE_INVALID_JUMP_ADDRESS);
+    testing_err = TEST_INTERCEPT;
+    int returned_err;
+    if ((returned_err = setjmp(etest_stack))) {
+        CU_ASSERT_EQUAL(BF_ICE_INVALID_JUMP_ADDRESS, returned_err >> 1);
+        testing_err = NOT_TESTING;
+        return;
+    }
     bf_comp_err e;
     char dst[JUMP_SIZE];
     jump_close(
         0, 31, &(sized_buf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE}, &e
     );
+    longjmp(etest_stack, (BF_NOT_ERR << 1) | 1);
 }
 
 static void test_jump_too_long(void) {
