@@ -154,25 +154,27 @@
 /* a call-clobbered register to use as a temporary scratch register */
 static const u8 TMP_REG = UINT8_C(5);
 
-static void store_to_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
+static nonnull_args void store_to_byte(
+    u8 reg, u8 aux, sized_buf *restrict dst_buf
+) {
     /* STC aux, 0(reg) {RX-a} */
     u8 i_bytes[4] = {0x42, (aux << 4) | reg, 0x00, 0x00};
     append_obj(dst_buf, &i_bytes, 4);
 }
 
-static void load_from_byte(u8 reg, char dst[6]) {
+static void load_from_byte(u8 reg, char dst[restrict 6]) {
     /* LLGC TMP_REG, 0(reg) {RXY-a} */
     memcpy(dst, (u8[6]){0xe3, (TMP_REG << 4) | reg, 0x00, 0x00, 0x00, 0x90}, 6);
 }
 
 /* declared before set_reg as it's used in set_reg, even though it's not first
  * in the struct. */
-static void reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
+static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
     /* LGR dst, src {RRE} */
     append_obj(dst_buf, (u8[]){0xb9, 0x04, 0x00, (dst << 4) | src}, 4);
 }
 
-static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
     /* There are numerous ways to store immediates in registers for this
      * architecture. This function tries to find a way to load a given immediate
      * in as few machine instructions as possible, using shorter instructions
@@ -232,7 +234,7 @@ static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     }
 }
 
-static void syscall(sized_buf *dst_buf) {
+static nonnull_args void syscall(sized_buf *restrict dst_buf) {
     /* SVC 0 {I} */
     /* NOTE: on Linux s390x, if the SC number is less than 256, it it can be
      * passed as the second byte of the instruction, but taking advantage of
@@ -253,8 +255,12 @@ typedef enum {
 
 #define JUMP_SIZE 18
 
-static bool branch_cond(
-    u8 reg, i64 offset, comp_mask mask, char dst[JUMP_SIZE]
+static nonnull_args bool branch_cond(
+    u8 reg,
+    i64 offset,
+    comp_mask mask,
+    char dst[restrict JUMP_SIZE],
+    bf_comp_err *restrict err
 ) {
     /* jumps are done by Halfwords, not bytes, so must ensure it's valid. */
     if ((offset % 2) != 0) {
@@ -267,9 +273,9 @@ static bool branch_cond(
      * offset of halfwords, so offset must be even and fit within a 17-bit
      * signed (2's complement) integer */
     if (offset < -0x10000 || offset > 0xffff) {
-        display_err(basic_err(
+        *err = basic_err(
             BF_ERR_JUMP_TOO_LONG, "offset is out-of-range for this architecture"
-        ));
+        );
         return false;
     }
     /* addressing halfwords is possible in compare instructions, but not
@@ -321,7 +327,7 @@ static bool branch_cond(
 /* NOPR is an extended mnemonic for BCR 0, 0 {RR} */
 #define NOPR 0x07, 0x00
 
-static void pad_loop_open(sized_buf *dst_buf) {
+static nonnull_args void pad_loop_open(sized_buf *restrict dst_buf) {
     /* start with a jump into its own second haflword - both gcc and clang
      * generate that for `__builtin_trap()`.
      *
@@ -331,7 +337,9 @@ static void pad_loop_open(sized_buf *dst_buf) {
     append_obj(dst_buf, &i_bytes, 18);
 }
 
-static void add_reg_signed(u8 reg, i64 imm, sized_buf *dst_buf) {
+static nonnull_args void add_reg_signed(
+    u8 reg, i64 imm, sized_buf *restrict dst_buf
+) {
     if (imm >= INT16_MIN && imm <= INT16_MAX) {
         /* if imm fits within a halfword, a shorter instruction can be used. */
         /* AGHI reg, imm {RI-a} */
@@ -358,19 +366,29 @@ static void add_reg_signed(u8 reg, i64 imm, sized_buf *dst_buf) {
     }
 }
 
-static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf, size_t index) {
-    return branch_cond(reg, offset, MASK_EQ, &dst_buf->buf[index]);
+static nonnull_args bool jump_open(
+    u8 reg,
+    i64 offset,
+    sized_buf *restrict dst_buf,
+    size_t index,
+    bf_comp_err *restrict err
+) {
+    return branch_cond(reg, offset, MASK_EQ, &dst_buf->buf[index], err);
 }
 
-static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return branch_cond(reg, offset, MASK_NE, sb_reserve(dst_buf, JUMP_SIZE));
+static nonnull_args bool jump_close(
+    u8 reg, i64 offset, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    return branch_cond(
+        reg, offset, MASK_NE, sb_reserve(dst_buf, JUMP_SIZE), err
+    );
 }
 
-static void add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+static nonnull_args void add_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
     add_reg_signed(reg, imm, dst_buf);
 }
 
-static void sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+static nonnull_args void sub_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
     /* there are not equivalent sub instructions to any of the add instructions
      * used, so take advantage of the fact that adding and subtracting INT64_MIN
      * have the same effect except for the possible effect on overflow flags
@@ -380,35 +398,39 @@ static void sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
     add_reg_signed(reg, imm_s, dst_buf);
 }
 
-static void inc_reg(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
     add_reg_signed(reg, 1, dst_buf);
 }
 
-static void dec_reg(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void dec_reg(u8 reg, sized_buf *restrict dst_buf) {
     add_reg_signed(reg, -1, dst_buf);
 }
 
-static void add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+static nonnull_args void add_byte(
+    u8 reg, u8 imm8, sized_buf *restrict dst_buf
+) {
     load_from_byte(reg, sb_reserve(dst_buf, 6));
     add_reg_signed(TMP_REG, imm8, dst_buf);
     store_to_byte(reg, TMP_REG, dst_buf);
 }
 
-static void sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+static nonnull_args void sub_byte(
+    u8 reg, u8 imm8, sized_buf *restrict dst_buf
+) {
     load_from_byte(reg, sb_reserve(dst_buf, 6));
     add_reg_signed(TMP_REG, -imm8, dst_buf);
     store_to_byte(reg, TMP_REG, dst_buf);
 }
 
-static void inc_byte(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void inc_byte(u8 reg, sized_buf *restrict dst_buf) {
     add_byte(reg, 1, dst_buf);
 }
 
-static void dec_byte(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void dec_byte(u8 reg, sized_buf *restrict dst_buf) {
     sub_byte(reg, 1, dst_buf);
 }
 
-static void zero_byte(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void zero_byte(u8 reg, sized_buf *restrict dst_buf) {
     /* STC 0, 0(reg) {RX-a} */
     store_to_byte(reg, 0, dst_buf);
 }
@@ -571,9 +593,10 @@ static void test_set_reg_large_imm(void) {
 static void test_successful_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(128);
+    bf_comp_err e;
     sb_reserve(&sb, JUMP_SIZE);
-    jump_open(3, 18, &sb, 0);
-    jump_close(3, -36, &sb);
+    jump_open(3, 18, &sb, 0, &e);
+    jump_close(3, -36, &sb, &e);
     pad_loop_open(&sb);
     /* For some reason, LLVM treats jump offset operand as an unsigned immediate
      * after sign extending it to the full 64 bits, so -36 becomes
@@ -786,12 +809,19 @@ static void test_byte_arith(void) {
 
 static void test_bad_jump_offset(void) {
     EXPECT_BF_ERR(BF_ICE_INVALID_JUMP_ADDRESS);
-    jump_close(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    bf_comp_err e;
+    char dst[JUMP_SIZE];
+    jump_close(
+        0, 31, &(sized_buf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE}, &e
+    );
 }
 
 static void test_jump_too_long(void) {
-    EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_close(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    bf_comp_err e;
+    sized_buf sb = newbuf(JUMP_SIZE);
+    CU_ASSERT_FALSE(jump_close(0, 1 << 23, &sb, &e));
+    CU_ASSERT_EQUAL(e.id, BF_ERR_JUMP_TOO_LONG);
+    free(sb.buf);
 }
 
 CU_pSuite register_s390x_tests(void) {

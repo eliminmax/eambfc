@@ -8,7 +8,9 @@
 #ifndef BFC_ARCH_INTER_H
 #define BFC_ARCH_INTER_H 1
 /* internal */
+#include "attributes.h"
 #include "config.h"
+#include "err.h"
 #include "types.h"
 
 /* Once an interface is defined and implemented, it needs to be integrated into
@@ -44,18 +46,22 @@ typedef const struct arch_inter {
     i64 sc_exit;
 
     /* Write instruction/s to dst_buf to store immediate imm in register reg. */
-    void (*const set_reg)(u8 reg, i64 imm, sized_buf *dst_buf);
+    nonnull_args void (*const set_reg)(
+        u8 reg, i64 imm, sized_buf *restrict dst_buf
+    );
 
     /* Write instruction/s to dst_buf to copy value stored in register src into
      * register dst. */
-    void (*const reg_copy)(u8 dst, u8 src, sized_buf *dst_buf);
+    nonnull_args void (*const reg_copy)(
+        u8 dst, u8 src, sized_buf *restrict dst_buf
+    );
 
     /* Write the system call instruction to dst_buf. */
-    void (*const syscall)(sized_buf *dst_buf);
+    nonnull_args void (*const syscall)(sized_buf *restrict dst_buf);
 
     /* write an instruction, then pad with no-op instructions. Must use the same
      * number of bytes as `jump_open` */
-    void (*const pad_loop_open)(sized_buf *dst_buf);
+    nonnull_args void (*const pad_loop_open)(sized_buf *restrict dst_buf);
 
     /* Functions that correspond 1 to 1 with brainfuck instructions.
      * Note that the `.` and `,` instructions are implemented using more complex
@@ -67,68 +73,91 @@ typedef const struct arch_inter {
      * machine code to test if the byte pointed to by `reg` is zero, and jump
      * `offset` bytes away if so
      *
+     * If `offset` is too far on the architecture, sets `err->id` and `err->msg`
+     * and clears other fields, then returns false.
+     *
      * Used to implement the `[` brainfuck instruction. */
-    bool (*const jump_open)(
-        u8 reg, i64 offset, sized_buf *dst_buf, size_t index
+    nonnull_args bool (*const jump_open)(
+        u8 reg,
+        i64 offset,
+        sized_buf *restrict dst_buf,
+        size_t index,
+        bf_comp_err *restrict err
     );
 
-    /* Write instruction/s to dst_buf to jump <offset> bytes if the byte stored
-     * at address in register reg is not set to zero.
+    /* Write instruction/s to dst_buf to jump `offset` bytes if the byte stored
+     * at address in register `reg` is not set to zero.
+     *
+     * If `offset` is too far on the architecture, sets `err->id` and `err->msg`
+     * and clears other fields, then returns false.
      *
      * Used to implement the `]` brainfuck instruction. */
-    bool (*const jump_close)(u8 reg, i64 offset, sized_buf *dst_buf);
+    bool (*const jump_close)(
+        u8 reg,
+        i64 offset,
+        sized_buf *restrict dst_buf,
+        bf_comp_err *restrict err
+    );
 
     /* Write instruction/s to dst_buf to increment register reg by one.
      *
      * Used to implement the `>` brainfuck instruction. */
-    void (*const inc_reg)(u8 reg, sized_buf *dst_buf);
+    nonnull_args void (*const inc_reg)(u8 reg, sized_buf *restrict dst_buf);
 
     /* Write instruction/s to dst_buf to decrement register reg by one.
      *
      * Used to implement the `<` brainfuck instruction. */
-    void (*const dec_reg)(u8 reg, sized_buf *dst_buf);
+    nonnull_args void (*const dec_reg)(u8 reg, sized_buf *restrict dst_buf);
 
     /* Write instruction/s to dst_buf to increment byte stored at address in
      * register reg by one.
      *
      * Used to implement the `+` brainfuck instruction. */
-    void (*const inc_byte)(u8 reg, sized_buf *dst_buf);
+    nonnull_args void (*const inc_byte)(u8 reg, sized_buf *restrict dst_buf);
 
     /* Write instruction/s to dst_buf to decrement byte stored at address in
      * register reg by one.
      *
      * Used to implement the `-` brainfuck instruction. */
-    void (*const dec_byte)(u8 reg, sized_buf *dst_buf);
+    nonnull_args void (*const dec_byte)(u8 reg, sized_buf *restrict dst_buf);
 
     /* functions used for optimized instructions */
 
     /* Write instruction/s to dst_buf to add imm to register reg.
      *
      * Used to implement sequences of consecutive `>` brainfuck instructions. */
-    void (*const add_reg)(u8 reg, u64 imm, sized_buf *dst_buf);
+    nonnull_args void (*const add_reg)(
+        u8 reg, u64 imm, sized_buf *restrict dst_buf
+    );
 
     /* Write instruction/s to dst_buf to subtract imm from register reg.
      *
      * Used to implement sequences of consecutive `<` brainfuck instructions. */
-    void (*const sub_reg)(u8 reg, u64 imm, sized_buf *dst_buf);
+    nonnull_args void (*const sub_reg)(
+        u8 reg, u64 imm, sized_buf *restrict dst_buf
+    );
 
     /* Write instruction/s to dst_buf to add imm8 to byte stored at address in
      * register reg.
      *
      * Used to implement sequences of consecutive `+` brainfuck instructions. */
-    void (*const add_byte)(u8 reg, u8 imm8, sized_buf *dst_buf);
+    nonnull_args void (*const add_byte)(
+        u8 reg, u8 imm8, sized_buf *restrict dst_buf
+    );
 
     /* Write instruction/s to dst_buf to subtract imm8 from byte stored at
      * address in register reg.
      *
      * Used to implement sequences of consecutive `-` brainfuck instructions. */
-    void (*const sub_byte)(u8 reg, u8 imm8, sized_buf *dst_buf);
+    nonnull_args void (*const sub_byte)(
+        u8 reg, u8 imm8, sized_buf *restrict dst_buf
+    );
 
     /* Write instruction/s to dst_buf to set the value of byte stored at address
      * in register reg to 0.
      *
      * Used to implement the `[-]` and `[+]` brainfuck instruction sequences. */
-    void (*const zero_byte)(u8 reg, sized_buf *dst_buf);
+    nonnull_args void (*const zero_byte)(u8 reg, sized_buf *restrict dst_buf);
 
     /* CPU flags that should be set for executables for this architecture. */
     u32 flags;

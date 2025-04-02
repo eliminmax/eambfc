@@ -302,27 +302,24 @@ static bool bf_jump_open(
 
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
-static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
-    off_t open_addr;
-    i32 distance;
-
+static bool bf_jump_close(
+    sized_buf *restrict obj_code,
+    const arch_inter *restrict inter,
+    bf_comp_err *restrict e
+) {
     /* ensure that the current index is in bounds */
     if (jump_stack.next_index == 0) {
-        display_err((bf_comp_err){
+        *e = (bf_comp_err){
             .id = BF_ERR_UNMATCHED_CLOSE,
-            .file = NULL,
             .msg.ref = "Found ']' without matching '['.",
-            .has_instr = true,
-            .has_location = true,
             .instr = ']',
-            .location.line = line,
-            .location.col = col,
-        });
+            .has_instr = true,
+        };
         return false;
     }
     /* pop the matching `[` instruction's location */
-    open_addr = jump_stack.locations[--jump_stack.next_index].dst_loc;
-    distance = obj_code->sz - open_addr;
+    off_t before = jump_stack.locations[--jump_stack.next_index].dst_loc;
+    i32 distance = obj_code->sz - before;
 
     /* This is messy, but cuts down the number of allocations massively.
      * Because the NOP padding added earlier is the same size as the jump point,
@@ -332,12 +329,12 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
      * conditional jump instruction without any risk of unnecessary reallocation
      * or any temporary buffer, sized or not. */
 
-    if (!inter->jump_open(inter->reg_bf_ptr, distance, obj_code, open_addr)) {
+    if (!inter->jump_open(inter->reg_bf_ptr, distance, obj_code, before, e)) {
         return false;
     }
 
     /* jumps to right after the `[` instruction, to skip a redundant check */
-    return inter->jump_close(inter->reg_bf_ptr, -distance, obj_code);
+    return inter->jump_close(inter->reg_bf_ptr, -distance, obj_code, e);
 }
 
 /* 4 of the 8 brainfuck instructions can be compiled with instructions that take
@@ -381,8 +378,16 @@ static bool comp_instr(
         /* `[` and `]` do their own error handling. */
         case '[':
             return bf_jump_open(obj_code, inter, in_name);
-        case ']':
-            return bf_jump_close(obj_code, inter);
+        case ']': {
+            bf_comp_err err;
+            if (bf_jump_close(obj_code, inter, &err)) return true;
+            err.file = in_name;
+            err.location.line = line;
+            err.location.col = col;
+            err.has_location = true;
+            display_err(err);
+            return false;
+        }
         /* on a newline, add 1 to the line number and reset the column */
         case '\n':
             line++;
