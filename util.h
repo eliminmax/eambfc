@@ -79,11 +79,11 @@ const_fn inline i64 sign_extend(i64 val, u8 nbits) {
     return lshifted >> shift_amount;
 }
 
-/* Attempts to write ct bytes from buf to the specified fd.
- * If all bytes are written, returns true, otherwise, it outputs a FailedWrite
- * error message and returns false. */
+/* Attempts to write `ct` bytes from `buf` to `fd`.
+ * If all bytes are written, returns `true`, otherwise, it sets `err->id` and
+ * `err->msg`, zeroing out other fields in `err`, then returns `false`. */
 nonnull_args bool write_obj(
-    int fd, const void *restrict buf, size_t ct, const char *restrict outname
+    int fd, const void *restrict buf, size_t ct, bf_comp_err *restrict outname
 );
 
 /* reserve nbytes bytes at the end of dst, and returns a pointer to the
@@ -103,8 +103,14 @@ inline void append_str(sized_buf *restrict dst, const char *restrict str) {
     dst->sz--;
 }
 
-/* Reads the contents of fd into a sized_buf. If a read error occurs, frees
- * what's already been read, and sets the sized_buf to {0, 0, NULL}. */
-sized_buf read_to_sized_buf(int fd, const char *in_name);
+union read_result {
+    sized_buf sb;
+    bf_comp_err err;
+};
+
+/* Tries to read `fd` into `result->sb`. If a read fails, returns `false`, and
+ * sets `result->err` to an error with the `id` and `msg` set. Once no data is
+ * left to read, it returns `true`. */
+nonnull_args bool read_to_sized_buf(int fd, union read_result *result);
 
 #endif /* BFC_UTIL_H */

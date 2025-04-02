@@ -29,11 +29,8 @@ extern inline void append_str(
     sized_buf *restrict dst, const char *restrict str
 );
 
-/* Wrapper around write.3POSIX that returns true if all bytes were written, and
- * prints an error and returns false otherwise.
- * validate. */
 nonnull_args bool write_obj(
-    int fd, const void *restrict buf, size_t ct, const char *restrict out_name
+    int fd, const void *restrict buf, size_t ct, bf_comp_err *restrict err
 ) {
     while (ct > (size_t)SSIZE_MAX) {
         if (write(fd, buf, SSIZE_MAX) != SSIZE_MAX) goto fail;
@@ -43,17 +40,13 @@ nonnull_args bool write_obj(
     if (write(fd, buf, ct) != (ssize_t)ct) goto fail;
     return true;
 fail:
-    display_err((bf_comp_err){
-        .id = BF_ERR_FAILED_WRITE,
-        .msg.ref = "Failed to write to file",
-        .file = out_name,
-    });
+    *err = basic_err(BF_ERR_FAILED_WRITE, "Failed to write to file");
     return false;
 }
 
-/* reserve nbytes bytes at the end of dst, and returns a pointer to the
+/* reserve `nbytes` bytes at the end of `dst`, and returns a pointer to the
  * beginning of them - it's assumed that the caller will populate them, so the
- * sized_buf will consider them used */
+ * `sb->sz` will be increased by `nbytes` */
 nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
     if (sb->buf == NULL) {
         internal_err(
@@ -80,8 +73,9 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
     return sb->buf + sb->sz - nbytes;
 }
 
-/* Append bytes to dst, handling reallocs as needed.
- * Assumes that dst has been allocated with `malloc`. */
+/* Append `bytes` to `dst`. If there's not enough room in `dst`, it will
+ * `realloc` `dst->buf`, so if it's not heap allocated, care must be taken to
+ * ensure enough space is provided to fit `bytes`. */
 nonnull_args void append_obj(
     sized_buf *restrict dst, const void *restrict bytes, size_t bytes_sz
 ) {
@@ -94,7 +88,7 @@ nonnull_args void append_obj(
     size_t needed_cap = bytes_sz + dst->sz;
     if (needed_cap < dst->sz) {
         display_err(basic_err(
-            BF_ERR_BUF_TOO_LARGE, "reallocating buffer would cause overflow"
+            BF_ERR_BUF_TOO_LARGE, "appending bytes would cause overflow"
         ));
         fflush(stdout);
         abort();
@@ -110,28 +104,27 @@ nonnull_args void append_obj(
     dst->sz += bytes_sz;
 }
 
-/* Reads the contents of fd into sb. If a read error occurs, frees what's
- * already been read, and sets sb to {0, 0, NULL}. */
-sized_buf read_to_sized_buf(int fd, const char *in_name) {
-    sized_buf sb = newbuf(BFC_CHUNK_SIZE);
+/* Tries to read the contents in the file associated with `fd` into a new
+ * `sized_buf`, returning a tagged union with a boolean `success` indicating
+ * whether it succeeded or not, and union `data` with `err` on failure and `sb`
+ * on success. Only use `data.err` on failure, and only use `data.sb` on
+ * success. */
+bool read_to_sized_buf(int fd, union read_result *result) {
+    result->sb = newbuf(BFC_CHUNK_SIZE);
     char chunk[BFC_CHUNK_SIZE];
     ssize_t count;
     while ((count = read(fd, &chunk, BFC_CHUNK_SIZE))) {
         if (count >= 0) {
-            append_obj(&sb, &chunk, count);
+            append_obj(&result->sb, &chunk, count);
         } else {
-            free(sb.buf);
-            display_err((bf_comp_err){
-                .file = in_name,
-                .id = BF_ERR_FAILED_READ,
-                .msg.ref = "Failed to read file into buffer",
-            });
-            sb.sz = 0;
-            sb.capacity = 0;
-            sb.buf = NULL;
+            free(result->sb.buf);
+            result->err = basic_err(
+                BF_ERR_FAILED_READ, "Failed to read file into buffer"
+            );
+            return false;
         }
     }
-    return sb;
+    return true;
 }
 
 #ifdef BFC_TEST
