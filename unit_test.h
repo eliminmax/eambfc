@@ -97,11 +97,11 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
         testing_err = TEST_INTERCEPT; \
         int returned_err; \
         if ((returned_err = setjmp(etest_stack))) { \
-            CU_ASSERT_EQUAL(eid << 0 | 1, returned_err); \
+            CU_ASSERT_EQUAL(eid, returned_err >> 1); \
+            testing_err = NOT_TESTING; \
+            return; \
         } \
-        testing_err = NOT_TESTING; \
-        return; \
-    } while (0);
+    } while (0)
 
 CU_pSuite register_util_tests(void);
 CU_pSuite register_serialize_tests(void);
