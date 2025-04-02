@@ -527,10 +527,7 @@ static void non_utf8_filename(void) {
     };
     bf_comp_err test_err;
     memcpy(&test_err, &expected, sizeof(bf_comp_err));
-    test_err.file =
-        "somefile.b"
-        "\xee"
-        "f";
+    test_err.file = "somefile.b\356f";
     char *err_json = err_to_json(&test_err);
     CU_ASSERT(check_err_json(err_json, &expected));
     free(err_json);
