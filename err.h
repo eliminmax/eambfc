@@ -93,7 +93,6 @@ nonnull_args inline bf_comp_err basic_err(bf_err_id id, const char *msg) {
     return (bf_comp_err){
         .id = id,
         .msg.ref = msg,
-        .is_alloc = false,
     };
 }
 
