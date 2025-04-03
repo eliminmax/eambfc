@@ -574,17 +574,15 @@ bool bf_compile(
 
     /* check if any unmatched loop openings were left over. */
     for (size_t i = 0; i < jump_stack.next; i++) {
-        e = (bf_comp_err){
+        display_err((bf_comp_err){
             .id = BF_ERR_UNMATCHED_OPEN,
             .file = in_name,
             .msg.ref = "Reached the end of the file with an unmatched '['.",
             .instr = '[',
             .has_instr = true,
+            .location = jump_stack.locations[i].location,
             .has_location = jump_stack.locations[i].has_loc,
-        };
-        if (jump_stack.locations[i].has_loc) {
-            e.location = jump_stack.locations[i].location;
-        }
+        });
         ret = false;
     }
 
