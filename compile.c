@@ -357,7 +357,10 @@ static bool comp_instr(
     const char *in_name,
     src_loc *restrict location
 ) {
-    if (location) location->col++;
+    if (location) {
+        /* if it's not a UTF-8 continuation byte, increment the column */
+        if (((uchar)c & 0xc0) != 0x80) location->col++;
+    }
     switch (c) {
         /* start with the simple cases handled with COMPILE_WITH */
         /* decrement the tape pointer register */
