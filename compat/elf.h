@@ -47,7 +47,7 @@
 #endif /* (!defined __has_include) || defined BFC_NOEXTENSIONS */
 
 #if HAS_INCLUDE(<elf.h>) || defined S_SPLINT_S
-#include <elf.h>
+#include <elf.h> /* IWYU pragma: export */
 #else /* HAS_INCLUDE */
 
 #include "eambfc_inttypes.h" /* IWYU pragma: keep */
