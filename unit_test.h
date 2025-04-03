@@ -75,7 +75,7 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
     }
 
 /* utility macro to abort on CUnit error after running expr */
-#define ERRORCHECKED(expr) \
+#define BF_ERRCHECKED(expr) \
     expr; \
     if (CU_get_error()) { \
         fprintf(stderr, "%s\n", CU_get_error_msg()); \
@@ -84,10 +84,10 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
 
 /* utility macro to set up a CUnit suite with the current file name */
 #define INIT_SUITE(suite_var) \
-    ERRORCHECKED(suite_var = CU_add_suite(__FILE__, NULL, NULL))
+    BF_ERRCHECKED(suite_var = CU_add_suite(__FILE__, NULL, NULL))
 
-/* simple self-explanatory ERRORCHECKED wrapper around CU_ADD_TEST */
-#define ADD_TEST(suite, test) ERRORCHECKED(CU_ADD_TEST(suite, test))
+/* simple self-explanatory BF_ERRCHECKED wrapper around CU_ADD_TEST */
+#define ADD_TEST(suite, test) BF_ERRCHECKED(CU_ADD_TEST(suite, test))
 
 CU_pSuite register_util_tests(void);
 CU_pSuite register_serialize_tests(void);

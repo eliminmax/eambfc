@@ -25,7 +25,7 @@
 /* bit shift e.id and or 1 into the lowest bit, to differentiate between
  * the original setjmp return value of 0, and the final one of the error id,
  * which also could be 0. */
-#define ERR_CALLBACK(e_id) \
+#define TEST_ERR_LJ(e_id) \
     switch (testing_err) { \
         case TEST_INTERCEPT: \
             longjmp(etest_stack, ((e_id) << 1) | 1); \
@@ -37,7 +37,7 @@
     }
 
 #else /* BFC_TEST */
-#define ERR_CALLBACK(e_id) (void)0
+#define TEST_ERR_LJ(e_id) (void)0
 #endif /* BFC_TEST */
 
 extern inline bf_comp_err basic_err(bf_err_id id, const char *msg);
@@ -93,7 +93,7 @@ void json_mode(void) {
  * causing a loop of failures to generate json error messages properly.
  * If puts or fputs call malloc internally, then there's nothing to be done. */
 noreturn void alloc_err(void) {
-    ERR_CALLBACK(BF_FATAL_ALLOC_FAILURE);
+    TEST_ERR_LJ(BF_FATAL_ALLOC_FAILURE);
     switch (err_mode) {
         case OUTMODE_JSON:
             puts(
@@ -315,7 +315,7 @@ static nonnull_args nonnull_ret char *err_to_string(const bf_comp_err *err) {
 }
 
 void display_err(bf_comp_err e) {
-    ERR_CALLBACK(e.id);
+    TEST_ERR_LJ(e.id);
     if (!e.msg.ref) abort();
     char *errmsg;
     switch (err_mode) {
@@ -343,7 +343,7 @@ void display_err(bf_comp_err e) {
 }
 
 noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg) {
-    ERR_CALLBACK(err_id);
+    TEST_ERR_LJ(err_id);
     display_err(basic_err(err_id, msg));
     fflush(stdout);
     abort();

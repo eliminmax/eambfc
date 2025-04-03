@@ -149,7 +149,7 @@
  * The following macro can initialize an array for any of the three, and the
  * appropriately-sized serialize{16,32}be function can be used for the actual
  * immediate value after initializing the array. */
-#define ENCODE_RI_OP(op, reg) {(op) >> 4, ((reg) << 4) | ((op) & 0xf)}
+#define RI_OP(op, reg) {(op) >> 4, ((reg) << 4) | ((op) & 0xf)}
 
 /* a call-clobbered register to use as a temporary scratch register */
 static const u8 TMP_REG = UINT8_C(5);
@@ -185,13 +185,13 @@ static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
     } else if (imm <= INT16_MAX && imm >= INT16_MIN) {
         /* if it fits in a halfword, use Load Halfword Immediate (64 <- 16) */
         /* LGHI r.reg, imm {RI-a} */
-        u8 i_bytes[4] = ENCODE_RI_OP(0xa79, reg);
+        u8 i_bytes[4] = RI_OP(0xa79, reg);
         serialize16be(imm, &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 4);
     } else if (imm <= INT32_MAX && imm >= INT32_MIN) {
         /* if it fits within a word, use Load Immediate (64 <- 32). */
         /* LGFI r.reg, imm {RIL-a} */
-        u8 i_bytes[6] = ENCODE_RI_OP(0xc01, reg);
+        u8 i_bytes[6] = RI_OP(0xc01, reg);
         serialize32be(imm, &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 6);
     } else {
@@ -215,19 +215,19 @@ static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
         if ((upper_imm & ~INT32_C(0xffff)) >> 16 == default_val) {
             /* sets bits 16-31 of the register to the immediate */
             /* IIHL reg, upper_imm {RI-a} */
-            u8 i_bytes[4] = ENCODE_RI_OP(0xa51, reg);
+            u8 i_bytes[4] = RI_OP(0xa51, reg);
             serialize16be(upper_imm, &i_bytes[2]);
             append_obj(dst_buf, &i_bytes, 4);
         } else if ((i16)upper_imm == default_val) {
             /* sets bits 0-15 of the register to the immediate. */
             /* IIHH reg, upper_imm {RI-a} */
-            u8 i_bytes[4] = ENCODE_RI_OP(0xa50, reg);
+            u8 i_bytes[4] = RI_OP(0xa50, reg);
             serialize16be(((u32)upper_imm) >> 16, &i_bytes[2]);
             append_obj(dst_buf, &i_bytes, 4);
         } else {
             /* need to set the full upper word, with Insert Immediate (high) */
             /* IIHF reg, imm {RIL-a} */
-            u8 i_bytes[6] = ENCODE_RI_OP(0xc08, reg);
+            u8 i_bytes[6] = RI_OP(0xc08, reg);
             serialize32be(upper_imm, &i_bytes[2]);
             append_obj(dst_buf, &i_bytes, 6);
         }
@@ -306,8 +306,8 @@ static nonnull_args bool branch_cond(
 
     /* CFI TMP_REG, 0 {RIL-a}; BRCL mask, offset; */
     u8 i_bytes[2][6] = {
-        ENCODE_RI_OP(0xc2d, TMP_REG),
-        ENCODE_RI_OP(0xc04, mask),
+        RI_OP(0xc2d, TMP_REG),
+        RI_OP(0xc04, mask),
     };
     /* load the value to compare with into the auxiliary register */
     load_from_byte(reg, dst);
@@ -343,13 +343,13 @@ static nonnull_args void add_reg_signed(
     if (imm >= INT16_MIN && imm <= INT16_MAX) {
         /* if imm fits within a halfword, a shorter instruction can be used. */
         /* AGHI reg, imm {RI-a} */
-        u8 i_bytes[4] = ENCODE_RI_OP(0xa7b, reg);
+        u8 i_bytes[4] = RI_OP(0xa7b, reg);
         serialize16be(imm, &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 4);
     } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
         /* If imm fits within a word, then use a normal add immediate */
         /* AFGI reg, imm {RIL-a} */
-        u8 i_bytes[6] = ENCODE_RI_OP(0xc28, reg);
+        u8 i_bytes[6] = RI_OP(0xc28, reg);
         serialize32be(imm, &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 6);
     } else {
@@ -359,7 +359,7 @@ static nonnull_args void add_reg_signed(
 
         /* add the higher 32 bits */
         /* AIH reg, imm {RIL-a} */
-        u8 i_bytes[6] = ENCODE_RI_OP(0xcc8, reg);
+        u8 i_bytes[6] = RI_OP(0xcc8, reg);
         /* cast to u64 to avoid portability issues */
         serialize32be(((u64)imm >> 32), &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 6);
