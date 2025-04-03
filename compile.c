@@ -349,9 +349,13 @@ static bool bf_jump_close(
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
 static bool comp_instr(
-    char c, sized_buf *obj_code, const arch_inter *inter, const char *in_name
+    char c,
+    sized_buf *obj_code,
+    const arch_inter *inter,
+    const char *in_name,
+    struct bf_err_location *restrict location
 ) {
-    col++;
+    if (location) location->col++;
     switch (c) {
         /* start with the simple cases handled with COMPILE_WITH */
         /* decrement the tape pointer register */
@@ -378,14 +382,15 @@ static bool comp_instr(
         case ',':
             bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
             return true;
-        /* `[` and `]` do their own error handling. */
+        /* `[` and `]` could error out. */
         case '[': {
             bf_comp_err err;
             if (bf_jump_open(obj_code, inter, &err)) return true;
             err.file = in_name;
-            err.location.line = line;
-            err.location.col = col;
-            err.has_location = true;
+            if (location) {
+                err.location = *location;
+                err.has_location = true;
+            }
             display_err(err);
             return false;
         }
@@ -393,18 +398,21 @@ static bool comp_instr(
             bf_comp_err err;
             if (bf_jump_close(obj_code, inter, &err)) return true;
             err.file = in_name;
-            err.location.line = line;
-            err.location.col = col;
-            err.has_location = true;
+            if (location) {
+                err.location = *location;
+                err.has_location = true;
+            }
             display_err(err);
             return false;
         }
         /* on a newline, add 1 to the line number and reset the column */
         case '\n':
-            line++;
-            col = 0;
+            if (location) {
+                location->line++;
+                location->col = 0;
+            }
             return true;
-        /* any other characters are comments, so silently continue. */
+        /* any other characters are to be ignored, so silently continue. */
         default:
             return true;
     }
@@ -424,7 +432,7 @@ static bool comp_ir_instr(
 ) {
     /* if there's only one (non-'@') instruction, compile it normally */
     if (count == 1 && instr != '@')
-        return comp_instr(instr, obj_code, inter, in_name);
+        return comp_instr(instr, obj_code, inter, in_name, NULL);
     switch (instr) {
         /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
         case '.':
@@ -432,7 +440,9 @@ static bool comp_ir_instr(
         case '[':
         case ']':
             for (size_t i = 0; i < count; i++) {
-                if (!comp_instr(instr, obj_code, inter, in_name)) return false;
+                if (!comp_instr(instr, obj_code, inter, in_name, NULL)) {
+                    return false;
+                }
             }
             return true;
         /* if it's @, then zero the byte pointed to by bf_ptr */
@@ -515,10 +525,6 @@ bool bf_compile(
     jump_stack.locations = checked_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
 
-    /* reset the current line and column */
-    line = 1;
-    col = 0;
-
     /* set the bf_ptr register to the address of the start of the tape */
     inter->set_reg(inter->reg_bf_ptr, TAPE_ADDRESS, &obj_code);
 
@@ -532,8 +538,9 @@ bool bf_compile(
         }
         ret &= compile_condensed(src.sb.buf, &obj_code, inter, in_name);
     } else {
+        struct bf_err_location loc = {.line = 1, .col = 0};
         for (size_t i = 0; i < src.sb.sz; i++) {
-            ret &= comp_instr(src.sb.buf[i], &obj_code, inter, in_name);
+            ret &= comp_instr(src.sb.buf[i], &obj_code, inter, in_name, &loc);
         }
     }
 
