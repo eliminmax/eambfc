@@ -82,12 +82,12 @@ static nonnull_args void reg_arith(
         return;
     } else if (imm <= INT8_MAX) {
         /* ADD/SUB reg, byte imm */
-        append_obj(dst_buf, (u8[]){0x83, op + reg, imm}, 3);
+        append_obj(dst_buf, (uchar[]){0x48, 0x83, op + reg, imm}, 4);
     } else if (imm <= INT32_MAX) {
         /* ADD/SUB reg, imm */
-        u8 i_bytes[6] = {INSTRUCTION(0x81, op + reg, IMM32_PADDING)};
-        serialize32le(imm, &(i_bytes[2]));
-        append_obj(dst_buf, &i_bytes, 6);
+        uchar i_bytes[7] = {0x48, 0x81, op + reg};
+        serialize32le(imm, &(i_bytes[3]));
+        append_obj(dst_buf, &i_bytes, 7);
     } else {
         /* There are no instructions to add or subtract a 64-bit immediate.
          * Instead, the approach  to use is first PUSH the value of a different
@@ -107,29 +107,6 @@ static nonnull_args void reg_arith(
         serialize64le(imm, &(instr_bytes[2]));
         append_obj(dst_buf, &instr_bytes, 13);
     }
-}
-
-/* INC and DEC are encoded very similarly with very few differences between
- * the encoding for operating on registers and operating on bytes pointed to by
- * registers. Because of the similarity, one function can be used for all 4 of
- * the `+`, `-`, `>`, and `<` brainfuck instructions in one function.
- *
- * `+` is INC byte [reg], which is encoded as 0xfe reg
- * `-` is DEC byte [reg], which is encoded as 0xfe 0x08|reg
- * `>` is INC reg, which is encoded as 0xff 0xc0|reg
- * `<` is DEC reg, which is encoded as 0xff 0xc8|reg
- *
- * Therefore, setting op to 0 for INC and 8 for DEC and adm (Address Mode) to 3
- * when working on registers and 0 when working on memory, then doing some messy
- * bitwise hackery, the following function can be used. */
-static nonnull_args void x86_offset(
-    char op, u8 adm, u8 reg, sized_buf *restrict dst_buf
-) {
-    append_obj(
-        dst_buf,
-        (u8[]){INSTRUCTION(0xfe | (adm & 1), (op | reg | (adm << 6)))},
-        2
-    );
 }
 
 /* now, the functions exposed through X86_64_INTER */
@@ -196,26 +173,22 @@ static nonnull_args bool jump_close(
 
 /* INC reg */
 static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
-    /* 0 is INC, 3 is register mode */
-    x86_offset(0x0, 0x3, reg, dst_buf);
+    append_obj(dst_buf, (uchar[]){0x48, 0xff, 0xc0 | reg}, 3);
 }
 
 /* DEC reg */
 static nonnull_args void dec_reg(u8 reg, sized_buf *restrict dst_buf) {
-    /* 8 is DEC, 3 is register mode */
-    x86_offset(0x8, 0x3, reg, dst_buf);
+    append_obj(dst_buf, (uchar[]){0x48, 0xff, 0xc8 | reg}, 3);
 }
 
 /* INC byte [reg] */
 static nonnull_args void inc_byte(u8 reg, sized_buf *restrict dst_buf) {
-    /* 0 is INC, 0 is memory pointer mode */
-    x86_offset(0x0, 0x0, reg, dst_buf);
+    append_obj(dst_buf, (uchar[]){0xfe, reg}, 2);
 }
 
 /* DEC byte [reg] */
 static nonnull_args void dec_byte(u8 reg, sized_buf *restrict dst_buf) {
-    /* 8 is DEC, 0 is memory pointer mode */
-    x86_offset(0x8, 0x0, reg, dst_buf);
+    append_obj(dst_buf, (uchar[]){0xfe, reg | 8}, 2);
 }
 
 static nonnull_args void add_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
@@ -321,32 +294,32 @@ static void test_jump_instructions(void) {
 }
 
 static void test_add_sub_small_imm(void) {
-    sized_buf sb = newbuf(3);
+    sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(16);
 
     add_reg(X86_64_RSI, 0x20, &sb);
-    CU_ASSERT_EQUAL(sb.sz, 3);
-    DISASM_TEST(sb, dis, "add esi, 0x20\n");
+    CU_ASSERT_EQUAL(sb.sz, 4);
+    DISASM_TEST(sb, dis, "add rsi, 0x20\n");
 
     sub_reg(X86_64_RSI, 0x20, &sb);
-    CU_ASSERT_EQUAL(sb.sz, 3);
-    DISASM_TEST(sb, dis, "sub esi, 0x20\n");
+    CU_ASSERT_EQUAL(sb.sz, 4);
+    DISASM_TEST(sb, dis, "sub rsi, 0x20\n");
 
     free(sb.buf);
     free(dis.buf);
 }
 
 static void test_add_sub_medium_imm(void) {
-    sized_buf sb = newbuf(6);
+    sized_buf sb = newbuf(7);
     sized_buf dis = newbuf(24);
 
     add_reg(X86_64_RDX, 0xdead, &sb);
-    CU_ASSERT_EQUAL(sb.sz, 6);
-    DISASM_TEST(sb, dis, "add edx, 0xdead\n");
+    CU_ASSERT_EQUAL(sb.sz, 7);
+    DISASM_TEST(sb, dis, "add rdx, 0xdead\n");
 
     sub_reg(X86_64_RDX, 0xbeef, &sb);
-    CU_ASSERT_EQUAL(sb.sz, 6);
-    DISASM_TEST(sb, dis, "sub edx, 0xbeef\n");
+    CU_ASSERT_EQUAL(sb.sz, 7);
+    DISASM_TEST(sb, dis, "sub rdx, 0xbeef\n");
 
     free(sb.buf);
     free(dis.buf);
@@ -408,6 +381,27 @@ static void test_jump_too_long(void) {
     CU_ASSERT_EQUAL(e.id, BF_ERR_JUMP_TOO_LONG);
 }
 
+static void test_inc_dec_is_64_bit(void) {
+    sized_buf sb = newbuf(10);
+    sized_buf dis = newbuf(56);
+    inc_reg(X86_64_RAX, &sb);
+    dec_reg(X86_64_RAX, &sb);
+    inc_byte(X86_64_RAX, &sb);
+    dec_byte(X86_64_RAX, &sb);
+
+    DISASM_TEST(
+        sb,
+        dis,
+        "inc rax\n"
+        "dec rax\n"
+        "inc byte ptr [rax]\n"
+        "dec byte ptr [rax]\n"
+    );
+
+    free(sb.buf);
+    free(dis.buf);
+}
+
 CU_pSuite register_x86_64_tests(void) {
     CU_pSuite suite;
     INIT_SUITE(suite);
@@ -419,6 +413,7 @@ CU_pSuite register_x86_64_tests(void) {
     ADD_TEST(suite, test_add_sub_byte);
     ADD_TEST(suite, test_zero_byte);
     ADD_TEST(suite, test_jump_too_long);
+    ADD_TEST(suite, test_inc_dec_is_64_bit);
     return (suite);
 }
 
