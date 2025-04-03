@@ -470,10 +470,10 @@ static bool comp_ir_instr(
 }
 
 static bool compile_condensed(
-    const char *src_code,
-    sized_buf *obj_code,
-    const arch_inter *inter,
-    const char *in_name
+    const char *restrict src_code,
+    sized_buf *restrict obj_code,
+    const arch_inter *restrict inter,
+    const char *restrict in_name
 ) {
     /* return early when there are no instructions to compile */
     if (*src_code == '\0') return true;
