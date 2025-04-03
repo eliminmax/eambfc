@@ -42,15 +42,13 @@ static nonnull_args void filter_non_bf(sized_buf *code) {
 static void instr_err(
     bf_err_id id, const char *msg, char instr, const char *in_name
 ) {
-    bf_comp_err e = {
+    display_err((bf_comp_err){
         .id = id,
-        .msg = msg,
+        .msg.ref = msg,
         .instr = instr,
         .file = in_name,
         .has_instr = true,
-        .has_location = false,
-    };
-    display_err(e);
+    });
 }
 
 /* A function that skips past a matching ].

@@ -22,18 +22,20 @@
 #include "types.h"
 
 #ifdef UNIT_TEST_C
-#define extern
+#define TEST_GLOBAL(decl) decl
+#else /* UNIT_TEST_C */
+#define TEST_GLOBAL(decl) extern decl
 #endif /* UNIT_TEST_C */
 
 typedef LLVMDisasmContextRef disasm_ref;
 
 /* __BACKENDS__ add a declaration of the disasm_ref here */
-extern disasm_ref ARM64_DIS;
-extern disasm_ref RISCV64_DIS;
-extern disasm_ref S390X_DIS;
-extern disasm_ref X86_64_DIS;
+TEST_GLOBAL(disasm_ref ARM64_DIS);
+TEST_GLOBAL(disasm_ref RISCV64_DIS);
+TEST_GLOBAL(disasm_ref S390X_DIS);
+TEST_GLOBAL(disasm_ref X86_64_DIS);
 
-extern bf_err_id current_err;
+TEST_GLOBAL(bf_err_id current_err);
 
 enum test_status {
     TEST_SET = -1,
@@ -41,9 +43,9 @@ enum test_status {
     TEST_INTERCEPT = 1,
 };
 
-extern enum test_status testing_err;
+TEST_GLOBAL(enum test_status testing_err);
 
-extern jmp_buf etest_stack;
+TEST_GLOBAL(jmp_buf etest_stack);
 
 /* disassemble the contents of bytes, and return a sized_buf containing the
  * diassembly - instructions are separated by newlines, and the disassembly as a
@@ -73,7 +75,7 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
     }
 
 /* utility macro to abort on CUnit error after running expr */
-#define ERRORCHECKED(expr) \
+#define BF_ERRCHECKED(expr) \
     expr; \
     if (CU_get_error()) { \
         fprintf(stderr, "%s\n", CU_get_error_msg()); \
@@ -82,24 +84,10 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
 
 /* utility macro to set up a CUnit suite with the current file name */
 #define INIT_SUITE(suite_var) \
-    ERRORCHECKED(suite_var = CU_add_suite(__FILE__, NULL, NULL))
+    BF_ERRCHECKED(suite_var = CU_add_suite(__FILE__, NULL, NULL))
 
-/* simple self-explanatory ERRORCHECKED wrapper around CU_ADD_TEST */
-#define ADD_TEST(suite, test) ERRORCHECKED(CU_ADD_TEST(suite, test))
-
-/* boilerplate for use of setjmp to test if the right error is hit.
- * will result in undefined behavior if it's in a function that doesn't result
- * in one of `internal_err`, `alloc_err`, or `display_err` being called later */
-#define EXPECT_BF_ERR(eid) \
-    do { \
-        testing_err = TEST_INTERCEPT; \
-        int returned_err; \
-        if ((returned_err = setjmp(etest_stack))) { \
-            CU_ASSERT_EQUAL(eid << 0 | 1, returned_err); \
-        } \
-        testing_err = NOT_TESTING; \
-        return; \
-    } while (0);
+/* simple self-explanatory BF_ERRCHECKED wrapper around CU_ADD_TEST */
+#define ADD_TEST(suite, test) BF_ERRCHECKED(CU_ADD_TEST(suite, test))
 
 CU_pSuite register_util_tests(void);
 CU_pSuite register_serialize_tests(void);

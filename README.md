@@ -30,7 +30,7 @@ feature parity between them.
 * [Dependencies](#dependencies)
   * [Debian dependencies](#debian-dependencies)
   * [Non-Debian Dependencies](#non-debian-dependencies)
-* [Legal Stuff](#legal-stuff)
+* [Legal Stuff and Code Origins](#legal-stuff-and-code-origins)
 
 <!-- vim-markdown-toc -->
 
@@ -297,12 +297,13 @@ apt install awk binutils clang-19 clang-format-19 clang-tools-19 codespell \
 * [just](https://github.com/casey/just)
   * command runner used to drive testing and release automation
 
-## Legal Stuff
+## Legal Stuff and Code Origins
 
 `eambfc` as a whole is licensed under the GNU General Public License version 3.
 Some individual components of the source code, infrastructure, and test assets
 are licensed under other compatible licenses, mainly the Zero-Clause BSD
 license, which is a public-domain-equivalent license.
+
 Files have licensing information encoded in accordance with the REUSE
 Specification, using SPDX headers to encode the copyright info in a manner that
 is both human and machine readable.
@@ -313,8 +314,15 @@ esolangs.org pages
 [brainfuck constants](https://esolangs.org/wiki/Brainfuck_constants), which are
 available under the CC0 public-domain-equivalent license.
 
-Other `compat/elf.h` and the sample code from esolangs.org, all content in this
-repository is my own original work.
+One test uses a modified form of the brainfuck implementation of
+[colortest](https://github.com/eliminmax/colortest), which is a different hobby
+project of mine.
+
+An algorithm to pick a RISC-V instruction sequence to set a register to an
+immediate is adapted from the LLVM project.
+
+Other than that, all content in this repository in my own original work, either
+created for `eambfc`, or adapted from the `eambfc-rs` project in Rust.
 
 All licenses used in any part of this repository are in the LICENSES/ directory,
 and every file has an SPDX License header identifying the license(s) it's under,

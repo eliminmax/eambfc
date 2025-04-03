@@ -111,24 +111,24 @@ int main(void) {
     llvm_init();
     quiet_mode();
 
-    ERRORCHECKED(CU_initialize_registry());
-    ERRORCHECKED(register_optimize_tests());
-    ERRORCHECKED(register_util_tests());
-    ERRORCHECKED(register_serialize_tests());
-    ERRORCHECKED(register_err_tests());
-    ERRORCHECKED(register_compile_tests());
+    BF_ERRCHECKED(CU_initialize_registry());
+    BF_ERRCHECKED(register_optimize_tests());
+    BF_ERRCHECKED(register_util_tests());
+    BF_ERRCHECKED(register_serialize_tests());
+    BF_ERRCHECKED(register_err_tests());
+    BF_ERRCHECKED(register_compile_tests());
 
     /* __BACKENDS__ add your test suite here */
-    ERRORCHECKED(register_arm64_tests());
-    ERRORCHECKED(register_riscv64_tests());
-    ERRORCHECKED(register_s390x_tests());
-    ERRORCHECKED(register_x86_64_tests());
+    BF_ERRCHECKED(register_arm64_tests());
+    BF_ERRCHECKED(register_riscv64_tests());
+    BF_ERRCHECKED(register_s390x_tests());
+    BF_ERRCHECKED(register_x86_64_tests());
 
     testing_err = NOT_TESTING;
     /* Run all tests using the console interface */
     CU_basic_set_mode(CU_BRM_VERBOSE);
 
-    ERRORCHECKED(CU_basic_run_tests());
+    BF_ERRCHECKED(CU_basic_run_tests());
     int ret = CU_get_number_of_tests_failed() ? EXIT_FAILURE : EXIT_SUCCESS;
     CU_cleanup_registry();
     llvm_cleanup();

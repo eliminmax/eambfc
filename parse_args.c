@@ -180,13 +180,7 @@ nonnull_args static bool select_inter(
         strcat(unknown_msg, "...");
     }
     strcat(unknown_msg, " is not a recognized target");
-    display_err((bf_comp_err){
-        .id = BF_ERR_UNKNOWN_ARCH,
-        .msg = unknown_msg,
-        .file = NULL,
-        .has_instr = false,
-        .has_location = false,
-    });
+    display_err(basic_err(BF_ERR_UNKNOWN_ARCH, unknown_msg));
     return false;
 }
 
@@ -252,13 +246,7 @@ noreturn static nonnull_args void list_arches(void) {
 noreturn static nonnull_args void bad_arg(
     const char *progname, bf_err_id id, const char *msg, bool show_hint
 ) {
-    display_err((bf_comp_err){
-        .id = id,
-        .msg = msg,
-        .file = NULL,
-        .has_instr = false,
-        .has_location = false,
-    });
+    display_err(basic_err(id, msg));
     if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
     exit(EXIT_FAILURE);
 }
@@ -402,16 +390,13 @@ run_cfg parse_args(int argc, char *argv[]) {
                     /* can't just use bad_arg as msg won't be freed. */
                     display_err((bf_comp_err){
                         .id = BF_ERR_UNKNOWN_ARG,
-                        .msg = msg,
-                        .file = NULL,
-                        .has_instr = false,
-                        .has_location = false,
+                        .msg.alloc = msg,
+                        .is_alloc = true,
                     });
                     if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
-                    free(msg);
                     exit(EXIT_FAILURE);
                 }
-#endif
+#endif /* BFC_LONGOPTS */
                 if (optopt >= 040 && optopt < 0x80) {
                     unknown_arg_msg[19] = optopt;
                 } else {
@@ -427,13 +412,10 @@ run_cfg parse_args(int argc, char *argv[]) {
     if (rc.ext == NULL) rc.ext = ".bf";
 
     if (rc.out_ext != NULL && strcmp(rc.out_ext, rc.ext) == 0) {
-        display_err((bf_comp_err){
-            .id = BF_ERR_INPUT_IS_OUTPUT,
-            .msg = "Extension can't be the same as output suffix",
-            .file = NULL,
-            .has_instr = false,
-            .has_location = false,
-        });
+        display_err(basic_err(
+            BF_ERR_INPUT_IS_OUTPUT,
+            "Extension can't be the same as output suffix"
+        ));
         exit(EXIT_FAILURE);
     }
 

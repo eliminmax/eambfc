@@ -52,8 +52,6 @@
  * beginning of the machine code. */
 #define PAD_SZ (START_PADDR - (PHTB_SIZE + EHDR_SIZE))
 
-static uint line, col;
-
 /* Write the ELF header to the file descriptor fd. */
 static bool write_ehdr(
     int fd, u64 tape_blocks, const arch_inter *inter, const char *out_name
@@ -143,7 +141,11 @@ static bool write_ehdr(
         serialize_ehdr64_be(&header, header_bytes);
     }
 
-    return write_obj(fd, header_bytes, EHDR_SIZE, out_name);
+    bf_comp_err e;
+    if (write_obj(fd, header_bytes, EHDR_SIZE, &e)) return true;
+    e.file = out_name;
+    display_err(e);
+    return false;
 }
 
 /* Write the Program Header Table to the file descriptor fd
@@ -207,8 +209,11 @@ static bool write_phtb(
             );
         }
     }
-
-    return write_obj(fd, phdr_table_bytes, PHTB_SIZE, out_name);
+    bf_comp_err e;
+    if (write_obj(fd, phdr_table_bytes, PHTB_SIZE, &e)) return true;
+    e.file = out_name;
+    display_err(e);
+    return false;
 }
 
 /* The brainfuck instructions "." and "," are similar from an implementation
@@ -241,13 +246,13 @@ static void bf_io(
 #define JUMP_CHUNK_SZ 64
 
 typedef struct jump_loc {
-    uint src_line; /* saved for error reporting. */
-    uint src_col; /* saved for error reporting. */
+    src_loc location;
     off_t dst_loc;
+    bool has_loc: 1;
 } jump_loc;
 
 static struct jump_stack {
-    size_t next_index;
+    size_t next;
     size_t loc_sz;
     jump_loc *locations;
 } jump_stack;
@@ -257,64 +262,69 @@ static struct jump_stack {
  *
  * If too many nested loops are encountered, it exteds the jump stack. */
 static bool bf_jump_open(
-    sized_buf *obj_code, const arch_inter *inter, const char *in_name
+    sized_buf *restrict obj_code,
+    const arch_inter *restrict inter,
+    bf_comp_err *restrict err,
+    const src_loc *loc
 ) {
+    size_t start_loc = obj_code->sz;
+    /* insert an architecture-specific illegal/trap instruction, then pad to
+     * proper size with no-op instructions so that the space for the jump open
+     * is reserved before the address is known. */
+    inter->pad_loop_open(obj_code);
     /* ensure that there are no more than the maximum nesting level */
-    if (jump_stack.next_index + 1 == jump_stack.loc_sz) {
+    if (jump_stack.next + 1 == jump_stack.loc_sz) {
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
             jump_stack.loc_sz += JUMP_CHUNK_SZ;
         } else {
-            display_err((bf_comp_err){
+            *err = (bf_comp_err){
                 .id = BF_ERR_NESTED_TOO_DEEP,
-                .msg = "Extending jump stack any more would cause an overflow",
-                .file = in_name,
+                .msg.ref =
+                    "Extending jump stack any more would cause an overflow",
                 .instr = '[',
-                .has_location = false,
                 .has_instr = true,
-            });
+            };
             return false;
         }
 
         jump_stack.locations = checked_realloc(
             jump_stack.locations,
-            (jump_stack.next_index + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
+            (jump_stack.next + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
         );
     }
     /* push the current address onto the stack */
-    jump_stack.locations[jump_stack.next_index].src_line = line;
-    jump_stack.locations[jump_stack.next_index].src_col = col;
-    jump_stack.locations[jump_stack.next_index].dst_loc = obj_code->sz;
-    jump_stack.next_index++;
-    /* insert an architecture-specific illegal/trap instruction, then pad to
-     * proper size with no-op instructions so that the space for the jump open
-     * is reserved before the address is known. */
-    inter->pad_loop_open(obj_code);
+    jump_stack.locations[jump_stack.next].dst_loc = start_loc;
+    if (loc) {
+        jump_stack.locations[jump_stack.next].location = *loc;
+        jump_stack.locations[jump_stack.next].has_loc = true;
+    } else {
+        jump_stack.locations[jump_stack.next].location = (src_loc){0};
+        jump_stack.locations[jump_stack.next].has_loc = false;
+    }
+    jump_stack.next++;
     return true;
 }
 
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
-static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
-    off_t open_addr;
-    i32 distance;
-
+static bool bf_jump_close(
+    sized_buf *restrict obj_code,
+    const arch_inter *restrict inter,
+    bf_comp_err *restrict e
+) {
     /* ensure that the current index is in bounds */
-    if (jump_stack.next_index == 0) {
-        display_err((bf_comp_err){
+    if (jump_stack.next == 0) {
+        *e = (bf_comp_err){
             .id = BF_ERR_UNMATCHED_CLOSE,
-            .file = NULL,
-            .msg = "Found ']' without matching '['.",
-            .has_instr = true,
-            .has_location = true,
+            .msg.ref = "Found ']' without matching '['.",
             .instr = ']',
-            .line = line,
-            .col = col,
-        });
+            .has_instr = true,
+        };
         return false;
     }
     /* pop the matching `[` instruction's location */
-    open_addr = jump_stack.locations[--jump_stack.next_index].dst_loc;
-    distance = obj_code->sz - open_addr;
+    off_t before = jump_stack.locations[--jump_stack.next].dst_loc;
+    i32 distance = obj_code->sz - before;
 
     /* This is messy, but cuts down the number of allocations massively.
      * Because the NOP padding added earlier is the same size as the jump point,
@@ -324,12 +334,12 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
      * conditional jump instruction without any risk of unnecessary reallocation
      * or any temporary buffer, sized or not. */
 
-    if (!inter->jump_open(inter->reg_bf_ptr, distance, obj_code, open_addr)) {
+    if (!inter->jump_open(inter->reg_bf_ptr, distance, obj_code, before, e)) {
         return false;
     }
 
     /* jumps to right after the `[` instruction, to skip a redundant check */
-    return inter->jump_close(inter->reg_bf_ptr, -distance, obj_code);
+    return inter->jump_close(inter->reg_bf_ptr, -distance, obj_code, e);
 }
 
 /* 4 of the 8 brainfuck instructions can be compiled with instructions that take
@@ -341,9 +351,16 @@ static bool bf_jump_close(sized_buf *obj_code, const arch_inter *inter) {
  * passes fd along with the appropriate arguments to a function to compile that
  * particular instruction */
 static bool comp_instr(
-    char c, sized_buf *obj_code, const arch_inter *inter, const char *in_name
+    char c,
+    sized_buf *obj_code,
+    const arch_inter *inter,
+    const char *in_name,
+    src_loc *restrict location
 ) {
-    col++;
+    if (location) {
+        /* if it's not a UTF-8 continuation byte, increment the column */
+        if (((uchar)c & 0xc0) != 0x80) location->col++;
+    }
     switch (c) {
         /* start with the simple cases handled with COMPILE_WITH */
         /* decrement the tape pointer register */
@@ -370,17 +387,37 @@ static bool comp_instr(
         case ',':
             bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
             return true;
-        /* `[` and `]` do their own error handling. */
-        case '[':
-            return bf_jump_open(obj_code, inter, in_name);
-        case ']':
-            return bf_jump_close(obj_code, inter);
+        /* `[` and `]` could error out. */
+        case '[': {
+            bf_comp_err err;
+            if (bf_jump_open(obj_code, inter, &err, location)) return true;
+            err.file = in_name;
+            if (location) {
+                err.location = *location;
+                err.has_location = true;
+            }
+            display_err(err);
+            return false;
+        }
+        case ']': {
+            bf_comp_err err;
+            if (bf_jump_close(obj_code, inter, &err)) return true;
+            err.file = in_name;
+            if (location) {
+                err.location = *location;
+                err.has_location = true;
+            }
+            display_err(err);
+            return false;
+        }
         /* on a newline, add 1 to the line number and reset the column */
         case '\n':
-            line++;
-            col = 0;
+            if (location) {
+                location->line++;
+                location->col = 0;
+            }
             return true;
-        /* any other characters are comments, so silently continue. */
+        /* any other characters are to be ignored, so silently continue. */
         default:
             return true;
     }
@@ -400,7 +437,7 @@ static bool comp_ir_instr(
 ) {
     /* if there's only one (non-'@') instruction, compile it normally */
     if (count == 1 && instr != '@')
-        return comp_instr(instr, obj_code, inter, in_name);
+        return comp_instr(instr, obj_code, inter, in_name, NULL);
     switch (instr) {
         /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
         case '.':
@@ -408,7 +445,9 @@ static bool comp_ir_instr(
         case '[':
         case ']':
             for (size_t i = 0; i < count; i++) {
-                if (!comp_instr(instr, obj_code, inter, in_name)) return false;
+                if (!comp_instr(instr, obj_code, inter, in_name, NULL)) {
+                    return false;
+                }
             }
             return true;
         /* if it's @, then zero the byte pointed to by bf_ptr */
@@ -434,10 +473,10 @@ static bool comp_ir_instr(
 }
 
 static bool compile_condensed(
-    const char *src_code,
-    sized_buf *obj_code,
-    const arch_inter *inter,
-    const char *in_name
+    const char *restrict src_code,
+    sized_buf *restrict obj_code,
+    const arch_inter *restrict inter,
+    const char *restrict in_name
 ) {
     /* return early when there are no instructions to compile */
     if (*src_code == '\0') return true;
@@ -476,37 +515,37 @@ bool bf_compile(
     bool optimize,
     u64 tape_blocks
 ) {
-    sized_buf src_code = read_to_sized_buf(in_fd, in_name);
-    /* Return immediately if a read failed */
-    if (src_code.buf == NULL) return false;
+    union read_result src;
+    if (!read_to_sized_buf(in_fd, &src)) {
+        src.err.file = in_name;
+        display_err(src.err);
+        return false;
+    }
     sized_buf obj_code = newbuf(BFC_CHUNK_SIZE);
 
     bool ret = true;
 
     /* reset the jump stack for the new file */
-    jump_stack.next_index = 0;
+    jump_stack.next = 0;
     jump_stack.locations = checked_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
-
-    /* reset the current line and column */
-    line = 1;
-    col = 0;
 
     /* set the bf_ptr register to the address of the start of the tape */
     inter->set_reg(inter->reg_bf_ptr, TAPE_ADDRESS, &obj_code);
 
     /* compile the actual source code to object code */
     if (optimize) {
-        if (!filter_dead(&src_code, in_name)) {
-            free(src_code.buf);
+        if (!filter_dead(&src.sb, in_name)) {
+            free(src.sb.buf);
             free(jump_stack.locations);
             free(obj_code.buf);
             return false;
         }
-        ret &= compile_condensed(src_code.buf, &obj_code, inter, in_name);
+        ret &= compile_condensed(src.sb.buf, &obj_code, inter, in_name);
     } else {
-        for (size_t i = 0; i < src_code.sz; i++) {
-            ret &= comp_instr(src_code.buf[i], &obj_code, inter, in_name);
+        src_loc loc = {.line = 1, .col = 0};
+        for (size_t i = 0; i < src.sb.sz; i++) {
+            ret &= comp_instr(src.sb.buf[i], &obj_code, inter, in_name, &loc);
         }
     }
 
@@ -518,31 +557,40 @@ bool bf_compile(
     /* perform a system call */
     inter->syscall(&obj_code);
 
+    bf_comp_err e;
+
     /* now, obj_code size is known, so we can write the headers and padding */
     ret &= write_ehdr(out_fd, tape_blocks, inter, out_name);
     ret &= write_phtb(out_fd, obj_code.sz, tape_blocks, inter, out_name);
     const char padding[PAD_SZ] = {0};
-    ret &= write_obj(out_fd, padding, PAD_SZ, out_name);
+    if (!write_obj(out_fd, padding, PAD_SZ, &e)) {
+        e.file = out_name;
+        display_err(e);
+        ret = false;
+    }
     /* finally, write the code itself. */
-    ret &= write_obj(out_fd, obj_code.buf, obj_code.sz, out_name);
+    if (!write_obj(out_fd, obj_code.buf, obj_code.sz, &e)) {
+        e.file = out_name;
+        display_err(e);
+        ret = false;
+    }
 
     /* check if any unmatched loop openings were left over. */
-    for (size_t i = 0; i < jump_stack.next_index; i++) {
+    for (size_t i = 0; i < jump_stack.next; i++) {
         display_err((bf_comp_err){
             .id = BF_ERR_UNMATCHED_OPEN,
             .file = in_name,
-            .msg = "Reached the end of the file with an unmatched '['.",
+            .msg.ref = "Reached the end of the file with an unmatched '['.",
             .instr = '[',
-            .line = jump_stack.locations[i].src_line,
-            .col = jump_stack.locations[i].src_col,
             .has_instr = true,
-            .has_location = true,
+            .location = jump_stack.locations[i].location,
+            .has_location = jump_stack.locations[i].has_loc,
         });
         ret = false;
     }
 
     free(obj_code.buf);
-    free(src_code.buf);
+    free(src.sb.buf);
     free(jump_stack.locations);
 
     return ret;

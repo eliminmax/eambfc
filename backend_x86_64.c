@@ -47,15 +47,18 @@ typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
 #define JUMP_SIZE 9
 
 /* TEST byte [reg], 0xff; Jcc|tttn offset */
-static bool test_jcc(char tttn, u8 reg, i64 offset, char dst[JUMP_SIZE]) {
+static bool test_jcc(
+    char tttn,
+    u8 reg,
+    i64 offset,
+    char dst[restrict JUMP_SIZE],
+    bf_comp_err *restrict err
+) {
     if (offset > INT32_MAX || offset < INT32_MIN) {
-        display_err((bf_comp_err){
-            .id = BF_ERR_JUMP_TOO_LONG,
-            .msg =
-                "offset is outside the range of possible 32-bit signed values",
-            .has_location = 0,
-            .has_instr = 0,
-        });
+        *err = basic_err(
+            BF_ERR_JUMP_TOO_LONG,
+            "offset is outside the range of possible 32-bit signed values"
+        );
         return false;
     }
     memcpy(
@@ -72,17 +75,19 @@ static bool test_jcc(char tttn, u8 reg, i64 offset, char dst[JUMP_SIZE]) {
     return true;
 }
 
-static void reg_arith(u8 reg, u64 imm, arith_op op, sized_buf *dst_buf) {
+static nonnull_args void reg_arith(
+    u8 reg, u64 imm, arith_op op, sized_buf *restrict dst_buf
+) {
     if (imm == 0) {
         return;
     } else if (imm <= INT8_MAX) {
         /* ADD/SUB reg, byte imm */
-        append_obj(dst_buf, (u8[]){0x83, op + reg, imm}, 3);
+        append_obj(dst_buf, (uchar[]){0x48, 0x83, op + reg, imm}, 4);
     } else if (imm <= INT32_MAX) {
         /* ADD/SUB reg, imm */
-        u8 i_bytes[6] = {INSTRUCTION(0x81, op + reg, IMM32_PADDING)};
-        serialize32le(imm, &(i_bytes[2]));
-        append_obj(dst_buf, &i_bytes, 6);
+        uchar i_bytes[7] = {0x48, 0x81, op + reg};
+        serialize32le(imm, &(i_bytes[3]));
+        append_obj(dst_buf, &i_bytes, 7);
     } else {
         /* There are no instructions to add or subtract a 64-bit immediate.
          * Instead, the approach  to use is first PUSH the value of a different
@@ -104,30 +109,9 @@ static void reg_arith(u8 reg, u64 imm, arith_op op, sized_buf *dst_buf) {
     }
 }
 
-/* INC and DEC are encoded very similarly with very few differences between
- * the encoding for operating on registers and operating on bytes pointed to by
- * registers. Because of the similarity, one function can be used for all 4 of
- * the `+`, `-`, `>`, and `<` brainfuck instructions in one function.
- *
- * `+` is INC byte [reg], which is encoded as 0xfe reg
- * `-` is DEC byte [reg], which is encoded as 0xfe 0x08|reg
- * `>` is INC reg, which is encoded as 0xff 0xc0|reg
- * `<` is DEC reg, which is encoded as 0xff 0xc8|reg
- *
- * Therefore, setting op to 0 for INC and 8 for DEC and adm (Address Mode) to 3
- * when working on registers and 0 when working on memory, then doing some messy
- * bitwise hackery, the following function can be used. */
-static void x86_offset(char op, u8 adm, u8 reg, sized_buf *dst_buf) {
-    append_obj(
-        dst_buf,
-        (u8[]){INSTRUCTION(0xfe | (adm & 1), (op | reg | (adm << 6)))},
-        2
-    );
-}
-
 /* now, the functions exposed through X86_64_INTER */
 /* use the most efficient way to set a register to imm */
-static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
     if (imm == 0) {
         /* XOR reg, reg */
         append_obj(
@@ -147,12 +131,12 @@ static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
 }
 
 /* MOV rs, rd */
-static void reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
+static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
     append_obj(dst_buf, (u8[]){INSTRUCTION(0x89, 0xc0 + (src << 3) + dst)}, 2);
 }
 
 /* SYSCALL */
-static void syscall(sized_buf *dst_buf) {
+static nonnull_args void syscall(sized_buf *restrict dst_buf) {
     append_obj(dst_buf, (u8[]){INSTRUCTION(0x0f, 0x05)}, 2);
 }
 
@@ -162,66 +146,74 @@ static void syscall(sized_buf *dst_buf) {
 #define NOP 0x90
 
 /* UD2; times 7 NOP */
-static void pad_loop_open(sized_buf *dst_buf) {
+static nonnull_args void pad_loop_open(sized_buf *restrict dst_buf) {
     u8 padding[9] = {0x0f, 0x0b, NOP, NOP, NOP, NOP, NOP, NOP, NOP};
     append_obj(dst_buf, &padding, 9);
 }
 
 /* TEST byte [reg], 0xff; JZ jmp_offset */
-static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf, size_t index) {
+static nonnull_args bool jump_open(
+    u8 reg,
+    i64 offset,
+    sized_buf *restrict dst_buf,
+    size_t index,
+    bf_comp_err *restrict err
+) {
     /* Jcc with tttn=0b0100 is JZ or JE, so use 4 for tttn */
-    return test_jcc(0x4, reg, offset, &dst_buf->buf[index]);
+    return test_jcc(0x4, reg, offset, &dst_buf->buf[index], err);
 }
 
 /* TEST byte [reg], 0xff; JNZ jmp_offset */
-static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
+static nonnull_args bool jump_close(
+    u8 reg, i64 offset, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
     /* Jcc with tttn=0b0101 is JNZ or JNE, so use 5 for tttn */
-    return test_jcc(0x5, reg, offset, sb_reserve(dst_buf, JUMP_SIZE));
+    return test_jcc(0x5, reg, offset, sb_reserve(dst_buf, JUMP_SIZE), err);
 }
 
 /* INC reg */
-static void inc_reg(u8 reg, sized_buf *dst_buf) {
-    /* 0 is INC, 3 is register mode */
-    x86_offset(0x0, 0x3, reg, dst_buf);
+static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
+    append_obj(dst_buf, (uchar[]){0x48, 0xff, 0xc0 | reg}, 3);
 }
 
 /* DEC reg */
-static void dec_reg(u8 reg, sized_buf *dst_buf) {
-    /* 8 is DEC, 3 is register mode */
-    x86_offset(0x8, 0x3, reg, dst_buf);
+static nonnull_args void dec_reg(u8 reg, sized_buf *restrict dst_buf) {
+    append_obj(dst_buf, (uchar[]){0x48, 0xff, 0xc8 | reg}, 3);
 }
 
 /* INC byte [reg] */
-static void inc_byte(u8 reg, sized_buf *dst_buf) {
-    /* 0 is INC, 0 is memory pointer mode */
-    x86_offset(0x0, 0x0, reg, dst_buf);
+static nonnull_args void inc_byte(u8 reg, sized_buf *restrict dst_buf) {
+    append_obj(dst_buf, (uchar[]){0xfe, reg}, 2);
 }
 
 /* DEC byte [reg] */
-static void dec_byte(u8 reg, sized_buf *dst_buf) {
-    /* 8 is DEC, 0 is memory pointer mode */
-    x86_offset(0x8, 0x0, reg, dst_buf);
+static nonnull_args void dec_byte(u8 reg, sized_buf *restrict dst_buf) {
+    append_obj(dst_buf, (uchar[]){0xfe, reg | 8}, 2);
 }
 
-static void add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+static nonnull_args void add_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
     reg_arith(reg, imm, X64_OP_ADD, dst_buf);
 }
 
-static void sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+static nonnull_args void sub_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
     reg_arith(reg, imm, X64_OP_SUB, dst_buf);
 }
 
-static void add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+static nonnull_args void add_byte(
+    u8 reg, u8 imm8, sized_buf *restrict dst_buf
+) {
     /* ADD byte [reg], imm8 */
     append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, reg, imm8)}, 3);
 }
 
-static void sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+static nonnull_args void sub_byte(
+    u8 reg, u8 imm8, sized_buf *restrict dst_buf
+) {
     /* SUB byte [reg], imm8 */
     append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, 0x28 + reg, imm8)}, 3);
 }
 
-static void zero_byte(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void zero_byte(u8 reg, sized_buf *restrict dst_buf) {
     /* MOV byte [reg], 0 */
     append_obj(dst_buf, (u8[]){INSTRUCTION(0xc6, reg, 0x00)}, 3);
 }
@@ -280,9 +272,10 @@ static void test_set_reg(void) {
 static void test_jump_instructions(void) {
     sized_buf sb = newbuf(27);
     sized_buf dis = newbuf(160);
+    bf_comp_err e;
     sb_reserve(&sb, JUMP_SIZE);
-    jump_open(X86_64_RDI, 9, &sb, 0);
-    jump_close(X86_64_RDI, -18, &sb);
+    jump_open(X86_64_RDI, 9, &sb, 0, &e);
+    jump_close(X86_64_RDI, -18, &sb, &e);
     pad_loop_open(&sb);
     CU_ASSERT_EQUAL(sb.sz, 27);
     DISASM_TEST(
@@ -301,32 +294,32 @@ static void test_jump_instructions(void) {
 }
 
 static void test_add_sub_small_imm(void) {
-    sized_buf sb = newbuf(3);
+    sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(16);
 
     add_reg(X86_64_RSI, 0x20, &sb);
-    CU_ASSERT_EQUAL(sb.sz, 3);
-    DISASM_TEST(sb, dis, "add esi, 0x20\n");
+    CU_ASSERT_EQUAL(sb.sz, 4);
+    DISASM_TEST(sb, dis, "add rsi, 0x20\n");
 
     sub_reg(X86_64_RSI, 0x20, &sb);
-    CU_ASSERT_EQUAL(sb.sz, 3);
-    DISASM_TEST(sb, dis, "sub esi, 0x20\n");
+    CU_ASSERT_EQUAL(sb.sz, 4);
+    DISASM_TEST(sb, dis, "sub rsi, 0x20\n");
 
     free(sb.buf);
     free(dis.buf);
 }
 
 static void test_add_sub_medium_imm(void) {
-    sized_buf sb = newbuf(6);
+    sized_buf sb = newbuf(7);
     sized_buf dis = newbuf(24);
 
     add_reg(X86_64_RDX, 0xdead, &sb);
-    CU_ASSERT_EQUAL(sb.sz, 6);
-    DISASM_TEST(sb, dis, "add edx, 0xdead\n");
+    CU_ASSERT_EQUAL(sb.sz, 7);
+    DISASM_TEST(sb, dis, "add rdx, 0xdead\n");
 
     sub_reg(X86_64_RDX, 0xbeef, &sb);
-    CU_ASSERT_EQUAL(sb.sz, 6);
-    DISASM_TEST(sb, dis, "sub edx, 0xbeef\n");
+    CU_ASSERT_EQUAL(sb.sz, 7);
+    DISASM_TEST(sb, dis, "sub rdx, 0xbeef\n");
 
     free(sb.buf);
     free(dis.buf);
@@ -377,8 +370,36 @@ static void test_zero_byte(void) {
 }
 
 static void test_jump_too_long(void) {
-    EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_close(0, INT64_MAX, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    bf_comp_err e;
+    char dst[JUMP_SIZE];
+    CU_ASSERT_FALSE(jump_close(
+        0,
+        INT64_MAX,
+        &(sized_buf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE},
+        &e
+    ));
+    CU_ASSERT_EQUAL(e.id, BF_ERR_JUMP_TOO_LONG);
+}
+
+static void test_inc_dec_is_64_bit(void) {
+    sized_buf sb = newbuf(10);
+    sized_buf dis = newbuf(56);
+    inc_reg(X86_64_RAX, &sb);
+    dec_reg(X86_64_RAX, &sb);
+    inc_byte(X86_64_RAX, &sb);
+    dec_byte(X86_64_RAX, &sb);
+
+    DISASM_TEST(
+        sb,
+        dis,
+        "inc rax\n"
+        "dec rax\n"
+        "inc byte ptr [rax]\n"
+        "dec byte ptr [rax]\n"
+    );
+
+    free(sb.buf);
+    free(dis.buf);
 }
 
 CU_pSuite register_x86_64_tests(void) {
@@ -392,6 +413,7 @@ CU_pSuite register_x86_64_tests(void) {
     ADD_TEST(suite, test_add_sub_byte);
     ADD_TEST(suite, test_zero_byte);
     ADD_TEST(suite, test_jump_too_long);
+    ADD_TEST(suite, test_inc_dec_is_64_bit);
     return (suite);
 }
 

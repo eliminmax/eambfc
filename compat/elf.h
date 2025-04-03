@@ -37,8 +37,18 @@
    License along with the GNU C Library; if not, see
    <https://www.gnu.org/licenses/>.  */
 
-#ifndef _ELF_H
-#define _ELF_H 1
+#ifndef BFC_ELF_H
+#define BFC_ELF_H 1
+
+#if (!defined __has_include) || defined BFC_NOEXTENSIONS
+#define HAS_INCLUDE(header) 0
+#else /* (!defined __has_include) || defined BFC_NOEXTENSIONS */
+#define HAS_INCLUDE(header) __has_include(header)
+#endif /* (!defined __has_include) || defined BFC_NOEXTENSIONS */
+
+#if HAS_INCLUDE(<elf.h>) || defined S_SPLINT_S
+#include <elf.h> /* IWYU pragma: export */
+#else /* HAS_INCLUDE */
 
 #include "eambfc_inttypes.h" /* IWYU pragma: keep */
 
@@ -144,4 +154,6 @@ typedef struct {
 #define PF_W    2    /* Segment is writable */
 #define PF_R    4    /* Segment is readable */
 
-#endif  /* elf.h */
+#endif  /* HAS_INCLUDE(<elf.h>) */
+#undef HAS_INCLUDE
+#endif /* BFC_ELF_H */

@@ -7,12 +7,6 @@
 #ifndef BFC_ATTRIBUTES
 #define BFC_ATTRIBUTES 1
 
-#if defined __GNUC__ && defined __has_attribute
-#define HAS_GCC_ATTR(attr) __has_attribute(attr)
-#else /* defined __GNUC__ && defined __has_attribute */
-#define HAS_GCC_ATTR(attr) 0
-#endif /* defined __GNUC__ && defined __has_attribute */
-
 #define noreturn
 #define nonnull_args
 #define nonnull_arg(...)
@@ -20,6 +14,15 @@
 #define const_fn
 #define malloc_like
 #define must_use
+
+#define HAS_GCC_ATTR(attr) 0
+
+#ifndef BFC_NOEXTENSIONS
+
+#if defined __GNUC__ && defined __has_attribute
+#undef HAS_GCC_ATTR
+#define HAS_GCC_ATTR(attr) __has_attribute(attr)
+#endif /* defined __GNUC__ && defined __has_attribute */
 
 #if __STDC_VERSION__ >= 202311L
 #undef noreturn
@@ -60,5 +63,7 @@
 #undef must_use
 #define must_use __attribute__((__warn_unused_result__))
 #endif /* HAS_GCC_ATTR(__warn_unused_result__) */
+
+#endif /* BFC_NOEXTENSIONS */
 
 #endif /* BFC_NOATTRIBUTES */

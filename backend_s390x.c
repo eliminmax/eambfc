@@ -149,30 +149,32 @@
  * The following macro can initialize an array for any of the three, and the
  * appropriately-sized serialize{16,32}be function can be used for the actual
  * immediate value after initializing the array. */
-#define ENCODE_RI_OP(op, reg) {(op) >> 4, ((reg) << 4) | ((op) & 0xf)}
+#define RI_OP(op, reg) {(op) >> 4, ((reg) << 4) | ((op) & 0xf)}
 
 /* a call-clobbered register to use as a temporary scratch register */
 static const u8 TMP_REG = UINT8_C(5);
 
-static void store_to_byte(u8 reg, u8 aux, sized_buf *dst_buf) {
+static nonnull_args void store_to_byte(
+    u8 reg, u8 aux, sized_buf *restrict dst_buf
+) {
     /* STC aux, 0(reg) {RX-a} */
     u8 i_bytes[4] = {0x42, (aux << 4) | reg, 0x00, 0x00};
     append_obj(dst_buf, &i_bytes, 4);
 }
 
-static void load_from_byte(u8 reg, char dst[6]) {
+static void load_from_byte(u8 reg, char dst[restrict 6]) {
     /* LLGC TMP_REG, 0(reg) {RXY-a} */
     memcpy(dst, (u8[6]){0xe3, (TMP_REG << 4) | reg, 0x00, 0x00, 0x00, 0x90}, 6);
 }
 
 /* declared before set_reg as it's used in set_reg, even though it's not first
  * in the struct. */
-static void reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
+static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
     /* LGR dst, src {RRE} */
     append_obj(dst_buf, (u8[]){0xb9, 0x04, 0x00, (dst << 4) | src}, 4);
 }
 
-static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
     /* There are numerous ways to store immediates in registers for this
      * architecture. This function tries to find a way to load a given immediate
      * in as few machine instructions as possible, using shorter instructions
@@ -183,13 +185,13 @@ static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
     } else if (imm <= INT16_MAX && imm >= INT16_MIN) {
         /* if it fits in a halfword, use Load Halfword Immediate (64 <- 16) */
         /* LGHI r.reg, imm {RI-a} */
-        u8 i_bytes[4] = ENCODE_RI_OP(0xa79, reg);
+        u8 i_bytes[4] = RI_OP(0xa79, reg);
         serialize16be(imm, &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 4);
     } else if (imm <= INT32_MAX && imm >= INT32_MIN) {
         /* if it fits within a word, use Load Immediate (64 <- 32). */
         /* LGFI r.reg, imm {RIL-a} */
-        u8 i_bytes[6] = ENCODE_RI_OP(0xc01, reg);
+        u8 i_bytes[6] = RI_OP(0xc01, reg);
         serialize32be(imm, &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 6);
     } else {
@@ -213,26 +215,26 @@ static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
         if ((upper_imm & ~INT32_C(0xffff)) >> 16 == default_val) {
             /* sets bits 16-31 of the register to the immediate */
             /* IIHL reg, upper_imm {RI-a} */
-            u8 i_bytes[4] = ENCODE_RI_OP(0xa51, reg);
+            u8 i_bytes[4] = RI_OP(0xa51, reg);
             serialize16be(upper_imm, &i_bytes[2]);
             append_obj(dst_buf, &i_bytes, 4);
         } else if ((i16)upper_imm == default_val) {
             /* sets bits 0-15 of the register to the immediate. */
             /* IIHH reg, upper_imm {RI-a} */
-            u8 i_bytes[4] = ENCODE_RI_OP(0xa50, reg);
+            u8 i_bytes[4] = RI_OP(0xa50, reg);
             serialize16be(((u32)upper_imm) >> 16, &i_bytes[2]);
             append_obj(dst_buf, &i_bytes, 4);
         } else {
             /* need to set the full upper word, with Insert Immediate (high) */
             /* IIHF reg, imm {RIL-a} */
-            u8 i_bytes[6] = ENCODE_RI_OP(0xc08, reg);
+            u8 i_bytes[6] = RI_OP(0xc08, reg);
             serialize32be(upper_imm, &i_bytes[2]);
             append_obj(dst_buf, &i_bytes, 6);
         }
     }
 }
 
-static void syscall(sized_buf *dst_buf) {
+static nonnull_args void syscall(sized_buf *restrict dst_buf) {
     /* SVC 0 {I} */
     /* NOTE: on Linux s390x, if the SC number is less than 256, it it can be
      * passed as the second byte of the instruction, but taking advantage of
@@ -253,8 +255,12 @@ typedef enum {
 
 #define JUMP_SIZE 18
 
-static bool branch_cond(
-    u8 reg, i64 offset, comp_mask mask, char dst[JUMP_SIZE]
+static nonnull_args bool branch_cond(
+    u8 reg,
+    i64 offset,
+    comp_mask mask,
+    char dst[restrict JUMP_SIZE],
+    bf_comp_err *restrict err
 ) {
     /* jumps are done by Halfwords, not bytes, so must ensure it's valid. */
     if ((offset % 2) != 0) {
@@ -267,12 +273,9 @@ static bool branch_cond(
      * offset of halfwords, so offset must be even and fit within a 17-bit
      * signed (2's complement) integer */
     if (offset < -0x10000 || offset > 0xffff) {
-        display_err((bf_comp_err){
-            .id = BF_ERR_JUMP_TOO_LONG,
-            .msg = "offset is out-of-range for this architecture",
-            .has_location = 0,
-            .has_instr = 0,
-        });
+        *err = basic_err(
+            BF_ERR_JUMP_TOO_LONG, "offset is out-of-range for this architecture"
+        );
         return false;
     }
     /* addressing halfwords is possible in compare instructions, but not
@@ -303,8 +306,8 @@ static bool branch_cond(
 
     /* CFI TMP_REG, 0 {RIL-a}; BRCL mask, offset; */
     u8 i_bytes[2][6] = {
-        ENCODE_RI_OP(0xc2d, TMP_REG),
-        ENCODE_RI_OP(0xc04, mask),
+        RI_OP(0xc2d, TMP_REG),
+        RI_OP(0xc04, mask),
     };
     /* load the value to compare with into the auxiliary register */
     load_from_byte(reg, dst);
@@ -324,7 +327,7 @@ static bool branch_cond(
 /* NOPR is an extended mnemonic for BCR 0, 0 {RR} */
 #define NOPR 0x07, 0x00
 
-static void pad_loop_open(sized_buf *dst_buf) {
+static nonnull_args void pad_loop_open(sized_buf *restrict dst_buf) {
     /* start with a jump into its own second haflword - both gcc and clang
      * generate that for `__builtin_trap()`.
      *
@@ -334,17 +337,19 @@ static void pad_loop_open(sized_buf *dst_buf) {
     append_obj(dst_buf, &i_bytes, 18);
 }
 
-static void add_reg_signed(u8 reg, i64 imm, sized_buf *dst_buf) {
+static nonnull_args void add_reg_signed(
+    u8 reg, i64 imm, sized_buf *restrict dst_buf
+) {
     if (imm >= INT16_MIN && imm <= INT16_MAX) {
         /* if imm fits within a halfword, a shorter instruction can be used. */
         /* AGHI reg, imm {RI-a} */
-        u8 i_bytes[4] = ENCODE_RI_OP(0xa7b, reg);
+        u8 i_bytes[4] = RI_OP(0xa7b, reg);
         serialize16be(imm, &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 4);
     } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
         /* If imm fits within a word, then use a normal add immediate */
         /* AFGI reg, imm {RIL-a} */
-        u8 i_bytes[6] = ENCODE_RI_OP(0xc28, reg);
+        u8 i_bytes[6] = RI_OP(0xc28, reg);
         serialize32be(imm, &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 6);
     } else {
@@ -354,26 +359,36 @@ static void add_reg_signed(u8 reg, i64 imm, sized_buf *dst_buf) {
 
         /* add the higher 32 bits */
         /* AIH reg, imm {RIL-a} */
-        u8 i_bytes[6] = ENCODE_RI_OP(0xcc8, reg);
+        u8 i_bytes[6] = RI_OP(0xcc8, reg);
         /* cast to u64 to avoid portability issues */
         serialize32be(((u64)imm >> 32), &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 6);
     }
 }
 
-static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf, size_t index) {
-    return branch_cond(reg, offset, MASK_EQ, &dst_buf->buf[index]);
+static nonnull_args bool jump_open(
+    u8 reg,
+    i64 offset,
+    sized_buf *restrict dst_buf,
+    size_t index,
+    bf_comp_err *restrict err
+) {
+    return branch_cond(reg, offset, MASK_EQ, &dst_buf->buf[index], err);
 }
 
-static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return branch_cond(reg, offset, MASK_NE, sb_reserve(dst_buf, JUMP_SIZE));
+static nonnull_args bool jump_close(
+    u8 reg, i64 offset, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    return branch_cond(
+        reg, offset, MASK_NE, sb_reserve(dst_buf, JUMP_SIZE), err
+    );
 }
 
-static void add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+static nonnull_args void add_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
     add_reg_signed(reg, imm, dst_buf);
 }
 
-static void sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+static nonnull_args void sub_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
     /* there are not equivalent sub instructions to any of the add instructions
      * used, so take advantage of the fact that adding and subtracting INT64_MIN
      * have the same effect except for the possible effect on overflow flags
@@ -383,35 +398,39 @@ static void sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
     add_reg_signed(reg, imm_s, dst_buf);
 }
 
-static void inc_reg(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
     add_reg_signed(reg, 1, dst_buf);
 }
 
-static void dec_reg(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void dec_reg(u8 reg, sized_buf *restrict dst_buf) {
     add_reg_signed(reg, -1, dst_buf);
 }
 
-static void add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+static nonnull_args void add_byte(
+    u8 reg, u8 imm8, sized_buf *restrict dst_buf
+) {
     load_from_byte(reg, sb_reserve(dst_buf, 6));
     add_reg_signed(TMP_REG, imm8, dst_buf);
     store_to_byte(reg, TMP_REG, dst_buf);
 }
 
-static void sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+static nonnull_args void sub_byte(
+    u8 reg, u8 imm8, sized_buf *restrict dst_buf
+) {
     load_from_byte(reg, sb_reserve(dst_buf, 6));
     add_reg_signed(TMP_REG, -imm8, dst_buf);
     store_to_byte(reg, TMP_REG, dst_buf);
 }
 
-static void inc_byte(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void inc_byte(u8 reg, sized_buf *restrict dst_buf) {
     add_byte(reg, 1, dst_buf);
 }
 
-static void dec_byte(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void dec_byte(u8 reg, sized_buf *restrict dst_buf) {
     sub_byte(reg, 1, dst_buf);
 }
 
-static void zero_byte(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void zero_byte(u8 reg, sized_buf *restrict dst_buf) {
     /* STC 0, 0(reg) {RX-a} */
     store_to_byte(reg, 0, dst_buf);
 }
@@ -574,9 +593,10 @@ static void test_set_reg_large_imm(void) {
 static void test_successful_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(128);
+    bf_comp_err e;
     sb_reserve(&sb, JUMP_SIZE);
-    jump_open(3, 18, &sb, 0);
-    jump_close(3, -36, &sb);
+    jump_open(3, 18, &sb, 0, &e);
+    jump_close(3, -36, &sb, &e);
     pad_loop_open(&sb);
     /* For some reason, LLVM treats jump offset operand as an unsigned immediate
      * after sign extending it to the full 64 bits, so -36 becomes
@@ -788,13 +808,27 @@ static void test_byte_arith(void) {
 }
 
 static void test_bad_jump_offset(void) {
-    EXPECT_BF_ERR(BF_ICE_INVALID_JUMP_ADDRESS);
-    jump_close(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    testing_err = TEST_INTERCEPT;
+    int returned_err;
+    if ((returned_err = setjmp(etest_stack))) {
+        CU_ASSERT_EQUAL(BF_ICE_INVALID_JUMP_ADDRESS, returned_err >> 1);
+        testing_err = NOT_TESTING;
+        return;
+    }
+    bf_comp_err e;
+    char dst[JUMP_SIZE];
+    jump_close(
+        0, 31, &(sized_buf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE}, &e
+    );
+    longjmp(etest_stack, (BF_NOT_ERR << 1) | 1);
 }
 
 static void test_jump_too_long(void) {
-    EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_close(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    bf_comp_err e;
+    sized_buf sb = newbuf(JUMP_SIZE);
+    CU_ASSERT_FALSE(jump_close(0, 1 << 23, &sb, &e));
+    CU_ASSERT_EQUAL(e.id, BF_ERR_JUMP_TOO_LONG);
+    free(sb.buf);
 }
 
 CU_pSuite register_s390x_tests(void) {

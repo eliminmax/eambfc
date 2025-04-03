@@ -102,6 +102,9 @@
 #if BFC_LONGOPTS && !defined _GNU_SOURCE
 #error "BFC_LONGOPTS requires _GNU_SOURCE"
 #endif /* BFC_LONGOPTS && !defined _GNU_SOURCE */
+#if BFC_LONGOPTS && defined BFC_NOEXTENSIONS
+#error "BFC_LONGOPTS cannot coexist with BFC_NOEXTENSIONS"
+#endif
 
 #define BFC_CHUNK_MASK (BFC_CHUNK_SIZE - 1)
 

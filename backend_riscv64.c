@@ -46,7 +46,9 @@ enum RISCV_REGS {
  * to find everyone who had contributed as of 2022, because I didn't want to
  * just go "Copyright 2018-2022 LLVM Contributors"
  * and call it a day - I believe firmly in giving credit where credit is do. */
-static void encode_li(sized_buf *code_buf, u8 reg, i64 val) {
+static nonnull_args void encode_li(
+    sized_buf *restrict code_buf, u8 reg, i64 val
+) {
     u8 i_bytes[4];
     u32 lo12 = sign_extend(val, 12);
     if (bit_fits(val, 32)) {
@@ -131,7 +133,13 @@ static u32 load_from_byte(u8 addr) {
 
 #define JUMP_SIZE 12
 
-static bool cond_jump(u8 reg, i64 distance, bool eq, char dst[JUMP_SIZE]) {
+static bool cond_jump(
+    u8 reg,
+    i64 distance,
+    bool eq,
+    char dst[restrict JUMP_SIZE],
+    bf_comp_err *restrict err
+) {
     /* there are 2 types of instructions used here for control flow - branches,
      * which can conditionally move up to 4 KiB away, and jumps, which
      * unconditionally move up to 1MiB away. The former is too short, and the
@@ -144,13 +152,10 @@ static bool cond_jump(u8 reg, i64 distance, bool eq, char dst[JUMP_SIZE]) {
      * register, but they only work with a specific subset of registers, all of
      * which are non-volatile. */
     if (!bit_fits(distance, 21)) {
-        display_err((bf_comp_err){
-            .id = BF_ERR_JUMP_TOO_LONG,
-            .msg =
-                "offset is outside the range of possible 21-bit signed values",
-            .has_location = 0,
-            .has_instr = 0,
-        });
+        *err = basic_err(
+            BF_ERR_JUMP_TOO_LONG,
+            "offset is outside the range of possible 21-bit signed values"
+        );
         return false;
     }
     if ((distance % 2) != 0) {
@@ -175,48 +180,56 @@ static bool cond_jump(u8 reg, i64 distance, bool eq, char dst[JUMP_SIZE]) {
     return true;
 }
 
-static void set_reg(u8 reg, i64 imm, sized_buf *dst_buf) {
+static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
     encode_li(dst_buf, reg, imm);
 }
 
-static void reg_copy(u8 dst, u8 src, sized_buf *dst_buf) {
+static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
     /* C.MV dst, src */
     u16 instr = 0x8002 | (((u16)dst) << 7) | (((u16)src) << 2);
     append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
 }
 
-static void syscall(sized_buf *dst_buf) {
+static nonnull_args void syscall(sized_buf *restrict dst_buf) {
     /* ecall */
     append_obj(dst_buf, (u8[]){0x73, 0, 0, 0}, 4);
 }
 
-static void pad_loop_open(sized_buf *dst_buf) {
+static nonnull_args void pad_loop_open(sized_buf *restrict dst_buf) {
     /* ILLEGAL; NOP; NOP */
     uchar instr_seq[3][4] = {{0x0}, {0x13}, {0x13}};
     append_obj(dst_buf, instr_seq, 12);
 }
 
-static bool jump_open(u8 reg, i64 offset, sized_buf *dst_buf, size_t index) {
-    return cond_jump(reg, offset, true, &dst_buf->buf[index]);
+static nonnull_args bool jump_open(
+    u8 reg,
+    i64 offset,
+    sized_buf *restrict dst_buf,
+    size_t index,
+    bf_comp_err *restrict err
+) {
+    return cond_jump(reg, offset, true, &dst_buf->buf[index], err);
 }
 
-static bool jump_close(u8 reg, i64 offset, sized_buf *dst_buf) {
-    return cond_jump(reg, offset, false, sb_reserve(dst_buf, JUMP_SIZE));
+static nonnull_args bool jump_close(
+    u8 reg, i64 offset, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    return cond_jump(reg, offset, false, sb_reserve(dst_buf, JUMP_SIZE), err);
 }
 
-static void inc_reg(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
     /* c.addi reg, 1 */
     u16 instr = 5 | (((u16)reg) << 7);
     append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
 }
 
-static void dec_reg(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void dec_reg(u8 reg, sized_buf *restrict dst_buf) {
     /* c.addi reg, -1 */
     u16 instr = 0x107d | (((u16)reg) << 7);
     append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
 }
 
-static void inc_byte(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void inc_byte(u8 reg, sized_buf *restrict dst_buf) {
     u8 i_bytes[10] = {
         PAD_INSTRUCTION,
         /* c.addi t1, 1 */
@@ -229,7 +242,7 @@ static void inc_byte(u8 reg, sized_buf *dst_buf) {
     append_obj(dst_buf, i_bytes, 10);
 }
 
-static void dec_byte(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void dec_byte(u8 reg, sized_buf *restrict dst_buf) {
     u8 i_bytes[10] = {
         PAD_INSTRUCTION,
         /* c.addi t1, -1 */
@@ -242,7 +255,7 @@ static void dec_byte(u8 reg, sized_buf *dst_buf) {
     append_obj(dst_buf, i_bytes, 10);
 }
 
-static void add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+static nonnull_args void add_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
     if (!imm) return;
     if (bit_fits(imm, 6)) {
         /* c.addi reg, imm */
@@ -266,7 +279,7 @@ static void add_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
     append_obj(dst_buf, (u8[]){add_regs & 0xff, (add_regs & 0xff00) >> 8}, 2);
 }
 
-static void sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
+static nonnull_args void sub_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
     /* adding and subtracting INT64_MIN result in the same value, but negating
      * INT64_MIN is undefined behavior, so this is the way to go. */
     i64 neg_imm = imm;
@@ -274,7 +287,9 @@ static void sub_reg(u8 reg, u64 imm, sized_buf *dst_buf) {
     add_reg(reg, neg_imm, dst_buf);
 }
 
-static void add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+static nonnull_args void add_byte(
+    u8 reg, u8 imm8, sized_buf *restrict dst_buf
+) {
     if (!imm8) return;
     u8 i_bytes[12];
     uint sz;
@@ -300,7 +315,9 @@ static void add_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     append_obj(dst_buf, i_bytes, sz);
 }
 
-static void sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
+static nonnull_args void sub_byte(
+    u8 reg, u8 imm8, sized_buf *restrict dst_buf
+) {
     if (!imm8) return;
     u8 i_bytes[12];
     uint sz;
@@ -326,7 +343,7 @@ static void sub_byte(u8 reg, u8 imm8, sized_buf *dst_buf) {
     append_obj(dst_buf, i_bytes, sz);
 }
 
-static void zero_byte(u8 reg, sized_buf *dst_buf) {
+static nonnull_args void zero_byte(u8 reg, sized_buf *restrict dst_buf) {
     u32 instr = 0x23 | (((u32)reg) << 15);
     u8 i_bytes[4];
     serialize32le(instr, i_bytes);
@@ -592,9 +609,10 @@ static void test_jump_pad(void) {
 static void test_successful_jumps(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(72);
+    bf_comp_err e;
     sb_reserve(&sb, JUMP_SIZE);
-    jump_open(RISCV_S0, 32, &sb, 0);
-    jump_close(RISCV_S0, -32, &sb);
+    jump_open(RISCV_S0, 32, &sb, 0, &e);
+    jump_close(RISCV_S0, -32, &sb, &e);
     DISASM_TEST(
         sb,
         dis,
@@ -759,13 +777,27 @@ static void test_add_sub_byte(void) {
 }
 
 static void test_bad_jump_offset(void) {
-    EXPECT_BF_ERR(BF_ICE_INVALID_JUMP_ADDRESS);
-    jump_close(0, 31, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    testing_err = TEST_INTERCEPT;
+    int returned_err;
+    if ((returned_err = setjmp(etest_stack))) {
+        CU_ASSERT_EQUAL(BF_ICE_INVALID_JUMP_ADDRESS, returned_err >> 1);
+        testing_err = NOT_TESTING;
+        return;
+    }
+    bf_comp_err e;
+    char dst[JUMP_SIZE];
+    jump_close(
+        0, 31, &(sized_buf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE}, &e
+    );
+    longjmp(etest_stack, (BF_NOT_ERR << 1) | 1);
 }
 
 static void test_jump_too_long(void) {
-    EXPECT_BF_ERR(BF_ERR_JUMP_TOO_LONG);
-    jump_close(0, 1 << 23, &(sized_buf){.buf = NULL, .sz = 0, .capacity = 0});
+    bf_comp_err e;
+    sized_buf sb = newbuf(JUMP_SIZE);
+    CU_ASSERT_FALSE(jump_close(0, 1 << 23, &sb, &e));
+    CU_ASSERT_EQUAL(e.id, BF_ERR_JUMP_TOO_LONG);
+    free(sb.buf);
 }
 
 CU_pSuite register_riscv64_tests(void) {

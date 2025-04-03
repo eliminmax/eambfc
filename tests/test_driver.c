@@ -149,9 +149,7 @@ typedef enum test_outcome {
             MSG("SKIPPED", "can't run target binaries"); \
             return TEST_SKIPPED; \
         case UNKNOWN_ARCH: \
-            fputs( \
-                "Unknown or uninitialized architecture support status\n", \
-                stderr \
+            PRINTERR("Unknown or uninitialized architecture support status\n" \
             ); \
             abort(); \
         default: \
@@ -162,7 +160,7 @@ typedef enum test_outcome {
  * writing the expected data to stdout */
 static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
 #define MSG(outcome, reason) \
-    EPRINTF( \
+    PRINTERR( \
         outcome ": %s (%s%s): " reason "\n", \
         BINTESTS[bt].test_bin + 2, \
         arch, \
@@ -204,7 +202,7 @@ static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
 
     free(chld_output.buf);
     free(src_name);
-    EPRINTF(
+    PRINTERR(
         "SUCCESS: %s (%s%s)\n",
         BINTESTS[bt].test_bin + 2,
         arch,
@@ -246,18 +244,18 @@ static bool rw_test_run(uchar byte, uchar *output_byte) {
     CHECKED(close(c2p[1]) != -1);
     CHECKED(close(p2c[0]) != -1);
     if (write(p2c[1], &byte, 1) != 1) {
-        EPRINTF(
+        PRINTERR(
             __FILE__ ":%s:%d: failed to write to p2c[1]\n", __func__, __LINE__
         );
         goto fail;
     }
 
     if (read(c2p[0], output_byte, 1) != 1) {
-        EPRINTF(__FILE__ ":%s:%d: no bytes read\n", __func__, __LINE__);
+        PRINTERR(__FILE__ ":%s:%d: no bytes read\n", __func__, __LINE__);
         goto fail;
     }
     if (read(c2p[0], &overwrite, 1) != 0) {
-        EPRINTF(
+        PRINTERR(
             __FILE__ ":%s:%d: more than one byte read\n", __func__, __LINE__
         );
         goto fail;
@@ -266,11 +264,11 @@ static bool rw_test_run(uchar byte, uchar *output_byte) {
     CHECKED(close(p2c[1]) != -1);
     CHECKED(waitpid(chld, &chld_status, 0) == chld);
     if (!WIFEXITED(chld_status)) {
-        EPRINTF(
+        PRINTERR(
             __FILE__ ":%s:%d: child exited abnormally\n", __func__, __LINE__
         );
         if (WIFSIGNALED(chld_status)) {
-            EPRINTF(
+            PRINTERR(
                 "stopped due to signal %s.\n", strsignal(WTERMSIG(chld_status))
             );
         }
@@ -278,7 +276,7 @@ static bool rw_test_run(uchar byte, uchar *output_byte) {
         return false;
     }
     if (WEXITSTATUS(chld_status) != 0) {
-        EPRINTF(
+        PRINTERR(
             __FILE__ ":%s:%d: nonzero child exit code\n", __func__, __LINE__
         );
         return false;
@@ -294,7 +292,9 @@ fail:
 static test_outcome rw_test(const char *arch, bool opt) {
     const char *variant = opt ? ", optimized" : "";
 #define MSG(outcome, reason) \
-    EPRINTF(outcome ": rw (%s%s): " reason "\n", arch, opt ? ", optimized" : "")
+    PRINTERR( \
+        outcome ": rw (%s%s): " reason "\n", arch, opt ? ", optimized" : "" \
+    )
     SKIP_IF_UNSUPPORTED(arch);
 
     const char **args = ARGS(opt ? "-Oa" : "-a", arch, "rw.bf");
@@ -308,7 +308,7 @@ static test_outcome rw_test(const char *arch, bool opt) {
     for (uint i = 0; i < 256; i++) {
         uchar out_byte;
         if (!rw_test_run(i, &out_byte)) {
-            EPRINTF(
+            PRINTERR(
                 "FAILURE: rw (%s%s): abnormal run with byte 0x%02x\n",
                 arch,
                 variant,
@@ -318,7 +318,7 @@ static test_outcome rw_test(const char *arch, bool opt) {
             goto cleanup;
         }
         if (out_byte != i) {
-            EPRINTF(
+            PRINTERR(
                 "FAILURE: rw (%s%s): run with byte 0x%02x printed byte "
                 "%0x02hhx\n",
                 arch,
@@ -331,7 +331,7 @@ static test_outcome rw_test(const char *arch, bool opt) {
         }
     }
 
-    EPRINTF("SUCCESS: rw (%s%s)\n", arch, variant);
+    PRINTERR("SUCCESS: rw (%s%s)\n", arch, variant);
     ret = TEST_SUCCEEDED;
 cleanup:
     CHECKED(unlink("rw") == 0);
@@ -394,7 +394,7 @@ fail:
 
 static test_outcome tm_test(const char *arch, bool opt) {
 #define MSG(outcome, reason) \
-    EPRINTF( \
+    PRINTERR( \
         outcome ": truthmachine (%s%s): " reason "\n", \
         arch, \
         opt ? ", optimized" : "" \
@@ -424,7 +424,7 @@ static test_outcome tm_test(const char *arch, bool opt) {
         MSG("FAILURE", "input '1' results in output other than repeating '1'");
         goto cleanup;
     }
-    EPRINTF("SUCCESS: truthmachine (%s%s)\n", arch, opt ? ", optimized" : "");
+    PRINTERR("SUCCESS: truthmachine (%s%s)\n", arch, opt ? ", optimized" : "");
     ret = TEST_SUCCEEDED;
 cleanup:
     CHECKED(unlink("truthmachine") == 0);
@@ -479,7 +479,7 @@ static nonnull_args test_outcome err_test(
     if (run_capturing(moved_args, &out, NULL) != EXIT_FAILURE) {
         free(out.buf);
         free(moved_args);
-        EPRINTF(
+        PRINTERR(
             "FAILURE: %s: eambfc exited successfully, expected error\n", test_id
         );
         return TEST_FAILED;
@@ -494,7 +494,7 @@ static nonnull_args test_outcome err_test(
     }
     free(out.buf);
     if (strcmp(error_id, expected_err) != 0) {
-        EPRINTF(
+        PRINTERR(
             "FAILURE: %s: expected error \"%s\", got error \"%s\".\n",
             test_id,
             expected_err,
@@ -502,7 +502,7 @@ static nonnull_args test_outcome err_test(
         );
         return TEST_FAILED;
     }
-    EPRINTF("SUCCESS: %s\n", test_id);
+    PRINTERR("SUCCESS: %s\n", test_id);
     return TEST_SUCCEEDED;
 }
 
@@ -552,7 +552,7 @@ static nonnull_args void run_perm_err_tests(result_tracker *results) {
 
 typedef nonnull_args test_outcome (*hellotest)(const sized_buf *const);
 
-#define MSG(outcome, reason) EPRINTF(outcome ": %s: " reason "\n", __func__);
+#define MSG(outcome, reason) PRINTERR(outcome ": %s: " reason "\n", __func__);
 
 static nonnull_args test_outcome
 test_unseekable(const sized_buf *const hello_code) {
@@ -595,7 +595,7 @@ test_unseekable(const sized_buf *const hello_code) {
         return TEST_FAILED;
     }
     if (sb_eq(&output, hello_code)) {
-        fputs("SUCCESS: unseekable\n", stderr);
+        PRINTERR("SUCCESS: unseekable\n");
         free(output.buf);
         return TEST_SUCCEEDED;
     } else {
@@ -626,7 +626,7 @@ alternate_extension(const sized_buf *const hello_code) {
     CHECKED(close(fd) == 0);
     CHECKED(unlink("alternate_extension") == 0);
     if (sb_eq(&output, hello_code)) {
-        fputs("SUCCESS: alternate_extension\n", stderr);
+        PRINTERR("SUCCESS: alternate_extension\n");
         free(output.buf);
         return TEST_SUCCEEDED;
     } else {
@@ -655,7 +655,7 @@ static nonnull_args test_outcome out_suffix(const sized_buf *const hello_code) {
     CHECKED(unlink("hello.elf") == 0);
 
     if (sb_eq(&output, hello_code)) {
-        fputs("SUCCESS: out_suffix\n", stderr);
+        PRINTERR("SUCCESS: out_suffix\n");
         free(output.buf);
         return TEST_SUCCEEDED;
     } else {
@@ -705,7 +705,7 @@ static nonnull_args test_outcome piped_in(const sized_buf *const hello_code) {
     CHECKED(unlink("piped_in.bf") == 0);
 
     if (sb_eq(&output, hello_code)) {
-        fputs("SUCCESS: piped_in\n", stderr);
+        PRINTERR("SUCCESS: piped_in\n");
         free(output.buf);
         return TEST_SUCCEEDED;
     } else {
@@ -724,7 +724,7 @@ static nonnull_args void run_alt_hello_tests(result_tracker *results) {
         NULL,
     };
     if (subprocess(ARGS("hello.bf")) != EXIT_SUCCESS) {
-        fputs("failed to compile hello.bf for comparisons\n", stderr);
+        PRINTERR("failed to compile hello.bf for comparisons\n");
         abort();
     }
     sized_buf hello = {
@@ -778,7 +778,7 @@ static nonnull_args test_outcome dead_code(void) {
     CHECKED(unlink("null") == 0 || errno == ENOENT);
     CHECKED(unlink("dead_code") == 0 || errno == ENOENT);
     if (succeeded) {
-        fputs("SUCCESS: dead_code\n", stderr);
+        PRINTERR("SUCCESS: dead_code\n");
         return TEST_SUCCEEDED;
     } else {
         MSG("FAILURE", "dead_code not optimiazed down equivalent to nothing");
@@ -816,13 +816,13 @@ static nonnull_args void run_misc_tests(result_tracker *results) {
 
 int main(int argc, char *argv[]) {
     if (!argc) {
-        fputs("Empty argv array\n", stderr);
+        PRINTERR("Empty argv array\n");
         abort();
     }
 
     char *last_sep;
     if ((last_sep = strrchr(argv[0], '/')) == NULL) {
-        fputs("Failed to determine path to tests dir from argv[0]\n", stderr);
+        PRINTERR("Failed to determine path to tests dir from argv[0]\n");
         abort();
     }
 

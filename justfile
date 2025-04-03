@@ -151,7 +151,7 @@ int-torture-test: alt-builds-dir test_driver
 [doc("Test provided `eambfc` build using its cli")]
 [group("tests")]
 [working-directory('./tests')]
-test eambfc="eambfc": test_driver
+test eambfc="eambfc": test_driver eambfc
     env EAMBFC={{ quote(join(justfile_dir(), eambfc)) }} ./test_driver
 
 [doc("Run through the unit tests")]

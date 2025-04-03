@@ -84,7 +84,7 @@ nonnull_arg(1) int run_capturing(
 );
 
 /* convenience macro to fprintf to stderr */
-#define EPRINTF(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
+#define PRINTERR(...) fprintf(stderr, __VA_ARGS__)
 
 #define STRINGIFY(x) #x
 /* stringify macros like `__LINE__` */

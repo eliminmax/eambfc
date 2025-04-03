@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Eli Array Minkoff
+# SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
 #
 # SPDX-License-Identifier: 0BSD
 
@@ -18,3 +18,6 @@ indent_size = 2
 [Makefile]
 indent_style = tab
 tab_width = 8
+
+[.clang*]
+indent_size = 2

@@ -39,14 +39,11 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
     strcpy(outname, filename);
 
     if (!rm_ext(outname, rc->ext)) {
-        bf_comp_err e = {
+        display_err((bf_comp_err){
             .file = filename,
-            .msg = "File does not end with proper extension",
+            .msg.ref = "File does not end with proper extension",
             .id = BF_ERR_BAD_EXTENSION,
-            .has_location = false,
-            .has_instr = false,
-        };
-        display_err(e);
+        });
         free(outname);
         return false;
     }
@@ -59,17 +56,21 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
 
     int src_fd = open(filename, O_RDONLY);
     if (src_fd < 0) {
-        display_err((bf_comp_err){.file = filename,
-                                  .id = BF_ERR_OPEN_R_FAILED,
-                                  .msg = "Failed to open file for reading"});
+        display_err((bf_comp_err){
+            .file = filename,
+            .id = BF_ERR_OPEN_R_FAILED,
+            .msg.ref = "Failed to open file for reading",
+        });
         free(outname);
         return false;
     }
     int dst_fd = open(outname, O_WRONLY | O_CREAT | O_TRUNC, 0755);
     if (dst_fd < 0) {
-        display_err((bf_comp_err){.file = outname,
-                                  .id = BF_ERR_OPEN_W_FAILED,
-                                  .msg = "Failed to open file for writing"});
+        display_err((bf_comp_err){
+            .file = outname,
+            .id = BF_ERR_OPEN_W_FAILED,
+            .msg.ref = "Failed to open file for writing",
+        });
         close(src_fd);
         free(outname);
         return false;
