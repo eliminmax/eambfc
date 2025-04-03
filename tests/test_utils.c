@@ -30,7 +30,7 @@ nonnull_args size_t read_chunk(sized_buf *dst, int fd) {
     ssize_t ct;
     CHECKED((ct = read(fd, buf, BFC_CHUNK_SIZE)) >= 0);
     if (dst->sz > (SIZE_MAX - (size_t)ct)) {
-        EPRINTF(
+        PRINTERR(
             "Appending %jd bytes to an object of %ju bytes would overflow\n",
             (intmax_t)ct,
             (uintmax_t)dst->sz
@@ -112,7 +112,7 @@ nonnull_arg(1) int run_capturing(
 
 nonnull_args int subprocess(const char *args[]) {
     if (args[0] == NULL) {
-        fputs("subprocess called with empty args.\n", stderr);
+        PRINTERR("subprocess called with empty args.\n");
         abort();
     }
     pid_t chld;
@@ -121,7 +121,7 @@ nonnull_args int subprocess(const char *args[]) {
     int chld_status;
     CHECKED(waitpid(chld, &chld_status, 0) != -1);
     if (!WIFEXITED(chld_status)) {
-        fputs("subbrocess stopped abnormally\n", stderr);
+        PRINTERR("subbrocess stopped abnormally\n");
         abort();
     }
     return WEXITSTATUS(chld_status);
