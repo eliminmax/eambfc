@@ -146,7 +146,7 @@ make test
 # install eambfc to /usr/local with sudo
 sudo make install
 # clean previous build and build with an alternative compiler
-make clean; make CC=tcc
+make clean; make CC=clang
 # install to an alternative path
 make PREFIX="$HOME/.local" install
 ```
@@ -239,7 +239,6 @@ The following packages are used in testing or release automation:
 * `sed`
 * `shellcheck`
 * `tar`
-* `tcc`
 * `valgrind`
 * `xz-utils`
 
@@ -260,8 +259,8 @@ Depends: awk, binutils, clang-19, clang-format-19,
  gcc-aarch64-linux-gnu, gcc-i686-linux-gnu, gcc-mips-linux-gnu,
  gcc-s390x-linux-gnu, git, gzip, libasan6, libcunit1-dev, libubsan1,
  libcjson-dev, llvm-19-dev, make, musl-tools, parallel, pkg-config,
- qemu-user-binfmt (>= 1:9.0.0), sed, shellcheck, tar, tcc,
- valgrind, xz-utils
+ qemu-user-binfmt (>= 1:9.0.0), sed, shellcheck, tar, valgrind,
+ xz-utils
 Suggests: clangd-19
 Description: Dependencies of eambfc's development workflow
  While eambfc is written with portability to POSIX systems
@@ -281,7 +280,7 @@ apt install awk binutils clang-19 clang-format-19 clang-tools-19 codespell \
     gcc-i686-linux-gnu gcc-mips-linux-gnu gcc-s390x-linux-gnu git gzip \
     libasan6 libcunit1-dev libubsan1 libjson-c-dev llvm-19-dev make musl-tools \
     parallel pkg-config qemu-user-binfmt/bookworm-backports sed shellcheck tar \
-    tcc valgrind xz-utils
+    valgrind xz-utils
 ```
 
 ### Non-Debian Dependencies

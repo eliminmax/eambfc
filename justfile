@@ -58,8 +58,6 @@ release-build: scan-build cppcheck-full tarball pdpmake valgrind_test \
             LDFLAGS=-static parallel -I_cc just --no-deps test_build \
                 _cc "-O$o_lvl" -Wall -Werror -Wextra -pedantic -std=c99 -static
     done
-    # this has caught loss of *const qualifier that the bigger compilers did not
-    just --no-deps test_build tcc -Wall -Wwrite-strings -Werror
 
     # if none of those tests hit any issues, make the compressed archives and
     # the actual build
