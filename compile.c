@@ -52,8 +52,6 @@
  * beginning of the machine code. */
 #define PAD_SZ (START_PADDR - (PHTB_SIZE + EHDR_SIZE))
 
-static uint line, col;
-
 /* Write the ELF header to the file descriptor fd. */
 static bool write_ehdr(
     int fd, u64 tape_blocks, const arch_inter *inter, const char *out_name
@@ -248,13 +246,13 @@ static void bf_io(
 #define JUMP_CHUNK_SZ 64
 
 typedef struct jump_loc {
-    uint src_line; /* saved for error reporting. */
-    uint src_col; /* saved for error reporting. */
+    src_loc location;
     off_t dst_loc;
+    bool has_loc: 1;
 } jump_loc;
 
 static struct jump_stack {
-    size_t next_index;
+    size_t next;
     size_t loc_sz;
     jump_loc *locations;
 } jump_stack;
@@ -266,7 +264,8 @@ static struct jump_stack {
 static bool bf_jump_open(
     sized_buf *restrict obj_code,
     const arch_inter *restrict inter,
-    bf_comp_err *restrict err
+    bf_comp_err *restrict err,
+    const src_loc *loc
 ) {
     size_t start_loc = obj_code->sz;
     /* insert an architecture-specific illegal/trap instruction, then pad to
@@ -274,7 +273,7 @@ static bool bf_jump_open(
      * is reserved before the address is known. */
     inter->pad_loop_open(obj_code);
     /* ensure that there are no more than the maximum nesting level */
-    if (jump_stack.next_index + 1 == jump_stack.loc_sz) {
+    if (jump_stack.next + 1 == jump_stack.loc_sz) {
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
             jump_stack.loc_sz += JUMP_CHUNK_SZ;
         } else {
@@ -290,16 +289,19 @@ static bool bf_jump_open(
 
         jump_stack.locations = checked_realloc(
             jump_stack.locations,
-            (jump_stack.next_index + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
+            (jump_stack.next + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
         );
     }
     /* push the current address onto the stack */
-    jump_stack.locations[jump_stack.next_index] = (jump_loc){
-        line,
-        col,
-        start_loc,
-    };
-    jump_stack.next_index++;
+    jump_stack.locations[jump_stack.next].dst_loc = start_loc;
+    if (loc) {
+        jump_stack.locations[jump_stack.next].location = *loc;
+        jump_stack.locations[jump_stack.next].has_loc = true;
+    } else {
+        jump_stack.locations[jump_stack.next].location = (src_loc){0};
+        jump_stack.locations[jump_stack.next].has_loc = false;
+    }
+    jump_stack.next++;
     return true;
 }
 
@@ -311,7 +313,7 @@ static bool bf_jump_close(
     bf_comp_err *restrict e
 ) {
     /* ensure that the current index is in bounds */
-    if (jump_stack.next_index == 0) {
+    if (jump_stack.next == 0) {
         *e = (bf_comp_err){
             .id = BF_ERR_UNMATCHED_CLOSE,
             .msg.ref = "Found ']' without matching '['.",
@@ -321,7 +323,7 @@ static bool bf_jump_close(
         return false;
     }
     /* pop the matching `[` instruction's location */
-    off_t before = jump_stack.locations[--jump_stack.next_index].dst_loc;
+    off_t before = jump_stack.locations[--jump_stack.next].dst_loc;
     i32 distance = obj_code->sz - before;
 
     /* This is messy, but cuts down the number of allocations massively.
@@ -353,7 +355,7 @@ static bool comp_instr(
     sized_buf *obj_code,
     const arch_inter *inter,
     const char *in_name,
-    struct bf_err_location *restrict location
+    src_loc *restrict location
 ) {
     if (location) location->col++;
     switch (c) {
@@ -385,7 +387,7 @@ static bool comp_instr(
         /* `[` and `]` could error out. */
         case '[': {
             bf_comp_err err;
-            if (bf_jump_open(obj_code, inter, &err)) return true;
+            if (bf_jump_open(obj_code, inter, &err, location)) return true;
             err.file = in_name;
             if (location) {
                 err.location = *location;
@@ -521,7 +523,7 @@ bool bf_compile(
     bool ret = true;
 
     /* reset the jump stack for the new file */
-    jump_stack.next_index = 0;
+    jump_stack.next = 0;
     jump_stack.locations = checked_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
 
@@ -538,7 +540,7 @@ bool bf_compile(
         }
         ret &= compile_condensed(src.sb.buf, &obj_code, inter, in_name);
     } else {
-        struct bf_err_location loc = {.line = 1, .col = 0};
+        src_loc loc = {.line = 1, .col = 0};
         for (size_t i = 0; i < src.sb.sz; i++) {
             ret &= comp_instr(src.sb.buf[i], &obj_code, inter, in_name, &loc);
         }
@@ -571,17 +573,18 @@ bool bf_compile(
     }
 
     /* check if any unmatched loop openings were left over. */
-    for (size_t i = 0; i < jump_stack.next_index; i++) {
-        display_err((bf_comp_err){
+    for (size_t i = 0; i < jump_stack.next; i++) {
+        e = (bf_comp_err){
             .id = BF_ERR_UNMATCHED_OPEN,
             .file = in_name,
             .msg.ref = "Reached the end of the file with an unmatched '['.",
             .instr = '[',
-            .location.line = jump_stack.locations[i].src_line,
-            .location.col = jump_stack.locations[i].src_col,
             .has_instr = true,
-            .has_location = true,
-        });
+            .has_location = jump_stack.locations[i].has_loc,
+        };
+        if (jump_stack.locations[i].has_loc) {
+            e.location = jump_stack.locations[i].location;
+        }
         ret = false;
     }
 

@@ -47,10 +47,10 @@ typedef enum {
     OUTMODE_JSON = 2,
 } out_mode;
 
-struct bf_err_location {
+typedef struct {
     size_t line;
     size_t col;
-};
+} src_loc;
 
 typedef struct {
     /* error message text */
@@ -64,7 +64,7 @@ typedef struct {
 
     /* position in file of error - if `has_location` is false, may have an
      * uninitialized value. */
-    struct bf_err_location location;
+    src_loc location;
 
     /* character in file that error occurred with - if `has_instr` is false, may
      * have an uninitialized value. */
