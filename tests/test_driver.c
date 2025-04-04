@@ -744,12 +744,12 @@ static nonnull_args void run_alt_hello_tests(result_tracker *results) {
     free(hello.buf);
 }
 
-static nonnull_args test_outcome dead_code(void) {
+static test_outcome dead_code(void) {
     if (subprocess(ARGS("-O", "null.bf", "dead_code.bf")) != EXIT_SUCCESS) {
         MSG("FAILURE", "failed to compile hello.bf for comparisons");
         CHECKED(unlink("null") == 0 || errno == ENOENT);
         CHECKED(unlink("dead_code") == 0 || errno == ENOENT);
-        return EXIT_FAILURE;
+        return TEST_FAILED;
     }
     int fd;
 
