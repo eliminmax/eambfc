@@ -786,32 +786,112 @@ static test_outcome dead_code(void) {
     }
 }
 
+#define FMT \
+    "{\"errorId\": \"%15[^\"]\", \"file\": \"non_ascii_positions.bf\", " \
+    "\"line\": %zu, \"column\": %zu, \"instruction\": \"%*c\", \"message\": " \
+    "\"%*[^\"]\"}\n%n"
+
+static test_outcome error_position(void) {
+    sized_buf errors = {.buf = checked_malloc(512), .sz = 0, .capacity = 512};
+    const char **args = ARGS("-j", "non_ascii_positions.bf");
+    if (run_capturing(args, &errors, NULL) != EXIT_FAILURE) {
+        MSG("FAILURE", "compiled broken code without proper error");
+        return TEST_FAILED;
+    }
+    if (errors.sz == errors.capacity) {
+        checked_realloc(errors.buf, ++errors.capacity);
+    }
+    errors.buf[errors.sz++] = 0;
+    char err_id[16];
+    size_t line;
+    size_t col;
+    int read_size;
+    int nmatched;
+
+    nmatched = sscanf(errors.buf, FMT, err_id, &line, &col, &read_size);
+    if (nmatched != 3) goto scan_fail;
+    if (strcmp(err_id, "UnmatchedClose") != 0) {
+        MSG("FAILURE", "Improper error id for first error");
+        goto match_fail;
+    }
+    if (line != 6 || col != 11) {
+        MSG("FAILURE", "First error's reported location is wrong");
+        goto match_fail;
+    }
+    int index = read_size;
+
+    nmatched = sscanf(&errors.buf[index], FMT, err_id, &line, &col, &read_size);
+    if (nmatched != 3) goto scan_fail;
+    if (strcmp(err_id, "UnmatchedOpen") != 0) {
+        MSG("FAILURE", "Improper error id for second error");
+        goto match_fail;
+    }
+    if (line != 7 || col != 1) {
+        MSG("FAILURE", "Second error's reported location is wrong");
+        goto match_fail;
+    }
+    index += read_size;
+
+    nmatched = sscanf(&errors.buf[index], FMT, err_id, &line, &col, &read_size);
+    if (nmatched != 3) goto scan_fail;
+    if (strcmp(err_id, "UnmatchedOpen") != 0) {
+        MSG("FAILURE", "Improper error id for third error");
+        goto match_fail;
+    }
+    if (line != 8 || col != 3) {
+        MSG("FAILURE", "Third error's reported location is wrong");
+        goto match_fail;
+    }
+
+    free(errors.buf);
+    PRINTERR("SUCCESS: error_position\n");
+    return TEST_SUCCEEDED;
+
+scan_fail:
+    PRINTERR(
+        "FAILURE: error_position: Could not parse JSON error message from "
+        "eambfc stdout - got %d/3 matches, %d bytes matched\n",
+        nmatched,
+        read_size
+    );
+match_fail:
+    free(errors.buf);
+    return TEST_FAILED;
+}
+
+#undef FMT
+
 #undef MSG
 
 static nonnull_args void run_misc_tests(result_tracker *results) {
     count_result(results, dead_code());
-    const char *unmatched_types[2][2] = {
-        {"UnmatchedOpen", "unmatched_open.bf"},
-        {"UnmatchedClose", "unmatched_close.bf"}
-    };
-    for (int i = 0; i < 2; i++) {
-        count_result(
-            results,
-            err_test(
-                unmatched_types[i][0],
-                unmatched_types[i][0],
-                ARGS(unmatched_types[i][1])
-            )
-        );
-        count_result(
-            results,
-            err_test(
-                unmatched_types[i][0],
-                unmatched_types[i][0],
-                ARGS("-O", unmatched_types[i][1])
-            )
-        );
-    }
+    count_result(
+        results,
+        err_test("unmatched_open", "UnmatchedOpen", ARGS("unmatched_open.bf"))
+    );
+    count_result(
+        results,
+        err_test(
+            "unmatched_open (optimized)",
+            "UnmatchedOpen",
+            ARGS("-O", "unmatched_open.bf")
+        )
+    );
+    count_result(
+        results,
+        err_test(
+            "unmatched_close", "UnmatchedClose", ARGS("unmatched_close.bf")
+        )
+    );
+    count_result(
+        results,
+        err_test(
+            "unmatched_close (optimized)",
+            "UnmatchedClose",
+            ARGS("-O", "unmatched_close.bf")
+        )
+    );
+    count_result(results, error_position());
 }
 
 int main(int argc, char *argv[]) {

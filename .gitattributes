@@ -30,3 +30,6 @@
 /version.license no-tar
 /gen_version_h.sh no-tar
 /Makefile no-tar
+
+# one of the brainfuck test is not UTF-8 text
+/tests/non_ascii_positions.bf -text
