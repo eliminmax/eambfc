@@ -66,10 +66,4 @@ CompileFlags:
     - "-DBFC_TARGET_X86_64=1"
     - "-DBFC_INFER_DEFAULT"
 
----
-
-If:
-  PathMatch: compat/elf.h
-CompileFlags:
-  Add:
-    - "-DBFC_NOEXTENSIONS"
+# vi: ft=yaml ts=2 sts=2 sw=2 et
