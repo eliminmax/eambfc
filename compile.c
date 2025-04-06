@@ -51,166 +51,62 @@
 /* number of padding bytes between the end of the Program Header Table and the
  * beginning of the machine code. */
 #define PAD_SZ (START_PADDR - (PHTB_SIZE + EHDR_SIZE))
+#define MAGIC_BYTES 0x7f, 'E', 'L', 'F'
 
-/* Write the ELF header to the file descriptor fd. */
-static bool write_ehdr(
-    int fd, u64 tape_blocks, const arch_inter *inter, const char *out_name
-) {
-    /* The format of the ELF header is well-defined and well-documented
-     * elsewhere. The struct for it is defined in compat/elf.h, as are most
-     * of the values used in here. */
-
-    Elf64_Ehdr header;
-    char header_bytes[EHDR_SIZE];
-
-    /* the first 4 bytes are "magic values" that are pre-defined and used to
-     * identify the format. */
-    header.e_ident[EI_MAG0] = ELFMAG0;
-    header.e_ident[EI_MAG1] = ELFMAG1;
-    header.e_ident[EI_MAG2] = ELFMAG2;
-    header.e_ident[EI_MAG3] = ELFMAG3;
-
-    /* Target is a 64-bit architecture. */
-    header.e_ident[EI_CLASS] = ELFCLASS64;
-    header.e_ident[EI_DATA] = inter->elf_data;
-
-    /* e_ident[EI_VERSION] must be set to EV_CURRENT. */
-    header.e_ident[EI_VERSION] = EV_CURRENT;
-
-    /* EI_OSABI is the target Application Binary Interface. SYSV is the value
-     * to use for a Linux executable which doesn't use GNU extensions. */
-    header.e_ident[EI_OSABI] = ELFOSABI_SYSV;
-
-    /* No distinct ABI versions are defined for ELFOSABI_SYSV. */
-    header.e_ident[EI_ABIVERSION] = 0;
-
-    /* The rest of the e_ident bytes are padding bytes.
-     * EI_PAD is the index of the first padding byte.
-     * EI_NIDENT is the size of the e_ident byte array.
-     * Padding bytes are supposed to be zeroed out. */
-    for (int i = EI_PAD; i < EI_NIDENT; i++) header.e_ident[i] = 0;
-
-    /* this is a basic executable */
-    header.e_type = ET_EXEC;
-
-    /* TARGET_ARCH is defined in config.h, and values are also the values for
-     * target ELF architectures. */
-    header.e_machine = inter->elf_arch;
-    /* e_version, like e_ident[EI_VERSION], must be set to EV_CURRENT */
-    header.e_version = EV_CURRENT;
-
-    /* the remaining parts of the ELF header are defined in a different order
-     * than their ordering within the struct, because I believe it's easier
-     * to make sense of them in this order. */
-
-    /* the number of program and section table entries, respectively */
-    header.e_phnum = PHNUM;
-    header.e_shnum = 0;
-
-    /* The offset within the file for the program and section header tables
-     * respectively. */
-    header.e_phoff = EHDR_SIZE; /* start right after the EHDR ends */
-    header.e_shoff = 0;
-
-    /* the size of the ELF header as a value within the ELF header, for some
-     * reason. I don't make the rules about the format. */
-    header.e_ehsize = EHDR_SIZE;
-
-    /* e_phentsize and e_shentsize are the size of entries within the
-     * program and section header tables respectively. If there are no entries
-     * within a given table, the size should be set to 0. */
-    header.e_phentsize = PHDR_SIZE;
-    header.e_shentsize = 0;
-
-    /* Section header string table index - the index of the entry in the
-     * section header table pointing to the names of each section.
-     * Because no such section exists, set it to SHN_UNDEF. */
-    header.e_shstrndx = SHN_UNDEF;
-
-    /* e_entry is the virtual memory address of the program's entry point -
-     * (i.e. the first instruction to execute). */
-    header.e_entry = LOAD_VADDR(tape_blocks) + START_PADDR;
-
-    /* e_flags has a processor-specific meaning. For x86_64, no values are
-     * defined, and it should be set to 0. */
-    header.e_flags = inter->flags;
-
-    if (inter->elf_data == ELFDATA2LSB) {
-        serialize_ehdr64_le_old(&header, header_bytes);
-    } else {
-        serialize_ehdr64_be_old(&header, header_bytes);
-    }
-
-    bf_comp_err e;
-    if (write_obj(fd, header_bytes, EHDR_SIZE, &e)) return true;
-    e.file = out_name;
-    display_err(e);
-    return false;
-}
-
-/* Write the Program Header Table to the file descriptor fd
- * This is a list of areas within memory to set up when starting the program. */
-static bool write_phtb(
+nonnull_args static bool write_headers(
     int fd,
-    size_t code_sz,
     u64 tape_blocks,
-    const arch_inter *inter,
-    const char *out_name
+    const arch_inter *restrict inter,
+    size_t code_sz,
+    const char *restrict out_name
 ) {
-    Elf64_Phdr phdr_table[PHNUM];
-    char phdr_table_bytes[PHTB_SIZE];
+    ehdr_info ehdr = {
+        .e_ident =
+            {/* The ELF identifying magic bytes */
+             MAGIC_BYTES,
+             /* 64-bit ELF file */
+             2,
+             /* endianness marker */
+             inter->elf_data,
+             /* current ELF version (only valid value) */
+             1,
+             /* SYSV ABI */
+             0,
+             /* unspecified ABI version, as none are defined for SYSV */
+             0
+            },
+        .e_entry = LOAD_VADDR(tape_blocks) + START_PADDR,
+        .e_flags = inter->flags,
+        .e_machine = inter->elf_arch,
+        .e_phnum = 2,
+    };
+    phdr_info phdr_table[2];
 
-    /* header for the tape contents section */
-    phdr_table[0].p_type = PT_LOAD;
-    /* It is readable and writable */
-    phdr_table[0].p_flags = PF_R | PF_W;
-    /* Load initial bytes from this offset within the file */
-    phdr_table[0].p_offset = 0;
-    /* Start at this memory address */
+    phdr_table[0].p_flags = 6 /* R + W */;
     phdr_table[0].p_vaddr = TAPE_ADDRESS;
-    /* Load from this physical address */
-    phdr_table[0].p_paddr = 0;
-    /* Size within the file on disk - 0, as the tape is empty. */
     phdr_table[0].p_filesz = 0;
-    /* Size within memory - must be at least p_filesz.
-     * In this case, it's the size of the tape itself. */
     phdr_table[0].p_memsz = TAPE_SIZE(tape_blocks);
-    /* supposed to be a power of 2, went with 2^12 */
     phdr_table[0].p_align = 0x1000;
 
-    /* header for the segment that contains the actual binary */
-    phdr_table[1].p_type = PT_LOAD;
-    /* It is readable and executable */
-    phdr_table[1].p_flags = PF_R | PF_X;
-    /* Load initial bytes from this offset within the file */
-    phdr_table[1].p_offset = 0;
-    /* Start at this memory address */
-    phdr_table[1].p_vaddr = LOAD_VADDR(tape_blocks);
-    /* Load from this physical address */
-    phdr_table[1].p_paddr = 0;
-    /* Size within the file on disk - the size of the whole file, as this
-     * segment contains the whole thing. */
-    phdr_table[1].p_filesz = START_PADDR + code_sz;
-    /* size within memory - must be at least p_filesz.
-     * In this case, it's the size of the whole file, as the whole file is
-     * loaded into this segment */
-    phdr_table[1].p_memsz = START_PADDR + code_sz;
-    /* supposed to be a power of 2, went with 2^0 */
+    phdr_table[1].p_flags = 5 /* R + X */;
     phdr_table[1].p_align = 1;
+    phdr_table[1].p_vaddr = LOAD_VADDR(tape_blocks);
+    phdr_table[1].p_filesz = phdr_table[1].p_memsz = START_PADDR + code_sz;
 
-    for (int i = 0; i < PHNUM; i++) {
-        if (inter->elf_data == ELFDATA2LSB) {
-            serialize_phdr64_le_old(
-                &(phdr_table[i]), &(phdr_table_bytes[i * PHDR_SIZE])
-            );
-        } else {
-            serialize_phdr64_be_old(
-                &(phdr_table[i]), &(phdr_table_bytes[i * PHDR_SIZE])
-            );
-        }
+    char header_bytes[256];
+    size_t i = 0;
+    if (inter->elf_data == ELFDATA2LSB) {
+        i += serialize_ehdr64_le(&ehdr, header_bytes);
+        i += serialize_phdr64_le(&phdr_table[0], &header_bytes[i]);
+        i += serialize_phdr64_le(&phdr_table[1], &header_bytes[i]);
+    } else {
+        i += serialize_ehdr64_be(&ehdr, header_bytes);
+        i += serialize_phdr64_be(&phdr_table[0], &header_bytes[i]);
+        i += serialize_phdr64_be(&phdr_table[1], &header_bytes[i]);
     }
+    memset(&header_bytes[i], 0, 256 - i);
     bf_comp_err e;
-    if (write_obj(fd, phdr_table_bytes, PHTB_SIZE, &e)) return true;
+    if (write_obj(fd, header_bytes, 256, &e)) return true;
     e.file = out_name;
     display_err(e);
     return false;
@@ -560,14 +456,7 @@ bool bf_compile(
     bf_comp_err e;
 
     /* now, obj_code size is known, so we can write the headers and padding */
-    ret &= write_ehdr(out_fd, tape_blocks, inter, out_name);
-    ret &= write_phtb(out_fd, obj_code.sz, tape_blocks, inter, out_name);
-    const char padding[PAD_SZ] = {0};
-    if (!write_obj(out_fd, padding, PAD_SZ, &e)) {
-        e.file = out_name;
-        display_err(e);
-        ret = false;
-    }
+    ret &= write_headers(out_fd, tape_blocks, inter, obj_code.sz, out_name);
     /* finally, write the code itself. */
     if (!write_obj(out_fd, obj_code.buf, obj_code.sz, &e)) {
         e.file = out_name;

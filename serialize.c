@@ -28,8 +28,8 @@ extern inline size_t serialize64be(u64 v64, void *dest);
  * (https://github.com/tree-sitter/tree-sitter-c/issues/98) */
 #define IMPL_EHDR64(serialize16, serialize32, serialize64) \
     /* first 16 bytes are easy - it's a series of literal byte values */ \
-    memcpy(dest, ehdr->e_ident, EI_NIDENT); \
-    char *p = &((char *)dest)[EI_NIDENT]; \
+    memcpy(dest, ehdr->e_ident, 16); \
+    char *p = ((char *)dest) + 16; \
     p += serialize16(2, p); /* 2 is ET_EXEC */ \
     p += serialize16(ehdr->e_machine, p); \
     p += serialize32(1, p); /* 1 is EV_CURRENT (the only legal value) */ \
@@ -51,21 +51,9 @@ serialize_ehdr64_le(const ehdr_info *restrict ehdr, void *restrict dest) {
     IMPL_EHDR64(serialize16le, serialize32le, serialize64le);
 }
 
-size_t serialize_ehdr64_le_old(
-    const Elf64_Ehdr *restrict ehdr, void *restrict dest
-) {
-    IMPL_EHDR64(serialize16le, serialize32le, serialize64le);
-}
-
 /* serialize a 64-bit Ehdr into a byte sequence, in MSB order */
 nonnull_args size_t
 serialize_ehdr64_be(const ehdr_info *restrict ehdr, void *restrict dest) {
-    IMPL_EHDR64(serialize16be, serialize32be, serialize64be);
-}
-
-size_t serialize_ehdr64_be_old(
-    const Elf64_Ehdr *restrict ehdr, void *restrict dest
-) {
     IMPL_EHDR64(serialize16be, serialize32be, serialize64be);
 }
 
@@ -73,9 +61,14 @@ size_t serialize_ehdr64_be_old(
     char *p = dest; \
     p += serialize32(1, p); /* PT_LOAD, the only type needed in eambfc */ \
     p += serialize32(phdr->p_flags, p); /* flags for the segment */ \
-    p += serialize64(phdr->p_offset, p); /* file offset of the segment */ \
+    /* file offset of the segment - 0 for both the tape segment, which doesn't \
+     * draw from the file at all, and the code segment, which includes the \
+     * whole file. */ \
+    p += serialize64(0, p); \
+    /* virtual memory address to load the segment into */ \
     p += serialize64(phdr->p_vaddr, p); /* virtual address of the segment */ \
-    p += serialize64(0, p); /* physical address is always unset */ \
+    /* physical memory address is always 0 on Linux */ \
+    p += serialize64(0, p); \
     p += serialize64(phdr->p_filesz, p); /* size within the file */ \
     p += serialize64(phdr->p_memsz, p); /* size within memory */ \
     p += serialize64(phdr->p_align, p); /* alignment of segment */ \
@@ -87,21 +80,9 @@ serialize_phdr64_le(const phdr_info *restrict phdr, void *restrict dest) {
     IMPL_PHDR64(serialize32le, serialize64le);
 }
 
-size_t serialize_phdr64_le_old(
-    const Elf64_Phdr *restrict phdr, void *restrict dest
-) {
-    IMPL_PHDR64(serialize32le, serialize64le);
-}
-
 /* serialize a 64-bit Phdr into a byte sequence, in MSB order */
 nonnull_args size_t
 serialize_phdr64_be(const phdr_info *restrict phdr, void *restrict dest) {
-    IMPL_PHDR64(serialize32be, serialize64be);
-}
-
-size_t serialize_phdr64_be_old(
-    const Elf64_Phdr *restrict phdr, void *restrict dest
-) {
     IMPL_PHDR64(serialize32be, serialize64be);
 }
 
