@@ -29,8 +29,8 @@ typedef uint32_t u32;
  * counterpart, as a means to ensure that no errors would occur if using
  * `[u]int_least64_t` in place of `[u]int64_t` */
 #ifndef INT_TORTURE_TEST
-typedef int64_t i64;
-typedef uint64_t u64;
+typedef int_least64_t i64;
+typedef uint_least64_t u64;
 #else /* INT_TORTURE_TEST */
 typedef __int128 i64;
 typedef unsigned __int128 u64;
