@@ -136,9 +136,9 @@ static bool write_ehdr(
     header.e_flags = inter->flags;
 
     if (inter->elf_data == ELFDATA2LSB) {
-        serialize_ehdr64_le(&header, header_bytes);
+        serialize_ehdr64_le_old(&header, header_bytes);
     } else {
-        serialize_ehdr64_be(&header, header_bytes);
+        serialize_ehdr64_be_old(&header, header_bytes);
     }
 
     bf_comp_err e;
@@ -200,11 +200,11 @@ static bool write_phtb(
 
     for (int i = 0; i < PHNUM; i++) {
         if (inter->elf_data == ELFDATA2LSB) {
-            serialize_phdr64_le(
+            serialize_phdr64_le_old(
                 &(phdr_table[i]), &(phdr_table_bytes[i * PHDR_SIZE])
             );
         } else {
-            serialize_phdr64_be(
+            serialize_phdr64_be_old(
                 &(phdr_table[i]), &(phdr_table_bytes[i * PHDR_SIZE])
             );
         }

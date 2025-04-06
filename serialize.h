@@ -12,6 +12,12 @@
 #include "compat/elf.h"
 #include "types.h"
 
+#if HAS_GCC_ATTR(__deprecated__)
+#define deprecated __attribute__((__deprecated__))
+#else
+#define deprecated
+#endif
+
 /* given an unsigned integer of a given size and destination pointer, these
  * write the bytes of the value to that pointer in LSB order.
  * This requires CHAR_BIT to be 8, which is required by POSIX anyway. */
@@ -41,12 +47,36 @@ nonnull_args inline size_t serialize64le(u64 v64, void *dest) {
     return 8;
 }
 
+typedef struct ehdr_info {
+    char e_ident[16];
+    u64 e_entry;
+    u32 e_flags;
+    u16 e_machine;
+    u16 e_phnum;
+} ehdr_info;
+
+typedef struct phdr_info {
+    u32 p_flags; /* flags for the segment */
+    u32 p_offset; /* file offset of the segment */
+    u64 p_vaddr; /* virtual address of the segment */
+    u64 p_filesz; /* size within the file */
+    u64 p_memsz; /* size within memory */
+    u64 p_align; /* alignment of segment */
+} phdr_info;
+
+nonnull_args size_t
+serialize_ehdr64_le(const ehdr_info *restrict ehdr, void *restrict dest);
+nonnull_args size_t
+serialize_phdr64_le(const phdr_info *restrict phdr, void *restrict dest);
+
 /* given a pointers to a struct of a given type and a destination pointer, these
  * write the fields of the struct in LSB order to dest (without padding). */
-nonnull_args size_t
-serialize_ehdr64_le(const Elf64_Ehdr *ehdr, void *dest); /* Elf64_Ehdr */
-nonnull_args size_t
-serialize_phdr64_le(const Elf64_Phdr *phdr, void *dest); /* Elf64_Phdr */
+deprecated nonnull_args size_t serialize_ehdr64_le_old(
+    const Elf64_Ehdr *restrict ehdr, void *restrict dest
+); /* Elf64_Ehdr */
+deprecated nonnull_args size_t serialize_phdr64_le_old(
+    const Elf64_Phdr *restrict phdr, void *restrict dest
+); /* Elf64_Phdr */
 
 /* The same as the above, except in MSB order. */
 nonnull_args inline size_t serialize16be(u16 v16, void *dest) {
@@ -76,8 +106,15 @@ nonnull_args inline size_t serialize64be(u64 v64, void *dest) {
 }
 
 nonnull_args size_t
-serialize_ehdr64_be(const Elf64_Ehdr *ehdr, void *dest); /* Elf64_Ehdr */
+serialize_ehdr64_be(const ehdr_info *restrict ehdr, void *restrict dest);
 nonnull_args size_t
-serialize_phdr64_be(const Elf64_Phdr *phdr, void *dest); /* Elf64_Phdr */
+serialize_phdr64_be(const phdr_info *restrict phdr, void *restrict dest);
+
+deprecated nonnull_args size_t serialize_ehdr64_be_old(
+    const Elf64_Ehdr *restrict ehdr, void *restrict dest
+); /* Elf64_Ehdr */
+deprecated nonnull_args size_t serialize_phdr64_be_old(
+    const Elf64_Phdr *restrict phdr, void *restrict dest
+); /* Elf64_Phdr */
 
 #endif /* BFC_SERIALIZE_H */
