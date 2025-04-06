@@ -472,6 +472,9 @@ static nonnull_args test_outcome err_test(
 
     moved_args[0] = args[0];
     moved_args[1] = "-j";
+    /* null pointer may not be represented in memory with all zero bits, so in
+     * case it isn't, set the final element to NULL explicitly. */
+    moved_args[i] = NULL;
     for (i = 1; args[i]; i++) moved_args[i + 1] = args[i];
 
     sized_buf out = {.buf = calloc(4096, 1), .sz = 0, .capacity = 4096};
