@@ -14,29 +14,24 @@
 #include "types.h"
 
 /* Once an interface is defined and implemented, it needs to be integrated into
- * the rest of the system. First, restore the removed `e_machine` value in
- * `"compat/elf.h"`, then find all the places that have the text
- * `"__BACKENDS__"`, and follow the instructions to hook it in.
+ * the rest of the system. Define the functions and values in this struct, then
+ * grep for "__BACKENDS__", and follow the instructions where it appears to hook
+ * the backend in.
  *
  * For all of these steps, It's best to copy the ARM64 backend and change the
  * ARM64 and AARCH64 identifiers out for your backend, for the sake of
  * consistency. */
 
-/* registers that can be passed to the functions in `arch_funcs`, for the
- * documented purposes */
-
-/* This struct contains pointers to the functions that are actually used to
- * implement the backend.
+/* This struct contains the functions and values needed to implement the
+ * backend.
  *
- * All functions in here must return `true` on success, and `false` on failure.
- * On failure, they should also use functions declared in `err.h` to print
- * errorlsp messages before returning.
+ * All fallible functions in here must return `true` on success, and set the
+ * `err` through the pointer and return `false` on failure.
  *
  * Registers are passed to these functions as u8 values. They should be the
  * values used within machine code to identify the registers, but if needed,
  * they can be opaque identifiers that a function not included in this struct
- * can handle as needed. The registers passed to calls through these pointers
- * must be from the corresponding `arch_regsiters` */
+ * can handle as needed. */
 typedef const struct arch_inter {
     /* the read system call number */
     i64 sc_read;
@@ -45,22 +40,21 @@ typedef const struct arch_inter {
     /* the exit system call number */
     i64 sc_exit;
 
-    /* Write instruction/s to dst_buf to store immediate imm in register reg. */
+    /* Write instruction/s to dst_buf to store `imm` in `reg`. */
     nonnull_args void (*const set_reg)(
         u8 reg, i64 imm, sized_buf *restrict dst_buf
     );
 
-    /* Write instruction/s to dst_buf to copy value stored in register src into
-     * register dst. */
+    /* Write instruction/s to `dst_buf` to copy value from `src` into `dst` */
     nonnull_args void (*const reg_copy)(
         u8 dst, u8 src, sized_buf *restrict dst_buf
     );
 
-    /* Write the system call instruction to dst_buf. */
+    /* Write the system call instruction to `dst_buf`. */
     nonnull_args void (*const syscall)(sized_buf *restrict dst_buf);
 
-    /* write an instruction, then pad with no-op instructions. Must use the same
-     * number of bytes as `jump_open` */
+    /* Write a trap instruction, then pad with no-op instructions.
+     * Must use the same number of bytes as `jump_open` */
     nonnull_args void (*const pad_loop_open)(sized_buf *restrict dst_buf);
 
     /* Functions that correspond 1 to 1 with brainfuck instructions.
