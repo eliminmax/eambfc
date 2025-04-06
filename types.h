@@ -9,8 +9,6 @@
 #include <stdbool.h> /* IWYU pragma: export */
 #include <stddef.h> /* IWYU pragma: export */
 #include <stdint.h> /* IWYU pragma: export */
-/* POSIX */
-#include <sys/types.h> /* IWYU pragma: export */
 
 typedef unsigned int uint;
 typedef unsigned char uchar;
