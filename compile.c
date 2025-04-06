@@ -24,18 +24,8 @@
  * starting point that's easy to reason about. */
 #define TAPE_ADDRESS 0x10000
 
-/* number of entries in program and section header tables respectively */
-#define PHNUM 2 /* one for the tape, and one for the code. */
-
-/* size of the Ehdr struct, once serialized. */
-#define EHDR_SIZE 64
-
-/* Sizes of a single PHDR table entry */
-#define PHDR_SIZE 56
-/* sizes of the full program header table */
-#define PHTB_SIZE (PHNUM * PHDR_SIZE)
-
 #define TAPE_SIZE(tb) (tb * 0x1000)
+
 /* virtual address of the section containing the machine code
  * should be after the tape ends to avoid overlapping with the tape.
  *
@@ -43,14 +33,11 @@
  * that there is enough room. */
 #define LOAD_VADDR(tb) (((TAPE_ADDRESS + TAPE_SIZE(tb)) & (~0xffff)) + 0x10000)
 
-/* physical address of the starting instruction
- * use the same technique as LOAD_VADDR to ensure that it is at a 256-byte
- * boundary. */
-#define START_PADDR (((EHDR_SIZE + PHTB_SIZE) & ~0xff) + 0x100)
+/* address in file of the starting instruction - because the headers are padded
+ * to 256 bytes, this will always be 256. */
+#define START_PADDR 256
 
-/* number of padding bytes between the end of the Program Header Table and the
- * beginning of the machine code. */
-#define PAD_SZ (START_PADDR - (PHTB_SIZE + EHDR_SIZE))
+/* byte sequence used to identify an ELF file */
 #define MAGIC_BYTES 0x7f, 'E', 'L', 'F'
 
 nonnull_args static bool write_headers(
