@@ -6,9 +6,9 @@
 #ifndef BFC_TYPES_H
 #define BFC_TYPES_H 1
 /* C99 */
+#include <inttypes.h> /* IWYU pragma: export */
 #include <stdbool.h> /* IWYU pragma: export */
 #include <stddef.h> /* IWYU pragma: export */
-#include <inttypes.h> /* IWYU pragma: export */
 /* POSIX */
 #include <sys/types.h> /* IWYU pragma: export */
 
@@ -25,9 +25,9 @@ typedef uint32_t u32;
 
 /* 64-bit sized types are not required by POSIX for some reason, so fall back to
  * using [u]int_least64_t, which POSIX does require. If "INT_TORTURE_TEST" is
- * defined, instead use the __int128 extension type and its unsigned counterpart
- * as a means to test that no errors would occur if using `[u]int_least64_t` in
- * place of `[u]int64_t` */
+ * defined, instead use the __int128 type (a GCC extension), and its unsigned
+ * counterpart, as a means to ensure that no errors would occur if using
+ * `[u]int_least64_t` in place of `[u]int64_t` */
 #ifndef INT_TORTURE_TEST
 typedef int64_t i64;
 typedef uint64_t u64;
