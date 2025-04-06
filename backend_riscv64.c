@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only */
 #include "arch_inter.h"
-#include "compat/elf.h"
 #include "config.h"
+#include "elf.h"
 #include "err.h"
 #include "serialize.h"
 #include "types.h"
@@ -371,8 +371,8 @@ const arch_inter RISCV64_INTER = {
     .zero_byte = zero_byte,
     /* EF_RISCV_RVC | EF_RISCV_FLOAT_ABI_DOUBLE (chosen to match Debian) */
     .flags = 5,
-    .elf_arch = EM_RISCV,
-    .elf_data = ELFDATA2LSB,
+    .elf_arch = ARCH_RISCV64,
+    .elf_data = BYTEORDER_LSB,
     .reg_sc_num = RISCV_A7,
     .reg_arg1 = RISCV_A0,
     .reg_arg2 = RISCV_A1,

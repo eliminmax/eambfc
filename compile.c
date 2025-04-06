@@ -12,7 +12,7 @@
 #include <unistd.h>
 /* internal */
 #include "arch_inter.h"
-#include "compat/elf.h"
+#include "elf.h"
 #include "err.h"
 #include "optimize.h"
 #include "serialize.h"
@@ -95,7 +95,7 @@ nonnull_args static bool write_headers(
 
     char header_bytes[256];
     size_t i = 0;
-    if (inter->elf_data == ELFDATA2LSB) {
+    if (inter->elf_data == BYTEORDER_LSB) {
         i += serialize_ehdr64_le(&ehdr, header_bytes);
         i += serialize_phdr64_le(&phdr_table[0], &header_bytes[i]);
         i += serialize_phdr64_le(&phdr_table[1], &header_bytes[i]);
