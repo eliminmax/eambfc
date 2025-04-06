@@ -434,7 +434,7 @@ static void test_set_reg_64(void) {
     char *expected_disasm = checked_malloc(1024);
     char *disasm_p = expected_disasm;
     size_t expected_len = 0;
-    for (i64 val = ((i64)INT32_MAX) + 1; val < INT64_MAX / 2; val <<= 1) {
+    for (ifast_64 val = ((i64)INT32_MAX) + 1; val < INT64_MAX / 2; val <<= 1) {
         set_reg(RISCV_A7, val, &sb);
         u8 shift_lvl = trailing_0s(val);
         disasm_p +=

@@ -305,14 +305,15 @@ static test_outcome rw_test(const char *arch, bool opt) {
     }
     test_outcome ret;
 
-    for (uint i = 0; i < 256; i++) {
+    for (ufast_16 i = 0; i < 256; i++) {
         uchar out_byte;
         if (!rw_test_run(i, &out_byte)) {
             PRINTERR(
                 "FAILURE: rw (%s%s): abnormal run with byte 0x%02x\n",
                 arch,
                 variant,
-                i
+                /* cast in case ufast_16 is larger than uint */
+                (uint)i
             );
             ret = TEST_FAILED;
             goto cleanup;
@@ -323,7 +324,8 @@ static test_outcome rw_test(const char *arch, bool opt) {
                 "%0x02hhx\n",
                 arch,
                 variant,
-                i,
+                /* cast in case ufast_16 is larger than uint */
+                (uint)i,
                 out_byte
             );
             ret = TEST_FAILED;
@@ -344,7 +346,7 @@ static bool tm_test_run(char outbuf[2][16]) {
     int p2c[2];
     int chld_status;
     pid_t chld;
-    char inputs[] = "01";
+    const char inputs[2] = "01";
     for (int iter = 0; inputs[iter]; iter++) {
         CHECKED(pipe(c2p) == 0);
         CHECKED(pipe(p2c) == 0);
@@ -450,8 +452,8 @@ static nonnull_args void count_result(
 /* run bintests for each supported architecture, ensuring that they work as
  * expected, and updating `results */
 static nonnull_args void run_bin_tests(result_tracker *results) {
-    for (ifast_8 i = 0; ARCHES[i]; i++) {
-        for (ifast_8 bt = 0; bt < NBINTESTS; bt++) {
+    for (ufast_8 i = 0; ARCHES[i]; i++) {
+        for (ufast_8 bt = 0; bt < NBINTESTS; bt++) {
             count_result(results, bin_test(bt, ARCHES[i], false));
             count_result(results, bin_test(bt, ARCHES[i], true));
         }

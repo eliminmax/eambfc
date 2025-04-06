@@ -202,7 +202,7 @@ json_utf8_next(const char *restrict src, char dst[restrict 8]) {
         return 1;
     }
 
-    u8 seq_size;
+    ufast_8 seq_size;
     if (((uchar)src[0] & 0xe0) == 0xc0) {
         seq_size = 2;
     } else if (((uchar)src[0] & 0xf0) == 0xe0) {
@@ -213,7 +213,7 @@ json_utf8_next(const char *restrict src, char dst[restrict 8]) {
         goto invalid;
     }
 
-    for (u8 i = 1; i < seq_size; i++) {
+    for (ufast_8 i = 1; i < seq_size; i++) {
         if (((uchar)src[i] & 0xc0) != 0x80) goto invalid;
     }
 
@@ -537,7 +537,7 @@ static void json_escape_test(void) {
     size_t read_sz;
     sized_buf output = newbuf(128);
 
-    for (char i = 0; i < 0x10; i++) {
+    for (ufast_8 i = 0; i < 0x10; i++) {
         CU_ASSERT_EQUAL(json_utf8_next((char[2]){i, 0}, transfer), 1);
         append_str(&output, transfer);
     }

@@ -141,7 +141,7 @@ static nonnull_args bool remove_dead(sized_buf *ir, const char *in_name) {
             memmove(str, loop_end, strlen(loop_end) + 1);
         }
         /* next, remove any matches for simple_patterns[*] */
-        for (u8 i = 0; i < 6 /* there are 6 patterns */; i++) {
+        for (ufast_8 i = 0; i < 6 /* there are 6 patterns */; i++) {
             while (((match_start = strstr(str, simple_patterns[i])) != NULL)) {
                 matched = true;
                 memmove(
