@@ -6,7 +6,9 @@
 #ifndef BFC_TYPES_H
 #define BFC_TYPES_H 1
 /* C99 */
+#if __STDC_VERSION__ < 202311L /* stdbool.h is unneeded in C23 */
 #include <stdbool.h> /* IWYU pragma: export */
+#endif /* __STDC_VERSION__ < 202311L */
 #include <stddef.h> /* IWYU pragma: export */
 #include <stdint.h> /* IWYU pragma: export */
 
