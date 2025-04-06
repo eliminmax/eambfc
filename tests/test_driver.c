@@ -410,7 +410,7 @@ static test_outcome tm_test(const char *arch, bool opt) {
         MSG("FAILURE", "failed to compile");
         return TEST_FAILED;
     }
-    test_outcome ret;
+    test_outcome ret = TEST_FAILED;
 
     char outbuf[2][16] = {{0}, {0}};
     const char expected[2][16] = {"0", "1111111111111111"};
