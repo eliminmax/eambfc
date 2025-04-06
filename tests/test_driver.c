@@ -346,7 +346,7 @@ static bool tm_test_run(char outbuf[2][16]) {
     int p2c[2];
     int chld_status;
     pid_t chld;
-    const char inputs[2] = "01";
+    const char inputs[3] = "01";
     for (int iter = 0; inputs[iter]; iter++) {
         CHECKED(pipe(c2p) == 0);
         CHECKED(pipe(p2c) == 0);
