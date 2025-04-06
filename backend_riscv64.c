@@ -437,9 +437,8 @@ static void test_set_reg_64(void) {
     for (i64 val = ((i64)INT32_MAX) + 1; val < INT64_MAX / 2; val <<= 1) {
         set_reg(RISCV_A7, val, &sb);
         u8 shift_lvl = trailing_0s(val);
-        disasm_p += sprintf(
-            disasm_p, "li a7, 0x1\nslli a7, a7, 0x%" PRIx8 "\n", shift_lvl
-        );
+        disasm_p +=
+            sprintf(disasm_p, "li a7, 0x1\nslli a7, a7, 0x%x\n", shift_lvl);
         expected_len += 4;
         CU_ASSERT_EQUAL(sb.sz, expected_len);
     }

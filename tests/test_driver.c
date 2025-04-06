@@ -926,7 +926,7 @@ int main(int argc, char *argv[]) {
 
     printf(
         "\n#################\nRESULTS\n\n"
-        "SUCCESSES: %" PRIu8 "\nFAILURES:  %" PRIu8 "\nSKIPPED:   %" PRIu8 "\n",
+        "SUCCESSES: %u\nFAILURES:  %u\nSKIPPED:   %u\n",
         results.succeeded,
         results.failed,
         results.skipped
