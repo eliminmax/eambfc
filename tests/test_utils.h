@@ -58,11 +58,29 @@ inline const_fn size_t mempad(size_t sz) {
     return alloc_sz;
 }
 
+/* NULL is dangerous to use for `execl` depending on how a platform defines it.
+ * If it's an integer type with a shorter width than a pointer, and is passed in
+ * a variadic function, problems can happen.
+ *
+ * While `void *` and `char *` are guaranteed to have the same representation,
+ * given that the sentinel used in `execl` is supposed to be `(char *)0`, might
+ * as well match that exactly.
+ *
+ * Jens Gustedt, who was on the committee that designed C23 and at time of
+ * writing is working on C2Y, wrote about this issue in a 2010 blog post titled
+ * "Don't Use NULL", available at the following URL:
+ * https://gustedt.wordpress.com/2010/11/07/dont-use-null/
+ *
+ * see also "NULL considered harmful", https://ewontfix.com/11/, which musl lead
+ * maintainer Rich Felker wrote, and which talks about the issue specifically in
+ * the context of `execl` */
+#define ARG_END ((char *)0)
+
 /* this function takes care of the fork/exec/wait boilerplate, aborting if the
  * fork fails or the child stops abnormally, otherwise returning the child's
  * exit status.
  *
- * `args` must be ended with a NULL pointer.
+ * `args` must be ended with `ARG_END`.
  *
  * Safer and easier to use than `system`, if more than one arg is needed or args
  * could cause shell expansion. */
@@ -71,8 +89,8 @@ nonnull_args int subprocess(const char *args[]);
 /* Execute a command with the provided args, returning the lowest 8 bits of its
  * exit code, or -1 if it exited abnormally.
  *
- * `args` is an array of arguments, terminated by NULL,
- * `args[0]` is the executable to run, and `args` (without the NULL) is the
+ * `args` is an array of arguments, terminated by `ARG_END`,
+ * `args[0]` is the executable to run, and `args` (without `ARG_END`) is the
  * spawned process's `argv`.
  * `out` and `err` point to sized_bufs that the program invocation's `stdout`
  * and `stderr` can be captured to.

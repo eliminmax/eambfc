@@ -35,11 +35,11 @@
  * Once set, it should be left unchanged through the duration of the program. */
 static const char *EAMBFC;
 
-/* convenience macro to prepend the eambfc executable as args[0] and append NULL
- * to arguments */
+/* convenience macro to prepend the eambfc executable as args[0] and append
+ * ARG_END to arguments */
 #define ARGS(...) \
     (const char *[]) { \
-        EAMBFC, __VA_ARGS__, NULL \
+        EAMBFC, __VA_ARGS__, ARG_END \
     }
 
 static const char *ARCHES[BFC_NUM_BACKENDS + 1];
@@ -186,7 +186,7 @@ static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
         .buf = checked_malloc(nbytes), .sz = 0, .capacity = nbytes
     };
     run_capturing(
-        (const char *[]){BINTESTS[bt].test_bin, NULL}, &chld_output, NULL
+        (const char *[]){BINTESTS[bt].test_bin, ARG_END}, &chld_output, NULL
     );
 
     if (nbytes) {
@@ -238,7 +238,7 @@ static bool rw_test_run(uchar byte, uchar *output_byte) {
         POST_FORK_CHECKED(dup2(c2p[1], STDOUT_FILENO) >= 0);
         POST_FORK_CHECKED(close(p2c[0]) == 0);
         POST_FORK_CHECKED(close(c2p[1]) == 0);
-        POST_FORK_CHECKED(execl("./rw", "./rw", NULL) != -1);
+        POST_FORK_CHECKED(execl("./rw", "./rw", ARG_END) != -1);
         abort();
     }
     CHECKED(close(c2p[1]) != -1);
@@ -360,7 +360,7 @@ static bool tm_test_run(char outbuf[2][16]) {
             POST_FORK_CHECKED(close(p2c[0]) == 0);
             POST_FORK_CHECKED(close(c2p[1]) == 0);
             POST_FORK_CHECKED(
-                execl("./truthmachine", "./truthmachine", NULL) != -1
+                execl("./truthmachine", "./truthmachine", ARG_END) != -1
             );
         }
         CHECKED(close(c2p[1]) == 0);
@@ -404,7 +404,7 @@ static test_outcome tm_test(const char *arch, bool opt) {
 
     SKIP_IF_UNSUPPORTED(arch);
     const char *args[] = {
-        EAMBFC, opt ? "-Oa" : "-a", arch, "truthmachine.bf", NULL
+        EAMBFC, opt ? "-Oa" : "-a", arch, "truthmachine.bf", ARG_END
     };
     if (subprocess(args) != EXIT_SUCCESS) {
         MSG("FAILURE", "failed to compile");
@@ -475,8 +475,8 @@ static nonnull_args test_outcome err_test(
     moved_args[0] = args[0];
     moved_args[1] = "-j";
     /* null pointer may not be represented in memory with all zero bits, so in
-     * case it isn't, set the final element to NULL explicitly. */
-    moved_args[i] = NULL;
+     * case it isn't, set the final element to ARG_END explicitly. */
+    moved_args[i] = ARG_END;
     for (i = 1; args[i]; i++) moved_args[i + 1] = args[i];
 
     sized_buf out = {.buf = calloc(4096, 1), .sz = 0, .capacity = 4096};
@@ -522,7 +522,7 @@ static nonnull_args void run_bad_arg_tests(result_tracker *results) {
         {"MissingOperand (-e)", "MissingOperand", ARGS("-e")},
         {"MissingOperand (-t)", "MissingOperand", ARGS("-t")},
         {NULL, "UnknownArg", ARGS("-T")},
-        {NULL, "NoSourceFiles", ARGS(NULL)},
+        {NULL, "NoSourceFiles", (const char *[2]){EAMBFC, ARG_END}},
         {NULL, "BadSourceExtension", ARGS("test_driver.c")},
         {NULL, "TapeSizeZero", ARGS("-t0")},
         {NULL, "TapeTooLarge", ARGS("-t9223372036854775807")},
@@ -567,7 +567,7 @@ test_unseekable(const sized_buf *const hello_code) {
     int fifo_fd, chld_status;
     CHECKED((chld = fork()) != -1);
     if (chld == 0) {
-        execl(EAMBFC, EAMBFC, "unseekable.bf", NULL);
+        execl(EAMBFC, EAMBFC, "unseekable.bf", ARG_END);
         /* can't safely call fputs - it's not signal-safe, and only signal-safe
          * functions are guaranteed to have defined behavior between fork and
          * exec. */
@@ -675,7 +675,7 @@ static nonnull_args test_outcome piped_in(const sized_buf *const hello_code) {
     pid_t chld;
     CHECKED((chld = fork()) != -1);
     if (chld == 0) {
-        execl(EAMBFC, EAMBFC, "piped_in.bf", NULL);
+        execl(EAMBFC, EAMBFC, "piped_in.bf", ARG_END);
         write(
             STDERR_FILENO, "Failed to exec eambfc to compile piped_in.bf\n", 45
         );

@@ -111,7 +111,7 @@ nonnull_arg(1) int run_capturing(
 }
 
 nonnull_args int subprocess(const char *args[]) {
-    if (args[0] == NULL) {
+    if (args[0] == ARG_END) {
         PRINTERR("subprocess called with empty args.\n");
         abort();
     }
