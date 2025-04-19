@@ -28,17 +28,10 @@ The following are the formatting I follow for source code:
   * `/* internal */`: the header is provided within the `eambfc` source tree.
   * Other libraries used in unit testing or non-portable optional features
     should use equivalent pre-include comments identifying their libraries.
-* C: `clang-format` should be used to enforce a consistent style, and should
-  only be disabled within `compat/elf.h` or optionally within generated headers.
+* C: `clang-format` should be used to enforce a consistent style, and may only
+  be disabled within generated headers.
 
-There are two cases where those formatting rules don't apply:
-
-The first is in `compat/elf.h` - it's adapted from glibc's `elf.h`, and its
-style is a more arbitrary hybrid of the original and my own style, and should be
-hand-adjusted to ensure internal consistency within the header.
-
-Brainfuck source code in the `test/` directory is the other exception - it has
-no formatting rules or style guides, but the code should include commentary to
-explain what it's doing, how, and, if not written for this project, where it
-came from.
-
+The only exception is for brainfuck source code within the `test/` directory. It
+has no formatting rules or style guides, but the code should include commentary
+to explain what it's doing, how, and, if not originally written for this
+project, where it came from.

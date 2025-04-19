@@ -5,7 +5,7 @@
  * This file provides the arch_inter for the x86_64 architecture. */
 /* internal */
 #include "arch_inter.h"
-#include "compat/elf.h"
+#include "elf.h"
 #include "err.h"
 #include "serialize.h"
 #include "types.h"
@@ -238,8 +238,8 @@ const arch_inter X86_64_INTER = {
     .sub_byte = sub_byte,
     .zero_byte = zero_byte,
     .flags = 0 /* no flags are defined for this architecture */,
-    .elf_arch = EM_X86_64,
-    .elf_data = ELFDATA2LSB,
+    .elf_arch = ARCH_X86_64,
+    .elf_data = BYTEORDER_LSB,
     .reg_sc_num = X86_64_RAX,
     .reg_arg1 = X86_64_RDI,
     .reg_arg2 = X86_64_RSI,

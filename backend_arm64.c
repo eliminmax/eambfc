@@ -7,8 +7,8 @@
  * than the other way around. */
 /* internal */
 #include "arch_inter.h"
-#include "compat/elf.h"
 #include "config.h"
+#include "elf.h"
 #include "err.h"
 #include "serialize.h"
 #include "types.h"
@@ -326,8 +326,8 @@ const arch_inter ARM64_INTER = {
     .sub_byte = sub_byte,
     .zero_byte = zero_byte,
     .flags = 0 /* no flags are defined for this architecture */,
-    .elf_arch = EM_AARCH64,
-    .elf_data = ELFDATA2LSB,
+    .elf_arch = ARCH_ARM64,
+    .elf_data = BYTEORDER_LSB,
     .reg_sc_num = 8 /* w8 */,
     .reg_arg1 = 0 /* x0 */,
     .reg_arg2 = 1 /* x1 */,

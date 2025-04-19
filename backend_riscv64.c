@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only */
 #include "arch_inter.h"
-#include "compat/elf.h"
 #include "config.h"
+#include "elf.h"
 #include "err.h"
 #include "serialize.h"
 #include "types.h"
@@ -371,8 +371,8 @@ const arch_inter RISCV64_INTER = {
     .zero_byte = zero_byte,
     /* EF_RISCV_RVC | EF_RISCV_FLOAT_ABI_DOUBLE (chosen to match Debian) */
     .flags = 5,
-    .elf_arch = EM_RISCV,
-    .elf_data = ELFDATA2LSB,
+    .elf_arch = ARCH_RISCV64,
+    .elf_data = BYTEORDER_LSB,
     .reg_sc_num = RISCV_A7,
     .reg_arg1 = RISCV_A0,
     .reg_arg2 = RISCV_A1,
@@ -434,12 +434,11 @@ static void test_set_reg_64(void) {
     char *expected_disasm = checked_malloc(1024);
     char *disasm_p = expected_disasm;
     size_t expected_len = 0;
-    for (i64 val = ((i64)INT32_MAX) + 1; val < INT64_MAX / 2; val <<= 1) {
+    for (ifast_64 val = ((i64)INT32_MAX) + 1; val < INT64_MAX / 2; val <<= 1) {
         set_reg(RISCV_A7, val, &sb);
         u8 shift_lvl = trailing_0s(val);
-        disasm_p += sprintf(
-            disasm_p, "li a7, 0x1\nslli a7, a7, 0x%" PRIx8 "\n", shift_lvl
-        );
+        disasm_p +=
+            sprintf(disasm_p, "li a7, 0x1\nslli a7, a7, 0x%x\n", shift_lvl);
         expected_len += 4;
         CU_ASSERT_EQUAL(sb.sz, expected_len);
     }

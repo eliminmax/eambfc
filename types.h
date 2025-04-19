@@ -6,12 +6,11 @@
 #ifndef BFC_TYPES_H
 #define BFC_TYPES_H 1
 /* C99 */
+#if __STDC_VERSION__ < 202311L /* stdbool.h is unneeded in C23 */
 #include <stdbool.h> /* IWYU pragma: export */
+#endif /* __STDC_VERSION__ < 202311L */
 #include <stddef.h> /* IWYU pragma: export */
-/* POSIX */
-#include <sys/types.h> /* IWYU pragma: export */
-/* internal */
-#include "compat/eambfc_inttypes.h" /* IWYU pragma: export */
+#include <stdint.h> /* IWYU pragma: export */
 
 typedef unsigned int uint;
 typedef unsigned char uchar;
@@ -20,11 +19,31 @@ typedef signed char schar;
 typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
-typedef int64_t i64;
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
-typedef uint64_t u64;
+
+/* 64-bit sized types are not required by POSIX for some reason, so fall back to
+ * using [u]int_least64_t, which POSIX does require. If "INT_TORTURE_TEST" is
+ * defined, instead use the __int128 type (a GCC extension), and its unsigned
+ * counterpart, as a means to ensure that no errors would occur if using
+ * `[u]int_least64_t` in place of `[u]int64_t` */
+#ifndef INT_TORTURE_TEST
+typedef int_least64_t i64;
+typedef uint_least64_t u64;
+#else /* INT_TORTURE_TEST */
+typedef __int128 i64;
+typedef unsigned __int128 u64;
+#endif /* INT_TORTURE_TEST */
+
+#ifndef INT64_MAX
+#define INT64_MIN -9223372036854775808LL
+#define INT64_MAX 9223372036854775807LL
+#endif /* INT64_MAX */
+
+#ifndef UINT64_MAX
+#define UINT64_MAX 18446744073709551615ULL
+#endif /* UINT64_MAX */
 
 /* fastest type of AT LEAST the specified size. (i.e. If using a larger type is
  * faster, then a larger type will be used) */

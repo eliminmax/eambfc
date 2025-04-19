@@ -35,11 +35,11 @@
  * Once set, it should be left unchanged through the duration of the program. */
 static const char *EAMBFC;
 
-/* convenience macro to prepend the eambfc executable as args[0] and append NULL
- * to arguments */
+/* convenience macro to prepend the eambfc executable as args[0] and append
+ * ARG_END to arguments */
 #define ARGS(...) \
     (const char *[]) { \
-        EAMBFC, __VA_ARGS__, NULL \
+        EAMBFC, __VA_ARGS__, ARG_END \
     }
 
 static const char *ARCHES[BFC_NUM_BACKENDS + 1];
@@ -186,7 +186,7 @@ static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
         .buf = checked_malloc(nbytes), .sz = 0, .capacity = nbytes
     };
     run_capturing(
-        (const char *[]){BINTESTS[bt].test_bin, NULL}, &chld_output, NULL
+        (const char *[]){BINTESTS[bt].test_bin, ARG_END}, &chld_output, NULL
     );
 
     if (nbytes) {
@@ -238,7 +238,7 @@ static bool rw_test_run(uchar byte, uchar *output_byte) {
         POST_FORK_CHECKED(dup2(c2p[1], STDOUT_FILENO) >= 0);
         POST_FORK_CHECKED(close(p2c[0]) == 0);
         POST_FORK_CHECKED(close(c2p[1]) == 0);
-        POST_FORK_CHECKED(execl("./rw", "./rw", NULL) != -1);
+        POST_FORK_CHECKED(execl("./rw", "./rw", ARG_END) != -1);
         abort();
     }
     CHECKED(close(c2p[1]) != -1);
@@ -305,14 +305,15 @@ static test_outcome rw_test(const char *arch, bool opt) {
     }
     test_outcome ret;
 
-    for (uint i = 0; i < 256; i++) {
+    for (ufast_16 i = 0; i < 256; i++) {
         uchar out_byte;
         if (!rw_test_run(i, &out_byte)) {
             PRINTERR(
                 "FAILURE: rw (%s%s): abnormal run with byte 0x%02x\n",
                 arch,
                 variant,
-                i
+                /* cast in case ufast_16 is larger than uint */
+                (uint)i
             );
             ret = TEST_FAILED;
             goto cleanup;
@@ -323,7 +324,8 @@ static test_outcome rw_test(const char *arch, bool opt) {
                 "%0x02hhx\n",
                 arch,
                 variant,
-                i,
+                /* cast in case ufast_16 is larger than uint */
+                (uint)i,
                 out_byte
             );
             ret = TEST_FAILED;
@@ -344,7 +346,7 @@ static bool tm_test_run(char outbuf[2][16]) {
     int p2c[2];
     int chld_status;
     pid_t chld;
-    char inputs[] = "01";
+    const char inputs[3] = "01";
     for (int iter = 0; inputs[iter]; iter++) {
         CHECKED(pipe(c2p) == 0);
         CHECKED(pipe(p2c) == 0);
@@ -358,7 +360,7 @@ static bool tm_test_run(char outbuf[2][16]) {
             POST_FORK_CHECKED(close(p2c[0]) == 0);
             POST_FORK_CHECKED(close(c2p[1]) == 0);
             POST_FORK_CHECKED(
-                execl("./truthmachine", "./truthmachine", NULL) != -1
+                execl("./truthmachine", "./truthmachine", ARG_END) != -1
             );
         }
         CHECKED(close(c2p[1]) == 0);
@@ -402,13 +404,13 @@ static test_outcome tm_test(const char *arch, bool opt) {
 
     SKIP_IF_UNSUPPORTED(arch);
     const char *args[] = {
-        EAMBFC, opt ? "-Oa" : "-a", arch, "truthmachine.bf", NULL
+        EAMBFC, opt ? "-Oa" : "-a", arch, "truthmachine.bf", ARG_END
     };
     if (subprocess(args) != EXIT_SUCCESS) {
         MSG("FAILURE", "failed to compile");
         return TEST_FAILED;
     }
-    test_outcome ret;
+    test_outcome ret = TEST_FAILED;
 
     char outbuf[2][16] = {{0}, {0}};
     const char expected[2][16] = {"0", "1111111111111111"};
@@ -450,8 +452,8 @@ static nonnull_args void count_result(
 /* run bintests for each supported architecture, ensuring that they work as
  * expected, and updating `results */
 static nonnull_args void run_bin_tests(result_tracker *results) {
-    for (ifast_8 i = 0; ARCHES[i]; i++) {
-        for (ifast_8 bt = 0; bt < NBINTESTS; bt++) {
+    for (ufast_8 i = 0; ARCHES[i]; i++) {
+        for (ufast_8 bt = 0; bt < NBINTESTS; bt++) {
             count_result(results, bin_test(bt, ARCHES[i], false));
             count_result(results, bin_test(bt, ARCHES[i], true));
         }
@@ -472,6 +474,9 @@ static nonnull_args test_outcome err_test(
 
     moved_args[0] = args[0];
     moved_args[1] = "-j";
+    /* null pointer may not be represented in memory with all zero bits, so in
+     * case it isn't, set the final element to ARG_END explicitly. */
+    moved_args[i] = ARG_END;
     for (i = 1; args[i]; i++) moved_args[i + 1] = args[i];
 
     sized_buf out = {.buf = calloc(4096, 1), .sz = 0, .capacity = 4096};
@@ -517,7 +522,7 @@ static nonnull_args void run_bad_arg_tests(result_tracker *results) {
         {"MissingOperand (-e)", "MissingOperand", ARGS("-e")},
         {"MissingOperand (-t)", "MissingOperand", ARGS("-t")},
         {NULL, "UnknownArg", ARGS("-T")},
-        {NULL, "NoSourceFiles", ARGS(NULL)},
+        {NULL, "NoSourceFiles", (const char *[2]){EAMBFC, ARG_END}},
         {NULL, "BadSourceExtension", ARGS("test_driver.c")},
         {NULL, "TapeSizeZero", ARGS("-t0")},
         {NULL, "TapeTooLarge", ARGS("-t9223372036854775807")},
@@ -562,7 +567,7 @@ test_unseekable(const sized_buf *const hello_code) {
     int fifo_fd, chld_status;
     CHECKED((chld = fork()) != -1);
     if (chld == 0) {
-        execl(EAMBFC, EAMBFC, "unseekable.bf", NULL);
+        execl(EAMBFC, EAMBFC, "unseekable.bf", ARG_END);
         /* can't safely call fputs - it's not signal-safe, and only signal-safe
          * functions are guaranteed to have defined behavior between fork and
          * exec. */
@@ -670,7 +675,7 @@ static nonnull_args test_outcome piped_in(const sized_buf *const hello_code) {
     pid_t chld;
     CHECKED((chld = fork()) != -1);
     if (chld == 0) {
-        execl(EAMBFC, EAMBFC, "piped_in.bf", NULL);
+        execl(EAMBFC, EAMBFC, "piped_in.bf", ARG_END);
         write(
             STDERR_FILENO, "Failed to exec eambfc to compile piped_in.bf\n", 45
         );
@@ -744,12 +749,12 @@ static nonnull_args void run_alt_hello_tests(result_tracker *results) {
     free(hello.buf);
 }
 
-static nonnull_args test_outcome dead_code(void) {
+static test_outcome dead_code(void) {
     if (subprocess(ARGS("-O", "null.bf", "dead_code.bf")) != EXIT_SUCCESS) {
         MSG("FAILURE", "failed to compile hello.bf for comparisons");
         CHECKED(unlink("null") == 0 || errno == ENOENT);
         CHECKED(unlink("dead_code") == 0 || errno == ENOENT);
-        return EXIT_FAILURE;
+        return TEST_FAILED;
     }
     int fd;
 
@@ -786,32 +791,112 @@ static nonnull_args test_outcome dead_code(void) {
     }
 }
 
+#define FMT \
+    "{\"errorId\": \"%15[^\"]\", \"file\": \"non_ascii_positions.bf\", " \
+    "\"line\": %zu, \"column\": %zu, \"instruction\": \"%*c\", \"message\": " \
+    "\"%*[^\"]\"}\n%n"
+
+static test_outcome error_position(void) {
+    sized_buf errors = {.buf = checked_malloc(512), .sz = 0, .capacity = 512};
+    const char **args = ARGS("-j", "non_ascii_positions.bf");
+    if (run_capturing(args, &errors, NULL) != EXIT_FAILURE) {
+        MSG("FAILURE", "compiled broken code without proper error");
+        return TEST_FAILED;
+    }
+    if (errors.sz == errors.capacity) {
+        checked_realloc(errors.buf, ++errors.capacity);
+    }
+    errors.buf[errors.sz++] = 0;
+    char err_id[16];
+    size_t line;
+    size_t col;
+    int read_size;
+    int nmatched;
+
+    nmatched = sscanf(errors.buf, FMT, err_id, &line, &col, &read_size);
+    if (nmatched != 3) goto scan_fail;
+    if (strcmp(err_id, "UnmatchedClose") != 0) {
+        MSG("FAILURE", "Improper error id for first error");
+        goto match_fail;
+    }
+    if (line != 6 || col != 11) {
+        MSG("FAILURE", "First error's reported location is wrong");
+        goto match_fail;
+    }
+    int index = read_size;
+
+    nmatched = sscanf(&errors.buf[index], FMT, err_id, &line, &col, &read_size);
+    if (nmatched != 3) goto scan_fail;
+    if (strcmp(err_id, "UnmatchedOpen") != 0) {
+        MSG("FAILURE", "Improper error id for second error");
+        goto match_fail;
+    }
+    if (line != 7 || col != 1) {
+        MSG("FAILURE", "Second error's reported location is wrong");
+        goto match_fail;
+    }
+    index += read_size;
+
+    nmatched = sscanf(&errors.buf[index], FMT, err_id, &line, &col, &read_size);
+    if (nmatched != 3) goto scan_fail;
+    if (strcmp(err_id, "UnmatchedOpen") != 0) {
+        MSG("FAILURE", "Improper error id for third error");
+        goto match_fail;
+    }
+    if (line != 8 || col != 3) {
+        MSG("FAILURE", "Third error's reported location is wrong");
+        goto match_fail;
+    }
+
+    free(errors.buf);
+    PRINTERR("SUCCESS: error_position\n");
+    return TEST_SUCCEEDED;
+
+scan_fail:
+    PRINTERR(
+        "FAILURE: error_position: Could not parse JSON error message from "
+        "eambfc stdout - got %d/3 matches, %d bytes matched\n",
+        nmatched,
+        read_size
+    );
+match_fail:
+    free(errors.buf);
+    return TEST_FAILED;
+}
+
+#undef FMT
+
 #undef MSG
 
 static nonnull_args void run_misc_tests(result_tracker *results) {
     count_result(results, dead_code());
-    const char *unmatched_types[2][2] = {
-        {"UnmatchedOpen", "unmatched_open.bf"},
-        {"UnmatchedClose", "unmatched_close.bf"}
-    };
-    for (int i = 0; i < 2; i++) {
-        count_result(
-            results,
-            err_test(
-                unmatched_types[i][0],
-                unmatched_types[i][0],
-                ARGS(unmatched_types[i][1])
-            )
-        );
-        count_result(
-            results,
-            err_test(
-                unmatched_types[i][0],
-                unmatched_types[i][0],
-                ARGS("-O", unmatched_types[i][1])
-            )
-        );
-    }
+    count_result(
+        results,
+        err_test("unmatched_open", "UnmatchedOpen", ARGS("unmatched_open.bf"))
+    );
+    count_result(
+        results,
+        err_test(
+            "unmatched_open (optimized)",
+            "UnmatchedOpen",
+            ARGS("-O", "unmatched_open.bf")
+        )
+    );
+    count_result(
+        results,
+        err_test(
+            "unmatched_close", "UnmatchedClose", ARGS("unmatched_close.bf")
+        )
+    );
+    count_result(
+        results,
+        err_test(
+            "unmatched_close (optimized)",
+            "UnmatchedClose",
+            ARGS("-O", "unmatched_close.bf")
+        )
+    );
+    count_result(results, error_position());
 }
 
 int main(int argc, char *argv[]) {
@@ -846,7 +931,7 @@ int main(int argc, char *argv[]) {
 
     printf(
         "\n#################\nRESULTS\n\n"
-        "SUCCESSES: %" PRIu8 "\nFAILURES:  %" PRIu8 "\nSKIPPED:   %" PRIu8 "\n",
+        "SUCCESSES: %u\nFAILURES:  %u\nSKIPPED:   %u\n",
         results.succeeded,
         results.failed,
         results.skipped

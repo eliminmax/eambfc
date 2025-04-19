@@ -18,8 +18,14 @@
 #include "types.h"
 #include "util.h"
 
-/* remove ext from end of str. If str doesn't end with ext, return false. */
-static bool rm_ext(char *str, const char *ext) {
+/* make visible for unit testing purposes if testing is available, otherwise,
+ * mark as static */
+#ifndef BFC_TEST
+static
+#endif /* BFC_TEST */
+    /* remove ext from end of str. If str doesn't end with ext, return false. */
+    bool
+    rm_ext(char *str, const char *ext) {
     size_t strsz = strlen(str);
     size_t extsz = strlen(ext);
     /* strsz must be at least 1 character longer than extsz to continue. */
@@ -33,6 +39,7 @@ static bool rm_ext(char *str, const char *ext) {
     return true;
 }
 
+#ifndef BFC_TEST
 /* compile a file */
 static bool compile_file(const char *filename, const run_cfg *rc) {
     char *outname = checked_malloc(strlen(filename) + 1);
@@ -91,12 +98,7 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
     return result;
 }
 
-#ifdef BFC_TEST
-int real_main(int argc, char *argv[]) {
-#else /* BFC_TEST */
 int main(int argc, char *argv[]) {
-#endif /* BFC_TEST */
-
     int ret = EXIT_SUCCESS;
     run_cfg rc = parse_args(argc, argv);
     for (int i = optind; i < argc; i++) {
@@ -106,3 +108,4 @@ int main(int argc, char *argv[]) {
     }
     return ret;
 }
+#endif /* BFC_TEST */

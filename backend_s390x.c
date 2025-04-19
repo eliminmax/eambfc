@@ -8,8 +8,8 @@
 
 /* internal */
 #include "arch_inter.h"
-#include "compat/elf.h"
 #include "config.h"
+#include "elf.h"
 #include "err.h"
 #include "serialize.h"
 #include "types.h"
@@ -455,8 +455,8 @@ const arch_inter S390X_INTER = {
     .sub_byte = sub_byte,
     .zero_byte = zero_byte,
     .flags = 0 /* no flags are defined for this architecture */,
-    .elf_arch = EM_S390,
-    .elf_data = ELFDATA2MSB,
+    .elf_arch = ARCH_S390X,
+    .elf_data = BYTEORDER_MSB,
     .reg_sc_num = 1,
     .reg_arg1 = 2,
     .reg_arg2 = 3,

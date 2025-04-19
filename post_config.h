@@ -7,7 +7,7 @@
  * the default backend to use based on the target architecture */
 
 /* internal */
-#include "compat/elf.h"
+#include "elf.h"
 
 #ifndef BFC_POST_CONFIG_H
 #define BFC_POST_CONFIG_H 1
@@ -39,26 +39,26 @@
 
 #ifndef BFC_DEFAULT_TARGET
 #if BFC_TARGET_X86_64 && defined __x86_64__
-#define BFC_DEFAULT_TARGET EM_X86_64
+#define BFC_DEFAULT_TARGET ARCH_X86_64
 #elif BFC_TARGET_ARM64 && defined __aarch64__
-#define BFC_DEFAULT_TARGET EM_AARCH64
+#define BFC_DEFAULT_TARGET ARCH_ARM64
 #elif BFC_TARGET_RISCV64 && defined __riscv
-#define BFC_DEFAULT_TARGET EM_RISCV
+#define BFC_DEFAULT_TARGET ARCH_RISCV64
 #elif BFC_TARGET_S390X && defined __s390x__
-#define BFC_DEFAULT_TARGET EM_S390
+#define BFC_DEFAULT_TARGET ARCH_RISCV64
 
 /* __BACKENDS__ Add fallback case here - these are used if none of the macros
  * to determine target architecture are defined, or the system's architecture is
  * disabled */
 
 #elif BFC_TARGET_X86_64
-#define BFC_DEFAULT_TARGET EM_X86_64
+#define BFC_DEFAULT_TARGET ARCH_X86_64
 #elif BFC_TARGET_ARM64
-#define BFC_DEFAULT_TARGET EM_AARCH64
+#define BFC_DEFAULT_TARGET ARCH_ARM64
 #elif BFC_TARGET_RISCV64
-#define BFC_DEFAULT_TARGET EM_RISCV
+#define BFC_DEFAULT_TARGET ARCH_RISCV64
 #else /* must be BFC_TARGET_S390X as established by previous check */
-#define BFC_DEFAULT_TARGET EM_S390
+#define BFC_DEFAULT_TARGET ARCH_RISCV64
 #endif /* BFC_DEFAULT_TARGET */
 #endif /* BFC_DEFAULT_TARGET */
 
@@ -67,30 +67,30 @@
  * compile-time error if it isn't. After that check, it should define the
  * BFC_DEFAULT_INTER and BFC_DEFAULT_ARCH_STR macros to appropriate values
  * for the target. */
-#if BFC_DEFAULT_TARGET == EM_X86_64
+#if BFC_DEFAULT_TARGET == ARCH_X86_64
 #if !BFC_TARGET_X86_64
-#error "BFC_DEFAULT_TARGET is EM_X86_64, but BFC_TARGET_X86_64 is off."
+#error "BFC_DEFAULT_TARGET is ARCH_X86_64, but BFC_TARGET_X86_64 is off."
 #endif /* !BFC_TARGET_X86_64  */
 #define BFC_DEFAULT_INTER X86_64_INTER
 #define BFC_DEFAULT_ARCH_STR "x86_64"
 
-#elif BFC_DEFAULT_TARGET == EM_AARCH64
+#elif BFC_DEFAULT_TARGET == ARCH_ARM64
 #if !BFC_TARGET_ARM64
-#error "BFC_DEFAULT_TARGET is EM_AARCH64, but BFC_TARGET_ARM64 is off."
+#error "BFC_DEFAULT_TARGET is ARCH_ARM64, but BFC_TARGET_ARM64 is off."
 #endif /* !BFC_TARGET_ARM64 */
 #define BFC_DEFAULT_INTER ARM64_INTER
 #define BFC_DEFAULT_ARCH_STR "arm64"
 
-#elif BFC_DEFAULT_TARGET == EM_RISCV
+#elif BFC_DEFAULT_TARGET == ARCH_RISCV64
 #if !BFC_TARGET_RISCV64
-#error "BFC_DEFAULT_TARGET is EM_RISCV, but BFC_TARGET_RISCV64 is off."
+#error "BFC_DEFAULT_TARGET is ARCH_RISCV64, but BFC_TARGET_RISCV64 is off."
 #endif /* !BFC_TARGET_RISCV64 */
 #define BFC_DEFAULT_INTER RISCV64_INTER
 #define BFC_DEFAULT_ARCH_STR "riscv64"
 
-#elif BFC_DEFAULT_TARGET == EM_S390
+#elif BFC_DEFAULT_TARGET == ARCH_S390X
 #if !BFC_TARGET_S390X
-#error "BFC_DEFAULT_TARGET is EM_S390, but BFC_TARGET_S390X is off."
+#error "BFC_DEFAULT_TARGET is ARCH_S390X, but BFC_TARGET_S390X is off."
 #endif /* !BFC_TARGET_S390X */
 #define BFC_DEFAULT_INTER S390X_INTER
 #define BFC_DEFAULT_ARCH_STR "s390x"

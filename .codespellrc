@@ -4,4 +4,5 @@
 
 [codespell]
 skip = .git
+quiet = 3
 # vim: ft=dosini
