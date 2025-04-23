@@ -8,10 +8,11 @@
 #ifndef BFC_ARCH_INTER_H
 #define BFC_ARCH_INTER_H 1
 /* internal */
-#include "attributes.h"
-#include "config.h"
+#include <attributes.h>
+#include <config.h>
+#include <types.h>
+
 #include "err.h"
-#include "types.h"
 
 /* Once an interface is defined and implemented, it needs to be integrated into
  * the rest of the system. Define the functions and values in this struct, then

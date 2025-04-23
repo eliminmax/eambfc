@@ -18,8 +18,9 @@
 #include <CUnit/CUnit.h> /* IWYU pragma: export */
 
 /* internal */
+#include <types.h>
+
 #include "err.h"
-#include "types.h"
 
 #ifdef UNIT_TEST_C
 #define TEST_GLOBAL(decl) decl

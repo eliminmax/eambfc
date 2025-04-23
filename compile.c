@@ -11,12 +11,13 @@
 /* POSIX */
 #include <unistd.h>
 /* internal */
+#include <elf.h>
+#include <types.h>
+
 #include "arch_inter.h"
-#include "elf.h"
 #include "err.h"
 #include "optimize.h"
 #include "serialize.h"
-#include "types.h"
 #include "util.h"
 
 /* virtual memory address of the tape - cannot overlap with the machine code.

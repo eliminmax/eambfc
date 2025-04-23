@@ -11,9 +11,9 @@
 /* POSIX */
 #include <unistd.h>
 /* internal */
-#include "../attributes.h"
-#include "../config.h"
-#include "../types.h"
+#include <attributes.h>
+#include <config.h>
+#include <types.h>
 
 nonnull_args inline bool sb_eq(const sized_buf *a, const sized_buf *b) {
     return a->sz == b->sz && memcmp(a->buf, b->buf, a->sz) == 0;

@@ -12,8 +12,9 @@
 /* C99 */
 #include <string.h>
 /* internal */
+#include <types.h>
+
 #include "serialize.h"
-#include "types.h"
 
 extern inline size_t serialize16le(u16 v16, void *dest);
 extern inline size_t serialize32le(u32 v32, void *dest);

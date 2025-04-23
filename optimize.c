@@ -8,9 +8,10 @@
 /* C99 */
 #include <string.h>
 /* internal */
-#include "attributes.h"
+#include <attributes.h>
+#include <types.h>
+
 #include "err.h"
-#include "types.h"
 #include "util.h"
 
 /* filter out the non-bf characters from code->buf */

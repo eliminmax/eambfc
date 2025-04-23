@@ -12,10 +12,11 @@
 /* POSIX */
 #include <unistd.h>
 /* internal */
-#include "attributes.h"
-#include "config.h"
+#include <attributes.h>
+#include <config.h>
+#include <types.h>
+
 #include "err.h"
-#include "types.h"
 #include "util.h"
 
 extern inline void *checked_malloc(size_t size);

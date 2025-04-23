@@ -10,10 +10,11 @@
 #include <stdlib.h>
 #include <string.h>
 /* internal */
-#include "attributes.h"
-#include "config.h"
+#include <attributes.h>
+#include <config.h>
+#include <types.h>
+
 #include "err.h"
-#include "types.h"
 
 /* Try to `malloc(size)`. On success, pass the returned pointer.
  * On failure, call `alloc_err` */

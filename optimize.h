@@ -7,8 +7,8 @@
 #ifndef BFC_OPTIMIZE_H
 #define BFC_OPTIMIZE_H 1
 /* internal */
-#include "attributes.h"
-#include "types.h"
+#include <attributes.h>
+#include <types.h>
 
 /* filter out all non-BF bytes, and anything that is trivially determined to be
  * dead code, or code with no effect (e.g. "+-" or "<>"), and replace "[-]" and

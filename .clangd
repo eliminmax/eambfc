@@ -13,8 +13,21 @@ CompileFlags:
     - "-xc"
     - "-std=c99"
     - "-D_POSIX_C_SOURCE=200908L"
+    # Warn on reserved identifiers
+    - "-Wreserved-identifier"
+    - "-Wreserved-macro-identifier"
+    # include the repo-level include dir
+    - "-I./include"
   Compiler: clang
 
+---
+If:
+  PathMatch: '^[^/]*/[^/]*$'
+CompileFlags:
+  Remove:
+    - "-I./include"
+  Add:
+    - "-I../include"
 ---
 
 If:
@@ -28,20 +41,10 @@ CompileFlags:
 
 ---
 
-If:
-  PathExclude: compat/elf\.h
-CompileFlags:
-  Add:
-    # Warn on reserved identifiers outside of elf.h
-    - "-Wreserved-identifier"
-    - "-Wreserved-macro-identifier"
-
----
-
 # headers are not complete translation units on their own, so the
 # empty-translation-unit check is prone to false positives if run on headers
 If:
-  PathMatch: .*\.h
+  PathMatch: '.*\.h'
 CompileFlags:
   Add:
     - "-Wno-empty-translation-unit"
@@ -50,7 +53,7 @@ CompileFlags:
 
 # post_config.h is an odd one that needs special treatment if edited directly
 If:
-  PathMatch: post_config.h
+  PathMatch: 'include/post_config.h'
 CompileFlags:
   Add:
     # throws an error if this macro isn't defined, as it's only meant to be

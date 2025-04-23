@@ -7,8 +7,9 @@
 #ifndef BFC_COMPILE_H
 #define BFC_COMPILE_H 1
 /* internal */
+#include <types.h>
+
 #include "arch_inter.h"
-#include "types.h"
 
 /* Compile code in source file to destination file.
  * Parameters:

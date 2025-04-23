@@ -8,8 +8,8 @@
 #ifndef BFC_SERIALIZE_H
 #define BFC_SERIALIZE_H 1
 /* internal */
-#include "attributes.h"
-#include "types.h"
+#include <attributes.h>
+#include <types.h>
 
 /* given an unsigned integer of a given size and destination pointer, these
  * write the bytes of the value to that pointer in LSB order.

@@ -23,7 +23,7 @@ test_driver.o: test_driver.c colortest_output.h
 test_utils.o: test_utils.c
 
 test_driver: test_driver.o test_utils.o
-	$(CC) $(CFLAGS) $(POSIX_CFLAG) $(LDFLAGS) \
+	$(CC) $(CFLAGS) -I../include $(POSIX_CFLAG) $(LDFLAGS) \
 		-o $@ test_driver.o test_utils.o $(LDLIBS)
 
 colortest_output.h: colortest_output.awk

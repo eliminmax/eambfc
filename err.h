@@ -6,8 +6,8 @@
 #ifndef BFC_ERR_H
 #define BFC_ERR_H 1
 /* internal */
-#include "attributes.h"
-#include "types.h"
+#include <attributes.h>
+#include <types.h>
 
 typedef enum {
     BF_NOT_ERR,

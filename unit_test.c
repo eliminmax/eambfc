@@ -21,8 +21,9 @@
 
 #define UNIT_TEST_C 1
 /* internal */
+#include <types.h>
+
 #include "err.h"
-#include "types.h"
 #include "unit_test.h"
 #include "util.h"
 

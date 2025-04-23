@@ -19,11 +19,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-/* internal - only macros and typedefs */
-#include "../attributes.h"
-#include "../config.h"
-#include "../types.h"
-/* internal - tests */
+/* internal */
+#include <attributes.h>
+#include <config.h>
+#include <types.h>
+
 #include "colortest_output.h"
 #include "test_utils.h"
 

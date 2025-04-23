@@ -1,12 +1,13 @@
 /* SPDX-FileCopyrightText: 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only */
+#include <config.h>
+#include <elf.h>
+#include <types.h>
+
 #include "arch_inter.h"
-#include "config.h"
-#include "elf.h"
 #include "err.h"
 #include "serialize.h"
-#include "types.h"
 #include "util.h"
 
 #if BFC_TARGET_RISCV64

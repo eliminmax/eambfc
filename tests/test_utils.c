@@ -15,7 +15,8 @@
 #include <unistd.h>
 
 /* internal */
-#include "../types.h"
+#include <types.h>
+
 #include "test_utils.h"
 
 extern inline bool sb_eq(const sized_buf *a, const sized_buf *b);

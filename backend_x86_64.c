@@ -4,11 +4,12 @@
  *
  * This file provides the arch_inter for the x86_64 architecture. */
 /* internal */
+#include <elf.h>
+#include <types.h>
+
 #include "arch_inter.h"
-#include "elf.h"
 #include "err.h"
 #include "serialize.h"
-#include "types.h"
 #include "util.h"
 #if BFC_TARGET_X86_64
 

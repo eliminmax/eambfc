@@ -113,9 +113,9 @@ strict-gcc:
 [doc("Run the full project through the `cppcheck` static analyzer")]
 [group("tests")]
 cppcheck-full:
-    cppcheck -q --std=c99 -D__GNUC__ --error-exitcode=1 --platform=unspecified \
-        --check-level=exhaustive --enable=all --disable=missingInclude \
-        --suppress=checkersReport {{ unibuild_files }}
+    cppcheck -q --std=c99 -I./include \-D__GNUC__ --error-exitcode=1 \
+        --platform=unspecified --check-level=exhaustive --enable=all \
+        --disable=missingInclude --suppress=checkersReport {{ unibuild_files }}
 
 [doc("Run `eambfc` through LLVM's `scan-build` static analyzer")]
 [group("tests")]
@@ -169,7 +169,7 @@ reuse:
 [doc("run cppcheck with options suitable for standalone files")]
 [group("lints")]
 cppcheck-single +files:
-    cppcheck -q --std=c99 -D__GNUC__ \
+    cppcheck -q --std=c99 -D__GNUC__ -I./include \
       --platform=unspecified --enable=all \
       --disable=missingInclude,unusedFunction --error-exitcode=1 \
       --check-level=exhaustive --suppress=checkersReport {{ files }}

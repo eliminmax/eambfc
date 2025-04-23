@@ -12,10 +12,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 /* internal */
+#include <types.h>
+
 #include "compile.h"
 #include "err.h"
 #include "parse_args.h"
-#include "types.h"
 #include "util.h"
 
 /* make visible for unit testing purposes if testing is available, otherwise,
