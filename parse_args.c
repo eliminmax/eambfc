@@ -131,51 +131,44 @@ const struct option longopts[] = {
     "Additionally, passing \"--\" as a standalone argument will stop " \
     "argument parsing, and treat remaining arguments as source file names.\n"
 
-/* returns true if strcmp matches s to any strings in its argument,
- * and false otherwise.
- * normal safety concerns around strcmp apply. */
-nonnull_args static bool any_match(const char *s, int count, ...) {
-    va_list ap;
-    va_start(ap, count);
-    bool found = false;
-    for (int i = 0; i < count; i++) {
-        if (!strcmp(s, va_arg(ap, const char *))) {
-            found = true;
-            break;
-        }
+/* checks if `arg` matches any of `values`
+ *
+ * Returns `true` if `strcmp` returns 0 when comparing `arg` t a non-null
+ * pointer in `values`, and `false` if no match was found before reaching a null
+ * pointer.
+ *
+ * normal safety concerns around `strcmp` apply, and `values` must end with a
+ * null pointer */
+nonnull_args static bool any_match(const char *arg, const char *values[]) {
+    for (int i = 0; values[i]; i++) {
+        if (strcmp(arg, values[i]) == 0) return true;
     }
-    va_end(ap);
-    return found;
+    return false;
 }
 
 nonnull_args static bool select_inter(
     const char *arch_arg, arch_inter **inter
 ) {
-    /* __BACKENDS__ add a block here */
-#if BFC_TARGET_X86_64
-    if (any_match(arch_arg, 4, "x86_64", "x64", "amd64", "x86-64")) {
-        *inter = &X86_64_INTER;
-        return true;
+#define SET_IF_MATCHES(target_inter, ...) \
+    if (any_match(arch_arg, (const char *[]){__VA_ARGS__, NULL})) { \
+        *inter = &target_inter; \
+        return true; \
     }
+
+    /* __BACKENDS__ add a check for the backend here */
+#if BFC_TARGET_X86_64
+    SET_IF_MATCHES(X86_64_INTER, "x86_64", "x64", "amd64", "x86-64");
 #endif /* BFC_TARGET_X86_64 */
 #if BFC_TARGET_RISCV64
-    if (any_match(optarg, 2, "riscv64", "riscv")) {
-        *inter = &RISCV64_INTER;
-        return true;
-    }
+    SET_IF_MATCHES(RISCV64_INTER, "riscv64", "riscv");
 #endif /* BFC_TARGET_RISCV64 */
 #if BFC_TARGET_ARM64
-    if (any_match(arch_arg, 2, "arm64", "aarch64")) {
-        *inter = &ARM64_INTER;
-        return true;
-    }
+    SET_IF_MATCHES(ARM64_INTER, "arm64", "aarch64");
 #endif /* BFC_TARGET_ARM64 */
 #if BFC_TARGET_S390X
-    if (any_match(arch_arg, 3, "s390x", "s390", "z/architecture")) {
-        *inter = &S390X_INTER;
-        return true;
-    }
+    SET_IF_MATCHES(S390X_INTER, "s390x", "s390", "z/architecture");
 #endif /* BFC_TARGET_S390X */
+
     char unknown_msg[64];
     if (sprintf(unknown_msg, "%32s", arch_arg) == 32 && unknown_msg[31]) {
         strcat(unknown_msg, "...");
@@ -183,6 +176,7 @@ nonnull_args static bool select_inter(
     strcat(unknown_msg, " is not a recognized target");
     display_err(basic_err(BF_ERR_UNKNOWN_ARCH, unknown_msg));
     return false;
+#undef SET_IF_MATCHES
 }
 
 noreturn static nonnull_args void report_version(const char *progname) {
