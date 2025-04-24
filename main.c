@@ -17,7 +17,7 @@
 
 #include "compile.h"
 #include "err.h"
-#include "parse_args.h"
+#include "setup.h"
 #include "util.h"
 
 /* remove ext from end of str. If str doesn't end with ext, return false. */

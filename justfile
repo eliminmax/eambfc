@@ -12,7 +12,7 @@ src_tarball_path := justfile_dir() / "releases" / src_tarball_name
 backend_sources := replace_regex(backends, '\b([^ ]+)\b', 'backend_${1}.c')
 unibuild_files := (
     'serialize.c compile.c optimize.c ' + backend_sources +
-    ' err.c util.c parse_args.c main.c'
+    ' err.c util.c setup.c main.c'
 )
 include_flag := '-I' + (justfile_dir() / 'include')
 

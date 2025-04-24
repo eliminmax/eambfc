@@ -15,7 +15,7 @@
 
 #include "arch_inter.h"
 #include "err.h"
-#include "parse_args.h"
+#include "setup.h"
 #include "version.h"
 
 #if BFC_LONGOPTS
