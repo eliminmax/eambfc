@@ -55,12 +55,12 @@ enum arch_support_status {
 /* information about supported architectures */
 static struct {
 #define ARCH_ID(target_macro, id) uint id: 2;
-#include "../backends.h"
+#include "backends.h"
     bool init: 1;
 } supported_arches = {
 
 #define ARCH_ID(...) UNINIT,
-#include "../backends.h"
+#include "backends.h"
     false
 };
 
@@ -77,7 +77,7 @@ static void load_arch_support(void) {
     } else { \
         supported_arches.arch = ARCH_DISABLED; \
     }
-#include "../backends.h"
+#include "backends.h"
     supported_arches.init = true;
 }
 
@@ -86,7 +86,7 @@ static enum arch_support_status support_status(const char *arch) {
     /* number of architectures is small enough that a hash map isn't worth it */
 #define ARCH_ID(target_macro, id) \
     if (strcmp(arch, #id) == 0) return supported_arches.id;
-#include "../backends.h"
+#include "backends.h"
 
     return UNKNOWN_ARCH;
 }
