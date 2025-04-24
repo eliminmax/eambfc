@@ -101,7 +101,7 @@ static void llvm_cleanup(void) {
     LLVM_IS_INIT = false;
 }
 
-int main(void) {
+int run_tests(void) {
     if (atexit(llvm_cleanup)) {
         fputs("Failed to register llvm_cleanup with atexit\n", stderr);
         return EXIT_FAILURE;

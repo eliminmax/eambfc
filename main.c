@@ -4,6 +4,7 @@
  *
  * A Brainfuck to 64-bit Linux ELF compiler. */
 
+#ifndef BFC_TEST
 /* C99 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,14 +20,8 @@
 #include "parse_args.h"
 #include "util.h"
 
-/* make visible for unit testing purposes if testing is available, otherwise,
- * mark as static */
-#ifndef BFC_TEST
-static
-#endif /* BFC_TEST */
-    /* remove ext from end of str. If str doesn't end with ext, return false. */
-    bool
-    rm_ext(char *str, const char *ext) {
+/* remove ext from end of str. If str doesn't end with ext, return false. */
+static bool rm_ext(char *str, const char *ext) {
     size_t strsz = strlen(str);
     size_t extsz = strlen(ext);
     /* strsz must be at least 1 character longer than extsz to continue. */
@@ -40,7 +35,6 @@ static
     return true;
 }
 
-#ifndef BFC_TEST
 /* compile a file */
 static bool compile_file(const char *filename, const run_cfg *rc) {
     char *outname = checked_malloc(strlen(filename) + 1);
@@ -108,5 +102,12 @@ int main(int argc, char *argv[]) {
         if (!rc.cont_on_fail) break;
     }
     return ret;
+}
+
+#else /* BFC_TEST */
+int run_tests(void);
+
+int main(void) {
+    return run_tests();
 }
 #endif /* BFC_TEST */
