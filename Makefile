@@ -57,7 +57,7 @@ test: eambfc
 
 unit_test_driver: $(UNIT_TEST_DEPS)
 	$(CC) $$(llvm-config --cflags) $$(pkgconf json-c --cflags) \
-	    -DBFC_TEST=1 $(CFLAGS) -o $@ \
+	    -DBFC_TEST=1 $(CFLAGS) $(EXTRA_CFLAGS) -o $@ \
 		$(LDFLAGS) $(ALL_SOURCES) $(LDLIBS) $$(pkgconf json-c --libs) \
 		-lcunit $$(llvm-config --ldflags --libs)
 
