@@ -372,7 +372,7 @@ const arch_inter RISCV64_INTER = {
     .zero_byte = zero_byte,
     /* EF_RISCV_RVC | EF_RISCV_FLOAT_ABI_DOUBLE (chosen to match Debian) */
     .flags = 5,
-    .elf_arch = ARCH_RISCV64,
+    .elf_arch = 243 /* EM_RISCV */,
     .elf_data = BYTEORDER_LSB,
     .reg_sc_num = RISCV_A7,
     .reg_arg1 = RISCV_A0,
