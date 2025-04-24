@@ -11,7 +11,6 @@
 /* POSIX */
 #include <unistd.h>
 /* internal */
-#include <elf.h>
 #include <types.h>
 
 #include "arch_inter.h"
