@@ -14,6 +14,7 @@ unibuild_files := (
     'serialize.c compile.c optimize.c ' + backend_sources +
     ' err.c util.c parse_args.c main.c'
 )
+include_flag := '-I' + (justfile_dir() / 'include')
 
 # aligning it like this was not easy, but it sure is satisfying
 gcc_strict_flags := (
@@ -22,7 +23,7 @@ gcc_strict_flags := (
     '-Wformat-overflow=2 -Wformat-signedness -Wbad-function-cast -Winit-self ' +
     '-Wnull-dereference -Wredundant-decls -Wduplicated-cond -Warray-bounds=2 ' +
     '-Wuninitialized -Wlogical-op -Wwrite-strings -Wformat=2 -Wunused-macros ' +
-    '-Wcast-align=strict -Wtrampolines -Wvla -Werror'
+    '-Wcast-align=strict -Wtrampolines -Wvla -Werror ' + include_flag
 )
 
 gcc_ubsan_flags := gcc_strict_flags + ' ' + (
