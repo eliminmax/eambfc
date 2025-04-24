@@ -108,6 +108,9 @@ def gen_headers(
 
     return ret
 
+# __BACKENDS__ add a block to validate the execfmt_support binary for the
+# backend
+
 
 """
 validate arm64 bytes with radare2:
