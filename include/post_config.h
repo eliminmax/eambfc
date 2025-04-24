@@ -8,7 +8,12 @@
  * BFC_DEFAULT_TARGET macro isn't already set. */
 
 /* internal */
-#include "elf.h"
+
+/* __BACKENDS__ add a backend ID with a unique value here */
+#define ARCH_ARM64 1
+#define ARCH_RISCV64 2
+#define ARCH_S390x 3
+#define ARCH_X86_64 4
 
 #ifndef BFC_POST_CONFIG_H
 #define BFC_POST_CONFIG_H 1

@@ -2,7 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only */
 #include <config.h>
-#include <elf.h>
 #include <types.h>
 
 #include "arch_inter.h"

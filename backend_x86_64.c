@@ -4,7 +4,7 @@
  *
  * This file provides the arch_inter for the x86_64 architecture. */
 /* internal */
-#include <elf.h>
+#include <config.h>
 #include <types.h>
 
 #include "arch_inter.h"

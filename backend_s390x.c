@@ -8,7 +8,6 @@
 
 /* internal */
 #include <config.h>
-#include <elf.h>
 #include <types.h>
 
 #include "arch_inter.h"
