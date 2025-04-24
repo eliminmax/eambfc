@@ -55,6 +55,10 @@ PointerAlignment: Right
 SeparateDefinitionBlocks: Always
 SpacesBeforeTrailingComments: 1
 StatementMacros:
+  - ARCH_ID
+  - ARCH_DISASM
+  - ARCH_INTER
+  - ARCH_TEST_REGISTER
   - OPTION
   - OPTLINE
   - PARAM_OPT

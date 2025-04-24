@@ -14,15 +14,6 @@
 
 #include "err.h"
 
-/* Once an interface is defined and implemented, it needs to be integrated into
- * the rest of the system. Define the functions and values in this struct, then
- * grep for "__BACKENDS__", and follow the instructions where it appears to hook
- * the backend in.
- *
- * For all of these steps, It's best to copy the ARM64 backend and change the
- * ARM64 and AARCH64 identifiers out for your backend, for the sake of
- * consistency. */
-
 /* This struct contains the functions and values needed to implement the
  * backend.
  *
@@ -178,20 +169,7 @@ typedef const struct arch_inter {
 
 } arch_inter;
 
-/* __BACKENDS__ */
-/* this is where the actual interfaces defined in the backend_* files are made
- * available in other files. */
-#if BFC_TARGET_X86_64
-extern const arch_inter X86_64_INTER;
-#endif /* BFC_TARGET_X86_64 */
-#if BFC_TARGET_ARM64
-extern const arch_inter ARM64_INTER;
-#endif /* BFC_TARGET_ARM64 */
-#if BFC_TARGET_RISCV64
-extern const arch_inter RISCV64_INTER;
-#endif /* BFC_TARGET_RISCV64 */
-#if BFC_TARGET_S390X
-extern const arch_inter S390X_INTER;
-#endif /* BFC_TARGET_S390X */
+#define ARCH_INTER(INTER, ...) extern const arch_inter INTER;
+#include "backends.h" /* IWYU pragma: export */
 
 #endif /* BFC_ARCH_INTER_H */

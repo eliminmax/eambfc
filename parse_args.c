@@ -13,6 +13,7 @@
 #include <attributes.h>
 #include <config.h>
 
+#include "arch_inter.h"
 #include "err.h"
 #include "parse_args.h"
 #include "version.h"
@@ -149,25 +150,12 @@ nonnull_args static bool any_match(const char *arg, const char *values[]) {
 nonnull_args static bool select_inter(
     const char *arch_arg, arch_inter **inter
 ) {
-#define SET_IF_MATCHES(target_inter, ...) \
+#define ARCH_INTER(target_inter, ...) \
     if (any_match(arch_arg, (const char *[]){__VA_ARGS__, NULL})) { \
         *inter = &target_inter; \
         return true; \
     }
-
-    /* __BACKENDS__ add a check for the backend here */
-#if BFC_TARGET_X86_64
-    SET_IF_MATCHES(X86_64_INTER, "x86_64", "x64", "amd64", "x86-64");
-#endif /* BFC_TARGET_X86_64 */
-#if BFC_TARGET_RISCV64
-    SET_IF_MATCHES(RISCV64_INTER, "riscv64", "riscv");
-#endif /* BFC_TARGET_RISCV64 */
-#if BFC_TARGET_ARM64
-    SET_IF_MATCHES(ARM64_INTER, "arm64", "aarch64");
-#endif /* BFC_TARGET_ARM64 */
-#if BFC_TARGET_S390X
-    SET_IF_MATCHES(S390X_INTER, "s390x", "s390", "z/architecture");
-#endif /* BFC_TARGET_S390X */
+#include "backends.h"
 
     char unknown_msg[64];
     if (sprintf(unknown_msg, "%32s", arch_arg) == 32 && unknown_msg[31]) {
@@ -203,6 +191,7 @@ noreturn static nonnull_args void report_version(const char *progname) {
     exit(EXIT_SUCCESS);
 }
 
+#include <config.h>
 #if BFC_NUM_BACKENDS == 1
 #define ARCH_LIST_START \
     "This build of eambfc only supports the following architecture:\n\n"
@@ -216,22 +205,11 @@ noreturn static nonnull_args void report_version(const char *progname) {
 #endif /* BFC_NUM_BACKENDS */
 
 noreturn static nonnull_args void list_arches(void) {
-    puts(ARCH_LIST_START
-/* __BACKENDS__ add backend and any aliases in a block here*/
-#if BFC_TARGET_X86_64
-         "- x86_64 (aliases: x64, amd64, x86-64)\n"
-#endif /* BFC_TARGET_X86_64 */
-#if BFC_TARGET_ARM64
-         "- arm64 (aliases: aarch64)\n"
-#endif /* BFC_TARGET_ARM64 */
-#if BFC_TARGET_RISCV64
-         "- riscv64 (aliases: riscv)\n"
-#endif /* BFC_TARGET_RISCV64 */
-#if BFC_TARGET_S390X
-         "- s390x (aliases: s390, z/architecture)\n"
-#endif /* BFC_TARGET_S390X */
+#define ARCH_INTER(inter, name, ...) "- " name " (aliases: " #__VA_ARGS__ ")\n"
 
-         ARCH_LIST_END);
+    puts(ARCH_LIST_START
+#include "backends.h"
+             ARCH_LIST_END);
     exit(EXIT_SUCCESS);
 }
 

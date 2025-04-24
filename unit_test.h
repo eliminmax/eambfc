@@ -30,11 +30,8 @@
 
 typedef LLVMDisasmContextRef disasm_ref;
 
-/* __BACKENDS__ add a declaration of the disasm_ref here */
-TEST_GLOBAL(disasm_ref ARM64_DIS);
-TEST_GLOBAL(disasm_ref RISCV64_DIS);
-TEST_GLOBAL(disasm_ref S390X_DIS);
-TEST_GLOBAL(disasm_ref X86_64_DIS);
+#define ARCH_DISASM(ref, ...) TEST_GLOBAL(disasm_ref ref);
+#include "backends.h"
 
 TEST_GLOBAL(bf_err_id current_err);
 
@@ -96,10 +93,7 @@ CU_pSuite register_optimize_tests(void);
 CU_pSuite register_err_tests(void);
 CU_pSuite register_compile_tests(void);
 
-/* __BACKENDS__ add your test suite here */
-CU_pSuite register_arm64_tests(void);
-CU_pSuite register_riscv64_tests(void);
-CU_pSuite register_s390x_tests(void);
-CU_pSuite register_x86_64_tests(void);
+#define ARCH_TEST_REGISTER(func) CU_pSuite func(void);
+#include "backends.h"
 
 #endif /* BFC_UNIT_TEST_H */

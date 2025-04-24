@@ -52,56 +52,41 @@ enum arch_support_status {
     UNINIT = 3,
 };
 
-/* __BACKENDS__ add a uint: 2 for architecture, with name matching name of both
- * execfmt_support binary and eambfc "-a" parameter, and initialize with a value
- * of `UNINIT` */
 /* information about supported architectures */
 static struct {
-    uint arm64  : 2;
-    uint riscv64: 2;
-    uint s390x  : 2;
-    uint x86_64 : 2;
-    bool init   : 1;
-} supported_arches = {UNINIT, UNINIT, UNINIT, UNINIT, false};
+#define ARCH_ID(target_macro, id) uint id: 2;
+#include "../backends.h"
+    bool init: 1;
+} supported_arches = {
+
+#define ARCH_ID(...) UNINIT,
+#include "../backends.h"
+    false
+};
 
 static void load_arch_support(void) {
     int arch_i = 0;
-#define SUPPORT_CHECK(ARCH_CFG, arch) \
-    do { \
-        if (ARCH_CFG) { \
-            ARCHES[arch_i++] = #arch; \
-            if (system("../tools/execfmt_support/" #arch) == 0) { \
-                supported_arches.arch = CAN_RUN; \
-            } else { \
-                supported_arches.arch = CANT_RUN; \
-            } \
+#define ARCH_ID(ARCH_CFG, arch) \
+    if (ARCH_CFG) { \
+        ARCHES[arch_i++] = #arch; \
+        if (system("../tools/execfmt_support/" #arch) == 0) { \
+            supported_arches.arch = CAN_RUN; \
         } else { \
-            supported_arches.arch = ARCH_DISABLED; \
+            supported_arches.arch = CANT_RUN; \
         } \
-    } while (0)
-
-    /* __BACKENDS__ add support check */
-    SUPPORT_CHECK(BFC_TARGET_ARM64, arm64);
-    SUPPORT_CHECK(BFC_TARGET_RISCV64, riscv64);
-    SUPPORT_CHECK(BFC_TARGET_S390X, s390x);
-    SUPPORT_CHECK(BFC_TARGET_X86_64, x86_64);
-#undef SUPPORT_CHECK
-
+    } else { \
+        supported_arches.arch = ARCH_DISABLED; \
+    }
+#include "../backends.h"
     supported_arches.init = true;
 }
 
 static enum arch_support_status support_status(const char *arch) {
     if (!supported_arches.init) load_arch_support();
     /* number of architectures is small enough that a hash map isn't worth it */
-#define ARCH_CHECK(arch_id) \
-    if (strcmp(arch, #arch_id) == 0) return supported_arches.arch_id;
-
-    /* __BACKENDS__ add arch check */
-    ARCH_CHECK(arm64);
-    ARCH_CHECK(riscv64);
-    ARCH_CHECK(s390x);
-    ARCH_CHECK(x86_64);
-#undef ARCH_CHECK
+#define ARCH_ID(target_macro, id) \
+    if (strcmp(arch, #id) == 0) return supported_arches.id;
+#include "../backends.h"
 
     return UNKNOWN_ARCH;
 }
