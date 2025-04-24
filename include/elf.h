@@ -13,4 +13,7 @@
 #define BYTEORDER_LSB 1
 #define BYTEORDER_MSB 2
 
+#define PTRSIZE_32 1
+#define PTRSIZE_64 2
+
 #endif /* BFC_ELF_H */
