@@ -7,7 +7,9 @@
  * macro definintions, would allow the same information to be interpreted
  * differently when #included in different places
  *
- * It's ugly, but it simplifies the process of adding new backends. */
+ * It's the kind of ugly "clever hack" that should be viewed with suspicion, but
+ * it greatly simplifies the process of adding new backends, so I think it's
+ * worth it. */
 #include <config.h>
 
 #ifndef ARCH_ID
