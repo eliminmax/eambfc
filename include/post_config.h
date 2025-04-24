@@ -9,7 +9,7 @@
 
 /* internal */
 
-/* __BACKENDS__ add a backend ID with a unique value here */
+/* __BACKENDS__ add a backend ID with a unique, nonzero value here */
 #define ARCH_ARM64 1
 #define ARCH_RISCV64 2
 #define ARCH_S390x 3
