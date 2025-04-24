@@ -152,7 +152,7 @@ typedef const struct arch_inter {
 
     /* CPU flags that should be set for executables for this architecture. */
     u32 flags;
-    /* The 16-bit EM_* identifier for the architecture, from elf.h */
+    /* The 16-bit e_machine identifier for the architecture */
     u16 elf_arch;
     /* ELF EHDR value for endianness - either `ELFDATA2LSB` or `ELFDATA2MSB`,
      * depending on byte ordering of the backend. */
