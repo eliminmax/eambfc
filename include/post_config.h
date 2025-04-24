@@ -4,7 +4,8 @@
  *
  * Preprocessor directives for compile-time validation that config.h is usable,
  * and setting of some macro constants based on it if so, as well as inferring
- * the default backend to use based on the target architecture */
+ * the default backend to use based on the target architecture if the
+ * BFC_DEFAULT_TARGET macro isn't already set. */
 
 /* internal */
 #include "elf.h"
