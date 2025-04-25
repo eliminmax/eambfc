@@ -224,7 +224,7 @@ noreturn static nonnull_args void bad_arg(
     exit(EXIT_FAILURE);
 }
 
-run_cfg parse_args(int argc, char *argv[]) {
+run_cfg process_args(int argc, char *argv[]) {
     int opt;
     char missing_op_msg[35] = "-% requires an additional argument";
     char unknown_arg_msg[24] = "Unknown argument: -%";

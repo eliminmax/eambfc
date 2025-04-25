@@ -16,6 +16,15 @@ typedef struct {
     bool optimize    : 1;
 } run_cfg;
 
-run_cfg parse_args(int argc, char *argv[]);
+/* process arguments provided, handling `-A`, `-V`, and `-h` flags, and printing
+ * an appropriate error message if an argument parsing error occurs.
+ *
+ * If any of the flags it handles were passed, it will call
+ * `exit(EXIT_SUCCESS)`.
+ * If any errors occur, it will call `exit(EXIT_FAILURE)`.
+ *
+ * If it returns, then that means that `run_cfg` should be used for a normal
+ * run. */
+run_cfg process_args(int argc, char *argv[]);
 
 #endif /* BFC_PARSE_ARGS */

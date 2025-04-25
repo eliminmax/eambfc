@@ -95,7 +95,7 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
 
 int main(int argc, char *argv[]) {
     int ret = EXIT_SUCCESS;
-    run_cfg rc = parse_args(argc, argv);
+    run_cfg rc = process_args(argc, argv);
     for (int i = optind; i < argc; i++) {
         if (compile_file(argv[i], &rc)) continue;
         ret = EXIT_FAILURE;
