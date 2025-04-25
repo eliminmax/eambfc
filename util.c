@@ -21,6 +21,7 @@
 
 extern inline void *checked_malloc(size_t size);
 extern inline void *checked_realloc(void *ptr, size_t size);
+extern inline char *checked_strdup(const char *s);
 extern inline u8 trailing_0s(u64 val);
 extern inline size_t chunk_pad(size_t nbytes);
 extern inline bool bit_fits(i64 val, u8 bits);
