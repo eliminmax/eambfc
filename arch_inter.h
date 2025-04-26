@@ -154,9 +154,11 @@ typedef const struct arch_inter {
     u32 flags;
     /* The 16-bit e_machine identifier for the architecture */
     u16 elf_arch;
-    /* ELF EHDR value for endianness - either `ELFDATA2LSB` or `ELFDATA2MSB`,
-     * depending on byte ordering of the backend. */
+    /* ELF EHDR value for endianness - either `BYTEORDER_LSB` or
+     * `BYTEORDER_MSB`, depending on byte ordering of the backend. */
     unsigned char elf_data;
+    /* ELF EHDR value for address size - either `PTRSIZE_32` or `PTRSIZE_64` */
+    unsigned char addr_size;
 
     /* register Linux uses for system call number */
     u8 reg_sc_num;

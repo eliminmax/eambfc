@@ -328,6 +328,7 @@ const arch_inter ARM64_INTER = {
     .flags = 0 /* no flags are defined for this architecture */,
     .elf_arch = 183 /* EM_AARCH64 */,
     .elf_data = BYTEORDER_LSB,
+    .addr_size = PTRSIZE_64,
     .reg_sc_num = 8 /* w8 */,
     .reg_arg1 = 0 /* x0 */,
     .reg_arg2 = 1 /* x1 */,

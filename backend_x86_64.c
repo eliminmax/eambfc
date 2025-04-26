@@ -241,6 +241,7 @@ const arch_inter X86_64_INTER = {
     .flags = 0 /* no flags are defined for this architecture */,
     .elf_arch = 62 /* EM_X86_64 */,
     .elf_data = BYTEORDER_LSB,
+    .addr_size = PTRSIZE_64,
     .reg_sc_num = X86_64_RAX,
     .reg_arg1 = X86_64_RDI,
     .reg_arg2 = X86_64_RSI,

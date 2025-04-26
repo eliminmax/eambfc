@@ -373,6 +373,7 @@ const arch_inter RISCV64_INTER = {
     .flags = 5,
     .elf_arch = 243 /* EM_RISCV */,
     .elf_data = BYTEORDER_LSB,
+    .addr_size = PTRSIZE_64,
     .reg_sc_num = RISCV_A7,
     .reg_arg1 = RISCV_A0,
     .reg_arg2 = RISCV_A1,

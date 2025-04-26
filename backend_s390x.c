@@ -457,6 +457,7 @@ const arch_inter S390X_INTER = {
     .flags = 0 /* no flags are defined for this architecture */,
     .elf_arch = 22 /* EM_S390 */,
     .elf_data = BYTEORDER_MSB,
+    .addr_size = PTRSIZE_64,
     .reg_sc_num = 1,
     .reg_arg1 = 2,
     .reg_arg2 = 3,
