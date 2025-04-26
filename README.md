@@ -21,6 +21,7 @@ feature parity between them.
 <!-- vim-markdown-toc GFM -->
 
 * [Usage](#usage)
+* [Dialect](#dialect)
 * [Supported platforms](#supported-platforms)
   * [Non-portable functionality](#non-portable-functionality)
     * [Unit tests](#unit-tests)
@@ -90,6 +91,19 @@ equivalents to the short options:
 
 \* *long options require `eambfc` to be compiled with
 `'-D_GNU_SOURCE -DBFC_LONGOPT=1'` included in the `CFLAGS` passed to `make`.*
+
+## Dialect
+
+The brainfuck dialect supported by `eambfc` has the following semantics:
+
+* 8-bit, wrapping cells
+* tape size is set to 32 KiB unless `eambfc` is run with the `-t` flag, in which
+  case it's the provided number of 4-KiB blocks
+  * no bounds checking is performed, and the effects of out-of-bounds pointers
+    is whatever the OS or compatibility environment running the binary happens
+    to do
+* I/O is unbuffered, using the `read` and `write` system calls (though most
+  terminal drivers use line buffering for input)
 
 ## Supported platforms
 
