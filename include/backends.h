@@ -28,6 +28,8 @@
 #define ARCH_TEST_REGISTER(register_func)
 #endif
 
+/* __BACKENDS__ Add a block for the backend, maintaining alphabetical order */
+
 ARCH_ID(BFC_TARGET_ARM64, arm64)
 #if BFC_TARGET_ARM64
 ARCH_INTER(ARM64_INTER, "arm64", "aarch64")
