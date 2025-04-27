@@ -12,18 +12,24 @@
  * worth it. */
 #include <config.h>
 
+/* Associates the BFC_TARGET_* macro with the backend id */
 #ifndef ARCH_ID
 #define ARCH_ID(target_macro, id)
 #endif /* ARCH_ID */
 
+/* Associates the interface with the name and one or more aliases. */
 #ifndef ARCH_INTER
 #define ARCH_INTER(inter, name, /* aliases: */...)
 #endif /* ARCH_INTER */
 
+/* Associates the target disassembly ref with an LLVM triple and the string of
+ * CPU features needed (empty if the defaults are sufficient) */
 #ifndef ARCH_DISASM
 #define ARCH_DISASM(ref, llvm_triple, cpu_features)
 #endif /* ARCH_DISASM */
 
+/* provides the name of the function to register the unit test suite for the
+ * architectures unit tests */
 #ifndef ARCH_TEST_REGISTER
 #define ARCH_TEST_REGISTER(register_func)
 #endif
