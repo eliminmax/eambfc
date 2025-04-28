@@ -14,6 +14,7 @@
 /* internal */
 #include <types.h>
 
+#include "arch_inter.h"
 #include "serialize.h"
 
 extern inline size_t serialize16le(u16 v16, void *dest);
@@ -23,40 +24,80 @@ extern inline size_t serialize16be(u16 v16, void *dest);
 extern inline size_t serialize32be(u32 v32, void *dest);
 extern inline size_t serialize64be(u64 v64, void *dest);
 
-/* the function body for both serialize_ehdr64_le and serialize_ehdr64_be
- * Did not use token pasting as treesitter does not support parsing it, which
- * breaks syntax highlighting in Neovim, and I find it messy anyway.
- * (https://github.com/tree-sitter/tree-sitter-c/issues/98) */
-#define IMPL_EHDR64(serialize16, serialize32, serialize64) \
+/* write an elf header using the provided functions and values.
+ *
+ * * s16 is the function to serialize 16-bit fields
+ * * s32 is the function to serialize fields which are 32-bit regardless of
+ *      address size
+ * * s_addr is the function to serialize fields which are the same size as the
+ *      target's address size
+ * * ehdz is the size of the ELF header itself
+ * * phentsz is the size of program header table entries */
+#define WRITE_EHDR(s16, s32, s_addr, ehsz, phentsz) \
     /* first 16 bytes are easy - it's a series of literal byte values */ \
     memcpy(dest, ehdr->e_ident, 16); \
     char *p = ((char *)dest) + 16; \
-    p += serialize16(2, p); /* 2 is ET_EXEC */ \
-    p += serialize16(ehdr->e_machine, p); \
-    p += serialize32(1, p); /* 1 is EV_CURRENT (the only legal value) */ \
-    p += serialize64(ehdr->e_entry, p); \
-    p += serialize64(64, p); /* phdr table offset is right after ehdr */ \
-    p += serialize64(0, p); /* w/o shdr table, shoff offset is 0 */ \
-    p += serialize32(ehdr->e_flags, p); \
-    p += serialize16(64, p); /* size of a 64-bit Ehdr */ \
-    p += serialize16(56, p); /* size of a 64-bit Phdr table entry */ \
-    p += serialize16(ehdr->e_phnum, p); \
-    p += serialize16(0, p); /* w/o shdr table, shentsize is 0 */ \
-    p += serialize16(0, p); /* w/o shdr table, shnum is 0 */ \
-    p += serialize16(0, p); /* w/o shdr table, shstrndx is 0 */ \
-    return 64
+    p += s16(2, p); /* 2 is ET_EXEC */ \
+    p += s16(ehdr->e_machine, p); \
+    p += s32(1, p); /* 1 is EV_CURRENT (the only legal value) */ \
+    p += s_addr(ehdr->e_entry, p); \
+    p += s_addr(ehsz, p); /* phdr table offset is right after ehdr */ \
+    p += s_addr(0, p); /* w/o shdr table, shoff offset is 0 */ \
+    p += s32(ehdr->e_flags, p); \
+    p += s16(ehsz, p); /* size of a 64-bit Ehdr */ \
+    p += s16(phentsz, p); /* size of a 64-bit Phdr table entry */ \
+    p += s16(ehdr->e_phnum, p); \
+    p += s16(0, p); /* w/o shdr table, shentsize is 0 */ \
+    p += s16(0, p); /* w/o shdr table, shnum is 0 */ \
+    p += s16(0, p); /* w/o shdr table, shstrndx is 0 */ \
+    return ehsz
+
+#define WRITE_EHDR64(bo) \
+    WRITE_EHDR(serialize16##bo, serialize32##bo, serialize64##bo, 64, 56)
+#define WRITE_EHDR32(bo) \
+    WRITE_EHDR(serialize16##bo, serialize32##bo, serialize32##bo, 52, 32)
 
 /* serialize a 64-bit Ehdr into a byte sequence, in LSB order */
 nonnull_args size_t
-serialize_ehdr64_le(const ehdr_info *restrict ehdr, void *restrict dest) {
-    IMPL_EHDR64(serialize16le, serialize32le, serialize64le);
+serialize_ehdr_le(const ehdr_info *restrict ehdr, void *restrict dest) {
+    if (ehdr->e_ident[4] == PTRSIZE_32) {
+        WRITE_EHDR32(le);
+    } else {
+        WRITE_EHDR64(le);
+    }
 }
 
 /* serialize a 64-bit Ehdr into a byte sequence, in MSB order */
 nonnull_args size_t
-serialize_ehdr64_be(const ehdr_info *restrict ehdr, void *restrict dest) {
-    IMPL_EHDR64(serialize16be, serialize32be, serialize64be);
+serialize_ehdr_be(const ehdr_info *restrict ehdr, void *restrict dest) {
+    if (ehdr->e_ident[4] == PTRSIZE_32) {
+        WRITE_EHDR32(be);
+    } else {
+        WRITE_EHDR64(be);
+    }
 }
+
+/* field order is different between 32-bit and 64-bit elf files, so can't use
+ * the same underlying macro for both 32-bit and 64-bit variants. */
+
+#define IMPL_PHDR32(serialize32) \
+    char *p = dest; \
+    p += serialize32(1, p); /* PT_LOAD, the only type needed in eambfc */ \
+    /* file offset of the segment - 0 for both the tape segment, which doesn't \
+     * draw from the file at all, and the code segment, which includes the \
+     * whole file. */ \
+    p += serialize32(0, p); \
+    /* virtual memory address to load the segment into */ \
+    /* virtual address of the segment */ \
+    p += serialize32(phdr->virtaddr, p); \
+    /* physical memory address is always 0 on Linux */ \
+    p += serialize32(0, p); \
+    /* size within the file */ \
+    p += serialize32(phdr->file_backed ? phdr->size : 0, p); \
+    p += serialize32(phdr->size, p); /* size within memory */ \
+    p += serialize32(phdr->p_flags, p); /* flags for the segment */ \
+    p += serialize32(phdr->p_align, p); /* alignment of segment */ \
+    return 32
 
 #define IMPL_PHDR64(serialize32, serialize64) \
     char *p = dest; \
@@ -67,24 +108,34 @@ serialize_ehdr64_be(const ehdr_info *restrict ehdr, void *restrict dest) {
      * whole file. */ \
     p += serialize64(0, p); \
     /* virtual memory address to load the segment into */ \
-    p += serialize64(phdr->p_vaddr, p); /* virtual address of the segment */ \
+    /* virtual address of the segment */ \
+    p += serialize64(phdr->virtaddr, p); \
     /* physical memory address is always 0 on Linux */ \
     p += serialize64(0, p); \
-    p += serialize64(phdr->p_filesz, p); /* size within the file */ \
-    p += serialize64(phdr->p_memsz, p); /* size within memory */ \
+    /* size within the file */ \
+    p += serialize64(phdr->file_backed ? phdr->size : 0, p); \
+    p += serialize64(phdr->size, p); /* size within memory */ \
     p += serialize64(phdr->p_align, p); /* alignment of segment */ \
     return 56
 
 /* serialize a 64-bit Phdr into a byte sequence, in LSB order */
 nonnull_args size_t
-serialize_phdr64_le(const phdr_info *restrict phdr, void *restrict dest) {
-    IMPL_PHDR64(serialize32le, serialize64le);
+serialize_phdr_le(const phdr_info *restrict phdr, void *restrict dest) {
+    if (phdr->addr_size == PTRSIZE_32) {
+        IMPL_PHDR32(serialize32le);
+    } else {
+        IMPL_PHDR64(serialize32le, serialize64le);
+    }
 }
 
 /* serialize a 64-bit Phdr into a byte sequence, in MSB order */
 nonnull_args size_t
-serialize_phdr64_be(const phdr_info *restrict phdr, void *restrict dest) {
-    IMPL_PHDR64(serialize32be, serialize64be);
+serialize_phdr_be(const phdr_info *restrict phdr, void *restrict dest) {
+    if (phdr->addr_size == PTRSIZE_32) {
+        IMPL_PHDR32(serialize32be);
+    } else {
+        IMPL_PHDR64(serialize32be, serialize64be);
+    }
 }
 
 #ifdef BFC_TEST

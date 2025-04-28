@@ -12,12 +12,12 @@
 #include <config.h>
 #include <types.h>
 
-#include "err.h"
-
 #define BYTEORDER_LSB 1
 #define BYTEORDER_MSB 2
 #define PTRSIZE_32 1
 #define PTRSIZE_64 2
+
+#include "err.h"
 
 /* This struct contains the functions and values needed to implement the
  * backend.

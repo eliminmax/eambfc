@@ -51,8 +51,8 @@ nonnull_args static bool write_headers(
         .e_ident =
             {/* The ELF identifying magic bytes */
              MAGIC_BYTES,
-             /* 64-bit ELF file */
-             2,
+             /* address size marker */
+             inter->addr_size,
              /* endianness marker */
              inter->elf_data,
              /* current ELF version (only valid value) */
@@ -68,28 +68,30 @@ nonnull_args static bool write_headers(
         .e_phnum = 2,
     };
     phdr_info phdr_table[2];
+    phdr_table[0].addr_size = phdr_table[1].addr_size = inter->addr_size;
 
-    phdr_table[0].p_flags = 6 /* R + W */;
-    phdr_table[0].p_vaddr = TAPE_ADDRESS;
-    phdr_table[0].p_filesz = 0;
-    phdr_table[0].p_memsz = TAPE_SIZE(tape_blocks);
+    phdr_table[0].p_flags = SEG_R | SEG_W;
     phdr_table[0].p_align = 0x1000;
+    phdr_table[0].file_backed = false;
+    phdr_table[0].size = TAPE_SIZE(tape_blocks);
+    phdr_table[0].virtaddr = TAPE_ADDRESS;
 
-    phdr_table[1].p_flags = 5 /* R + X */;
+    phdr_table[1].p_flags = SEG_R | SEG_X;
     phdr_table[1].p_align = 1;
-    phdr_table[1].p_vaddr = LOAD_VADDR(tape_blocks);
-    phdr_table[1].p_filesz = phdr_table[1].p_memsz = START_PADDR + code_sz;
+    phdr_table[1].file_backed = true;
+    phdr_table[1].size = START_PADDR + code_sz;
+    phdr_table[1].virtaddr = LOAD_VADDR(tape_blocks);
 
     char header_bytes[256];
     size_t i = 0;
     if (inter->elf_data == BYTEORDER_LSB) {
-        i += serialize_ehdr64_le(&ehdr, header_bytes);
-        i += serialize_phdr64_le(&phdr_table[0], &header_bytes[i]);
-        i += serialize_phdr64_le(&phdr_table[1], &header_bytes[i]);
+        i += serialize_ehdr_le(&ehdr, header_bytes);
+        i += serialize_phdr_le(&phdr_table[0], &header_bytes[i]);
+        i += serialize_phdr_le(&phdr_table[1], &header_bytes[i]);
     } else {
-        i += serialize_ehdr64_be(&ehdr, header_bytes);
-        i += serialize_phdr64_be(&phdr_table[0], &header_bytes[i]);
-        i += serialize_phdr64_be(&phdr_table[1], &header_bytes[i]);
+        i += serialize_ehdr_be(&ehdr, header_bytes);
+        i += serialize_phdr_be(&phdr_table[0], &header_bytes[i]);
+        i += serialize_phdr_be(&phdr_table[1], &header_bytes[i]);
     }
     memset(&header_bytes[i], 0, 256 - i);
     bf_comp_err e;
