@@ -10,13 +10,13 @@ EXTRA_CFLAGS = -D _POSIX_C_SOURCE=200908L -I./include
 
 # __BACKENDS__ add backend object file to EAMBFC_DEPS
 EAMBFC_DEPS = serialize.o backend_arm64.o backend_riscv64.o backend_s390x.o \
-		backend_x86_64.o optimize.o err.o util.o \
+		backend_x86_64.o x86_common.o optimize.o err.o util.o \
 		compile.o setup.o main.o
 
 # __BACKENDS__ add backend source file to ALL_SOURCES
 ALL_SOURCES = serialize.c compile.c optimize.c err.c util.c \
 		backend_arm64.c backend_riscv64.c backend_s390x.c \
-		backend_x86_64.c setup.c main.c unit_test.c
+		backend_x86_64.c x86_common.c setup.c main.c unit_test.c
 
 UNIT_TEST_DEPS = $(ALL_SOURCES) err.h unit_test.h serialize.h
 
@@ -45,6 +45,7 @@ main.o: main.c setup.h err.h
 err.o: err.c err.h
 util.o: util.c util.h err.h
 optimize.o: optimize.c err.h
+x86_common.o: x86_common.c err.h serialize.h
 
 # __BACKENDS__ add target for backend object file
 backend_arm64.o: backend_arm64.c err.h serialize.h

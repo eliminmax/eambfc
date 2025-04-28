@@ -11,70 +11,13 @@
 #include "err.h"
 #include "serialize.h"
 #include "util.h"
+#include "x86_common.h"
+
 #if BFC_TARGET_X86_64
-
-enum X86_REGS {
-    /* x86 32-bit register IDs */
-    X86_EAX = 00,
-    /* reserved for use in `reg_arith` only: `X86_ECX = 01,` */
-    X86_EDX = 02,
-    X86_EBX = 03,
-    /* omit a few not used in eambfc */
-    X86_ESI = 06,
-    X86_EDI = 07,
-    /* x86_64-only registers */
-    X86_64_RAX = X86_EAX,
-    /* reserved for use in `reg_arith` only: `X86_64_RCX = X86_ECX,` */
-    X86_64_RDX = X86_EDX,
-    /* omit a few not used in eambfc */
-    X86_64_RBX = X86_EBX,
-    X86_64_RSI = X86_ESI,
-    X86_64_RDI = X86_EDI,
-    /* omit extra numbered registers r10 through r15 added in x86_64 */
-};
-
-/* mark a series of bytes within a u8 array as being a single instruction,
- * mostly to prevent automated code formatting from splitting them up */
-#define INSTRUCTION(...) __VA_ARGS__
 
 /* nicer looking than having a bunch of integer literals inline to create the
  * needed space. */
-#define IMM32_PADDING 0x00, 0x00, 0x00, 0x00
 #define IMM64_PADDING 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-
-/* most common values for opcodes in add/sub instructions */
-typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
-
-#define JUMP_SIZE 9
-
-/* TEST byte [reg], 0xff; Jcc|tttn offset */
-static bool test_jcc(
-    char tttn,
-    u8 reg,
-    i64 offset,
-    char dst[restrict JUMP_SIZE],
-    bf_comp_err *restrict err
-) {
-    if (offset > INT32_MAX || offset < INT32_MIN) {
-        *err = basic_err(
-            BF_ERR_JUMP_TOO_LONG,
-            "offset is outside the range of possible 32-bit signed values"
-        );
-        return false;
-    }
-    memcpy(
-        dst,
-        (u8[5]){
-            /* TEST byte [reg], 0xff */
-            INSTRUCTION(0xf6, reg, 0xff),
-            /* Jcc|tttn (must append jump offset) */
-            INSTRUCTION(0x0f, 0x80 | tttn),
-        },
-        5
-    );
-    serialize32le(offset, &(dst[5]));
-    return true;
-}
 
 static nonnull_args void reg_arith(
     u8 reg, u64 imm, arith_op op, sized_buf *restrict dst_buf
@@ -142,37 +85,6 @@ static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
     append_obj(dst_buf, (u8[]){INSTRUCTION(0x0f, 0x05)}, 2);
 }
 
-/* In this backend, `[` and `]` are both compiled to TEST (3 bytes), followed by
- * a Jcc instruction (6 bytes). When encountering a `[` instruction, fill 9
- * * bytes with NOP instructins to leave room for it. */
-#define NOP 0x90
-
-/* UD2; times 7 NOP */
-static nonnull_args void pad_loop_open(sized_buf *restrict dst_buf) {
-    u8 padding[9] = {0x0f, 0x0b, NOP, NOP, NOP, NOP, NOP, NOP, NOP};
-    append_obj(dst_buf, &padding, 9);
-}
-
-/* TEST byte [reg], 0xff; JZ jmp_offset */
-static nonnull_args bool jump_open(
-    u8 reg,
-    i64 offset,
-    sized_buf *restrict dst_buf,
-    size_t index,
-    bf_comp_err *restrict err
-) {
-    /* Jcc with tttn=0b0100 is JZ or JE, so use 4 for tttn */
-    return test_jcc(0x4, reg, offset, &dst_buf->buf[index], err);
-}
-
-/* TEST byte [reg], 0xff; JNZ jmp_offset */
-static nonnull_args bool jump_close(
-    u8 reg, i64 offset, sized_buf *restrict dst_buf, bf_comp_err *restrict err
-) {
-    /* Jcc with tttn=0b0101 is JNZ or JNE, so use 5 for tttn */
-    return test_jcc(0x5, reg, offset, sb_reserve(dst_buf, JUMP_SIZE), err);
-}
-
 /* INC reg */
 static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
     append_obj(dst_buf, (uchar[]){0x48, 0xff, 0xc0 | reg}, 3);
@@ -183,41 +95,12 @@ static nonnull_args void dec_reg(u8 reg, sized_buf *restrict dst_buf) {
     append_obj(dst_buf, (uchar[]){0x48, 0xff, 0xc8 | reg}, 3);
 }
 
-/* INC byte [reg] */
-static nonnull_args void inc_byte(u8 reg, sized_buf *restrict dst_buf) {
-    append_obj(dst_buf, (uchar[]){0xfe, reg}, 2);
-}
-
-/* DEC byte [reg] */
-static nonnull_args void dec_byte(u8 reg, sized_buf *restrict dst_buf) {
-    append_obj(dst_buf, (uchar[]){0xfe, reg | 8}, 2);
-}
-
 static nonnull_args void add_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
     reg_arith(reg, imm, X64_OP_ADD, dst_buf);
 }
 
 static nonnull_args void sub_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
     reg_arith(reg, imm, X64_OP_SUB, dst_buf);
-}
-
-static nonnull_args void add_byte(
-    u8 reg, u8 imm8, sized_buf *restrict dst_buf
-) {
-    /* ADD byte [reg], imm8 */
-    append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, reg, imm8)}, 3);
-}
-
-static nonnull_args void sub_byte(
-    u8 reg, u8 imm8, sized_buf *restrict dst_buf
-) {
-    /* SUB byte [reg], imm8 */
-    append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, 0x28 + reg, imm8)}, 3);
-}
-
-static nonnull_args void zero_byte(u8 reg, sized_buf *restrict dst_buf) {
-    /* MOV byte [reg], 0 */
-    append_obj(dst_buf, (u8[]){INSTRUCTION(0xc6, reg, 0x00)}, 3);
 }
 
 const arch_inter X86_64_INTER = {
@@ -227,18 +110,18 @@ const arch_inter X86_64_INTER = {
     .set_reg = set_reg,
     .reg_copy = reg_copy,
     .syscall = syscall,
-    .pad_loop_open = pad_loop_open,
-    .jump_open = jump_open,
-    .jump_close = jump_close,
+    .pad_loop_open = x86_pad_loop_open,
+    .jump_open = x86_jump_open,
+    .jump_close = x86_jump_close,
     .inc_reg = inc_reg,
     .dec_reg = dec_reg,
-    .inc_byte = inc_byte,
-    .dec_byte = dec_byte,
+    .inc_byte = x86_inc_byte,
+    .dec_byte = x86_dec_byte,
     .add_reg = add_reg,
     .sub_reg = sub_reg,
-    .add_byte = add_byte,
-    .sub_byte = sub_byte,
-    .zero_byte = zero_byte,
+    .add_byte = x86_add_byte,
+    .sub_byte = x86_sub_byte,
+    .zero_byte = x86_zero_byte,
     .flags = 0 /* no flags are defined for this architecture */,
     .elf_arch = 62 /* EM_X86_64 */,
     .elf_data = BYTEORDER_LSB,
@@ -277,9 +160,9 @@ static void test_jump_instructions(void) {
     sized_buf dis = newbuf(160);
     bf_comp_err e;
     sb_reserve(&sb, JUMP_SIZE);
-    jump_open(X86_64_RDI, 9, &sb, 0, &e);
-    jump_close(X86_64_RDI, -18, &sb, &e);
-    pad_loop_open(&sb);
+    x86_jump_open(X86_64_RDI, 9, &sb, 0, &e);
+    x86_jump_close(X86_64_RDI, -18, &sb, &e);
+    x86_pad_loop_open(&sb);
     CU_ASSERT_EQUAL(sb.sz, 27);
     DISASM_TEST(
         sb,
@@ -346,8 +229,8 @@ static void test_add_sub_byte(void) {
     sized_buf sb = newbuf(6);
     sized_buf dis = newbuf(56);
 
-    add_byte(X86_64_RDI, 0x23, &sb);
-    sub_byte(X86_64_RDI, 0x23, &sb);
+    x86_add_byte(X86_64_RDI, 0x23, &sb);
+    x86_sub_byte(X86_64_RDI, 0x23, &sb);
     CU_ASSERT_EQUAL(sb.sz, 6);
 
     DISASM_TEST(
@@ -365,7 +248,7 @@ static void test_zero_byte(void) {
     sized_buf sb = newbuf(3);
     sized_buf dis = newbuf(32);
 
-    zero_byte(X86_64_RDX, &sb);
+    x86_zero_byte(X86_64_RDX, &sb);
     DISASM_TEST(sb, dis, "mov byte ptr [rdx], 0x0\n");
 
     free(sb.buf);
@@ -375,7 +258,7 @@ static void test_zero_byte(void) {
 static void test_jump_too_long(void) {
     bf_comp_err e;
     char dst[JUMP_SIZE];
-    CU_ASSERT_FALSE(jump_close(
+    CU_ASSERT_FALSE(x86_jump_close(
         0,
         INT64_MAX,
         &(sized_buf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE},
@@ -389,8 +272,8 @@ static void test_inc_dec_is_64_bit(void) {
     sized_buf dis = newbuf(56);
     inc_reg(X86_64_RAX, &sb);
     dec_reg(X86_64_RAX, &sb);
-    inc_byte(X86_64_RAX, &sb);
-    dec_byte(X86_64_RAX, &sb);
+    x86_inc_byte(X86_64_RAX, &sb);
+    x86_dec_byte(X86_64_RAX, &sb);
 
     DISASM_TEST(
         sb,

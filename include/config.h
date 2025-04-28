@@ -20,6 +20,9 @@
 #ifndef BFC_TARGET_ARM64
 #define BFC_TARGET_ARM64 1
 #endif /* BFC_TARGET_ARM64 */
+#ifndef BFC_TARGET_I386
+#define BFC_TARGET_I386 1
+#endif /* BFC_TARGET_I386 */
 #ifndef BFC_TARGET_RISCV64
 #define BFC_TARGET_RISCV64 1
 #endif /* BFC_TARGET_RISCV64 */

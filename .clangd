@@ -64,6 +64,7 @@ CompileFlags:
     # a missing or disabled default architecture selection
     # __BACKENDS__ add backend to this list
     - "-DBFC_TARGET_ARM64=1"
+    - "-DBFC_TARGET_I386=1"
     - "-DBFC_TARGET_RISCV64=1"
     - "-DBFC_TARGET_S390X=1"
     - "-DBFC_TARGET_X86_64=1"
