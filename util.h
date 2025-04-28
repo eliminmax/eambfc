@@ -35,15 +35,6 @@ inline nonnull_ret void *checked_realloc(void *ptr, size_t size) {
     return newptr;
 }
 
-/* Checked replacement for the POSIX `strdup` function, which calls `alloc_err`
- * in the event of a failed allocation instead of returning null. */
-inline nonnull_ret char *checked_strdup(const char *s) {
-    size_t sz = strlen(s) + 1;
-    char *dst = checked_malloc(sz);
-    memcpy(dst, s, sz);
-    return dst;
-}
-
 /* return the number of trailing zeroes in val */
 const_fn inline u8 trailing_0s(u64 val) {
     if (!val) return UINT8_MAX;
