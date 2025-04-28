@@ -51,7 +51,7 @@
 #elif BFC_TARGET_RISCV64 && defined __riscv
 #define BFC_DEFAULT_TARGET ARCH_RISCV64
 #elif BFC_TARGET_S390X && defined __s390x__
-#define BFC_DEFAULT_TARGET ARCH_RISCV64
+#define BFC_DEFAULT_TARGET ARCH_S390X
 
 /* __BACKENDS__ Add fallback case here - these are used if none of the macros
  * to determine target architecture are defined, or the system's architecture is
