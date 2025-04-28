@@ -318,6 +318,12 @@ static bool comp_ir_instr(
     const arch_inter *inter,
     const char *in_name
 ) {
+#define WRAP_ERR(i) \
+    (bf_comp_err) { \
+        .file = in_name, .instr = i, .has_instr = true, \
+        .msg.ref = "offset truncated as it exceeds 32-bit address space", \
+        .id = BF_ERR_CODE_TOO_LARGE, \
+    }
     /* if there's only one (non-'@') instruction, compile it normally */
     if (count == 1 && instr != '@')
         return comp_instr(instr, obj_code, inter, in_name, NULL);
@@ -345,9 +351,17 @@ static bool comp_ir_instr(
             return true;
         case '>':
             IR_COMPILE_WITH(inter->add_reg);
+            if (inter->addr_size == ADDRSIZE_32 && count > UINT32_MAX) {
+                display_err(WRAP_ERR('>'));
+                return false;
+            };
             return true;
         case '<':
             IR_COMPILE_WITH(inter->sub_reg);
+            if (inter->addr_size == ADDRSIZE_32 && count > UINT32_MAX) {
+                display_err(WRAP_ERR('<'));
+                return false;
+            };
             return true;
         default:
             internal_err(BF_ICE_INVALID_IR, "Invalid IR Opcode");

@@ -51,6 +51,7 @@ const char *const ERR_IDS[] = {
     "InvalidErrorId",
     "BadSourceExtension",
     "BufferTooLarge",
+    "CodeTooLarge",
     "FailedRead",
     "FailedWrite",
     "InputIsOutput",
