@@ -113,8 +113,6 @@ static void bf_io(
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
      * sc is the system call number for the system call to use */
-    /* load the number for the write system call into sc_num */
-    inter->set_reg(inter->reg_sc_num, sc, obj_code);
     /* load the number for the stdout file descriptor into arg1 */
     inter->set_reg(inter->reg_arg1, bf_fd, obj_code);
     /* copy the address in bf_ptr to arg2 */
@@ -122,7 +120,7 @@ static void bf_io(
     /* load # of bytes to read/write (1, specifically) into arg3 */
     inter->set_reg(inter->reg_arg3, 1, obj_code);
     /* finally, call the syscall instruction */
-    inter->syscall(obj_code);
+    inter->syscall(obj_code, sc);
 }
 
 /* number of indexes in the jump stack to allocate for at a time */
@@ -433,12 +431,10 @@ bool bf_compile(
     }
 
     /* write code to perform the exit(0) syscall */
-    /* set system call register to exit system call number */
-    inter->set_reg(inter->reg_sc_num, inter->sc_exit, &obj_code);
     /* set system call register to the desired exit code (0) */
     inter->set_reg(inter->reg_arg1, 0, &obj_code);
     /* perform a system call */
-    inter->syscall(&obj_code);
+    inter->syscall(&obj_code, inter->sc_exit);
 
     bf_comp_err e;
 

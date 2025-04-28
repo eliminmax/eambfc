@@ -137,7 +137,8 @@ static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
 }
 
 /* SYSCALL */
-static nonnull_args void syscall(sized_buf *restrict dst_buf) {
+static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
+    set_reg(X86_EAX, sc_num, dst_buf);
     append_obj(dst_buf, (u8[]){INSTRUCTION(0x0f, 0x05)}, 2);
 }
 

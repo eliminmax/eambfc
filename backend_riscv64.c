@@ -190,7 +190,8 @@ static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
     append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
 }
 
-static nonnull_args void syscall(sized_buf *restrict dst_buf) {
+static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
+    set_reg(RISCV_A7, sc_num, dst_buf);
     /* ecall */
     append_obj(dst_buf, (u8[]){0x73, 0, 0, 0}, 4);
 }
@@ -548,8 +549,8 @@ static void test_syscall(void) {
     sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(8);
 
-    syscall(&sb);
-    DISASM_TEST(sb, dis, "ecall\n");
+    syscall(&sb, 32);
+    DISASM_TEST(sb, dis, "li a7, 0x20\necall\n");
 
     free(dis.buf);
     free(sb.buf);

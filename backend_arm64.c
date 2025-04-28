@@ -109,8 +109,9 @@ static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
     append_obj(dst_buf, (u8[]){0xe0 | dst, 0x03, src, 0xaa}, 4);
 }
 
-/* SVC 0 */
-static nonnull_args void syscall(sized_buf *restrict dst_buf) {
+static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
+    set_reg(8, sc_num, dst_buf);
+    /* SVC 0 */
     append_obj(dst_buf, (u8[]){0x01, 0x00, 0x00, 0xd4}, 4);
 }
 
@@ -574,8 +575,8 @@ static void test_reg_copy(void) {
 static void test_syscall(void) {
     sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(16);
-    syscall(&sb);
-    DISASM_TEST(sb, dis, "svc #0\n");
+    syscall(&sb, 1);
+    DISASM_TEST(sb, dis, "mov x8, #0x1\nsvc #0\n");
 
     free(sb.buf);
     free(dis.buf);

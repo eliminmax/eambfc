@@ -48,7 +48,7 @@ typedef const struct arch_inter {
     );
 
     /* Write the system call instruction to `dst_buf`. */
-    nonnull_args void (*const syscall)(sized_buf *restrict dst_buf);
+    nonnull_args void (*const syscall)(sized_buf *restrict dst_buf, u32 sc_num);
 
     /* Write a trap instruction, then pad with no-op instructions.
      * Must use the same number of bytes as `jump_open` */

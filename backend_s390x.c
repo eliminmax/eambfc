@@ -234,15 +234,18 @@ static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
     }
 }
 
-static nonnull_args void syscall(sized_buf *restrict dst_buf) {
-    /* SVC 0 {I} */
-    /* NOTE: on Linux s390x, if the SC number is less than 256, it it can be
-     * passed as the second byte of the instruction, but taking advantage of
-     * that would require refactoring - perhaps an extra parameter in the
-     * arch_inter.syscall prototype, which would only be useful on this specific
-     * architecture. The initial implementation of s390x must be complete and
-     * working without any change outside of the designated insertion points. */
-    append_obj(dst_buf, (u8[]){0x0a, 0x00}, 2);
+static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
+    /* on Linux s390x, if the system call number is nonzero and less than 256,
+     * it it can be passed as service call number instead of by setting the
+     * system call register. */
+    if (sc_num && sc_num < 256) {
+        /* SVC sc_num {I} */
+        append_obj(dst_buf, (u8[]){0x0a, sc_num}, 2);
+    } else {
+        set_reg(1, sc_num, dst_buf);
+        /* SVC 0 {I} */
+        append_obj(dst_buf, (u8[]){0x0a, 0x00}, 2);
+    }
 }
 
 typedef enum {
@@ -632,9 +635,9 @@ static void test_syscall(void) {
     sized_buf sb = newbuf(2);
     sized_buf dis = newbuf(8);
 
-    syscall(&sb);
+    syscall(&sb, S390X_INTER.sc_exit);
     CU_ASSERT_EQUAL(sb.sz, 2);
-    DISASM_TEST(sb, dis, "svc 0\n");
+    DISASM_TEST(sb, dis, "svc 1\n");
 
     free(sb.buf);
     free(dis.buf);
