@@ -71,7 +71,7 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
         sb->buf = checked_realloc(sb->buf, needed_cap);
         sb->capacity = needed_cap;
     }
-    void *ret = &sb->buf[sb->sz];
+    void *ret = ((char *)sb->buf) + sb->sz;
     sb->sz += nbytes;
     return ret;
 }
@@ -104,7 +104,7 @@ nonnull_args void append_obj(
         dst->capacity = needed_cap;
     }
     /* actually append the object now that prep work is done */
-    memcpy(dst->buf + dst->sz, bytes, bytes_sz);
+    memcpy((char *)dst->buf + dst->sz, bytes, bytes_sz);
     dst->sz += bytes_sz;
 }
 

@@ -65,7 +65,7 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
                 stderr, \
                 "\n\n### EXPECTED ###\n%s\n\n### ACTUAL ###\n%s\n", \
                 expected, \
-                dis.buf \
+                (char *)dis.buf \
             ); \
         } \
     } else { \

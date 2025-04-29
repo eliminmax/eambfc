@@ -209,7 +209,7 @@ static nonnull_args bool jump_open(
     size_t index,
     bf_comp_err *restrict err
 ) {
-    return cond_jump(reg, offset, true, &dst_buf->buf[index], err);
+    return cond_jump(reg, offset, true, (char *)dst_buf->buf + index, err);
 }
 
 static nonnull_args bool jump_close(
@@ -532,12 +532,12 @@ static void test_compressed_set_reg_64(void) {
     DISASM_TEST(fakesb, dis, "li a1, 0xf\n");
 
     fakesb.sz = 2;
-    fakesb.buf += 2;
+    fakesb.buf = (char *)fakesb.buf + 2;
     memset(dis.buf, 0, dis.sz);
     DISASM_TEST(fakesb, dis, "slli a1, a1, 0x20\n");
 
     fakesb.sz = 2;
-    fakesb.buf += 2;
+    fakesb.buf = (char *)fakesb.buf + 2;
     memset(dis.buf, 0, dis.sz);
     DISASM_TEST(fakesb, dis, "addi a1, a1, 0x10\n");
 
@@ -707,7 +707,7 @@ static void test_add_reg(void) {
     CU_ASSERT(memcmp(sb.buf, alt.buf, alt.sz) == 0);
     fakesb.sz = 2;
     fakesb.capacity = 2;
-    fakesb.buf = sb.buf + alt.sz;
+    fakesb.buf = (char *)sb.buf + alt.sz;
     memset(dis.buf, 0, dis.sz);
     DISASM_TEST(fakesb, dis, "add s0, s0, t1\n");
 

@@ -442,7 +442,9 @@ bool bf_compile(
     } else {
         src_loc loc = {.line = 1, .col = 0};
         for (size_t i = 0; i < src.sb.sz; i++) {
-            ret &= comp_instr(src.sb.buf[i], &obj_code, inter, in_name, &loc);
+            ret &= comp_instr(
+                ((char *)src.sb.buf)[i], &obj_code, inter, in_name, &loc
+            );
         }
     }
 

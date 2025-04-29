@@ -49,7 +49,7 @@ nonnull_args bool x86_jump_open(
     bf_comp_err *restrict err
 ) {
     /* Jcc with tttn=0b0100 is JZ or JE, so use 4 for tttn */
-    return test_jcc(0x4, reg, offset, &dst_buf->buf[index], err);
+    return test_jcc(0x4, reg, offset, (char *)dst_buf->buf + index, err);
 }
 
 /* TEST byte [reg], 0xff; JNZ jmp_offset */

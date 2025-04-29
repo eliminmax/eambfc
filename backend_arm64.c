@@ -172,7 +172,7 @@ static bool jump_open(
     bf_comp_err *restrict err
 ) {
     /* 0 is the zero / equal condition code */
-    return branch_cond(reg, offset, &dst_buf->buf[index], 0, err);
+    return branch_cond(reg, offset, (char *)dst_buf->buf + index, 0, err);
 }
 
 /* LDRB w17, x.reg; TST w17, 0xff; B.NE offset */

@@ -376,7 +376,7 @@ static nonnull_args bool jump_open(
     size_t index,
     bf_comp_err *restrict err
 ) {
-    return branch_cond(reg, offset, MASK_EQ, &dst_buf->buf[index], err);
+    return branch_cond(reg, offset, MASK_EQ, (char *)dst_buf->buf + index, err);
 }
 
 static nonnull_args bool jump_close(
