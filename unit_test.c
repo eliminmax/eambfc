@@ -71,7 +71,7 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm) {
             ref, (u8 *)bytes->buf, bytes->sz, 0, disasm_insn, 128
         );
         if (!used_sz) return false;
-        memmove(bytes->buf, bytes->buf + used_sz, bytes->sz - used_sz);
+        memmove(bytes->buf, (char *)bytes->buf + used_sz, bytes->sz - used_sz);
         bytes->sz -= used_sz;
         ufast_8 i;
         /* start at 1 to skip leading '\t' */
