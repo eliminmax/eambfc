@@ -60,7 +60,10 @@ static void mov(mov_type mt, u16 imm, shift_lvl shift, u8 reg, char *dst) {
 
 /* Choose a combination of MOVZ, MOVK, and MOVN that sets register x.reg to
  * the immediate imm */
-static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool set_reg(
+    u8 reg, i64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    (void)err;
     u16 default_val;
     mov_type lead_mt;
 
@@ -101,6 +104,7 @@ static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
         /* (MOVZ|MOVN) x.reg, default_val */
         mov(lead_mt, default_val, A64_SL_NO_SHIFT, reg, sb_reserve(dst_buf, 4));
     }
+    return true;
 }
 
 /* MOV x.dst, x.src
@@ -110,7 +114,7 @@ static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
 }
 
 static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
-    set_reg(8, sc_num, dst_buf);
+    set_reg(8, sc_num, dst_buf, NULL);
     /* SVC 0 */
     append_obj(dst_buf, (u8[]){0x01, 0x00, 0x00, 0xd4}, 4);
 }
@@ -223,7 +227,7 @@ static nonnull_args void add_sub(
         /* different byte values are needed than normal here */
         u8 op_byte = (op == A64_OP_ADD) ? 0x8b : 0xcb;
         /* set register x17 to the target value */
-        set_reg(TEMP_REG, (i64)imm, dst_buf);
+        set_reg(TEMP_REG, (i64)imm, dst_buf, NULL);
         /* either ADD x.reg, x.reg, x17 or SUB x.reg, x.reg, x17 */
         serialize32le(
             (u32)op_byte << 24 | TEMP_REG << 16 | reg | reg << 5,
@@ -234,12 +238,20 @@ static nonnull_args void add_sub(
 
 /* add_reg, sub_reg, inc_reg, and dec_reg are all simple wrappers around
  * add_sub. */
-static nonnull_args void add_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool add_reg(
+    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    (void)err;
     add_sub(reg, A64_OP_ADD, imm, dst_buf);
+    return true;
 }
 
-static nonnull_args void sub_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool sub_reg(
+    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    (void)err;
     add_sub(reg, A64_OP_SUB, imm, dst_buf);
+    return true;
 }
 
 static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
@@ -359,7 +371,7 @@ static void test_set_reg_simple(void) {
     };
 
     for (ufast_8 i = 0; i < 4; i++) {
-        set_reg(test_sets[i].reg, test_sets[i].imm, &sb);
+        set_reg(test_sets[i].reg, test_sets[i].imm, &sb, NULL);
         DISASM_TEST(sb, dis, test_sets[i].disasm);
     }
 
@@ -371,7 +383,7 @@ static void test_reg_multiple(void) {
     sized_buf sb = newbuf(8);
     sized_buf dis = newbuf(32);
 
-    set_reg(0, 0xdeadbeef, &sb);
+    set_reg(0, 0xdeadbeef, &sb, NULL);
     DISASM_TEST(
         sb,
         dis,
@@ -387,7 +399,7 @@ static void test_reg_split(void) {
     sized_buf sb = newbuf(8);
     sized_buf dis = newbuf(48);
 
-    set_reg(19, 0xdead0000beef, &sb);
+    set_reg(19, 0xdead0000beef, &sb, NULL);
     DISASM_TEST(
         sb,
         dis,
@@ -403,7 +415,7 @@ static void test_reg_neg(void) {
     sized_buf sb = newbuf(8);
     sized_buf dis = newbuf(48);
 
-    set_reg(19, INT64_C(-0xdeadbeef), &sb);
+    set_reg(19, INT64_C(-0xdeadbeef), &sb, NULL);
     DISASM_TEST(
         sb,
         dis,
@@ -420,7 +432,7 @@ static void test_reg_neg_split(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(80);
 
-    set_reg(19, INT64_C(-0xdead0000beef), &sb);
+    set_reg(19, INT64_C(-0xdead0000beef), &sb, NULL);
     DISASM_TEST(
         sb,
         dis,
@@ -429,7 +441,7 @@ static void test_reg_neg_split(void) {
         "movk x19, #0x2152, lsl #32\n"
     );
 
-    set_reg(8, INT64_C(-0xdeadbeef0000), &sb);
+    set_reg(8, INT64_C(-0xdeadbeef0000), &sb, NULL);
     DISASM_TEST(
         sb,
         dis,

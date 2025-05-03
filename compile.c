@@ -114,13 +114,16 @@ static void bf_io(
 ) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
-     * sc is the system call number for the system call to use */
+     * sc is the system call number for the system call to use
+     *
+     * Both uses of `set_reg` are always going to succeed, as `bf_fd` always
+     * fits within 32 bits */
     /* load the number for the stdout file descriptor into arg1 */
-    inter->set_reg(inter->reg_arg1, bf_fd, obj_code);
+    inter->set_reg(inter->reg_arg1, bf_fd, obj_code, NULL);
     /* copy the address in bf_ptr to arg2 */
     inter->reg_copy(inter->reg_arg2, inter->reg_bf_ptr, obj_code);
     /* load # of bytes to read/write (1, specifically) into arg3 */
-    inter->set_reg(inter->reg_arg3, 1, obj_code);
+    inter->set_reg(inter->reg_arg3, 1, obj_code, NULL);
     /* finally, call the syscall instruction */
     inter->syscall(obj_code, sc);
 }
@@ -344,25 +347,29 @@ static bool comp_ir_instr(
             inter->zero_byte(inter->reg_bf_ptr, obj_code);
             return true;
         case '+':
-            IR_COMPILE_WITH(inter->add_byte);
+            inter->add_byte(inter->reg_bf_ptr, count, obj_code);
             return true;
         case '-':
-            IR_COMPILE_WITH(inter->sub_byte);
+            inter->sub_byte(inter->reg_bf_ptr, count, obj_code);
             return true;
-        case '>':
-            IR_COMPILE_WITH(inter->add_reg);
-            if (inter->addr_size == ADDRSIZE_32 && count > UINT32_MAX) {
-                display_err(WRAP_ERR('>'));
+        case '>': {
+            bf_comp_err err;
+            if (!inter->add_reg(inter->reg_bf_ptr, count, obj_code, &err)) {
+                err.file = in_name;
+                display_err(err);
                 return false;
-            };
+            }
             return true;
-        case '<':
-            IR_COMPILE_WITH(inter->sub_reg);
-            if (inter->addr_size == ADDRSIZE_32 && count > UINT32_MAX) {
-                display_err(WRAP_ERR('<'));
+        }
+        case '<': {
+            bf_comp_err err;
+            if (!inter->sub_reg(inter->reg_bf_ptr, count, obj_code, &err)) {
+                err.file = in_name;
+                display_err(err);
                 return false;
-            };
+            }
             return true;
+        }
         default:
             internal_err(BF_ICE_INVALID_IR, "Invalid IR Opcode");
             return false;
@@ -427,8 +434,10 @@ bool bf_compile(
     jump_stack.locations = checked_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
 
-    /* set the bf_ptr register to the address of the start of the tape */
-    inter->set_reg(inter->reg_bf_ptr, TAPE_ADDRESS, &obj_code);
+    /* set the bf_ptr register to the address of the start of the tape
+     * start address is a constant that fits within 32-bit address space, so
+     * this will always succeed. */
+    inter->set_reg(inter->reg_bf_ptr, TAPE_ADDRESS, &obj_code, NULL);
 
     /* compile the actual source code to object code */
     if (optimize) {
@@ -449,8 +458,9 @@ bool bf_compile(
     }
 
     /* write code to perform the exit(0) syscall */
-    /* set system call register to the desired exit code (0) */
-    inter->set_reg(inter->reg_arg1, 0, &obj_code);
+    /* set system call register to the desired exit code (0)
+     * As 0 fits within 32-bit address space, this always succeeds. */
+    inter->set_reg(inter->reg_arg1, 0, &obj_code, NULL);
     /* perform a system call */
     inter->syscall(&obj_code, inter->sc_exit);
 

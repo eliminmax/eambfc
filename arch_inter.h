@@ -37,9 +37,21 @@ typedef const struct arch_inter {
     /* the exit system call number */
     i64 sc_exit;
 
-    /* Write instruction/s to dst_buf to store `imm` in `reg`. */
-    nonnull_args void (*const set_reg)(
-        u8 reg, i64 imm, sized_buf *restrict dst_buf
+    /* Write instruction/s to dst_buf to store `imm` in `reg`.
+     *
+     * * For 32-bit backends, if `imm` is too large to fit within an `i32`,
+     *   returns `false`. It still writes the machine code to set the register,
+     *   but the value will be truncated to fit.
+     *   If `err` is non-`NULL`, it will also set `err->id`, `err->msg`, and
+     *   `err->is_alloc` to appropriate values, zeroing out other fields of
+     *   `err`.
+     *
+     * * For 32-bit backends, if `imm` fits within an `i32`, returns `true`.
+     * `true`.
+     *
+     * * For 64-bit backends, always returns `true`. */
+    nonnull_arg(3) bool (*const set_reg)(
+        u8 reg, i64 imm, sized_buf *restrict dst_buf, bf_comp_err *err
     );
 
     /* Write instruction/s to `dst_buf` to copy value from `src` into `dst` */
@@ -116,16 +128,38 @@ typedef const struct arch_inter {
 
     /* Write instruction/s to dst_buf to add imm to register reg.
      *
+     * * For 32-bit backends, if `imm` is too large to fit within a `u32`,
+     *   returns `false`. It still writes the machine code to add the immediate,
+     *   but the value will be truncated to fit.
+     *   If `err` is non-`NULL`, it will also set `err->id`, `err->msg`, and
+     *   `err->is_alloc` to appropriate values, zeroing out other fields of
+     *   `err`.
+     *
+     * * For 32-bit backends, if `imm` fits within a `u32`, returns `true`.
+     *
+     * * For 64-bit backends, always returns `true`.
+     *
      * Used to implement sequences of consecutive `>` brainfuck instructions. */
-    nonnull_args void (*const add_reg)(
-        u8 reg, u64 imm, sized_buf *restrict dst_buf
+    nonnull_arg(3) bool (*const add_reg)(
+        u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *err
     );
 
     /* Write instruction/s to dst_buf to subtract imm from register reg.
      *
+     * * For 32-bit backends, if `imm` is too large to fit within a `u32`,
+     *   returns `false`. It still writes the machine code to subtract the
+     *   immediate, but the value will be truncated to fit.
+     *   If `err` is non-`NULL`, it will also set `err->id`, `err->msg`, and
+     *   `err->is_alloc` to appropriate values, zeroing out other fields of
+     *   `err`.
+     *
+     * * For 32-bit backends, if `imm` fits within a `u32`, returns `true`.
+     *
+     * * For 64-bit backends, always returns `true`.
+     *
      * Used to implement sequences of consecutive `<` brainfuck instructions. */
-    nonnull_args void (*const sub_reg)(
-        u8 reg, u64 imm, sized_buf *restrict dst_buf
+    nonnull_arg(3) bool (*const sub_reg)(
+        u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *err
     );
 
     /* Write instruction/s to dst_buf to add imm8 to byte stored at address in

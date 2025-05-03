@@ -180,8 +180,12 @@ static bool cond_jump(
     return true;
 }
 
-static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool set_reg(
+    u8 reg, i64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    (void)err;
     encode_li(dst_buf, reg, imm);
+    return true;
 }
 
 static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
@@ -191,7 +195,7 @@ static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
 }
 
 static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
-    set_reg(RISCV_A7, sc_num, dst_buf);
+    set_reg(RISCV_A7, sc_num, dst_buf, NULL);
     /* ecall */
     append_obj(dst_buf, (u8[]){0x73, 0, 0, 0}, 4);
 }
@@ -256,13 +260,16 @@ static nonnull_args void dec_byte(u8 reg, sized_buf *restrict dst_buf) {
     append_obj(dst_buf, i_bytes, 10);
 }
 
-static nonnull_args void add_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
-    if (!imm) return;
+static nonnull_arg(3) bool add_reg(
+    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    (void)err;
+    if (!imm) return true;
     if (bit_fits(imm, 6)) {
         /* c.addi reg, imm */
         u16 c_addi = (((imm & 0x20) | reg) << 7) | ((imm & 0x1f) << 2) | 1;
         append_obj(dst_buf, (u8[]){c_addi & 0xff, (c_addi & 0xff00) >> 8}, 2);
-        return;
+        return true;
     }
     if (bit_fits(imm, 12)) {
         /* addi reg, reg, imm */
@@ -272,20 +279,23 @@ static nonnull_args void add_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
             &i_bytes
         );
         append_obj(dst_buf, i_bytes, 4);
-        return;
+        return true;
     }
     /* c.add reg, t1 */
     u16 add_regs = 0x9002 | (((u16)reg) << 7) | (((u16)RISCV_T1) << 2);
     encode_li(dst_buf, RISCV_T1, imm);
     append_obj(dst_buf, (u8[]){add_regs & 0xff, (add_regs & 0xff00) >> 8}, 2);
+    return true;
 }
 
-static nonnull_args void sub_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool sub_reg(
+    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
     /* adding and subtracting INT64_MIN result in the same value, but negating
      * INT64_MIN is undefined behavior, so this is the way to go. */
     i64 neg_imm = imm;
     if (neg_imm != INT64_MIN) neg_imm = -neg_imm;
-    add_reg(reg, neg_imm, dst_buf);
+    return add_reg(reg, neg_imm, dst_buf, err);
 }
 
 static nonnull_args void add_byte(
@@ -392,23 +402,23 @@ const arch_inter RISCV64_INTER = {
 static void test_set_reg_32(void) {
     sized_buf sb = newbuf(32);
     sized_buf dis = newbuf(168);
-    set_reg(RISCV_A0, 0, &sb);
+    CU_ASSERT(set_reg(RISCV_A0, 0, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 2);
-    set_reg(RISCV_A1, 1, &sb);
+    CU_ASSERT(set_reg(RISCV_A1, 1, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 4);
-    set_reg(RISCV_A2, -2, &sb);
+    CU_ASSERT(set_reg(RISCV_A2, -2, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 6);
-    set_reg(RISCV_A7, 0x123, &sb);
+    CU_ASSERT(set_reg(RISCV_A7, 0x123, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 10);
-    set_reg(RISCV_A0, -0x123, &sb);
+    CU_ASSERT(set_reg(RISCV_A0, -0x123, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 14);
-    set_reg(RISCV_S0, 0x100000, &sb);
+    CU_ASSERT(set_reg(RISCV_S0, 0x100000, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 18);
-    set_reg(RISCV_A7, 0x123456, &sb);
+    CU_ASSERT(set_reg(RISCV_A7, 0x123456, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 26);
-    set_reg(RISCV_A0, 0x1000, &sb);
+    CU_ASSERT(set_reg(RISCV_A0, 0x1000, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 28);
-    set_reg(RISCV_A1, 0x1001, &sb);
+    CU_ASSERT(set_reg(RISCV_A1, 0x1001, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 32);
     DISASM_TEST(
         sb,
@@ -437,7 +447,7 @@ static void test_set_reg_64(void) {
     char *disasm_p = expected_disasm;
     size_t expected_len = 0;
     for (ifast_64 val = ((i64)INT32_MAX) + 1; val < INT64_MAX / 2; val <<= 1) {
-        set_reg(RISCV_A7, val, &sb);
+        CU_ASSERT(set_reg(RISCV_A7, val, &sb, NULL));
         u8 shift_lvl = trailing_0s(val);
         disasm_p +=
             sprintf(disasm_p, "li a7, 0x1\nslli a7, a7, 0x%x\n", shift_lvl);
@@ -450,12 +460,12 @@ static void test_set_reg_64(void) {
 
     /* worst-case scenario is alternating bits. 0b0101 is 0x5. */
     /* first, just a single sequence, but it'll need to be shifted */
-    set_reg(RISCV_A7, INT64_C(0x5555) << 24, &sb);
+    CU_ASSERT(set_reg(RISCV_A7, INT64_C(0x5555) << 24, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 6);
     DISASM_TEST(sb, dis, "lui a7, 0x5555\nslli a7, a7, 0xc\n");
 
-    set_reg(RISCV_S0, INT64_C(0x555555555555), &sb);
-    set_reg(RISCV_A7, INT64_C(-0x555555555555), &sb);
+    CU_ASSERT(set_reg(RISCV_S0, INT64_C(0x555555555555), &sb, NULL));
+    CU_ASSERT(set_reg(RISCV_A7, INT64_C(-0x555555555555), &sb, NULL));
     DISASM_TEST(
         sb,
         dis,
@@ -481,8 +491,8 @@ static void test_set_reg_64(void) {
     );
 
     /* again, but with 64-bit rather than 48-bit values */
-    set_reg(RISCV_S0, INT64_C(0x5555555555555555), &sb);
-    set_reg(RISCV_A7, INT64_C(-0x5555555555555555), &sb);
+    CU_ASSERT(set_reg(RISCV_S0, INT64_C(0x5555555555555555), &sb, NULL));
+    CU_ASSERT(set_reg(RISCV_A7, INT64_C(-0x5555555555555555), &sb, NULL));
     DISASM_TEST(
         sb,
         dis,
@@ -519,7 +529,7 @@ static void test_compressed_set_reg_64(void) {
     sized_buf sb = newbuf(6);
     sized_buf dis = newbuf(24);
     sized_buf fakesb;
-    set_reg(RISCV_A1, INT64_C(0xf00000010), &sb);
+    CU_ASSERT(set_reg(RISCV_A1, INT64_C(0xf00000010), &sb, NULL));
     /* fatal variant because the following trickery with fakesb would be
      * problematic otherwise. */
     CU_ASSERT_EQUAL_FATAL(sb.sz, 6);
@@ -667,15 +677,15 @@ static void sub_reg_is_neg_add_reg(void) {
     a = newbuf(32);
     b = newbuf(32);
 
-    sub_reg(RISCV64_INTER.reg_bf_ptr, 0, &a);
-    add_reg(RISCV_S0, 0, &b);
+    CU_ASSERT(sub_reg(RISCV64_INTER.reg_bf_ptr, 0, &a, NULL));
+    CU_ASSERT(add_reg(RISCV_S0, 0, &b, NULL));
     CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
     CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
     for (ufast_8 i = 0; i < 63; i++) {
         a.sz = 0;
         b.sz = 0;
-        sub_reg(RISCV64_INTER.reg_bf_ptr, INT64_C(1) << i, &a);
-        add_reg(RISCV_S0, -(INT64_C(1) << i), &b);
+        CU_ASSERT(sub_reg(RISCV64_INTER.reg_bf_ptr, INT64_C(1) << i, &a, NULL));
+        CU_ASSERT(add_reg(RISCV_S0, -(INT64_C(1) << i), &b, NULL));
         CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
         CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
     }
@@ -690,18 +700,18 @@ static void test_add_reg(void) {
     sized_buf dis = newbuf(40);
     sized_buf fakesb;
 
-    add_reg(RISCV_S0, 0, &sb);
+    CU_ASSERT(add_reg(RISCV_S0, 0, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 0);
 
-    add_reg(RISCV_S0, 0x12, &sb);
+    CU_ASSERT(add_reg(RISCV_S0, 0x12, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 2);
 
-    add_reg(RISCV_S0, 0x123, &sb);
+    CU_ASSERT(add_reg(RISCV_S0, 0x123, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 6);
 
     DISASM_TEST(sb, dis, "addi s0, s0, 0x12\naddi s0, s0, 0x123\n");
 
-    add_reg(RISCV_S0, 0xdeadbeef, &sb);
+    CU_ASSERT(add_reg(RISCV_S0, 0xdeadbeef, &sb, NULL));
     encode_li(&alt, RISCV_T1, 0xdeadbeef);
     CU_ASSERT_EQUAL_FATAL(sb.sz, alt.sz + 2);
     CU_ASSERT(memcmp(sb.buf, alt.buf, alt.sz) == 0);

@@ -174,7 +174,9 @@ static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
     append_obj(dst_buf, (u8[]){0xb9, 0x04, 0x00, (dst << 4) | src}, 4);
 }
 
-static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool set_reg(
+    u8 reg, i64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
     /* There are numerous ways to store immediates in registers for this
      * architecture. This function tries to find a way to load a given immediate
      * in as few machine instructions as possible, using shorter instructions
@@ -207,7 +209,7 @@ static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
 
         /* try to set the upper bits no matter what, but if the lower bits
          * failed, still want to return false. */
-        set_reg(reg, (i32)imm, dst_buf);
+        set_reg(reg, (i32)imm, dst_buf, err);
         /* check if only one of the two higher quarters need to be explicitly
          * set, as that enables using shorter instructions. In the terminology
          * of the architecture, they are the high high and high low quarters of
@@ -232,6 +234,7 @@ static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
             append_obj(dst_buf, &i_bytes, 6);
         }
     }
+    return true;
 }
 
 static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
@@ -242,7 +245,7 @@ static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
         /* SVC sc_num {I} */
         append_obj(dst_buf, (u8[]){0x0a, sc_num}, 2);
     } else {
-        set_reg(1, sc_num, dst_buf);
+        set_reg(1, sc_num, dst_buf, NULL);
         /* SVC 0 {I} */
         append_obj(dst_buf, (u8[]){0x0a, 0x00}, 2);
     }
@@ -387,11 +390,18 @@ static nonnull_args bool jump_close(
     );
 }
 
-static nonnull_args void add_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool add_reg(
+    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    (void)err;
     add_reg_signed(reg, imm, dst_buf);
+    return true;
 }
 
-static nonnull_args void sub_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool sub_reg(
+    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    (void)err;
     /* there are not equivalent sub instructions to any of the add instructions
      * used, so take advantage of the fact that adding and subtracting INT64_MIN
      * have the same effect except for the possible effect on overflow flags
@@ -399,6 +409,7 @@ static nonnull_args void sub_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
     i64 imm_s = imm;
     if (imm_s != INT64_MIN) { imm_s = -imm_s; }
     add_reg_signed(reg, imm_s, dst_buf);
+    return true;
 }
 
 static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
@@ -519,7 +530,7 @@ static void test_set_reg_zero(void) {
     sized_buf alt = newbuf(4);
 
     reg_copy(2, 0, &sb);
-    set_reg(2, 0, &alt);
+    CU_ASSERT(set_reg(2, 0, &alt, NULL));
     CU_ASSERT_EQUAL(sb.sz, alt.sz);
     CU_ASSERT(memcmp(sb.buf, alt.buf, sb.sz) == 0);
     free(alt.buf);
@@ -534,8 +545,8 @@ static void test_set_reg_small_imm(void) {
     sized_buf sb = newbuf(8);
     sized_buf dis = newbuf(40);
 
-    set_reg(5, 12345, &sb);
-    set_reg(8, -12345, &sb);
+    CU_ASSERT(set_reg(5, 12345, &sb, NULL));
+    CU_ASSERT(set_reg(8, -12345, &sb, NULL));
     DISASM_TEST(sb, dis, "lghi %r5, 12345\nlghi %r8, -12345\n");
 
     free(sb.buf);
@@ -546,8 +557,8 @@ static void test_set_reg_medium_imm(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(48);
 
-    set_reg(4, INT64_C(0x1234abcd), &sb);
-    set_reg(4, INT64_C(-0x1234abcd), &sb);
+    CU_ASSERT(set_reg(4, INT64_C(0x1234abcd), &sb, NULL));
+    CU_ASSERT(set_reg(4, INT64_C(-0x1234abcd), &sb, NULL));
     GIVEN_THAT(INT64_C(0x1234abcd) == INT64_C(305441741));
     DISASM_TEST(sb, dis, "lgfi %r4, 305441741\nlgfi %r4, -305441741\n");
 
@@ -559,35 +570,35 @@ static void test_set_reg_large_imm(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(48);
 
-    set_reg(1, INT64_C(0xdead0000beef), &sb);
+    CU_ASSERT(set_reg(1, INT64_C(0xdead0000beef), &sb, NULL));
     GIVEN_THAT(0xdeadU == 57005U && 0xbeefU == 48879U);
     DISASM_TEST(sb, dis, "lgfi %r1, 48879\niihl %r1, 57005\n");
     memset(dis.buf, 0, dis.sz);
 
-    set_reg(2, INT64_C(-0xdead0000beef), &sb);
+    CU_ASSERT(set_reg(2, INT64_C(-0xdead0000beef), &sb, NULL));
     GIVEN_THAT(-0xbeefL == -48879L && ~(i16)0xdead == 8530);
     DISASM_TEST(sb, dis, "lgfi %r2, -48879\niihl %r2, 8530\n");
     memset(dis.buf, 0, dis.sz);
 
-    set_reg(3, INT64_C(0xdead00000000), &sb);
+    CU_ASSERT(set_reg(3, INT64_C(0xdead00000000), &sb, NULL));
     DISASM_TEST(sb, dis, "lgr %r3, %r0\niihl %r3, 57005\n");
     memset(dis.buf, 0, dis.sz);
 
-    set_reg(4, INT64_MAX ^ (INT64_C(0xffff) << 32), &sb);
+    CU_ASSERT(set_reg(4, INT64_MAX ^ (INT64_C(0xffff) << 32), &sb, NULL));
     DISASM_TEST(sb, dis, "lghi %r4, -1\niihh %r4, 32767\n");
     memset(dis.buf, 0, dis.sz);
 
-    set_reg(5, INT64_MIN ^ (INT64_C(0xffff) << 32), &sb);
+    CU_ASSERT(set_reg(5, INT64_MIN ^ (INT64_C(0xffff) << 32), &sb, NULL));
     DISASM_TEST(sb, dis, "lgr %r5, %r0\niihh %r5, 32768\n");
     memset(dis.buf, 0, dis.sz);
 
-    set_reg(8, INT64_C(0x123456789abcdef0), &sb);
+    CU_ASSERT(set_reg(8, INT64_C(0x123456789abcdef0), &sb, NULL));
     GIVEN_THAT(0x12345678L == 305419896L);
     GIVEN_THAT((i32)0x9abcdef0UL == -1698898192L);
     DISASM_TEST(sb, dis, "lgfi %r8, -1698898192\niihf %r8, 305419896\n");
     memset(dis.buf, 0, dis.sz);
 
-    set_reg(8, INT64_C(-0x123456789abcdef0), &sb);
+    CU_ASSERT(set_reg(8, INT64_C(-0x123456789abcdef0), &sb, NULL));
     DISASM_TEST(sb, dis, "lgfi %r8, 1698898192\niihf %r8, 3989547399\n");
 
     free(sb.buf);
@@ -659,7 +670,7 @@ static void test_reg_arith_small_imm(void) {
     sized_buf b = newbuf(8);
     sized_buf dis = newbuf(40);
 
-    add_reg(8, 1, &a);
+    CU_ASSERT(add_reg(8, 1, &a, NULL));
     inc_reg(8, &b);
     /* check that inc_reg(r, sb) is the same as add_reg(r, 1, sb) */
     CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
@@ -668,7 +679,7 @@ static void test_reg_arith_small_imm(void) {
     memset(dis.buf, 0, dis.sz);
     b.sz = 0;
 
-    sub_reg(8, 1, &a);
+    CU_ASSERT(sub_reg(8, 1, &a, NULL));
     dec_reg(8, &b);
     /* check that dec_reg(r, sb) is the same as sub_reg(r, 1, sb) */
     CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
@@ -678,10 +689,10 @@ static void test_reg_arith_small_imm(void) {
     b.sz = 0;
 
     /* check that sub_reg properly translates to add_reg */
-    add_reg(8, 12345, &a);
-    sub_reg(8, 12345, &a);
-    sub_reg(8, INT64_C(-12345), &b);
-    add_reg(8, INT64_C(-12345), &b);
+    CU_ASSERT(add_reg(8, 12345, &a, NULL));
+    CU_ASSERT(sub_reg(8, 12345, &a, NULL));
+    CU_ASSERT(sub_reg(8, INT64_C(-12345), &b, NULL));
+    CU_ASSERT(add_reg(8, INT64_C(-12345), &b, NULL));
     CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
     CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
     DISASM_TEST(a, dis, "aghi %r8, 12345\naghi %r8, -12345\n");
@@ -695,12 +706,12 @@ static void test_reg_arith_medium_imm(void) {
     sized_buf sb = newbuf(6);
     sized_buf dis = newbuf(24);
 
-    add_reg(8, 0x123456, &sb);
+    CU_ASSERT(add_reg(8, 0x123456, &sb, NULL));
     GIVEN_THAT(0x123456 == 1193046);
     DISASM_TEST(sb, dis, "agfi %r8, 1193046\n");
     memset(dis.buf, 0, dis.sz);
 
-    sub_reg(8, 0x123456, &sb);
+    CU_ASSERT(sub_reg(8, 0x123456, &sb, NULL));
     DISASM_TEST(sb, dis, "agfi %r8, -1193046\n");
 
     free(sb.buf);
@@ -711,13 +722,13 @@ static void test_reg_arith_large_imm(void) {
     sized_buf sb = newbuf(12);
     sized_buf dis = newbuf(40);
 
-    add_reg(8, INT64_C(9876543210), &sb);
+    CU_ASSERT(add_reg(8, INT64_C(9876543210), &sb, NULL));
     GIVEN_THAT((i32)INT64_C(9876543210) == 1286608618);
     GIVEN_THAT(INT64_C(9876543210) >> 32 == 2);
     DISASM_TEST(sb, dis, "agfi %r8, 1286608618\naih %r8, 2\n");
     memset(dis.buf, 0, dis.sz);
 
-    sub_reg(8, INT64_C(9876543210), &sb);
+    CU_ASSERT(sub_reg(8, INT64_C(9876543210), &sb, NULL));
     GIVEN_THAT((i32)INT64_C(-9876543210) == -1286608618);
     GIVEN_THAT(sign_extend((u64)INT64_C(-9876543210) >> 32, 32) == INT64_C(-3));
     DISASM_TEST(sb, dis, "agfi %r8, -1286608618\naih %r8, -3\n");
@@ -725,7 +736,7 @@ static void test_reg_arith_large_imm(void) {
 
     /* make sure that if the lower bits are zero, the agfi instruction is
      * skipped */
-    add_reg(8, 0x1234abcd00000000, &sb);
+    CU_ASSERT(add_reg(8, 0x1234abcd00000000, &sb, NULL));
     GIVEN_THAT(0x1234abcd00000000 >> 32 == 305441741L);
     DISASM_TEST(sb, dis, "aih %r8, 305441741\n");
 
@@ -737,8 +748,8 @@ static void test_add_sub_i64_min(void) {
     sized_buf a = newbuf(6);
     sized_buf b = newbuf(6);
 
-    add_reg(4, INT64_MIN, &a);
-    sub_reg(4, INT64_MIN, &b);
+    CU_ASSERT(add_reg(4, INT64_MIN, &a, NULL));
+    CU_ASSERT(sub_reg(4, INT64_MIN, &b, NULL));
     CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
     CU_ASSERT(memcmp(a.buf, b.buf, a.sz) == 0);
 

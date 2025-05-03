@@ -53,7 +53,10 @@ static nonnull_args void reg_arith(
 
 /* now, the functions exposed through X86_64_INTER */
 /* use the most efficient way to set a register to imm */
-static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool set_reg(
+    u8 reg, i64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    (void)err;
     if (imm == 0) {
         /* XOR reg, reg */
         append_obj(
@@ -70,11 +73,12 @@ static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
         serialize64le(imm, &(instr_bytes[2]));
         append_obj(dst_buf, &instr_bytes, 10);
     }
+    return true;
 }
 
 /* SYSCALL */
 static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
-    set_reg(X86_EAX, sc_num, dst_buf);
+    set_reg(X86_EAX, sc_num, dst_buf, NULL);
     append_obj(dst_buf, (u8[]){INSTRUCTION(0x0f, 0x05)}, 2);
 }
 
@@ -88,12 +92,20 @@ static nonnull_args void dec_reg(u8 reg, sized_buf *restrict dst_buf) {
     append_obj(dst_buf, (uchar[]){0x48, 0xff, 0xc8 | reg}, 3);
 }
 
-static nonnull_args void add_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool add_reg(
+    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    (void)err;
     reg_arith(reg, imm, X64_OP_ADD, dst_buf);
+    return true;
 }
 
-static nonnull_args void sub_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool sub_reg(
+    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+) {
+    (void)err;
     reg_arith(reg, imm, X64_OP_SUB, dst_buf);
+    return true;
 }
 
 const arch_inter X86_64_INTER = {
@@ -135,13 +147,13 @@ static void test_set_reg(void) {
     sized_buf sb = newbuf(10);
     sized_buf dis = newbuf(32);
 
-    set_reg(X86_EBX, 0, &sb);
+    CU_ASSERT(set_reg(X86_EBX, 0, &sb, NULL));
     DISASM_TEST(sb, dis, "xor ebx, ebx\n");
 
-    set_reg(X86_EBX, 128, &sb);
+    CU_ASSERT(set_reg(X86_EBX, 128, &sb, NULL));
     DISASM_TEST(sb, dis, "mov ebx, 0x80\n");
 
-    set_reg(X86_64_RBX, INT64_MAX - INT64_C(0xffff), &sb);
+    CU_ASSERT(set_reg(X86_64_RBX, INT64_MAX - INT64_C(0xffff), &sb, NULL));
     DISASM_TEST(sb, dis, "movabs rbx, 0x7fffffffffff0000\n");
 
     free(sb.buf);
@@ -176,11 +188,11 @@ static void test_add_sub_small_imm(void) {
     sized_buf sb = newbuf(4);
     sized_buf dis = newbuf(16);
 
-    add_reg(X86_64_RSI, 0x20, &sb);
+    CU_ASSERT(add_reg(X86_64_RSI, 0x20, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 4);
     DISASM_TEST(sb, dis, "add rsi, 0x20\n");
 
-    sub_reg(X86_64_RSI, 0x20, &sb);
+    CU_ASSERT(sub_reg(X86_64_RSI, 0x20, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 4);
     DISASM_TEST(sb, dis, "sub rsi, 0x20\n");
 
@@ -192,11 +204,11 @@ static void test_add_sub_medium_imm(void) {
     sized_buf sb = newbuf(7);
     sized_buf dis = newbuf(24);
 
-    add_reg(X86_64_RDX, 0xdead, &sb);
+    CU_ASSERT(add_reg(X86_64_RDX, 0xdead, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 7);
     DISASM_TEST(sb, dis, "add rdx, 0xdead\n");
 
-    sub_reg(X86_64_RDX, 0xbeef, &sb);
+    CU_ASSERT(sub_reg(X86_64_RDX, 0xbeef, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 7);
     DISASM_TEST(sb, dis, "sub rdx, 0xbeef\n");
 
@@ -208,10 +220,10 @@ static void test_add_sub_large_imm(void) {
     sized_buf sb = newbuf(13);
     sized_buf dis = newbuf(40);
 
-    add_reg(X86_64_RBX, 0xdeadbeef, &sb);
+    CU_ASSERT(add_reg(X86_64_RBX, 0xdeadbeef, &sb, NULL));
     DISASM_TEST(sb, dis, "movabs rcx, 0xdeadbeef\nadd rbx, rcx\n");
 
-    sub_reg(X86_64_RBX, 0xdeadbeef, &sb);
+    CU_ASSERT(sub_reg(X86_64_RBX, 0xdeadbeef, &sb, NULL));
     DISASM_TEST(sb, dis, "movabs rcx, 0xdeadbeef\nsub rbx, rcx\n");
 
     free(sb.buf);
