@@ -77,6 +77,8 @@ nonnull_args void x86_dec_byte(u8 reg, sized_buf *restrict dst_buf);
 nonnull_args void x86_add_byte(u8 reg, u8 imm8, sized_buf *restrict dst_buf);
 /* subtract an immediate from a byte */
 nonnull_args void x86_sub_byte(u8 reg, u8 imm8, sized_buf *restrict dst_buf);
+/* copy a register to another register */
+nonnull_args void x86_reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf);
 
 #endif /* BFC_TARGET_X86_64 || BFC_TARGET_I386 */
 #endif /* BFC_X86_COMMON */

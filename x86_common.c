@@ -12,6 +12,11 @@
 #include "util.h"
 #include "x86_common.h"
 
+/* MOV rs, rd */
+nonnull_args void x86_reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
+    append_obj(dst_buf, (u8[]){INSTRUCTION(0x89, 0xc0 + (src << 3) + dst)}, 2);
+}
+
 /* `TEST byte [reg], 0xff; Jcc|tttn offset` */
 static bool test_jcc(
     char tttn,

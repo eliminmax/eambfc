@@ -74,11 +74,6 @@ static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
     }
 }
 
-/* MOV rs, rd */
-static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
-    append_obj(dst_buf, (u8[]){INSTRUCTION(0x89, 0xc0 + (src << 3) + dst)}, 2);
-}
-
 /* SYSCALL */
 static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
     set_reg(X86_EAX, sc_num, dst_buf);
@@ -108,7 +103,7 @@ const arch_inter X86_64_INTER = {
     .sc_write = 1,
     .sc_exit = 60,
     .set_reg = set_reg,
-    .reg_copy = reg_copy,
+    .reg_copy = x86_reg_copy,
     .syscall = syscall,
     .pad_loop_open = x86_pad_loop_open,
     .jump_open = x86_jump_open,
