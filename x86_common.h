@@ -16,7 +16,7 @@
 enum X86_REGS {
     /* x86 32-bit register IDs */
     X86_EAX = 00,
-    /* reserved for use in `reg_arith` only: `X86_ECX = 01,` */
+    X86_ECX = 01,
     X86_EDX = 02,
     X86_EBX = 03,
     /* omit a few not used in eambfc */
@@ -25,7 +25,7 @@ enum X86_REGS {
 #if BFC_TARGET_X86_64
     /* x86_64-only registers */
     X86_64_RAX = X86_EAX,
-    /* reserved for use in `reg_arith` only: `X86_64_RCX = X86_ECX,` */
+    X86_64_RCX = X86_ECX,
     X86_64_RDX = X86_EDX,
     /* omit a few not used in eambfc */
     X86_64_RBX = X86_EBX,

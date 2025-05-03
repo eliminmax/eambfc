@@ -34,18 +34,16 @@ static nonnull_args void reg_arith(
         append_obj(dst_buf, &i_bytes, 7);
     } else {
         /* There are no instructions to add or subtract a 64-bit immediate.
-         * Instead, the approach  to use is first PUSH the value of a different
-         * register, MOV the 64-bit immediate to that register, ADD/SUB that
-         * register to the target register, then POP that temporary register, to
-         * restore its original value. */
+         * Instead, the approach  to use is first store the value of in a
+         * different register, then ADD/SUB that register to the target */
         /* the temporary register shouldn't be the target register, so use RCX,
-         * which is a volatile register not used anywhere else in eambfc */
-        const u8 TMP_REG = 1;
+         * which is a volatile register which is not used anywhere else in this
+         * backend. */
         u8 instr_bytes[] = {
-            /* MOV TMP_REG, 0x0000000000000000 (will replace with imm64) */
-            INSTRUCTION(0x48, 0xb8 + TMP_REG, IMM64_PADDING),
+            /* MOV RCX, 0x0000000000000000 (will replace with imm64) */
+            INSTRUCTION(0x48, 0xb8 + X86_64_RCX, IMM64_PADDING),
             /* (ADD||SUB) reg, tmp_reg */
-            INSTRUCTION(0x48, op - 0xbf, 0xc0 + (TMP_REG << 3) + reg),
+            INSTRUCTION(0x48, op - 0xbf, 0xc0 + (X86_64_RCX << 3) + reg),
         };
         /* replace 0x0000000000000000 with imm64 */
         serialize64le(imm, &(instr_bytes[2]));
