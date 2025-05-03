@@ -309,10 +309,6 @@ static bool comp_instr(
     }
 }
 
-/* similar to the above COMPILE_WITH, but with an extra parameter passed to the
- * function, so that can't be reused. */
-#define IR_COMPILE_WITH(f) f(inter->reg_bf_ptr, count, obj_code)
-
 /* Compile an ir instruction */
 static bool comp_ir_instr(
     char instr,
@@ -321,12 +317,6 @@ static bool comp_ir_instr(
     const arch_inter *inter,
     const char *in_name
 ) {
-#define WRAP_ERR(i) \
-    (bf_comp_err) { \
-        .file = in_name, .instr = i, .has_instr = true, \
-        .msg.ref = "offset truncated as it exceeds 32-bit address space", \
-        .id = BF_ERR_CODE_TOO_LARGE, \
-    }
     /* if there's only one (non-'@') instruction, compile it normally */
     if (count == 1 && instr != '@')
         return comp_instr(instr, obj_code, inter, in_name, NULL);
