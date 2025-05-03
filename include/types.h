@@ -36,6 +36,9 @@ typedef __int128 i64;
 typedef unsigned __int128 u64;
 #endif /* INT_TORTURE_TEST */
 
+typedef uintmax_t umax;
+typedef intmax_t imax;
+
 #ifndef INT64_MAX
 #define INT64_MIN -9223372036854775808LL
 #define INT64_MAX 9223372036854775807LL
