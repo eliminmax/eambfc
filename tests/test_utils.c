@@ -43,7 +43,7 @@ nonnull_args size_t read_chunk(sized_buf *dst, int fd) {
     if (needed_cap > dst->capacity) {
         dst->buf = checked_realloc(dst->buf, mempad(needed_cap));
     }
-    memcpy(dst->buf + dst->sz, buf, ct);
+    memcpy((char *)dst->buf + dst->sz, buf, ct);
     dst->sz += ct;
     return ct;
 }

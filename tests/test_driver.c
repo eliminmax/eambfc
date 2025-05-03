@@ -478,8 +478,8 @@ static nonnull_args test_outcome err_test(
 
     char error_id[33] = {0};
     if (sscanf(out.buf, "{\"errorId\": \"%32[^\"]s\", ", error_id) != 1) {
-        memset(out.buf + out.sz, 0, out.capacity - out.sz);
-        fprintf(stderr, "%4096s\n", out.buf);
+        memset((char *)out.buf + out.sz, 0, out.capacity - out.sz);
+        fprintf(stderr, "%4096s\n", (char *)out.buf);
         abort();
     }
     free(out.buf);
@@ -791,7 +791,7 @@ static test_outcome error_position(void) {
     if (errors.sz == errors.capacity) {
         checked_realloc(errors.buf, ++errors.capacity);
     }
-    errors.buf[errors.sz++] = 0;
+    ((char *)errors.buf)[errors.sz++] = 0;
     char err_id[16];
     size_t line;
     size_t col;
@@ -810,7 +810,9 @@ static test_outcome error_position(void) {
     }
     int index = read_size;
 
-    nmatched = sscanf(&errors.buf[index], FMT, err_id, &line, &col, &read_size);
+    nmatched = sscanf(
+        (char *)errors.buf + index, FMT, err_id, &line, &col, &read_size
+    );
     if (nmatched != 3) goto scan_fail;
     if (strcmp(err_id, "UnmatchedOpen") != 0) {
         MSG("FAILURE", "Improper error id for second error");
@@ -822,7 +824,9 @@ static test_outcome error_position(void) {
     }
     index += read_size;
 
-    nmatched = sscanf(&errors.buf[index], FMT, err_id, &line, &col, &read_size);
+    nmatched = sscanf(
+        (char *)errors.buf + index, FMT, err_id, &line, &col, &read_size
+    );
     if (nmatched != 3) goto scan_fail;
     if (strcmp(err_id, "UnmatchedOpen") != 0) {
         MSG("FAILURE", "Improper error id for third error");
