@@ -10,7 +10,7 @@ An optimizing compiler for brainfuck, written in C for Unix-like systems.
 
 <!-- __BACKENDS__ add backend to list of supported backends here -->
 Output 64-bit ELF executables that uses Linux system calls for I/O. Currently,
-it has x64_64, arm64, s390x, and riscv64 backends.
+it has x64_64, i386, arm64, s390x, and riscv64 backends.
 
 I started this as an inexperienced C programmer, and this was originally an
 attempt to gain practice by writing something somewhat simple yet not trivial.
