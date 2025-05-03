@@ -12,4 +12,4 @@ They are adapted from [my tiny-clear-elf project](https://github.com/eliminmax/t
 
 If anyone is concerned by their inclusion, I understand, and I wrote the `check_bins.py` script in python to help anyone who wants to audit them. While the binaries themselves were created by hand using a minimal hex editor, the `check_bins.py` script can be used to check that they are what I claim them to be, using only Python on a Linux system, and its docstring lists places to double-check the constants and registers used within everything.
 
-<!-- __BACKENDS__ add a new backend binary for the architecture to this directory, and update check_bins.py -->
+<!-- __BACKENDS__ add a new backend binary for the architecture to this directory -->
