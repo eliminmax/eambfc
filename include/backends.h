@@ -43,6 +43,13 @@ ARCH_DISASM(ARM64_DIS, "aarch64-linux-gnu", "")
 ARCH_TEST_REGISTER(register_arm64_tests)
 #endif /* BFC_TARGET_ARM64 */
 
+ARCH_ID(BFC_TARGET_I386, i386)
+#if BFC_TARGET_I386
+ARCH_INTER(I386_INTER, "i386", "i486", "i586", "i686")
+ARCH_DISASM(I386_DIS, "i686-linux-gnu", "")
+/* ARCH_TEST_REGISTER(register_i386_tests) */
+#endif /* BFC_TARGET_I386 */
+
 ARCH_ID(BFC_TARGET_RISCV64, riscv64)
 #if BFC_TARGET_RISCV64
 ARCH_INTER(RISCV64_INTER, "riscv64", "riscv")

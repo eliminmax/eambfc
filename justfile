@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 # __BACKENDS__: add backend here
-backends := 'arm64 riscv64 s390x x86_64'
+backends := 'arm64 i386 riscv64 s390x x86_64'
 build_name := "eambfc-" + trim(shell("git describe --tags"))
 src_tarball_name := build_name + "-src.tar"
 src_tarball_path := justfile_dir() / "releases" / src_tarball_name
