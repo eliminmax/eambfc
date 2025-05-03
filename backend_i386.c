@@ -58,12 +58,13 @@ static nonnull_arg(3) bool set_reg(
         append_obj(
             dst_buf, (u8[]){INSTRUCTION(0x31, 0xc0 | (reg << 3) | reg)}, 2
         );
-    } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
+    } else if (bit_fits(imm, 32)) {
         /* MOV reg, imm32 */
         u8 instr_bytes[5] = {INSTRUCTION(0xb8 | reg, IMM32_PADDING)};
-        serialize32le(imm, &(instr_bytes[1]));
+        serialize32le((i32)imm, &(instr_bytes[1]));
         append_obj(dst_buf, &instr_bytes, 5);
     } else {
+        set_reg(reg, (i32)imm, dst_buf, NULL);
         if (err) {
             *err = (bf_comp_err){
                 .msg.ref = VAL_TRUNCATED_WARNING,
