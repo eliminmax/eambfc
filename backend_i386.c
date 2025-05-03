@@ -83,12 +83,12 @@ static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
 
 /* INC reg */
 static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
-    append_obj(dst_buf, (uchar[]){0xff, 0xc0 | reg}, 3);
+    append_obj(dst_buf, (uchar[]){0xff, 0xc0 | reg}, 2);
 }
 
 /* DEC reg */
 static nonnull_args void dec_reg(u8 reg, sized_buf *restrict dst_buf) {
-    append_obj(dst_buf, (uchar[]){0xff, 0xc8 | reg}, 3);
+    append_obj(dst_buf, (uchar[]){0xff, 0xc8 | reg}, 2);
 }
 
 static nonnull_arg(3) bool add_reg(
