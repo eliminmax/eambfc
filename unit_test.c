@@ -54,6 +54,7 @@ static void llvm_init(void) {
 #include "backends.h"
     /* use Intel assembly syntax - needs to be set before hex_imms, otherwise it
      * overwrites it */
+    SET_DIS_OPTIONS(I386_DIS, LLVMDisassembler_Option_AsmPrinterVariant);
     SET_DIS_OPTIONS(X86_64_DIS, LLVMDisassembler_Option_AsmPrinterVariant);
 
 #define ARCH_DISASM(ref, ...) \

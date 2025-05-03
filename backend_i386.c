@@ -150,11 +150,11 @@ static void test_set_reg(void) {
     DISASM_TEST(sb, dis, "mov ebx, 0x80\n");
 
     CU_ASSERT(set_reg(X86_EBX, INT32_MAX - INT32_C(0xffff), &sb, NULL));
-    DISASM_TEST(sb, dis, "movabs rbx, 0x7fff0000\n");
+    DISASM_TEST(sb, dis, "mov ebx, 0x7fff0000\n");
     bf_comp_err e;
-    CU_ASSERT_FALSE(set_reg(X86_EAX, ((i64)INT32_MAX) + 1, &sb, &e));
+    CU_ASSERT_FALSE(set_reg(X86_EAX, ((i64)UINT32_MAX) + 1, &sb, &e));
     CU_ASSERT_EQUAL(e.id, BF_ERR_CODE_TOO_LARGE);
-    DISASM_TEST(sb, dis, "xor ebx, ebx\n");
+    DISASM_TEST(sb, dis, "xor eax, eax\n");
 
     free(sb.buf);
     free(dis.buf);
@@ -185,15 +185,15 @@ static void test_jump_instructions(void) {
 }
 
 static void test_add_sub_small_imm(void) {
-    sized_buf sb = newbuf(4);
+    sized_buf sb = newbuf(3);
     sized_buf dis = newbuf(16);
 
     CU_ASSERT(add_reg(X86_ESI, 0x20, &sb, NULL));
-    CU_ASSERT_EQUAL(sb.sz, 4);
+    CU_ASSERT_EQUAL(sb.sz, 3);
     DISASM_TEST(sb, dis, "add esi, 0x20\n");
 
     CU_ASSERT(sub_reg(X86_ESI, 0x20, &sb, NULL));
-    CU_ASSERT_EQUAL(sb.sz, 4);
+    CU_ASSERT_EQUAL(sb.sz, 3);
     DISASM_TEST(sb, dis, "sub esi, 0x20\n");
 
     free(sb.buf);
@@ -201,15 +201,15 @@ static void test_add_sub_small_imm(void) {
 }
 
 static void test_add_sub_medium_imm(void) {
-    sized_buf sb = newbuf(7);
+    sized_buf sb = newbuf(6);
     sized_buf dis = newbuf(24);
 
     CU_ASSERT(add_reg(X86_EDX, 0xdead, &sb, NULL));
-    CU_ASSERT_EQUAL(sb.sz, 7);
+    CU_ASSERT_EQUAL(sb.sz, 6);
     DISASM_TEST(sb, dis, "add edx, 0xdead\n");
 
     CU_ASSERT(sub_reg(X86_EDX, 0xbeef, &sb, NULL));
-    CU_ASSERT_EQUAL(sb.sz, 7);
+    CU_ASSERT_EQUAL(sb.sz, 6);
     DISASM_TEST(sb, dis, "sub edx, 0xbeef\n");
 
     free(sb.buf);
@@ -228,12 +228,12 @@ static void test_add_sub_large_imm(void) {
 
     bf_comp_err err;
     CU_ASSERT_FALSE(add_reg(X86_EAX, 0x2deadbeef, &sb, &err));
-    DISASM_TEST(sb, dis, "add ebx, 0xdeadbeef\n");
+    DISASM_TEST(sb, dis, "add eax, 0xdeadbeef\n");
     CU_ASSERT_EQUAL(err.msg.ref, VAL_TRUNCATED_WARNING);
     CU_ASSERT_EQUAL(err.id, BF_ERR_CODE_TOO_LARGE);
 
     CU_ASSERT_FALSE(sub_reg(X86_EAX, 0x2deadbeef, &sb, &err));
-    DISASM_TEST(sb, dis, "sub ebx, 0xdeadbeef\n");
+    DISASM_TEST(sb, dis, "sub eax, 0xdeadbeef\n");
     CU_ASSERT_EQUAL(err.msg.ref, VAL_TRUNCATED_WARNING);
     CU_ASSERT_EQUAL(err.id, BF_ERR_CODE_TOO_LARGE);
 
