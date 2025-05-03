@@ -58,13 +58,13 @@ static nonnull_arg(3) bool set_reg(
         append_obj(
             dst_buf, (u8[]){INSTRUCTION(0x31, 0xc0 | (reg << 3) | reg)}, 2
         );
-    } else if (bit_fits(imm, 32)) {
+    } else if (imm >= INT32_MIN && imm <= UINT32_MAX) {
         /* MOV reg, imm32 */
         u8 instr_bytes[5] = {INSTRUCTION(0xb8 | reg, IMM32_PADDING)};
-        serialize32le((i32)imm, &(instr_bytes[1]));
+        serialize32le(imm, &(instr_bytes[1]));
         append_obj(dst_buf, &instr_bytes, 5);
     } else {
-        set_reg(reg, (i32)imm, dst_buf, NULL);
+        set_reg(reg, (u32)imm, dst_buf, NULL);
         if (err) {
             *err = (bf_comp_err){
                 .msg.ref = VAL_TRUNCATED_WARNING,
@@ -151,6 +151,12 @@ static void test_set_reg(void) {
 
     CU_ASSERT(set_reg(X86_EBX, INT32_MAX - INT32_C(0xffff), &sb, NULL));
     DISASM_TEST(sb, dis, "mov ebx, 0x7fff0000\n");
+
+    CU_ASSERT(set_reg(X86_EDI, UINT32_MAX, &sb, NULL));
+    DISASM_TEST(sb, dis, "mov edi, 0xffffffff\n");
+    CU_ASSERT(set_reg(X86_EDI, -1, &sb, NULL));
+    DISASM_TEST(sb, dis, "mov edi, 0xffffffff\n");
+
     bf_comp_err e;
     CU_ASSERT_FALSE(set_reg(X86_EAX, ((i64)UINT32_MAX) + 1, &sb, &e));
     CU_ASSERT_EQUAL(e.id, BF_ERR_CODE_TOO_LARGE);

@@ -39,9 +39,9 @@ typedef const struct arch_inter {
 
     /* Write instruction/s to dst_buf to store `imm` in `reg`.
      *
-     * * For 32-bit backends, if `imm` is too large to fit within an `i32`,
-     *   returns `false`. It still writes the machine code to set the register,
-     *   but the value will be truncated to fit.
+     * * For 32-bit backends, if `imm` is too large to fit within an `i32` or a
+     *   `u32`, returns `false`. It still writes the machine code to set the
+     *   register, but the value will be cast to `u32` to fit.
      *   If `err` is non-`NULL`, it will also set `err->id`, `err->msg`, and
      *   `err->is_alloc` to appropriate values, zeroing out other fields of
      *   `err`.
