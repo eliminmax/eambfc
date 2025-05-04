@@ -43,11 +43,11 @@
 nonnull_args static bool write_headers(
     int fd,
     u64 tape_blocks,
-    const arch_inter *restrict inter,
+    const ArchInter *restrict inter,
     size_t code_sz,
     const char *restrict out_name
 ) {
-    ehdr_info ehdr = {
+    ElfInfo ehdr = {
         .e_ident =
             {/* The ELF identifying magic bytes */
              MAGIC_BYTES,
@@ -67,7 +67,7 @@ nonnull_args static bool write_headers(
         .e_machine = inter->elf_arch,
         .e_phnum = 2,
     };
-    phdr_info phdr_table[2];
+    SegmentInfo phdr_table[2];
     phdr_table[0].addr_size = phdr_table[1].addr_size = inter->addr_size;
 
     phdr_table[0].p_flags = SEG_R | SEG_W;
@@ -94,7 +94,7 @@ nonnull_args static bool write_headers(
         i += serialize_phdr_be(&phdr_table[1], &header_bytes[i]);
     }
     memset(&header_bytes[i], 0, 256 - i);
-    bf_comp_err e;
+    BFCError e;
     if (write_obj(fd, header_bytes, 256, &e)) return true;
     e.file = out_name;
     display_err(e);
@@ -110,7 +110,7 @@ nonnull_args static bool write_headers(
  *
  * Due to their similarity, ',' and '.' are both implemented with bf_io. */
 static void bf_io(
-    sized_buf *obj_code, int bf_fd, int sc, const arch_inter *inter
+    SizedBuf *obj_code, int bf_fd, int sc, const ArchInter *inter
 ) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
@@ -131,16 +131,16 @@ static void bf_io(
 /* number of indexes in the jump stack to allocate for at a time */
 #define JUMP_CHUNK_SZ 64
 
-typedef struct jump_loc {
+typedef struct {
     src_loc location;
     off_t dst_loc;
     bool has_loc: 1;
-} jump_loc;
+} JumpLoc;
 
-static struct jump_stack {
+static struct {
     size_t next;
     size_t loc_sz;
-    jump_loc *locations;
+    JumpLoc *locations;
 } jump_stack;
 
 /* prepare to compile the brainfuck `[` instruction to file descriptor fd.
@@ -148,9 +148,9 @@ static struct jump_stack {
  *
  * If too many nested loops are encountered, it exteds the jump stack. */
 static bool bf_jump_open(
-    sized_buf *restrict obj_code,
-    const arch_inter *restrict inter,
-    bf_comp_err *restrict err,
+    SizedBuf *restrict obj_code,
+    const ArchInter *restrict inter,
+    BFCError *restrict err,
     const src_loc *loc
 ) {
     size_t start_loc = obj_code->sz;
@@ -163,7 +163,7 @@ static bool bf_jump_open(
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
             jump_stack.loc_sz += JUMP_CHUNK_SZ;
         } else {
-            *err = (bf_comp_err){
+            *err = (BFCError){
                 .id = BF_ERR_NESTED_TOO_DEEP,
                 .msg.ref =
                     "Extending jump stack any more would cause an overflow",
@@ -175,7 +175,7 @@ static bool bf_jump_open(
 
         jump_stack.locations = checked_realloc(
             jump_stack.locations,
-            (jump_stack.next + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
+            (jump_stack.next + 1 + JUMP_CHUNK_SZ) * sizeof(JumpLoc)
         );
     }
     /* push the current address onto the stack */
@@ -194,13 +194,13 @@ static bool bf_jump_open(
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
 static bool bf_jump_close(
-    sized_buf *restrict obj_code,
-    const arch_inter *restrict inter,
-    bf_comp_err *restrict e
+    SizedBuf *restrict obj_code,
+    const ArchInter *restrict inter,
+    BFCError *restrict e
 ) {
     /* ensure that the current index is in bounds */
     if (jump_stack.next == 0) {
-        *e = (bf_comp_err){
+        *e = (BFCError){
             .id = BF_ERR_UNMATCHED_CLOSE,
             .msg.ref = "Found ']' without matching '['.",
             .instr = ']',
@@ -238,8 +238,8 @@ static bool bf_jump_close(
  * particular instruction */
 static bool comp_instr(
     char c,
-    sized_buf *obj_code,
-    const arch_inter *inter,
+    SizedBuf *obj_code,
+    const ArchInter *inter,
     const char *in_name,
     src_loc *restrict location
 ) {
@@ -275,7 +275,7 @@ static bool comp_instr(
             return true;
         /* `[` and `]` could error out. */
         case '[': {
-            bf_comp_err err;
+            BFCError err;
             if (bf_jump_open(obj_code, inter, &err, location)) return true;
             err.file = in_name;
             if (location) {
@@ -286,7 +286,7 @@ static bool comp_instr(
             return false;
         }
         case ']': {
-            bf_comp_err err;
+            BFCError err;
             if (bf_jump_close(obj_code, inter, &err)) return true;
             err.file = in_name;
             if (location) {
@@ -313,8 +313,8 @@ static bool comp_instr(
 static bool comp_ir_instr(
     char instr,
     size_t count,
-    sized_buf *obj_code,
-    const arch_inter *inter,
+    SizedBuf *obj_code,
+    const ArchInter *inter,
     const char *in_name
 ) {
     /* if there's only one (non-'@') instruction, compile it normally */
@@ -343,7 +343,7 @@ static bool comp_ir_instr(
             inter->sub_byte(inter->reg_bf_ptr, count, obj_code);
             return true;
         case '>': {
-            bf_comp_err err;
+            BFCError err;
             if (!inter->add_reg(inter->reg_bf_ptr, count, obj_code, &err)) {
                 err.file = in_name;
                 display_err(err);
@@ -352,7 +352,7 @@ static bool comp_ir_instr(
             return true;
         }
         case '<': {
-            bf_comp_err err;
+            BFCError err;
             if (!inter->sub_reg(inter->reg_bf_ptr, count, obj_code, &err)) {
                 err.file = in_name;
                 display_err(err);
@@ -368,8 +368,8 @@ static bool comp_ir_instr(
 
 static bool compile_condensed(
     const char *restrict src_code,
-    sized_buf *restrict obj_code,
-    const arch_inter *restrict inter,
+    SizedBuf *restrict obj_code,
+    const ArchInter *restrict inter,
     const char *restrict in_name
 ) {
     /* return early when there are no instructions to compile */
@@ -392,7 +392,7 @@ static bool compile_condensed(
 
 /* Compile code in source file to destination file.
  * Parameters:
- * - inter is a pointer to the arch_inter backend used to provide the functions
+ * - inter is a pointer to the ArchInter backend used to provide the functions
  *   that compile brainfuck and EAMBFC-IR into machine code.
  * - in_fd is a brainfuck source file, open for reading.
  * - out_fd is the destination file, open for writing.
@@ -401,7 +401,7 @@ static bool compile_condensed(
  *
  * Returns true if compilation was successful, and false otherwise. */
 bool bf_compile(
-    const arch_inter *inter,
+    const ArchInter *inter,
     const char *in_name,
     const char *out_name,
     int in_fd,
@@ -410,18 +410,18 @@ bool bf_compile(
     u64 tape_blocks
 ) {
     union read_result src;
-    if (!read_to_sized_buf(in_fd, &src)) {
+    if (!read_to_SizedBuf(in_fd, &src)) {
         src.err.file = in_name;
         display_err(src.err);
         return false;
     }
-    sized_buf obj_code = newbuf(BFC_CHUNK_SIZE);
+    SizedBuf obj_code = newbuf(BFC_CHUNK_SIZE);
 
     bool ret = true;
 
     /* reset the jump stack for the new file */
     jump_stack.next = 0;
-    jump_stack.locations = checked_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
+    jump_stack.locations = checked_malloc(JUMP_CHUNK_SZ * sizeof(JumpLoc));
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
 
     /* set the bf_ptr register to the address of the start of the tape
@@ -454,7 +454,7 @@ bool bf_compile(
     /* perform a system call */
     inter->syscall(&obj_code, inter->sc_exit);
 
-    bf_comp_err e;
+    BFCError e;
 
     /* now, obj_code size is known, so we can write the headers and padding */
     ret &= write_headers(out_fd, tape_blocks, inter, obj_code.sz, out_name);
@@ -467,7 +467,7 @@ bool bf_compile(
 
     /* check if any unmatched loop openings were left over. */
     for (size_t i = 0; i < jump_stack.next; i++) {
-        display_err((bf_comp_err){
+        display_err((BFCError){
             .id = BF_ERR_UNMATCHED_OPEN,
             .file = in_name,
             .msg.ref = "Reached the end of the file with an unmatched '['.",
@@ -494,7 +494,7 @@ bool bf_compile(
 #include "unit_test.h"
 
 /* spawn a child process, and pipe `src` in from a child process into
- * `bf_compile`. If an error occurs, it returns the bf_err_id left-shifted by 1,
+ * `bf_compile`. If an error occurs, it returns the BfErrorId left-shifted by 1,
  * with the lowest bit set to 1. Otherwise, it returns 0. */
 static int test_compile(const char *src, bool optimize) {
     testing_err = TEST_SET;

@@ -46,7 +46,7 @@ defined in `setup.h`.
 
 ### Backends
 
-Backends are implemented primarily with the `arch_inter` struct defined in
+Backends are implemented primarily with the `ArchInter` struct defined in
 `arch_inter.h`, which provides the architecture-specific information and codegen
 functions that each architecture needs, and `include/backends.h`, which (ab)uses
 the C preprocessor to implement the interface to the backends. The majority of

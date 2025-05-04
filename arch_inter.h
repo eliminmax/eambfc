@@ -29,7 +29,7 @@
  * values used within machine code to identify the registers, but if needed,
  * they can be opaque identifiers that a function not included in this struct
  * can handle as needed. */
-typedef const struct arch_inter {
+typedef const struct {
     /* the read system call number */
     i64 sc_read;
     /* the write system call number */
@@ -51,20 +51,20 @@ typedef const struct arch_inter {
      *
      * * For 64-bit backends, always returns `true`. */
     nonnull_arg(3) bool (*const set_reg)(
-        u8 reg, i64 imm, sized_buf *restrict dst_buf, bf_comp_err *err
+        u8 reg, i64 imm, SizedBuf *restrict dst_buf, BFCError *err
     );
 
     /* Write instruction/s to `dst_buf` to copy value from `src` into `dst` */
     nonnull_args void (*const reg_copy)(
-        u8 dst, u8 src, sized_buf *restrict dst_buf
+        u8 dst, u8 src, SizedBuf *restrict dst_buf
     );
 
     /* Write the system call instruction to `dst_buf`. */
-    nonnull_args void (*const syscall)(sized_buf *restrict dst_buf, u32 sc_num);
+    nonnull_args void (*const syscall)(SizedBuf *restrict dst_buf, u32 sc_num);
 
     /* Write a trap instruction, then pad with no-op instructions.
      * Must use the same number of bytes as `jump_open` */
-    nonnull_args void (*const pad_loop_open)(sized_buf *restrict dst_buf);
+    nonnull_args void (*const pad_loop_open)(SizedBuf *restrict dst_buf);
 
     /* Functions that correspond 1 to 1 with brainfuck instructions.
      * Note that the `.` and `,` instructions are implemented using more complex
@@ -83,9 +83,9 @@ typedef const struct arch_inter {
     nonnull_args bool (*const jump_open)(
         u8 reg,
         i64 offset,
-        sized_buf *restrict dst_buf,
+        SizedBuf *restrict dst_buf,
         size_t index,
-        bf_comp_err *restrict err
+        BFCError *restrict err
     );
 
     /* Write instruction/s to dst_buf to jump `offset` bytes if the byte stored
@@ -96,33 +96,30 @@ typedef const struct arch_inter {
      *
      * Used to implement the `]` brainfuck instruction. */
     bool (*const jump_close)(
-        u8 reg,
-        i64 offset,
-        sized_buf *restrict dst_buf,
-        bf_comp_err *restrict err
+        u8 reg, i64 offset, SizedBuf *restrict dst_buf, BFCError *restrict err
     );
 
     /* Write instruction/s to dst_buf to increment register reg by one.
      *
      * Used to implement the `>` brainfuck instruction. */
-    nonnull_args void (*const inc_reg)(u8 reg, sized_buf *restrict dst_buf);
+    nonnull_args void (*const inc_reg)(u8 reg, SizedBuf *restrict dst_buf);
 
     /* Write instruction/s to dst_buf to decrement register reg by one.
      *
      * Used to implement the `<` brainfuck instruction. */
-    nonnull_args void (*const dec_reg)(u8 reg, sized_buf *restrict dst_buf);
+    nonnull_args void (*const dec_reg)(u8 reg, SizedBuf *restrict dst_buf);
 
     /* Write instruction/s to dst_buf to increment byte stored at address in
      * register reg by one.
      *
      * Used to implement the `+` brainfuck instruction. */
-    nonnull_args void (*const inc_byte)(u8 reg, sized_buf *restrict dst_buf);
+    nonnull_args void (*const inc_byte)(u8 reg, SizedBuf *restrict dst_buf);
 
     /* Write instruction/s to dst_buf to decrement byte stored at address in
      * register reg by one.
      *
      * Used to implement the `-` brainfuck instruction. */
-    nonnull_args void (*const dec_byte)(u8 reg, sized_buf *restrict dst_buf);
+    nonnull_args void (*const dec_byte)(u8 reg, SizedBuf *restrict dst_buf);
 
     /* functions used for optimized instructions */
 
@@ -141,7 +138,7 @@ typedef const struct arch_inter {
      *
      * Used to implement sequences of consecutive `>` brainfuck instructions. */
     nonnull_arg(3) bool (*const add_reg)(
-        u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *err
+        u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *err
     );
 
     /* Write instruction/s to dst_buf to subtract imm from register reg.
@@ -159,7 +156,7 @@ typedef const struct arch_inter {
      *
      * Used to implement sequences of consecutive `<` brainfuck instructions. */
     nonnull_arg(3) bool (*const sub_reg)(
-        u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *err
+        u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *err
     );
 
     /* Write instruction/s to dst_buf to add imm8 to byte stored at address in
@@ -167,7 +164,7 @@ typedef const struct arch_inter {
      *
      * Used to implement sequences of consecutive `+` brainfuck instructions. */
     nonnull_args void (*const add_byte)(
-        u8 reg, u8 imm8, sized_buf *restrict dst_buf
+        u8 reg, u8 imm8, SizedBuf *restrict dst_buf
     );
 
     /* Write instruction/s to dst_buf to subtract imm8 from byte stored at
@@ -175,14 +172,14 @@ typedef const struct arch_inter {
      *
      * Used to implement sequences of consecutive `-` brainfuck instructions. */
     nonnull_args void (*const sub_byte)(
-        u8 reg, u8 imm8, sized_buf *restrict dst_buf
+        u8 reg, u8 imm8, SizedBuf *restrict dst_buf
     );
 
     /* Write instruction/s to dst_buf to set the value of byte stored at address
      * in register reg to 0.
      *
      * Used to implement the `[-]` and `[+]` brainfuck instruction sequences. */
-    nonnull_args void (*const zero_byte)(u8 reg, sized_buf *restrict dst_buf);
+    nonnull_args void (*const zero_byte)(u8 reg, SizedBuf *restrict dst_buf);
 
     /* CPU flags that should be set for executables for this architecture. */
     u32 flags;
@@ -208,9 +205,9 @@ typedef const struct arch_inter {
      * in this register, and restore it after the system call is complete. */
     u8 reg_bf_ptr;
 
-} arch_inter;
+} ArchInter;
 
-#define ARCH_INTER(INTER, ...) extern const arch_inter INTER;
+#define ARCH_INTER(INTER, ...) extern const ArchInter INTER;
 #include "backends.h" /* IWYU pragma: export */
 
 #endif /* BFC_ARCH_INTER_H */

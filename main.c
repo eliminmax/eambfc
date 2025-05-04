@@ -36,12 +36,12 @@ static bool rm_ext(char *str, const char *ext) {
 }
 
 /* compile a file */
-static bool compile_file(const char *filename, const run_cfg *rc) {
+static bool compile_file(const char *filename, const RunCfg *rc) {
     char *outname = checked_malloc(strlen(filename) + 1);
     strcpy(outname, filename);
 
     if (!rm_ext(outname, rc->ext)) {
-        display_err((bf_comp_err){
+        display_err((BFCError){
             .file = filename,
             .msg.ref = "File does not end with proper extension",
             .id = BF_ERR_BAD_EXTENSION,
@@ -58,7 +58,7 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
 
     int src_fd = open(filename, O_RDONLY);
     if (src_fd < 0) {
-        display_err((bf_comp_err){
+        display_err((BFCError){
             .file = filename,
             .id = BF_ERR_OPEN_R_FAILED,
             .msg.ref = "Failed to open file for reading",
@@ -68,7 +68,7 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
     }
     int dst_fd = open(outname, O_WRONLY | O_CREAT | O_TRUNC, 0755);
     if (dst_fd < 0) {
-        display_err((bf_comp_err){
+        display_err((BFCError){
             .file = outname,
             .id = BF_ERR_OPEN_W_FAILED,
             .msg.ref = "Failed to open file for writing",
@@ -95,7 +95,7 @@ static bool compile_file(const char *filename, const run_cfg *rc) {
 
 int main(int argc, char *argv[]) {
     int ret = EXIT_SUCCESS;
-    run_cfg rc = process_args(argc, argv);
+    RunCfg rc = process_args(argc, argv);
     for (int i = optind; i < argc; i++) {
         if (compile_file(argv[i], &rc)) continue;
         ret = EXIT_FAILURE;

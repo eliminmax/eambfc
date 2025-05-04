@@ -40,7 +40,7 @@ typedef enum {
     BF_ICE_INVALID_JUMP_ADDRESS,
     /* AllocFailure divider */
     BF_FATAL_ALLOC_FAILURE,
-} bf_err_id;
+} BfErrorId;
 
 typedef enum {
     OUTMODE_QUIET = 0,
@@ -71,7 +71,7 @@ typedef struct {
      * have an uninitialized value. */
     char instr;
     /* The error ID code for the error */
-    bf_err_id id: 12;
+    BfErrorId id: 12;
 
     /* set to true if `instr` is specified */
     bool has_instr   : 1;
@@ -79,7 +79,7 @@ typedef struct {
     bool has_location: 1;
     /* set to true if `msg` is allocated */
     bool is_alloc    : 1;
-} bf_comp_err;
+} BFCError;
 
 /* enable quiet mode - this does not print error messages to stderr. Does not
  * affect JSON messages printed to stdout. */
@@ -89,10 +89,10 @@ void quiet_mode(void);
 void json_mode(void);
 
 /* function to display error messages, depending on the current error mode. */
-void display_err(bf_comp_err e);
+void display_err(BFCError e);
 
-nonnull_args inline bf_comp_err basic_err(bf_err_id id, const char *msg) {
-    return (bf_comp_err){
+nonnull_args inline BFCError basic_err(BfErrorId id, const char *msg) {
+    return (BFCError){
         .id = id,
         .msg.ref = msg,
     };
@@ -107,6 +107,6 @@ noreturn void alloc_err(void);
 /* an alternative to basic_err that marks error as an internal compiler error,
  * for use when an error can only trigger if another bug was mishandled.
  * Calls exit(EXIT_FAILURE) */
-noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg);
+noreturn nonnull_args void internal_err(BfErrorId err_id, const char *msg);
 
 #endif /* BFC_ERR_H */

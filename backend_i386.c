@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * This file provides the arch_inter for the x86_64 architecture. */
+ * This file provides the ArchInter for the i386 architecture. */
 /* internal */
 #include <config.h>
 #include <types.h>
@@ -21,9 +21,9 @@ const char *VAL_TRUNCATED_WARNING =
 static nonnull_arg(4) bool reg_arith(
     u8 reg,
     u64 imm,
-    arith_op op,
-    sized_buf *restrict dst_buf,
-    bf_comp_err *restrict err
+    X86ArithOp op,
+    SizedBuf *restrict dst_buf,
+    BFCError *restrict err
 ) {
     if (imm == 0) {
         return true;
@@ -37,7 +37,7 @@ static nonnull_arg(4) bool reg_arith(
         append_obj(dst_buf, &i_bytes, 6);
         if (imm > UINT32_MAX) {
             if (err) {
-                *err = (bf_comp_err){
+                *err = (BFCError){
                     .msg.ref = VAL_TRUNCATED_WARNING,
                     .id = BF_ERR_CODE_TOO_LARGE,
                 };
@@ -51,7 +51,7 @@ static nonnull_arg(4) bool reg_arith(
 /* now, the functions exposed through I386_INTER */
 /* use the most efficient way to set a register to imm */
 static nonnull_arg(3) bool set_reg(
-    u8 reg, i64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, i64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     if (imm == 0) {
         /* XOR reg, reg */
@@ -66,7 +66,7 @@ static nonnull_arg(3) bool set_reg(
     } else {
         set_reg(reg, (u32)imm, dst_buf, NULL);
         if (err) {
-            *err = (bf_comp_err){
+            *err = (BFCError){
                 .msg.ref = VAL_TRUNCATED_WARNING,
                 .id = BF_ERR_CODE_TOO_LARGE,
             };
@@ -77,34 +77,34 @@ static nonnull_arg(3) bool set_reg(
 }
 
 /* SET EAX, sc_num; INT 0x80 */
-static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
+static nonnull_args void syscall(SizedBuf *restrict dst_buf, u32 sc_num) {
     set_reg(X86_EAX, sc_num, dst_buf, NULL);
     append_obj(dst_buf, (u8[]){INSTRUCTION(0xcd, 0x80)}, 2);
 }
 
 /* INC reg */
-static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void inc_reg(u8 reg, SizedBuf *restrict dst_buf) {
     append_obj(dst_buf, (uchar[]){0xff, 0xc0 | reg}, 2);
 }
 
 /* DEC reg */
-static nonnull_args void dec_reg(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void dec_reg(u8 reg, SizedBuf *restrict dst_buf) {
     append_obj(dst_buf, (uchar[]){0xff, 0xc8 | reg}, 2);
 }
 
 static nonnull_arg(3) bool add_reg(
-    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     return reg_arith(reg, imm, X64_OP_ADD, dst_buf, err);
 }
 
 static nonnull_arg(3) bool sub_reg(
-    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     return reg_arith(reg, imm, X64_OP_SUB, dst_buf, err);
 }
 
-const arch_inter I386_INTER = {
+const ArchInter I386_INTER = {
     .sc_read = 3,
     .sc_write = 4,
     .sc_exit = 1,
@@ -140,8 +140,8 @@ const arch_inter I386_INTER = {
 #define REF I386_DIS
 
 static void test_set_reg(void) {
-    sized_buf sb = newbuf(10);
-    sized_buf dis = newbuf(32);
+    SizedBuf sb = newbuf(10);
+    SizedBuf dis = newbuf(32);
 
     CU_ASSERT(set_reg(X86_EBX, 0, &sb, NULL));
     DISASM_TEST(sb, dis, "xor ebx, ebx\n");
@@ -157,7 +157,7 @@ static void test_set_reg(void) {
     CU_ASSERT(set_reg(X86_EDI, -1, &sb, NULL));
     DISASM_TEST(sb, dis, "mov edi, 0xffffffff\n");
 
-    bf_comp_err e;
+    BFCError e;
     CU_ASSERT_FALSE(set_reg(X86_EAX, ((i64)UINT32_MAX) + 1, &sb, &e));
     CU_ASSERT_EQUAL(e.id, BF_ERR_CODE_TOO_LARGE);
     DISASM_TEST(sb, dis, "xor eax, eax\n");
@@ -167,9 +167,9 @@ static void test_set_reg(void) {
 }
 
 static void test_jump_instructions(void) {
-    sized_buf sb = newbuf(27);
-    sized_buf dis = newbuf(160);
-    bf_comp_err e;
+    SizedBuf sb = newbuf(27);
+    SizedBuf dis = newbuf(160);
+    BFCError e;
     sb_reserve(&sb, JUMP_SIZE);
     x86_jump_open(X86_EDI, 9, &sb, 0, &e);
     x86_jump_close(X86_EDI, -18, &sb, &e);
@@ -191,8 +191,8 @@ static void test_jump_instructions(void) {
 }
 
 static void test_add_sub_small_imm(void) {
-    sized_buf sb = newbuf(3);
-    sized_buf dis = newbuf(16);
+    SizedBuf sb = newbuf(3);
+    SizedBuf dis = newbuf(16);
 
     CU_ASSERT(add_reg(X86_ESI, 0x20, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 3);
@@ -207,8 +207,8 @@ static void test_add_sub_small_imm(void) {
 }
 
 static void test_add_sub_medium_imm(void) {
-    sized_buf sb = newbuf(6);
-    sized_buf dis = newbuf(24);
+    SizedBuf sb = newbuf(6);
+    SizedBuf dis = newbuf(24);
 
     CU_ASSERT(add_reg(X86_EDX, 0xdead, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 6);
@@ -223,8 +223,8 @@ static void test_add_sub_medium_imm(void) {
 }
 
 static void test_add_sub_large_imm(void) {
-    sized_buf sb = newbuf(13);
-    sized_buf dis = newbuf(40);
+    SizedBuf sb = newbuf(13);
+    SizedBuf dis = newbuf(40);
 
     CU_ASSERT(add_reg(X86_EBX, 0xdeadbeef, &sb, NULL));
     DISASM_TEST(sb, dis, "add ebx, 0xdeadbeef\n");
@@ -232,7 +232,7 @@ static void test_add_sub_large_imm(void) {
     CU_ASSERT(sub_reg(X86_EBX, 0xdeadbeef, &sb, NULL));
     DISASM_TEST(sb, dis, "sub ebx, 0xdeadbeef\n");
 
-    bf_comp_err err;
+    BFCError err;
     CU_ASSERT_FALSE(add_reg(X86_EAX, 0x2deadbeef, &sb, &err));
     DISASM_TEST(sb, dis, "add eax, 0xdeadbeef\n");
     CU_ASSERT_EQUAL(err.msg.ref, VAL_TRUNCATED_WARNING);
@@ -248,8 +248,8 @@ static void test_add_sub_large_imm(void) {
 }
 
 static void test_add_sub_byte(void) {
-    sized_buf sb = newbuf(6);
-    sized_buf dis = newbuf(56);
+    SizedBuf sb = newbuf(6);
+    SizedBuf dis = newbuf(56);
 
     x86_add_byte(X86_EDI, 0x23, &sb);
     x86_sub_byte(X86_EDI, 0x23, &sb);
@@ -267,8 +267,8 @@ static void test_add_sub_byte(void) {
 }
 
 static void test_zero_byte(void) {
-    sized_buf sb = newbuf(3);
-    sized_buf dis = newbuf(32);
+    SizedBuf sb = newbuf(3);
+    SizedBuf dis = newbuf(32);
 
     x86_zero_byte(X86_EDX, &sb);
     DISASM_TEST(sb, dis, "mov byte ptr [edx], 0x0\n");
@@ -278,20 +278,20 @@ static void test_zero_byte(void) {
 }
 
 static void test_jump_too_long(void) {
-    bf_comp_err e;
+    BFCError e;
     char dst[JUMP_SIZE];
     CU_ASSERT_FALSE(x86_jump_close(
         0,
         INT64_MAX,
-        &(sized_buf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE},
+        &(SizedBuf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE},
         &e
     ));
     CU_ASSERT_EQUAL(e.id, BF_ERR_JUMP_TOO_LONG);
 }
 
 static void test_inc_dec_is_32_bit(void) {
-    sized_buf sb = newbuf(8);
-    sized_buf dis = newbuf(56);
+    SizedBuf sb = newbuf(8);
+    SizedBuf dis = newbuf(56);
     inc_reg(X86_EAX, &sb);
     dec_reg(X86_EAX, &sb);
     x86_inc_byte(X86_EAX, &sb);

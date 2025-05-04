@@ -147,9 +147,7 @@ nonnull_args static bool any_match(const char *arg, const char *values[]) {
     return false;
 }
 
-nonnull_args static bool select_inter(
-    const char *arch_arg, arch_inter **inter
-) {
+nonnull_args static bool select_inter(const char *arch_arg, ArchInter **inter) {
 #define ARCH_INTER(target_inter, ...) \
     if (any_match(arch_arg, (const char *[]){__VA_ARGS__, NULL})) { \
         *inter = &target_inter; \
@@ -217,19 +215,19 @@ noreturn static nonnull_args void list_arches(void) {
 #undef ARCH_LIST_END
 
 noreturn static nonnull_args void bad_arg(
-    const char *progname, bf_err_id id, const char *msg, bool show_hint
+    const char *progname, BfErrorId id, const char *msg, bool show_hint
 ) {
     display_err(basic_err(id, msg));
     if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
     exit(EXIT_FAILURE);
 }
 
-run_cfg process_args(int argc, char *argv[]) {
+RunCfg process_args(int argc, char *argv[]) {
     int opt;
     char missing_op_msg[35] = "-% requires an additional argument";
     char unknown_arg_msg[24] = "Unknown argument: -%";
     bool show_hint = true;
-    run_cfg rc = {
+    RunCfg rc = {
         .inter = NULL,
         .ext = NULL,
         .out_ext = NULL,
@@ -361,7 +359,7 @@ run_cfg process_args(int argc, char *argv[]) {
                     memcpy(msg, unknown_arg_msg, 18);
                     strcpy(&msg[18], argv[badarg]);
                     /* can't just use bad_arg as msg won't be freed. */
-                    display_err((bf_comp_err){
+                    display_err((BFCError){
                         .id = BF_ERR_UNKNOWN_ARG,
                         .msg.alloc = msg,
                         .is_alloc = true,

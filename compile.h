@@ -13,7 +13,7 @@
 
 /* Compile code in source file to destination file.
  * Parameters:
- * - inter is a pointer to the arch_inter backend used to provide the functions
+ * - inter is a pointer to the ArchInter backend used to provide the functions
  *   that compile brainfuck and EAMBFC-IR into machine code.
  * - in_fd is a brainfuck source file, open for reading.
  * - out_fd is the destination file, open for writing.
@@ -35,7 +35,7 @@
  * then compiles that, typically cutting the size of the output code by a decent
  * amount. */
 bool bf_compile(
-    const arch_inter *inter,
+    const ArchInter *inter,
     const char *in_name,
     const char *out_name,
     int in_fd,

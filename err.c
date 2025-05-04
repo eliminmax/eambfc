@@ -41,9 +41,9 @@
 #define TEST_ERR_LJ(e_id) (void)0
 #endif /* BFC_TEST */
 
-extern inline bf_comp_err basic_err(bf_err_id id, const char *msg);
+extern inline BFCError basic_err(BfErrorId id, const char *msg);
 
-/* to keep the order consistent with the bf_err_id enum, do normal errors, then
+/* to keep the order consistent with the BfErrorId enum, do normal errors, then
  * ICEs, and finally "Fatal:AllocFailure", with each group sorted
  * alphabetically, except for ICE:InvalidErrId, which must come at the end and
  * has no string equivalent. */
@@ -234,9 +234,9 @@ invalid:
 #define METASTRINGIFY(x) STRINGIFY(x)
 #define MAX_SIZE_STRLEN (sizeof(METASTRINGIFY(SIZE_MAX)))
 
-static nonnull_args nonnull_ret char *err_to_json(const bf_comp_err *err) {
+static nonnull_args nonnull_ret char *err_to_json(const BFCError *err) {
     if (!err->msg.ref) abort();
-    sized_buf json_err = newbuf(BFC_CHUNK_SIZE);
+    SizedBuf json_err = newbuf(BFC_CHUNK_SIZE);
     append_str(&json_err, "{\"errorId\": \"");
     append_str(&json_err, ERR_IDS[err->id]);
     append_str(&json_err, "\", ");
@@ -283,9 +283,9 @@ static nonnull_args nonnull_ret char *err_to_json(const bf_comp_err *err) {
     return json_err.buf;
 }
 
-static nonnull_args nonnull_ret char *err_to_string(const bf_comp_err *err) {
+static nonnull_args nonnull_ret char *err_to_string(const BFCError *err) {
     if (!err->msg.ref) abort();
-    sized_buf err_str = newbuf(BFC_CHUNK_SIZE);
+    SizedBuf err_str = newbuf(BFC_CHUNK_SIZE);
     append_str(&err_str, "Error ");
     append_str(&err_str, ERR_IDS[err->id]);
     if (err->file) {
@@ -316,7 +316,7 @@ static nonnull_args nonnull_ret char *err_to_string(const bf_comp_err *err) {
     return err_str.buf;
 }
 
-void display_err(bf_comp_err e) {
+void display_err(BFCError e) {
     TEST_ERR_LJ(e.id);
     if (!e.msg.ref) abort();
     char *errmsg;
@@ -344,7 +344,7 @@ void display_err(bf_comp_err e) {
     free(errmsg);
 }
 
-noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg) {
+noreturn nonnull_args void internal_err(BfErrorId err_id, const char *msg) {
     TEST_ERR_LJ(err_id);
     display_err(basic_err(err_id, msg));
     fflush(stdout);
@@ -359,9 +359,7 @@ noreturn nonnull_args void internal_err(bf_err_id err_id, const char *msg) {
 /* json-c */
 #include <json.h>
 
-static bool err_eq(
-    const bf_comp_err *restrict a, const bf_comp_err *restrict b
-) {
+static bool err_eq(const BFCError *restrict a, const BFCError *restrict b) {
     if (!(a->msg.ref && b->msg.ref)) return false;
     if (a->has_instr != b->has_instr) return false;
     if (a->has_instr && a->instr != b->instr) return false;
@@ -375,14 +373,14 @@ static bool err_eq(
     return (strcmp(a->msg.ref, b->msg.ref) == 0 && a->id == b->id);
 }
 
-static bf_err_id text_to_errid(const char *text) {
+static BfErrorId text_to_errid(const char *text) {
     for (size_t i = 0; i < (sizeof(ERR_IDS) / sizeof(const char *)); i++) {
         if (strcmp(ERR_IDS[i], text) == 0) return i;
     }
     return BF_NOT_ERR;
 }
 
-static bool check_err_json(const char *json_text, const bf_comp_err *expected) {
+static bool check_err_json(const char *json_text, const BFCError *expected) {
     struct json_object *err_jobj, *transfer;
     bool ret = false;
 
@@ -399,7 +397,7 @@ static bool check_err_json(const char *json_text, const bf_comp_err *expected) {
         char *file;
         size_t line;
         size_t col;
-        bf_err_id id;
+        BfErrorId id;
         char instr;
         bool has_instr   : 1;
         bool has_location: 1;
@@ -485,7 +483,7 @@ static bool check_err_json(const char *json_text, const bf_comp_err *expected) {
 
     ret = err_eq(
         expected,
-        &(bf_comp_err){
+        &(BFCError){
             .msg.ref = partial_err.msg,
             .file = partial_err.file,
             .location.line = partial_err.line,
@@ -509,7 +507,7 @@ static void json_sanity_test(void) {
     const char *err_text =
         "{\"errorId\":\"Fatal:AllocFailure\","
         "\"message\":\"A call to malloc or realloc returned NULL.\"}";
-    bf_comp_err expected = {
+    BFCError expected = {
         .msg.ref = "A call to malloc or realloc returned NULL.",
         .id = BF_FATAL_ALLOC_FAILURE,
         .has_instr = false,
@@ -519,15 +517,15 @@ static void json_sanity_test(void) {
 }
 
 static void non_utf8_filename(void) {
-    bf_comp_err expected = {
+    BFCError expected = {
         .msg.ref = "Some error occurred in a file with a non-UTF8 name.",
         .id = BF_ERR_BAD_EXTENSION,
         .has_instr = false,
         .has_location = false,
         .file = "somefile.b" UNICODE_REPLACEMENT "f"
     };
-    bf_comp_err test_err;
-    memcpy(&test_err, &expected, sizeof(bf_comp_err));
+    BFCError test_err;
+    memcpy(&test_err, &expected, sizeof(BFCError));
     test_err.file = "somefile.b\356f";
     char *err_json = err_to_json(&test_err);
     CU_ASSERT(check_err_json(err_json, &expected));
@@ -537,7 +535,7 @@ static void non_utf8_filename(void) {
 static void json_escape_test(void) {
     char transfer[8];
     size_t read_sz;
-    sized_buf output = newbuf(128);
+    SizedBuf output = newbuf(128);
 
     for (ufast_8 i = 0; i < 0x10; i++) {
         CU_ASSERT_EQUAL(json_utf8_next((char[2]){i, 0}, transfer), 1);

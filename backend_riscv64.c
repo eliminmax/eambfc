@@ -47,7 +47,7 @@ enum RISCV_REGS {
  * just go "Copyright 2018-2022 LLVM Contributors"
  * and call it a day - I believe firmly in giving credit where credit is do. */
 static nonnull_args void encode_li(
-    sized_buf *restrict code_buf, u8 reg, i64 val
+    SizedBuf *restrict code_buf, u8 reg, i64 val
 ) {
     u8 i_bytes[4];
     u32 lo12 = sign_extend(val, 12);
@@ -138,7 +138,7 @@ static bool cond_jump(
     i64 distance,
     bool eq,
     char dst[restrict JUMP_SIZE],
-    bf_comp_err *restrict err
+    BFCError *restrict err
 ) {
     /* there are 2 types of instructions used here for control flow - branches,
      * which can conditionally move up to 4 KiB away, and jumps, which
@@ -181,26 +181,26 @@ static bool cond_jump(
 }
 
 static nonnull_arg(3) bool set_reg(
-    u8 reg, i64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, i64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     (void)err;
     encode_li(dst_buf, reg, imm);
     return true;
 }
 
-static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
+static nonnull_args void reg_copy(u8 dst, u8 src, SizedBuf *restrict dst_buf) {
     /* C.MV dst, src */
     u16 instr = 0x8002 | (((u16)dst) << 7) | (((u16)src) << 2);
     append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
 }
 
-static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
+static nonnull_args void syscall(SizedBuf *restrict dst_buf, u32 sc_num) {
     set_reg(RISCV_A7, sc_num, dst_buf, NULL);
     /* ecall */
     append_obj(dst_buf, (u8[]){0x73, 0, 0, 0}, 4);
 }
 
-static nonnull_args void pad_loop_open(sized_buf *restrict dst_buf) {
+static nonnull_args void pad_loop_open(SizedBuf *restrict dst_buf) {
     /* ILLEGAL; NOP; NOP */
     uchar instr_seq[3][4] = {{0x0}, {0x13}, {0x13}};
     append_obj(dst_buf, instr_seq, 12);
@@ -209,32 +209,32 @@ static nonnull_args void pad_loop_open(sized_buf *restrict dst_buf) {
 static nonnull_args bool jump_open(
     u8 reg,
     i64 offset,
-    sized_buf *restrict dst_buf,
+    SizedBuf *restrict dst_buf,
     size_t index,
-    bf_comp_err *restrict err
+    BFCError *restrict err
 ) {
     return cond_jump(reg, offset, true, (char *)dst_buf->buf + index, err);
 }
 
 static nonnull_args bool jump_close(
-    u8 reg, i64 offset, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, i64 offset, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     return cond_jump(reg, offset, false, sb_reserve(dst_buf, JUMP_SIZE), err);
 }
 
-static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void inc_reg(u8 reg, SizedBuf *restrict dst_buf) {
     /* c.addi reg, 1 */
     u16 instr = 5 | (((u16)reg) << 7);
     append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
 }
 
-static nonnull_args void dec_reg(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void dec_reg(u8 reg, SizedBuf *restrict dst_buf) {
     /* c.addi reg, -1 */
     u16 instr = 0x107d | (((u16)reg) << 7);
     append_obj(dst_buf, (u8[]){instr & 0xff, (instr & 0xff00) >> 8}, 2);
 }
 
-static nonnull_args void inc_byte(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void inc_byte(u8 reg, SizedBuf *restrict dst_buf) {
     u8 i_bytes[10] = {
         PAD_INSTRUCTION,
         /* c.addi t1, 1 */
@@ -247,7 +247,7 @@ static nonnull_args void inc_byte(u8 reg, sized_buf *restrict dst_buf) {
     append_obj(dst_buf, i_bytes, 10);
 }
 
-static nonnull_args void dec_byte(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void dec_byte(u8 reg, SizedBuf *restrict dst_buf) {
     u8 i_bytes[10] = {
         PAD_INSTRUCTION,
         /* c.addi t1, -1 */
@@ -261,7 +261,7 @@ static nonnull_args void dec_byte(u8 reg, sized_buf *restrict dst_buf) {
 }
 
 static nonnull_arg(3) bool add_reg(
-    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     (void)err;
     if (!imm) return true;
@@ -289,7 +289,7 @@ static nonnull_arg(3) bool add_reg(
 }
 
 static nonnull_arg(3) bool sub_reg(
-    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     /* adding and subtracting INT64_MIN result in the same value, but negating
      * INT64_MIN is undefined behavior, so this is the way to go. */
@@ -298,9 +298,7 @@ static nonnull_arg(3) bool sub_reg(
     return add_reg(reg, neg_imm, dst_buf, err);
 }
 
-static nonnull_args void add_byte(
-    u8 reg, u8 imm8, sized_buf *restrict dst_buf
-) {
+static nonnull_args void add_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
     if (!imm8) return;
     u8 i_bytes[12];
     uint sz;
@@ -326,9 +324,7 @@ static nonnull_args void add_byte(
     append_obj(dst_buf, i_bytes, sz);
 }
 
-static nonnull_args void sub_byte(
-    u8 reg, u8 imm8, sized_buf *restrict dst_buf
-) {
+static nonnull_args void sub_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
     if (!imm8) return;
     u8 i_bytes[12];
     uint sz;
@@ -354,14 +350,14 @@ static nonnull_args void sub_byte(
     append_obj(dst_buf, i_bytes, sz);
 }
 
-static nonnull_args void zero_byte(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void zero_byte(u8 reg, SizedBuf *restrict dst_buf) {
     u32 instr = 0x23 | (((u32)reg) << 15);
     u8 i_bytes[4];
     serialize32le(instr, i_bytes);
     append_obj(dst_buf, i_bytes, 4);
 }
 
-const arch_inter RISCV64_INTER = {
+const ArchInter RISCV64_INTER = {
     .sc_read = 63,
     .sc_write = 64,
     .sc_exit = 93,
@@ -400,8 +396,8 @@ const arch_inter RISCV64_INTER = {
 #define REF RISCV64_DIS
 
 static void test_set_reg_32(void) {
-    sized_buf sb = newbuf(32);
-    sized_buf dis = newbuf(168);
+    SizedBuf sb = newbuf(32);
+    SizedBuf dis = newbuf(168);
     CU_ASSERT(set_reg(RISCV_A0, 0, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 2);
     CU_ASSERT(set_reg(RISCV_A1, 1, &sb, NULL));
@@ -440,8 +436,8 @@ static void test_set_reg_32(void) {
 }
 
 static void test_set_reg_64(void) {
-    sized_buf dis = newbuf(1024);
-    sized_buf sb = newbuf(124);
+    SizedBuf dis = newbuf(1024);
+    SizedBuf sb = newbuf(124);
 
     char *expected_disasm = checked_malloc(1024);
     char *disasm_p = expected_disasm;
@@ -526,9 +522,9 @@ static void test_set_reg_64(void) {
 }
 
 static void test_compressed_set_reg_64(void) {
-    sized_buf sb = newbuf(6);
-    sized_buf dis = newbuf(24);
-    sized_buf fakesb;
+    SizedBuf sb = newbuf(6);
+    SizedBuf dis = newbuf(24);
+    SizedBuf fakesb;
     CU_ASSERT(set_reg(RISCV_A1, INT64_C(0xf00000010), &sb, NULL));
     /* fatal variant because the following trickery with fakesb would be
      * problematic otherwise. */
@@ -556,8 +552,8 @@ static void test_compressed_set_reg_64(void) {
 }
 
 static void test_syscall(void) {
-    sized_buf sb = newbuf(4);
-    sized_buf dis = newbuf(8);
+    SizedBuf sb = newbuf(4);
+    SizedBuf dis = newbuf(8);
 
     syscall(&sb, 32);
     DISASM_TEST(sb, dis, "li a7, 0x20\necall\n");
@@ -567,8 +563,8 @@ static void test_syscall(void) {
 }
 
 static void test_reg_copies(void) {
-    sized_buf sb = newbuf(4);
-    sized_buf dis = newbuf(16);
+    SizedBuf sb = newbuf(4);
+    SizedBuf dis = newbuf(16);
 
     reg_copy(RISCV_A1, RISCV_S0, &sb);
     DISASM_TEST(sb, dis, "mv a1, s0\n");
@@ -581,8 +577,8 @@ static void test_reg_copies(void) {
 }
 
 static void test_load_and_store(void) {
-    sized_buf sb = newbuf(8);
-    sized_buf dis = newbuf(40);
+    SizedBuf sb = newbuf(8);
+    SizedBuf dis = newbuf(40);
 
     serialize32le(load_from_byte(RISCV_A0), sb_reserve(&sb, 4));
     serialize32le(store_to_byte(RISCV_A0), sb_reserve(&sb, 4));
@@ -593,8 +589,8 @@ static void test_load_and_store(void) {
 }
 
 static void test_zero_byte(void) {
-    sized_buf sb = newbuf(4);
-    sized_buf dis = newbuf(24);
+    SizedBuf sb = newbuf(4);
+    SizedBuf dis = newbuf(24);
 
     zero_byte(RISCV_A2, &sb);
     DISASM_TEST(sb, dis, "sb zero, 0x0(a2)\n");
@@ -604,8 +600,8 @@ static void test_zero_byte(void) {
 }
 
 static void test_jump_pad(void) {
-    sized_buf sb = newbuf(12);
-    sized_buf dis = newbuf(16);
+    SizedBuf sb = newbuf(12);
+    SizedBuf dis = newbuf(16);
 
     pad_loop_open(&sb);
     CU_ASSERT_EQUAL(sb.sz, 12);
@@ -618,9 +614,9 @@ static void test_jump_pad(void) {
 }
 
 static void test_successful_jumps(void) {
-    sized_buf sb = newbuf(12);
-    sized_buf dis = newbuf(72);
-    bf_comp_err e;
+    SizedBuf sb = newbuf(12);
+    SizedBuf dis = newbuf(72);
+    BFCError e;
     sb_reserve(&sb, JUMP_SIZE);
     jump_open(RISCV_S0, 32, &sb, 0, &e);
     jump_close(RISCV_S0, -32, &sb, &e);
@@ -640,8 +636,8 @@ static void test_successful_jumps(void) {
 }
 
 static void test_inc_dec(void) {
-    sized_buf sb = newbuf(24);
-    sized_buf dis = newbuf(136);
+    SizedBuf sb = newbuf(24);
+    SizedBuf dis = newbuf(136);
 
     inc_byte(RISCV_S0, &sb);
     CU_ASSERT_EQUAL(sb.sz, 10);
@@ -673,7 +669,7 @@ static void test_inc_dec(void) {
 }
 
 static void sub_reg_is_neg_add_reg(void) {
-    sized_buf a, b;
+    SizedBuf a, b;
     a = newbuf(32);
     b = newbuf(32);
 
@@ -695,10 +691,10 @@ static void sub_reg_is_neg_add_reg(void) {
 }
 
 static void test_add_reg(void) {
-    sized_buf sb = newbuf(12);
-    sized_buf alt = newbuf(10);
-    sized_buf dis = newbuf(40);
-    sized_buf fakesb;
+    SizedBuf sb = newbuf(12);
+    SizedBuf alt = newbuf(10);
+    SizedBuf dis = newbuf(40);
+    SizedBuf fakesb;
 
     CU_ASSERT(add_reg(RISCV_S0, 0, &sb, NULL));
     CU_ASSERT_EQUAL(sb.sz, 0);
@@ -727,8 +723,8 @@ static void test_add_reg(void) {
 }
 
 static void test_add_sub_byte(void) {
-    sized_buf sb = newbuf(28);
-    sized_buf dis = newbuf(96);
+    SizedBuf sb = newbuf(28);
+    SizedBuf dis = newbuf(96);
 
     add_byte(RISCV64_INTER.reg_arg1, 0, &sb);
     sub_byte(RISCV64_INTER.reg_arg1, 0, &sb);
@@ -795,17 +791,17 @@ static void test_bad_jump_offset(void) {
         testing_err = NOT_TESTING;
         return;
     }
-    bf_comp_err e;
+    BFCError e;
     char dst[JUMP_SIZE];
     jump_close(
-        0, 31, &(sized_buf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE}, &e
+        0, 31, &(SizedBuf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE}, &e
     );
     longjmp(etest_stack, (BF_NOT_ERR << 1) | 1);
 }
 
 static void test_jump_too_long(void) {
-    bf_comp_err e;
-    sized_buf sb = newbuf(JUMP_SIZE);
+    BFCError e;
+    SizedBuf sb = newbuf(JUMP_SIZE);
     CU_ASSERT_FALSE(jump_close(0, 1 << 23, &sb, &e));
     CU_ASSERT_EQUAL(e.id, BF_ERR_JUMP_TOO_LONG);
     free(sb.buf);

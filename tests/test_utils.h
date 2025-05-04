@@ -15,7 +15,7 @@
 #include <config.h>
 #include <types.h>
 
-nonnull_args inline bool sb_eq(const sized_buf *a, const sized_buf *b) {
+nonnull_args inline bool sb_eq(const SizedBuf *a, const SizedBuf *b) {
     return a->sz == b->sz && memcmp(a->buf, b->buf, a->sz) == 0;
 }
 
@@ -42,7 +42,7 @@ nonnull_ret inline void *checked_realloc(void *ptr, size_t sz) {
 
 /* read up to `BFC_CHUNK_SIZE` from `fd` and append the bytes that were read to
  * `dst`, reallocating as needed. */
-nonnull_args size_t read_chunk(sized_buf *dst, int fd);
+nonnull_args size_t read_chunk(SizedBuf *dst, int fd);
 
 /* Return the smallest multiple of `BFC_CHUNK_SIZE` that's at least `sz`.
  *
@@ -92,13 +92,13 @@ nonnull_args int subprocess(const char *args[]);
  * `args` is an array of arguments, terminated by `ARG_END`,
  * `args[0]` is the executable to run, and `args` (without `ARG_END`) is the
  * spawned process's `argv`.
- * `out` and `err` point to sized_bufs that the program invocation's `stdout`
+ * `out` and `err` point to SizedBufs that the program invocation's `stdout`
  * and `stderr` can be captured to.
  *
  * If not needed, one or both of `out` and `err` can be set to NULL, in which
  * case their respective streams are not redirected. */
 nonnull_arg(1) int run_capturing(
-    const char *args[], sized_buf *out, sized_buf *err
+    const char *args[], SizedBuf *out, SizedBuf *err
 );
 
 /* convenience macro to fprintf to stderr */

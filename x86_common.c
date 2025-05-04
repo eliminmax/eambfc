@@ -13,7 +13,7 @@
 #include "x86_common.h"
 
 /* MOV rs, rd */
-nonnull_args void x86_reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
+nonnull_args void x86_reg_copy(u8 dst, u8 src, SizedBuf *restrict dst_buf) {
     append_obj(dst_buf, (u8[]){INSTRUCTION(0x89, 0xc0 + (src << 3) + dst)}, 2);
 }
 
@@ -23,7 +23,7 @@ static bool test_jcc(
     u8 reg,
     i64 offset,
     char dst[restrict JUMP_SIZE],
-    bf_comp_err *restrict err
+    BFCError *restrict err
 ) {
     if (offset > INT32_MAX || offset < INT32_MIN) {
         *err = basic_err(
@@ -49,9 +49,9 @@ static bool test_jcc(
 nonnull_args bool x86_jump_open(
     u8 reg,
     i64 offset,
-    sized_buf *restrict dst_buf,
+    SizedBuf *restrict dst_buf,
     size_t index,
-    bf_comp_err *restrict err
+    BFCError *restrict err
 ) {
     /* Jcc with tttn=0b0100 is JZ or JE, so use 4 for tttn */
     return test_jcc(0x4, reg, offset, (char *)dst_buf->buf + index, err);
@@ -59,7 +59,7 @@ nonnull_args bool x86_jump_open(
 
 /* TEST byte [reg], 0xff; JNZ jmp_offset */
 nonnull_args bool x86_jump_close(
-    u8 reg, i64 offset, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, i64 offset, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     /* Jcc with tttn=0b0101 is JNZ or JNE, so use 5 for tttn */
     return test_jcc(0x5, reg, offset, sb_reserve(dst_buf, JUMP_SIZE), err);
@@ -72,32 +72,32 @@ nonnull_args bool x86_jump_close(
 #define NOP 0x90
 
 /* UD2; times 7 NOP */
-nonnull_args void x86_pad_loop_open(sized_buf *restrict dst_buf) {
+nonnull_args void x86_pad_loop_open(SizedBuf *restrict dst_buf) {
     u8 padding[9] = {0x0f, 0x0b, NOP, NOP, NOP, NOP, NOP, NOP, NOP};
     append_obj(dst_buf, &padding, 9);
 }
 
-nonnull_args void x86_add_byte(u8 reg, u8 imm8, sized_buf *restrict dst_buf) {
+nonnull_args void x86_add_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
     /* ADD byte [reg], imm8 */
     append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, reg, imm8)}, 3);
 }
 
-nonnull_args void x86_sub_byte(u8 reg, u8 imm8, sized_buf *restrict dst_buf) {
+nonnull_args void x86_sub_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
     /* SUB byte [reg], imm8 */
     append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, 0x28 + reg, imm8)}, 3);
 }
 
-nonnull_args void x86_zero_byte(u8 reg, sized_buf *restrict dst_buf) {
+nonnull_args void x86_zero_byte(u8 reg, SizedBuf *restrict dst_buf) {
     /* MOV byte [reg], 0 */
     append_obj(dst_buf, (u8[]){INSTRUCTION(0xc6, reg, 0x00)}, 3);
 }
 
 /* INC byte [reg] */
-nonnull_args void x86_inc_byte(u8 reg, sized_buf *restrict dst_buf) {
+nonnull_args void x86_inc_byte(u8 reg, SizedBuf *restrict dst_buf) {
     append_obj(dst_buf, (uchar[]){0xfe, reg}, 2);
 }
 
 /* DEC byte [reg] */
-nonnull_args void x86_dec_byte(u8 reg, sized_buf *restrict dst_buf) {
+nonnull_args void x86_dec_byte(u8 reg, SizedBuf *restrict dst_buf) {
     append_obj(dst_buf, (uchar[]){0xfe, reg | 8}, 2);
 }

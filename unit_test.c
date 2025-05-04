@@ -63,7 +63,7 @@ static void llvm_init(void) {
     LLVM_IS_INIT = true;
 }
 
-bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm) {
+bool disassemble(LLVMDisasmContextRef ref, SizedBuf *bytes, SizedBuf *disasm) {
     char disasm_insn[128];
     disasm->sz = 0;
     while (bytes->sz) {

@@ -60,14 +60,14 @@ typedef uint_fast32_t ufast_32;
 typedef uint_fast64_t ufast_64;
 
 /* A pointer to memory, accompanied by size and capacity information.
- * Functions that take a `sized_buf *` can freely assume that `buf` is not
+ * Functions that take a `SizedBuf *` can freely assume that `buf` is not
  * `NULL`, and that either caller ensured enough space was available, or that
  * `buf` can be safely reallocated with `realloc`. If a function returns a
- * `sized_buf`, it should be assumed that the caller is supposed to free it with
- * `free`, and functions should only be passed pointers to sized_bufs. */
-typedef struct sized_buf {
+ * `SizedBuf`, it should be assumed that the caller is supposed to free it with
+ * `free`, and functions should only be passed pointers to SizedBufs. */
+typedef struct {
     void *buf; /* a buffer of data in memory */
     size_t sz; /* size of data used in buffer */
     size_t capacity; /* amount of space allocated for buffer */
-} sized_buf;
+} SizedBuf;
 #endif /* BFC_TYPES_H */

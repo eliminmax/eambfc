@@ -44,7 +44,7 @@ enum X86_REGS {
 #define IMM32_PADDING 0x00, 0x00, 0x00, 0x00
 
 /* most common values for opcodes in add/sub instructions */
-typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
+typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } X86ArithOp;
 
 #define JUMP_SIZE 9
 
@@ -53,32 +53,32 @@ typedef enum { X64_OP_ADD = 0xc0, X64_OP_SUB = 0xe8 } arith_op;
 nonnull_args bool x86_jump_open(
     u8 reg,
     i64 offset,
-    sized_buf *restrict dst_buf,
+    SizedBuf *restrict dst_buf,
     size_t index,
-    bf_comp_err *restrict err
+    BFCError *restrict err
 );
 
 /* compile the `]` bf instruction */
 nonnull_args bool x86_jump_close(
-    u8 reg, i64 offset, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, i64 offset, SizedBuf *restrict dst_buf, BFCError *restrict err
 );
 
 /* reserve space for the `[` bf instruction */
-nonnull_args void x86_pad_loop_open(sized_buf *restrict dst_buf);
+nonnull_args void x86_pad_loop_open(SizedBuf *restrict dst_buf);
 
 /* zero out a byte */
-nonnull_args void x86_zero_byte(u8 reg, sized_buf *restrict dst_buf);
+nonnull_args void x86_zero_byte(u8 reg, SizedBuf *restrict dst_buf);
 
 /* increment a byte */
-nonnull_args void x86_inc_byte(u8 reg, sized_buf *restrict dst_buf);
+nonnull_args void x86_inc_byte(u8 reg, SizedBuf *restrict dst_buf);
 /* decrement a byte */
-nonnull_args void x86_dec_byte(u8 reg, sized_buf *restrict dst_buf);
+nonnull_args void x86_dec_byte(u8 reg, SizedBuf *restrict dst_buf);
 /* subtract an immediate from a byte */
-nonnull_args void x86_add_byte(u8 reg, u8 imm8, sized_buf *restrict dst_buf);
+nonnull_args void x86_add_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf);
 /* subtract an immediate from a byte */
-nonnull_args void x86_sub_byte(u8 reg, u8 imm8, sized_buf *restrict dst_buf);
+nonnull_args void x86_sub_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf);
 /* copy a register to another register */
-nonnull_args void x86_reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf);
+nonnull_args void x86_reg_copy(u8 dst, u8 src, SizedBuf *restrict dst_buf);
 
 #endif /* BFC_TARGET_X86_64 || BFC_TARGET_I386 */
 #endif /* BFC_X86_COMMON */

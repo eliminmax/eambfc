@@ -16,5 +16,5 @@
  *
  * "in_name" is the source filename, and is used only to generate error
  * messages. */
-nonnull_args bool filter_dead(sized_buf *bf_code, const char *in_name);
+nonnull_args bool filter_dead(SizedBuf *bf_code, const char *in_name);
 #endif /* BFC_OPTIMIZE_H */

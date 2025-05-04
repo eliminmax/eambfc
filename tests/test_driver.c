@@ -91,23 +91,23 @@ static enum arch_support_status support_status(const char *arch) {
     return UNKNOWN_ARCH;
 }
 
-typedef struct result_tracker {
+typedef struct {
     u8 skipped;
     u8 failed;
     u8 succeeded;
-} result_tracker;
+} ResultTracker;
 
 /* Information about binary tests. */
-typedef struct bintest {
+typedef struct {
     /* the argv[0] value when running the binary */
     const char *test_bin;
     /* the expected output of the binary */
     const char *expected;
     /* the size of the expected output */
     size_t expected_sz;
-} bintest;
+} Bintest;
 
-static const bintest BINTESTS[] = {
+static const Bintest BINTESTS[] = {
     {"./colortest", COLORTEST_OUTPUT, COLORTEST_OUTPUT_LEN},
     {"./hello", "Hello, world!\n", 14},
     {"./loop", "!", 1},
@@ -119,11 +119,11 @@ static const bintest BINTESTS[] = {
 
 #define NBINTESTS 7
 
-typedef enum test_outcome {
+typedef enum {
     TEST_FAILED = -1,
     TEST_SUCCEEDED = 0,
     TEST_SKIPPED = 1,
-} test_outcome;
+} TestOutcome;
 
 #define SKIP_IF_UNSUPPORTED(arch) \
     switch (support_status(arch)) { \
@@ -143,7 +143,7 @@ typedef enum test_outcome {
 
 /* test a binary which takes no input, making sure it exists successfully after
  * writing the expected data to stdout */
-static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
+static TestOutcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
 #define MSG(outcome, reason) \
     PRINTERR( \
         outcome ": %s (%s%s): " reason "\n", \
@@ -167,7 +167,7 @@ static test_outcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
         goto fail_before_chld;
     }
 
-    sized_buf chld_output = {
+    SizedBuf chld_output = {
         .buf = checked_malloc(nbytes), .sz = 0, .capacity = nbytes
     };
     run_capturing(
@@ -274,7 +274,7 @@ fail:
     return false;
 }
 
-static test_outcome rw_test(const char *arch, bool opt) {
+static TestOutcome rw_test(const char *arch, bool opt) {
     const char *variant = opt ? ", optimized" : "";
 #define MSG(outcome, reason) \
     PRINTERR( \
@@ -288,7 +288,7 @@ static test_outcome rw_test(const char *arch, bool opt) {
         MSG("FAILURE", "failed to compile");
         return TEST_FAILED;
     }
-    test_outcome ret;
+    TestOutcome ret;
 
     for (ufast_16 i = 0; i < 256; i++) {
         uchar out_byte;
@@ -379,7 +379,7 @@ fail:
     return false;
 }
 
-static test_outcome tm_test(const char *arch, bool opt) {
+static TestOutcome tm_test(const char *arch, bool opt) {
 #define MSG(outcome, reason) \
     PRINTERR( \
         outcome ": truthmachine (%s%s): " reason "\n", \
@@ -395,7 +395,7 @@ static test_outcome tm_test(const char *arch, bool opt) {
         MSG("FAILURE", "failed to compile");
         return TEST_FAILED;
     }
-    test_outcome ret = TEST_FAILED;
+    TestOutcome ret = TEST_FAILED;
 
     char outbuf[2][16] = {{0}, {0}};
     const char expected[2][16] = {"0", "1111111111111111"};
@@ -420,7 +420,7 @@ cleanup:
 }
 
 static nonnull_args void count_result(
-    result_tracker *results, test_outcome result
+    ResultTracker *results, TestOutcome result
 ) {
     switch (result) {
         case TEST_SUCCEEDED:
@@ -436,7 +436,7 @@ static nonnull_args void count_result(
 
 /* run bintests for each supported architecture, ensuring that they work as
  * expected, and updating `results */
-static nonnull_args void run_bin_tests(result_tracker *results) {
+static nonnull_args void run_bin_tests(ResultTracker *results) {
     for (ufast_8 i = 0; ARCHES[i]; i++) {
         for (ufast_8 bt = 0; bt < NBINTESTS; bt++) {
             count_result(results, bin_test(bt, ARCHES[i], false));
@@ -449,7 +449,7 @@ static nonnull_args void run_bin_tests(result_tracker *results) {
     }
 }
 
-static nonnull_args test_outcome err_test(
+static nonnull_args TestOutcome err_test(
     const char *test_id, const char *expected_err, const char *restrict args[]
 ) {
     size_t i;
@@ -464,7 +464,7 @@ static nonnull_args test_outcome err_test(
     moved_args[i] = ARG_END;
     for (i = 1; args[i]; i++) moved_args[i + 1] = args[i];
 
-    sized_buf out = {.buf = calloc(4096, 1), .sz = 0, .capacity = 4096};
+    SizedBuf out = {.buf = calloc(4096, 1), .sz = 0, .capacity = 4096};
     if (out.buf == NULL) abort();
     if (run_capturing(moved_args, &out, NULL) != EXIT_FAILURE) {
         free(out.buf);
@@ -496,7 +496,7 @@ static nonnull_args test_outcome err_test(
     return TEST_SUCCEEDED;
 }
 
-static nonnull_args void run_bad_arg_tests(result_tracker *results) {
+static nonnull_args void run_bad_arg_tests(ResultTracker *results) {
     const struct arg_test {
         const char *id;
         const char *expected;
@@ -520,7 +520,7 @@ static nonnull_args void run_bad_arg_tests(result_tracker *results) {
     }
 }
 
-static nonnull_args void run_perm_err_tests(result_tracker *results) {
+static nonnull_args void run_perm_err_tests(ResultTracker *results) {
     struct stat hello_perms;
     stat("hello.bf", &hello_perms);
     chmod("hello.bf", 0);
@@ -540,12 +540,12 @@ static nonnull_args void run_perm_err_tests(result_tracker *results) {
     CHECKED(unlink("hello.b") == 0);
 }
 
-typedef nonnull_args test_outcome (*hellotest)(const sized_buf *const);
+typedef nonnull_args TestOutcome (*HelloTestFn)(const SizedBuf *const);
 
 #define MSG(outcome, reason) PRINTERR(outcome ": %s: " reason "\n", __func__);
 
-static nonnull_args test_outcome
-test_unseekable(const sized_buf *const hello_code) {
+static nonnull_args TestOutcome test_unseekable(const SizedBuf *const hello_code
+) {
     CHECKED(mkfifo("unseekable", 0755) == 0);
     CHECKED(symlink("hello.bf", "unseekable.bf") == 0);
     pid_t chld;
@@ -564,7 +564,7 @@ test_unseekable(const sized_buf *const hello_code) {
         abort();
     }
     CHECKED((fifo_fd = open("unseekable", O_RDONLY)) != -1);
-    sized_buf output = {
+    SizedBuf output = {
         .buf = checked_malloc(BFC_CHUNK_SIZE),
         .sz = 0,
         .capacity = BFC_CHUNK_SIZE
@@ -595,8 +595,8 @@ test_unseekable(const sized_buf *const hello_code) {
     }
 }
 
-static nonnull_args test_outcome
-alternate_extension(const sized_buf *const hello_code) {
+static nonnull_args TestOutcome
+alternate_extension(const SizedBuf *const hello_code) {
     CHECKED(symlink("hello.bf", "alternate_extension.brnfck") == 0);
     const char **args = ARGS("-e", ".brnfck", "alternate_extension.brnfck");
     if (subprocess(args) != EXIT_SUCCESS) {
@@ -605,7 +605,7 @@ alternate_extension(const sized_buf *const hello_code) {
         return TEST_FAILED;
     }
     CHECKED(unlink("alternate_extension.brnfck") == 0);
-    sized_buf output = {
+    SizedBuf output = {
         .buf = checked_malloc(BFC_CHUNK_SIZE),
         .sz = 0,
         .capacity = BFC_CHUNK_SIZE
@@ -626,13 +626,13 @@ alternate_extension(const sized_buf *const hello_code) {
     }
 }
 
-static nonnull_args test_outcome out_suffix(const sized_buf *const hello_code) {
+static nonnull_args TestOutcome out_suffix(const SizedBuf *const hello_code) {
     const char **args = ARGS("-s", ".elf", "hello.bf");
     if (subprocess(args) != EXIT_SUCCESS) {
         MSG("FAILURE", "eambfc returned nonzero exit code");
         return TEST_FAILED;
     }
-    sized_buf output = {
+    SizedBuf output = {
         .buf = checked_malloc(BFC_CHUNK_SIZE),
         .sz = 0,
         .capacity = BFC_CHUNK_SIZE
@@ -655,7 +655,7 @@ static nonnull_args test_outcome out_suffix(const sized_buf *const hello_code) {
     }
 }
 
-static nonnull_args test_outcome piped_in(const sized_buf *const hello_code) {
+static nonnull_args TestOutcome piped_in(const SizedBuf *const hello_code) {
     CHECKED(mkfifo("piped_in.bf", 0755) == 0);
     pid_t chld;
     CHECKED((chld = fork()) != -1);
@@ -682,7 +682,7 @@ static nonnull_args test_outcome piped_in(const sized_buf *const hello_code) {
         MSG("FAILURE", "eambfc didn't exit successfully\n");
         return TEST_FAILED;
     }
-    sized_buf output = {
+    SizedBuf output = {
         .buf = checked_malloc(BFC_CHUNK_SIZE),
         .sz = 0,
         .capacity = BFC_CHUNK_SIZE
@@ -705,8 +705,8 @@ static nonnull_args test_outcome piped_in(const sized_buf *const hello_code) {
     }
 }
 
-static nonnull_args void run_alt_hello_tests(result_tracker *results) {
-    const hellotest test_funcs[] = {
+static nonnull_args void run_alt_hello_tests(ResultTracker *results) {
+    const HelloTestFn test_funcs[] = {
         test_unseekable,
         alternate_extension,
         out_suffix,
@@ -717,7 +717,7 @@ static nonnull_args void run_alt_hello_tests(result_tracker *results) {
         PRINTERR("failed to compile hello.bf for comparisons\n");
         abort();
     }
-    sized_buf hello = {
+    SizedBuf hello = {
         .buf = checked_malloc(BFC_CHUNK_SIZE),
         .sz = 0,
         .capacity = BFC_CHUNK_SIZE
@@ -734,7 +734,7 @@ static nonnull_args void run_alt_hello_tests(result_tracker *results) {
     free(hello.buf);
 }
 
-static test_outcome dead_code(void) {
+static TestOutcome dead_code(void) {
     if (subprocess(ARGS("-O", "null.bf", "dead_code.bf")) != EXIT_SUCCESS) {
         MSG("FAILURE", "failed to compile hello.bf for comparisons");
         CHECKED(unlink("null") == 0 || errno == ENOENT);
@@ -743,7 +743,7 @@ static test_outcome dead_code(void) {
     }
     int fd;
 
-    sized_buf dead_code_output = {
+    SizedBuf dead_code_output = {
         .buf = checked_malloc(BFC_CHUNK_SIZE),
         .sz = 0,
         .capacity = BFC_CHUNK_SIZE
@@ -752,7 +752,7 @@ static test_outcome dead_code(void) {
     while (read_chunk(&dead_code_output, fd));
     CHECKED(close(fd) == 0);
 
-    sized_buf null_output = {
+    SizedBuf null_output = {
         .buf = checked_malloc(BFC_CHUNK_SIZE),
         .sz = 0,
         .capacity = BFC_CHUNK_SIZE
@@ -781,8 +781,8 @@ static test_outcome dead_code(void) {
     "\"line\": %zu, \"column\": %zu, \"instruction\": \"%*c\", \"message\": " \
     "\"%*[^\"]\"}\n%n"
 
-static test_outcome error_position(void) {
-    sized_buf errors = {.buf = checked_malloc(512), .sz = 0, .capacity = 512};
+static TestOutcome error_position(void) {
+    SizedBuf errors = {.buf = checked_malloc(512), .sz = 0, .capacity = 512};
     const char **args = ARGS("-j", "non_ascii_positions.bf");
     if (run_capturing(args, &errors, NULL) != EXIT_FAILURE) {
         MSG("FAILURE", "compiled broken code without proper error");
@@ -857,7 +857,7 @@ match_fail:
 
 #undef MSG
 
-static nonnull_args void run_misc_tests(result_tracker *results) {
+static nonnull_args void run_misc_tests(ResultTracker *results) {
     count_result(results, dead_code());
     count_result(
         results,
@@ -910,7 +910,7 @@ int main(int argc, char *argv[]) {
     if (EAMBFC == NULL) EAMBFC = "../eambfc";
 
     load_arch_support();
-    result_tracker results = {0, 0, 0};
+    ResultTracker results = {0, 0, 0};
 
     run_bad_arg_tests(&results);
     run_perm_err_tests(&results);

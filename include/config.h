@@ -35,7 +35,7 @@
 
 /* the size of data chunks - must be a power of two.
  *
- * sized_bufs are reallocated to multiples of this size, and file I/O will also
+ * SizedBufs are reallocated to multiples of this size, and file I/O will also
  * use buffers of this size, stored on the stack. */
 #ifndef BFC_CHUNK_SIZE
 #define BFC_CHUNK_SIZE 0x1000

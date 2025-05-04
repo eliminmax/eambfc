@@ -155,7 +155,7 @@
 static const u8 TMP_REG = UINT8_C(5);
 
 static nonnull_args void store_to_byte(
-    u8 reg, u8 aux, sized_buf *restrict dst_buf
+    u8 reg, u8 aux, SizedBuf *restrict dst_buf
 ) {
     /* STC aux, 0(reg) {RX-a} */
     u8 i_bytes[4] = {0x42, (aux << 4) | reg, 0x00, 0x00};
@@ -169,13 +169,13 @@ static void load_from_byte(u8 reg, char dst[restrict 6]) {
 
 /* declared before set_reg as it's used in set_reg, even though it's not first
  * in the struct. */
-static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
+static nonnull_args void reg_copy(u8 dst, u8 src, SizedBuf *restrict dst_buf) {
     /* LGR dst, src {RRE} */
     append_obj(dst_buf, (u8[]){0xb9, 0x04, 0x00, (dst << 4) | src}, 4);
 }
 
 static nonnull_arg(3) bool set_reg(
-    u8 reg, i64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, i64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     /* There are numerous ways to store immediates in registers for this
      * architecture. This function tries to find a way to load a given immediate
@@ -237,7 +237,7 @@ static nonnull_arg(3) bool set_reg(
     return true;
 }
 
-static nonnull_args void syscall(sized_buf *restrict dst_buf, u32 sc_num) {
+static nonnull_args void syscall(SizedBuf *restrict dst_buf, u32 sc_num) {
     /* on Linux s390x, if the system call number is nonzero and less than 256,
      * it it can be passed as service call number instead of by setting the
      * system call register. */
@@ -257,16 +257,16 @@ typedef enum {
     MASK_GT = 2,
     MASK_NE = MASK_LT | MASK_GT,
     MASK_NOP = 0
-} comp_mask;
+} CompareMask;
 
 #define JUMP_SIZE 18
 
 static nonnull_args bool branch_cond(
     u8 reg,
     i64 offset,
-    comp_mask mask,
+    CompareMask mask,
     char dst[restrict JUMP_SIZE],
-    bf_comp_err *restrict err
+    BFCError *restrict err
 ) {
     /* jumps are done by Halfwords, not bytes, so must ensure it's valid. */
     if ((offset % 2) != 0) {
@@ -333,7 +333,7 @@ static nonnull_args bool branch_cond(
 /* NOPR is an extended mnemonic for BCR 0, 0 {RR} */
 #define NOPR 0x07, 0x00
 
-static nonnull_args void pad_loop_open(sized_buf *restrict dst_buf) {
+static nonnull_args void pad_loop_open(SizedBuf *restrict dst_buf) {
     /* start with a jump into its own second haflword - both gcc and clang
      * generate that for `__builtin_trap()`.
      *
@@ -344,7 +344,7 @@ static nonnull_args void pad_loop_open(sized_buf *restrict dst_buf) {
 }
 
 static nonnull_args void add_reg_signed(
-    u8 reg, i64 imm, sized_buf *restrict dst_buf
+    u8 reg, i64 imm, SizedBuf *restrict dst_buf
 ) {
     if (imm >= INT16_MIN && imm <= INT16_MAX) {
         /* if imm fits within a halfword, a shorter instruction can be used. */
@@ -375,15 +375,15 @@ static nonnull_args void add_reg_signed(
 static nonnull_args bool jump_open(
     u8 reg,
     i64 offset,
-    sized_buf *restrict dst_buf,
+    SizedBuf *restrict dst_buf,
     size_t index,
-    bf_comp_err *restrict err
+    BFCError *restrict err
 ) {
     return branch_cond(reg, offset, MASK_EQ, (char *)dst_buf->buf + index, err);
 }
 
 static nonnull_args bool jump_close(
-    u8 reg, i64 offset, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, i64 offset, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     return branch_cond(
         reg, offset, MASK_NE, sb_reserve(dst_buf, JUMP_SIZE), err
@@ -391,7 +391,7 @@ static nonnull_args bool jump_close(
 }
 
 static nonnull_arg(3) bool add_reg(
-    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     (void)err;
     add_reg_signed(reg, imm, dst_buf);
@@ -399,7 +399,7 @@ static nonnull_arg(3) bool add_reg(
 }
 
 static nonnull_arg(3) bool sub_reg(
-    u8 reg, u64 imm, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     (void)err;
     /* there are not equivalent sub instructions to any of the add instructions
@@ -412,44 +412,40 @@ static nonnull_arg(3) bool sub_reg(
     return true;
 }
 
-static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void inc_reg(u8 reg, SizedBuf *restrict dst_buf) {
     add_reg_signed(reg, 1, dst_buf);
 }
 
-static nonnull_args void dec_reg(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void dec_reg(u8 reg, SizedBuf *restrict dst_buf) {
     add_reg_signed(reg, -1, dst_buf);
 }
 
-static nonnull_args void add_byte(
-    u8 reg, u8 imm8, sized_buf *restrict dst_buf
-) {
+static nonnull_args void add_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
     load_from_byte(reg, sb_reserve(dst_buf, 6));
     add_reg_signed(TMP_REG, imm8, dst_buf);
     store_to_byte(reg, TMP_REG, dst_buf);
 }
 
-static nonnull_args void sub_byte(
-    u8 reg, u8 imm8, sized_buf *restrict dst_buf
-) {
+static nonnull_args void sub_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
     load_from_byte(reg, sb_reserve(dst_buf, 6));
     add_reg_signed(TMP_REG, -imm8, dst_buf);
     store_to_byte(reg, TMP_REG, dst_buf);
 }
 
-static nonnull_args void inc_byte(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void inc_byte(u8 reg, SizedBuf *restrict dst_buf) {
     add_byte(reg, 1, dst_buf);
 }
 
-static nonnull_args void dec_byte(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void dec_byte(u8 reg, SizedBuf *restrict dst_buf) {
     sub_byte(reg, 1, dst_buf);
 }
 
-static nonnull_args void zero_byte(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void zero_byte(u8 reg, SizedBuf *restrict dst_buf) {
     /* STC 0, 0(reg) {RX-a} */
     store_to_byte(reg, 0, dst_buf);
 }
 
-const arch_inter S390X_INTER = {
+const ArchInter S390X_INTER = {
     .sc_read = 3,
     .sc_write = 4,
     .sc_exit = 1,
@@ -495,8 +491,8 @@ const arch_inter S390X_INTER = {
 #define REF S390X_DIS
 
 static void test_load_store(void) {
-    sized_buf sb = newbuf(6);
-    sized_buf dis = newbuf(24);
+    SizedBuf sb = newbuf(6);
+    SizedBuf dis = newbuf(24);
 
     load_from_byte(8, sb_reserve(&sb, 6));
     DISASM_TEST(sb, dis, "llgc %r5, 0(%r8,0)\n");
@@ -514,8 +510,8 @@ static void test_load_store(void) {
 }
 
 static void test_reg_copy(void) {
-    sized_buf sb = newbuf(4);
-    sized_buf dis = newbuf(16);
+    SizedBuf sb = newbuf(4);
+    SizedBuf dis = newbuf(16);
 
     reg_copy(2, 1, &sb);
     DISASM_TEST(sb, dis, "lgr %r2, %r1\n");
@@ -525,9 +521,9 @@ static void test_reg_copy(void) {
 }
 
 static void test_set_reg_zero(void) {
-    sized_buf sb = newbuf(4);
-    sized_buf dis = newbuf(16);
-    sized_buf alt = newbuf(4);
+    SizedBuf sb = newbuf(4);
+    SizedBuf dis = newbuf(16);
+    SizedBuf alt = newbuf(4);
 
     reg_copy(2, 0, &sb);
     CU_ASSERT(set_reg(2, 0, &alt, NULL));
@@ -542,8 +538,8 @@ static void test_set_reg_zero(void) {
 }
 
 static void test_set_reg_small_imm(void) {
-    sized_buf sb = newbuf(8);
-    sized_buf dis = newbuf(40);
+    SizedBuf sb = newbuf(8);
+    SizedBuf dis = newbuf(40);
 
     CU_ASSERT(set_reg(5, 12345, &sb, NULL));
     CU_ASSERT(set_reg(8, -12345, &sb, NULL));
@@ -554,8 +550,8 @@ static void test_set_reg_small_imm(void) {
 }
 
 static void test_set_reg_medium_imm(void) {
-    sized_buf sb = newbuf(12);
-    sized_buf dis = newbuf(48);
+    SizedBuf sb = newbuf(12);
+    SizedBuf dis = newbuf(48);
 
     CU_ASSERT(set_reg(4, INT64_C(0x1234abcd), &sb, NULL));
     CU_ASSERT(set_reg(4, INT64_C(-0x1234abcd), &sb, NULL));
@@ -567,8 +563,8 @@ static void test_set_reg_medium_imm(void) {
 }
 
 static void test_set_reg_large_imm(void) {
-    sized_buf sb = newbuf(12);
-    sized_buf dis = newbuf(48);
+    SizedBuf sb = newbuf(12);
+    SizedBuf dis = newbuf(48);
 
     CU_ASSERT(set_reg(1, INT64_C(0xdead0000beef), &sb, NULL));
     GIVEN_THAT(0xdeadU == 57005U && 0xbeefU == 48879U);
@@ -606,9 +602,9 @@ static void test_set_reg_large_imm(void) {
 }
 
 static void test_successful_jumps(void) {
-    sized_buf sb = newbuf(12);
-    sized_buf dis = newbuf(128);
-    bf_comp_err e;
+    SizedBuf sb = newbuf(12);
+    SizedBuf dis = newbuf(128);
+    BFCError e;
     sb_reserve(&sb, JUMP_SIZE);
     jump_open(3, 18, &sb, 0, &e);
     jump_close(3, -36, &sb, &e);
@@ -643,8 +639,8 @@ static void test_successful_jumps(void) {
 }
 
 static void test_syscall(void) {
-    sized_buf sb = newbuf(2);
-    sized_buf dis = newbuf(8);
+    SizedBuf sb = newbuf(2);
+    SizedBuf dis = newbuf(8);
 
     syscall(&sb, S390X_INTER.sc_exit);
     CU_ASSERT_EQUAL(sb.sz, 2);
@@ -655,8 +651,8 @@ static void test_syscall(void) {
 }
 
 static void test_zero_byte(void) {
-    sized_buf sb = newbuf(4);
-    sized_buf dis = newbuf(24);
+    SizedBuf sb = newbuf(4);
+    SizedBuf dis = newbuf(24);
 
     zero_byte(S390X_INTER.reg_bf_ptr, &sb);
     DISASM_TEST(sb, dis, "stc %r0, 0(%r8,0)\n");
@@ -666,9 +662,9 @@ static void test_zero_byte(void) {
 }
 
 static void test_reg_arith_small_imm(void) {
-    sized_buf a = newbuf(8);
-    sized_buf b = newbuf(8);
-    sized_buf dis = newbuf(40);
+    SizedBuf a = newbuf(8);
+    SizedBuf b = newbuf(8);
+    SizedBuf dis = newbuf(40);
 
     CU_ASSERT(add_reg(8, 1, &a, NULL));
     inc_reg(8, &b);
@@ -703,8 +699,8 @@ static void test_reg_arith_small_imm(void) {
 }
 
 static void test_reg_arith_medium_imm(void) {
-    sized_buf sb = newbuf(6);
-    sized_buf dis = newbuf(24);
+    SizedBuf sb = newbuf(6);
+    SizedBuf dis = newbuf(24);
 
     CU_ASSERT(add_reg(8, 0x123456, &sb, NULL));
     GIVEN_THAT(0x123456 == 1193046);
@@ -719,8 +715,8 @@ static void test_reg_arith_medium_imm(void) {
 }
 
 static void test_reg_arith_large_imm(void) {
-    sized_buf sb = newbuf(12);
-    sized_buf dis = newbuf(40);
+    SizedBuf sb = newbuf(12);
+    SizedBuf dis = newbuf(40);
 
     CU_ASSERT(add_reg(8, INT64_C(9876543210), &sb, NULL));
     GIVEN_THAT((i32)INT64_C(9876543210) == 1286608618);
@@ -745,8 +741,8 @@ static void test_reg_arith_large_imm(void) {
 }
 
 static void test_add_sub_i64_min(void) {
-    sized_buf a = newbuf(6);
-    sized_buf b = newbuf(6);
+    SizedBuf a = newbuf(6);
+    SizedBuf b = newbuf(6);
 
     CU_ASSERT(add_reg(4, INT64_MIN, &a, NULL));
     CU_ASSERT(sub_reg(4, INT64_MIN, &b, NULL));
@@ -758,10 +754,10 @@ static void test_add_sub_i64_min(void) {
 }
 
 static void test_byte_arith(void) {
-    sized_buf a = newbuf(14);
-    sized_buf b = newbuf(14);
-    sized_buf dis = newbuf(120);
-    sized_buf expected = newbuf(14);
+    SizedBuf a = newbuf(14);
+    SizedBuf b = newbuf(14);
+    SizedBuf dis = newbuf(120);
+    SizedBuf expected = newbuf(14);
 
     load_from_byte(8, sb_reserve(&expected, 6));
     inc_reg(TMP_REG, &expected);
@@ -830,17 +826,17 @@ static void test_bad_jump_offset(void) {
         testing_err = NOT_TESTING;
         return;
     }
-    bf_comp_err e;
+    BFCError e;
     char dst[JUMP_SIZE];
     jump_close(
-        0, 31, &(sized_buf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE}, &e
+        0, 31, &(SizedBuf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE}, &e
     );
     longjmp(etest_stack, (BF_NOT_ERR << 1) | 1);
 }
 
 static void test_jump_too_long(void) {
-    bf_comp_err e;
-    sized_buf sb = newbuf(JUMP_SIZE);
+    BFCError e;
+    SizedBuf sb = newbuf(JUMP_SIZE);
     CU_ASSERT_FALSE(jump_close(0, 1 << 23, &sb, &e));
     CU_ASSERT_EQUAL(e.id, BF_ERR_JUMP_TOO_LONG);
     free(sb.buf);

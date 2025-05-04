@@ -61,9 +61,9 @@ const_fn inline bool bit_fits(i64 val, u8 bits) {
            val < (INT64_C(1) << (bits - 1));
 }
 
-/* create a new sized_buf with the provided capacity, and an allocated buffer */
-inline sized_buf newbuf(size_t sz) {
-    sized_buf newbuf = {
+/* create a new SizedBuf with the provided capacity, and an allocated buffer */
+inline SizedBuf newbuf(size_t sz) {
+    SizedBuf newbuf = {
         .buf = checked_malloc(sz),
         .sz = 0,
         .capacity = sz,
@@ -84,34 +84,34 @@ const_fn inline i64 sign_extend(i64 val, u8 nbits) {
  * If all bytes are written, returns `true`, otherwise, it sets `err->id` and
  * `err->msg`, zeroing out other fields in `err`, then returns `false`. */
 nonnull_args bool write_obj(
-    int fd, const void *restrict buf, size_t ct, bf_comp_err *restrict outname
+    int fd, const void *restrict buf, size_t ct, BFCError *restrict outname
 );
 
 /* reserve nbytes bytes at the end of dst, and returns a pointer to the
  * beginning of them - it's assumed that the caller will populate them, so the
- * sized_buf will consider them used */
-nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes);
+ * SizedBuf will consider them used */
+nonnull_ret void *sb_reserve(SizedBuf *sb, size_t nbytes);
 
 /* Appends first bytes_sz of bytes to dst, reallocating dst as needed. */
 nonnull_args void append_obj(
-    sized_buf *restrict dst, const void *restrict bytes, size_t bytes_sz
+    SizedBuf *restrict dst, const void *restrict bytes, size_t bytes_sz
 );
 
 /* append `str` to `dst` with `append_obj`, and adjust `dst->sz` to exclude the
  * null terminator */
-inline void append_str(sized_buf *restrict dst, const char *restrict str) {
+inline void append_str(SizedBuf *restrict dst, const char *restrict str) {
     append_obj(dst, str, strlen(str) + 1);
     dst->sz--;
 }
 
 union read_result {
-    sized_buf sb;
-    bf_comp_err err;
+    SizedBuf sb;
+    BFCError err;
 };
 
 /* Tries to read `fd` into `result->sb`. If a read fails, returns `false`, and
  * sets `result->err` to an error with the `id` and `msg` set. Once no data is
  * left to read, it returns `true`. */
-nonnull_args bool read_to_sized_buf(int fd, union read_result *result);
+nonnull_args bool read_to_SizedBuf(int fd, union read_result *result);
 
 #endif /* BFC_UTIL_H */

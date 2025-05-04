@@ -28,12 +28,10 @@
 #define TEST_GLOBAL(decl) extern decl
 #endif /* UNIT_TEST_C */
 
-typedef LLVMDisasmContextRef disasm_ref;
-
-#define ARCH_DISASM(ref, ...) TEST_GLOBAL(disasm_ref ref);
+#define ARCH_DISASM(ref, ...) TEST_GLOBAL(LLVMDisasmContextRef ref);
 #include "backends.h"
 
-TEST_GLOBAL(bf_err_id current_err);
+TEST_GLOBAL(BfErrorId current_err);
 
 enum test_status {
     TEST_SET = -1,
@@ -45,17 +43,17 @@ TEST_GLOBAL(enum test_status testing_err);
 
 TEST_GLOBAL(jmp_buf etest_stack);
 
-/* disassemble the contents of bytes, and return a sized_buf containing the
+/* disassemble the contents of bytes, and return a SizedBuf containing the
  * diassembly - instructions are separated by newlines, and the disassembly as a
  * whole is null-terminated. If any the provided bytes is unable to be fully
- * disassembled, it returns a sized_buf with sz and capacity set to zero, and
+ * disassembled, it returns a SizedBuf with sz and capacity set to zero, and
  * buf set to NULL.
  *
  * `bytes->sz` is set to zero by this process, but the allocation of
  * `bytes->buf` is left as-is, so it can be reused. */
-bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
+bool disassemble(LLVMDisasmContextRef ref, SizedBuf *bytes, SizedBuf *disasm);
 
-/* utility macro to test if a sized_buf contains the expected disassembly.
+/* utility macro to test if a SizedBuf contains the expected disassembly.
  * Clears both sb and dis, leaving the allocation behind for reuse if needed */
 #define DISASM_TEST(code, dis, expected) \
     if (disassemble(REF, &code, &dis)) { \

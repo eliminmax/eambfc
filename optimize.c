@@ -15,8 +15,8 @@
 #include "util.h"
 
 /* filter out the non-bf characters from code->buf */
-static nonnull_args void filter_non_bf(sized_buf *code) {
-    sized_buf tmp = newbuf(code->sz);
+static nonnull_args void filter_non_bf(SizedBuf *code) {
+    SizedBuf tmp = newbuf(code->sz);
     char instr;
     for (size_t i = 0; i < code->sz; i++) {
         switch (instr = ((char *)code->buf)[i]) {
@@ -41,9 +41,9 @@ static nonnull_args void filter_non_bf(sized_buf *code) {
 }
 
 static void instr_err(
-    bf_err_id id, const char *msg, char instr, const char *in_name
+    BfErrorId id, const char *msg, char instr, const char *in_name
 ) {
-    display_err((bf_comp_err){
+    display_err((BFCError){
         .id = id,
         .msg.ref = msg,
         .instr = instr,
@@ -113,7 +113,7 @@ static nonnull_args bool loops_match(const char *code, const char *in_name) {
 #define REPSTR256(s) REPSTR64(s) REPSTR64(s) REPSTR64(s) REPSTR64(s)
 
 /* remove redundant instruction sequences like `<>` */
-static nonnull_args bool remove_dead(sized_buf *ir, const char *in_name) {
+static nonnull_args bool remove_dead(SizedBuf *ir, const char *in_name) {
     /* code constructs that do nothing - either 2 adjacent instructions that
      * cancel each other out, or 256 consecutive `+` or `-` instructions that
      * loop the current cell back to its current value */
@@ -166,7 +166,7 @@ static nonnull_args bool remove_dead(sized_buf *ir, const char *in_name) {
 }
 
 /* Merge `[-]` and `[+]` into `@` */
-static nonnull_args void merge_set_zero(sized_buf *ir) {
+static nonnull_args void merge_set_zero(SizedBuf *ir) {
     char *p;
     /* handle [-] */
     while ((p = strstr(ir->buf, "[-]"))) {
@@ -188,7 +188,7 @@ static nonnull_args void merge_set_zero(sized_buf *ir) {
  *
  * "in_name" is the source filename, and is used only to generate error
  * messages. */
-nonnull_args bool filter_dead(sized_buf *bf_code, const char *in_name) {
+nonnull_args bool filter_dead(SizedBuf *bf_code, const char *in_name) {
     filter_non_bf(bf_code);
     if (bf_code->buf == NULL) return false;
     if (!loops_match(bf_code->buf, in_name)) return false;
@@ -206,7 +206,7 @@ static void strip_dead_code_test(void) {
     /* fill filterable with have a bunch of valid brainfuck code which does the
      * equivalent of ">[->+<]", and ensure that it is optimized down to just
      * that sequence. */
-    sized_buf filterable = newbuf(574);
+    SizedBuf filterable = newbuf(574);
     append_obj(
         &filterable, "[+++++]><+---+++-[-][,[-][+>-<]]-+[-+]-+[]+-[]", 46
     );

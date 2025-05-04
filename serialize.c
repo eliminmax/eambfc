@@ -59,7 +59,7 @@ extern inline size_t serialize64be(u64 v64, void *dest);
 
 /* serialize a 64-bit Ehdr into a byte sequence, in LSB order */
 nonnull_args size_t
-serialize_ehdr_le(const ehdr_info *restrict ehdr, void *restrict dest) {
+serialize_ehdr_le(const ElfInfo *restrict ehdr, void *restrict dest) {
     if (ehdr->e_ident[4] == PTRSIZE_32) {
         WRITE_EHDR32(le);
     } else {
@@ -69,7 +69,7 @@ serialize_ehdr_le(const ehdr_info *restrict ehdr, void *restrict dest) {
 
 /* serialize a 64-bit Ehdr into a byte sequence, in MSB order */
 nonnull_args size_t
-serialize_ehdr_be(const ehdr_info *restrict ehdr, void *restrict dest) {
+serialize_ehdr_be(const ElfInfo *restrict ehdr, void *restrict dest) {
     if (ehdr->e_ident[4] == PTRSIZE_32) {
         WRITE_EHDR32(be);
     } else {
@@ -120,7 +120,7 @@ serialize_ehdr_be(const ehdr_info *restrict ehdr, void *restrict dest) {
 
 /* serialize a 64-bit Phdr into a byte sequence, in LSB order */
 nonnull_args size_t
-serialize_phdr_le(const phdr_info *restrict phdr, void *restrict dest) {
+serialize_phdr_le(const SegmentInfo *restrict phdr, void *restrict dest) {
     if (phdr->addr_size == PTRSIZE_32) {
         IMPL_PHDR32(serialize32le);
     } else {
@@ -130,7 +130,7 @@ serialize_phdr_le(const phdr_info *restrict phdr, void *restrict dest) {
 
 /* serialize a 64-bit Phdr into a byte sequence, in MSB order */
 nonnull_args size_t
-serialize_phdr_be(const phdr_info *restrict phdr, void *restrict dest) {
+serialize_phdr_be(const SegmentInfo *restrict phdr, void *restrict dest) {
     if (phdr->addr_size == PTRSIZE_32) {
         IMPL_PHDR32(serialize32be);
     } else {
