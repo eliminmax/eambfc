@@ -80,7 +80,7 @@ const char *const ERR_IDS[] = {
     "Fatal:AllocFailure",
 };
 
-static out_mode err_mode = OUTMODE_NORMAL;
+static OutMode err_mode = OUTMODE_NORMAL;
 
 /* the only external access to the variables is through these functions. */
 void quiet_mode(void) {

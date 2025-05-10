@@ -46,7 +46,7 @@ typedef enum {
     OUTMODE_QUIET = 0,
     OUTMODE_NORMAL = 1,
     OUTMODE_JSON = 2,
-} out_mode;
+} OutMode;
 
 typedef struct {
     size_t line;
