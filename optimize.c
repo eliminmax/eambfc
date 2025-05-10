@@ -12,6 +12,7 @@
 #include <types.h>
 
 #include "err.h"
+#include "optimize.h"
 #include "util.h"
 
 /* filter out the non-bf characters from code->buf */

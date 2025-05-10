@@ -14,6 +14,7 @@
 #include <types.h>
 
 #include "arch_inter.h"
+#include "compile.h"
 #include "err.h"
 #include "optimize.h"
 #include "serialize.h"
