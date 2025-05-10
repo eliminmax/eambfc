@@ -51,11 +51,11 @@ typedef enum {
 typedef struct {
     size_t line;
     size_t col;
-} src_loc;
+} SrcLoc;
 
 typedef struct {
     /* error message text */
-    union errmsg {
+    union {
         const char *ref;
         char *alloc;
     } msg;
@@ -65,7 +65,7 @@ typedef struct {
 
     /* position in file of error - if `has_location` is false, may have an
      * uninitialized value. */
-    src_loc location;
+    SrcLoc location;
 
     /* character in file that error occurred with - if `has_instr` is false, may
      * have an uninitialized value. */

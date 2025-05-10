@@ -112,6 +112,6 @@ union read_result {
 /* Tries to read `fd` into `result->sb`. If a read fails, returns `false`, and
  * sets `result->err` to an error with the `id` and `msg` set. Once no data is
  * left to read, it returns `true`. */
-nonnull_args bool read_to_SizedBuf(int fd, union read_result *result);
+nonnull_args bool read_to_sb(int fd, union read_result *result);
 
 #endif /* BFC_UTIL_H */

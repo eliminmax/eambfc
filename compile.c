@@ -133,7 +133,7 @@ static void bf_io(
 #define JUMP_CHUNK_SZ 64
 
 typedef struct {
-    src_loc location;
+    SrcLoc location;
     off_t dst_loc;
     bool has_loc: 1;
 } JumpLoc;
@@ -152,7 +152,7 @@ static bool bf_jump_open(
     SizedBuf *restrict obj_code,
     const ArchInter *restrict inter,
     BFCError *restrict err,
-    const src_loc *loc
+    const SrcLoc *loc
 ) {
     size_t start_loc = obj_code->sz;
     /* insert an architecture-specific illegal/trap instruction, then pad to
@@ -185,7 +185,7 @@ static bool bf_jump_open(
         jump_stack.locations[jump_stack.next].location = *loc;
         jump_stack.locations[jump_stack.next].has_loc = true;
     } else {
-        jump_stack.locations[jump_stack.next].location = (src_loc){0};
+        jump_stack.locations[jump_stack.next].location = (SrcLoc){0};
         jump_stack.locations[jump_stack.next].has_loc = false;
     }
     jump_stack.next++;
@@ -242,7 +242,7 @@ static bool comp_instr(
     SizedBuf *obj_code,
     const ArchInter *inter,
     const char *in_name,
-    src_loc *restrict location
+    SrcLoc *restrict location
 ) {
     if (location) {
         /* if it's not a UTF-8 continuation byte, increment the column */
@@ -411,7 +411,7 @@ bool bf_compile(
     u64 tape_blocks
 ) {
     union read_result src;
-    if (!read_to_SizedBuf(in_fd, &src)) {
+    if (!read_to_sb(in_fd, &src)) {
         src.err.file = in_name;
         display_err(src.err);
         return false;
@@ -440,7 +440,7 @@ bool bf_compile(
         }
         ret &= compile_condensed(src.sb.buf, &obj_code, inter, in_name);
     } else {
-        src_loc loc = {.line = 1, .col = 0};
+        SrcLoc loc = {.line = 1, .col = 0};
         for (size_t i = 0; i < src.sb.sz; i++) {
             ret &= comp_instr(
                 ((char *)src.sb.buf)[i], &obj_code, inter, in_name, &loc

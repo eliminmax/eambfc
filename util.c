@@ -111,7 +111,7 @@ nonnull_args void append_obj(
  * whether it succeeded or not, and union `data` with `err` on failure and `sb`
  * on success. Only use `data.err` on failure, and only use `data.sb` on
  * success. */
-bool read_to_SizedBuf(int fd, union read_result *result) {
+bool read_to_sb(int fd, union read_result *result) {
     result->sb = newbuf(BFC_CHUNK_SIZE);
     char chunk[BFC_CHUNK_SIZE];
     ssize_t count;
