@@ -72,7 +72,7 @@ inline SizedBuf newbuf(size_t sz) {
 }
 
 /* return the least significant nbits of val sign-extended to 64 bits. */
-const_fn inline i64 sign_extend(i64 val, u8 nbits) {
+const_fn inline imax sign_extend(i64 val, u8 nbits) {
     u8 shift_amount = (sizeof(i64) * 8) - nbits;
     /* shifting into the sign bit is undefined behavior, so cast it to unsigned,
      * then assign it back. */

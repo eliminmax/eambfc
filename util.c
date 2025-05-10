@@ -25,7 +25,7 @@ extern inline u8 trailing_0s(u64 val);
 extern inline size_t chunk_pad(size_t nbytes);
 extern inline bool bit_fits(i64 val, u8 bits);
 extern inline SizedBuf newbuf(size_t sz);
-extern inline i64 sign_extend(i64 val, u8 nbits);
+extern inline imax sign_extend(i64 val, u8 nbits);
 extern inline void append_str(SizedBuf *restrict dst, const char *restrict str);
 
 nonnull_args bool write_obj(
