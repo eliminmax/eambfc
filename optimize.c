@@ -147,11 +147,13 @@ static nonnull_args void recheck_mergable(
                  * values, otherwise, subtract the following value. */
                 seq[index].count += seq[index + 1].count;
                 seq[index].count &= 0xff;
+                seq[index].source.end = seq[index + 1].source.end;
                 break;
             case ISEQ_MOVE_RIGHT:
                 /* check if the tags are the same. If so, simply add their
                  * values, otherwise, subtract the following value. */
                 seq[index].count += seq[index + 1].count;
+                seq[index].source.end = seq[index + 1].source.end;
                 break;
             default:
                 return;
@@ -247,10 +249,12 @@ static nonnull_args void join_set_cells(InstrSeq *instructions, size_t *len) {
             instructions[i + 1].tag == ISEQ_ADD &&
             instructions[i + 1].count % 2 &&
             instructions[i + 2].tag == ISEQ_LOOP_CLOSE) {
+            instructions[i].source.end = instructions[i + 2].source.end;
             drop_instrs(instructions, len, i + 1, i + 3);
             instructions[i].tag = ISEQ_SET_CELL;
             if (i + 1 < *len && instructions[i + 1].tag == ISEQ_ADD) {
                 instructions[i].count = instructions[i + 1].count;
+                instructions[i].source.end = instructions[i + 1].source.end;
                 drop_instrs(instructions, len, i + 1, i + 2);
             }
         }
