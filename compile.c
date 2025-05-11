@@ -448,6 +448,7 @@ bool bf_compile(
         ret &= compile_condensed(
             res.output.instrs, res.output.len, &obj_code, inter, in_name
         );
+        free(res.output.instrs);
     } else {
         SrcLoc loc = {.line = 1, .col = 0};
         for (size_t i = 0; i < src.sb.sz; i++) {
