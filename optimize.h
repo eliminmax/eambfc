@@ -68,15 +68,11 @@ union opt_result {
     BFCError err;
 };
 
+/* Read `code` (a string of brainfuck code `size` bytes in size into a
+ * heap-allocated `InstrSeq` array, available at `result->output.instrs`, with
+ * its length stored in `result->output.len`. If an error occurs, it frees the
+ * sequence and sets `result->err`, and returns `false`. */
 nonnull_args bool optimize_instructions(
-    const char *restrict code, size_t size, union opt_result *result
+    const char *restrict code, size_t size, union opt_result *restrict result
 );
-
-/* filter out all non-BF bytes, and anything that is trivially determined to be
- * dead code, or code with no effect (e.g. "+-" or "<>"), and replace "[-]" and
- * "[+]" with "@".
- *
- * "in_name" is the source filename, and is used only to generate error
- * messages. */
-nonnull_args bool filter_dead(SizedBuf *bf_code, const char *in_name);
 #endif /* BFC_OPTIMIZE_H */
