@@ -306,7 +306,7 @@ static TestOutcome rw_test(const char *arch, bool opt) {
         if (out_byte != i) {
             PRINTERR(
                 "FAILURE: rw (%s%s): run with byte 0x%02x printed byte "
-                "%0x02hhx\n",
+                "0x%02hhx\n",
                 arch,
                 variant,
                 /* cast in case ufast_16 is larger than uint */
