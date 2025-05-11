@@ -8,7 +8,7 @@
 /* C99 */
 #include <limits.h>
 #include <setjmp.h>
-#include <stdio.h>
+#include <stdio.h> /* IWYU pragma: export */
 #include <stdlib.h>
 
 /* libLLVM */
