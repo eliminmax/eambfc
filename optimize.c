@@ -140,30 +140,18 @@ static nonnull_args void drop_instrs(
 static nonnull_args void recheck_mergable(
     InstrSeq *seq, size_t index, size_t *len
 ) {
-    while (index + 1 == *len &&
-           (seq[index].tag == ISEQ_ADD || seq[index].tag == ISEQ_MOVE_RIGHT) &&
-           seq[index].tag == seq[index + 1].tag) {
+    while (index + 1 < *len && seq[index].tag == seq[index + 1].tag) {
         switch (seq[index].tag) {
             case ISEQ_ADD:
-            case ISEQ_SUB:
                 /* check if the tags are the same. If so, simply add their
                  * values, otherwise, subtract the following value. */
-                if (seq[index].tag == seq[index + 1].tag) {
-                    seq[index].count += seq[index + 1].count;
-                } else {
-                    seq[index].count -= seq[index + 1].count;
-                }
+                seq[index].count += seq[index + 1].count;
                 seq[index].count &= 0xff;
                 break;
             case ISEQ_MOVE_RIGHT:
-            case ISEQ_MOVE_LEFT:
                 /* check if the tags are the same. If so, simply add their
                  * values, otherwise, subtract the following value. */
-                if (seq[index].tag == seq[index + 1].tag) {
-                    seq[index].count += seq[index + 1].count;
-                } else {
-                    seq[index].count -= seq[index + 1].count;
-                }
+                seq[index].count += seq[index + 1].count;
                 break;
             default:
                 return;
@@ -173,8 +161,7 @@ static nonnull_args void recheck_mergable(
             drop_instrs(seq, len, index, index + 1);
         } else {
             drop_instrs(seq, len, index, index + 2);
-            /* check if that lets the previous instruction merge */
-            if (index) --index;
+            if (index) recheck_mergable(seq, index - 1, len);
         }
     }
 }
