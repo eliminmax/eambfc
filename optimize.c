@@ -161,7 +161,15 @@ static nonnull_args void recheck_mergable(
             drop_instrs(seq, len, index, index + 1);
         } else {
             drop_instrs(seq, len, index, index + 2);
-            if (index) recheck_mergable(seq, index - 1, len);
+            /* keep going with the instruction that was before the newly-merged
+             * ones, to see if it can be merged into the next one.
+             *
+             * A bit confusing, so here's an example:
+             * merging `[Move(1), Add(2), Add(-2), Move(-1)]` at index 1 would
+             * result in `[Move(1), Move(-2)]`, so this would run the check
+             * again and merge them into an empty program. */
+            if (index == 0) return;
+            --index;
         }
     }
 }
