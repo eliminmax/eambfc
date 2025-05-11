@@ -140,9 +140,8 @@ static nonnull_args void drop_instrs(
 static nonnull_args void recheck_mergable(
     InstrSeq *seq, size_t index, size_t *len
 ) {
-    if (index + 1 == *len) return;
-
-    while ((seq[index].tag == ISEQ_ADD || seq[index].tag == ISEQ_MOVE_RIGHT) &&
+    while (index + 1 == *len &&
+           (seq[index].tag == ISEQ_ADD || seq[index].tag == ISEQ_MOVE_RIGHT) &&
            seq[index].tag == seq[index + 1].tag) {
         switch (seq[index].tag) {
             case ISEQ_ADD:
@@ -212,9 +211,9 @@ static nonnull_args bool drain_loop(
 /* find and remove loops that can be determined to always start with `0` already
  * in the current cell (meaning that they'll never run */
 enum loop_removal_result {
-    SUCCESS_CHANGED = 0,
-    SUCCESS_UNCHANGED = 1,
     FAIL_UNMATCHED_OPEN = -1,
+    SUCCESS_UNCHANGED = 0,
+    SUCCESS_CHANGED = 1,
 };
 
 static nonnull_args enum loop_removal_result drop_dead_loops(
@@ -224,9 +223,13 @@ static nonnull_args enum loop_removal_result drop_dead_loops(
     bool can_elim = true;
     bool changed = false;
     for (size_t i = 0; i < *len; ++i) {
-        while (can_elim && sequence[i].tag == ISEQ_LOOP_OPEN) {
-            changed = true;
-            if (!drain_loop(sequence, i, len, err)) return FAIL_UNMATCHED_OPEN;
+        if (can_elim) {
+            while (i < *len && sequence[i].tag == ISEQ_LOOP_OPEN) {
+                changed = true;
+                if (!drain_loop(sequence, i, len, err)) {
+                    return FAIL_UNMATCHED_OPEN;
+                }
+            }
         }
         switch (sequence[i].tag) {
             case ISEQ_READ:
