@@ -267,7 +267,7 @@ nonnull_args bool optimize_instructions(
     enum loop_removal_result res;
     while (
         (res = drop_dead_loops(
-             result->output.instrs, &result->output.len, result->err
+             result->output.instrs, &result->output.len, &result->err
          ))
     ) {
         if (res == FAIL_UNMATCHED_OPEN) return false;

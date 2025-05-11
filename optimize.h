@@ -65,7 +65,7 @@ union opt_result {
         InstrSeq *instrs;
     } output;
 
-    BFCError *err;
+    BFCError err;
 };
 
 nonnull_args bool optimize_instructions(

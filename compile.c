@@ -310,85 +310,80 @@ static bool comp_instr(
     }
 }
 
-/* Compile an ir instruction */
-static bool comp_ir_instr(
-    char instr,
-    size_t count,
-    SizedBuf *obj_code,
-    const ArchInter *inter,
-    const char *in_name
-) {
-    /* if there's only one (non-'@') instruction, compile it normally */
-    if (count == 1 && instr != '@')
-        return comp_instr(instr, obj_code, inter, in_name, NULL);
-    switch (instr) {
-        /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
-        case '.':
-        case ',':
-        case '[':
-        case ']':
-            for (size_t i = 0; i < count; i++) {
-                if (!comp_instr(instr, obj_code, inter, in_name, NULL)) {
-                    return false;
-                }
-            }
-            return true;
-        /* if it's @, then zero the byte pointed to by bf_ptr */
-        case '@':
-            inter->zero_byte(inter->reg_bf_ptr, obj_code);
-            return true;
-        case '+':
-            inter->add_byte(inter->reg_bf_ptr, count, obj_code);
-            return true;
-        case '-':
-            inter->sub_byte(inter->reg_bf_ptr, count, obj_code);
-            return true;
-        case '>': {
-            BFCError err;
-            if (!inter->add_reg(inter->reg_bf_ptr, count, obj_code, &err)) {
-                err.file = in_name;
-                display_err(err);
-                return false;
-            }
-            return true;
-        }
-        case '<': {
-            BFCError err;
-            if (!inter->sub_reg(inter->reg_bf_ptr, count, obj_code, &err)) {
-                err.file = in_name;
-                display_err(err);
-                return false;
-            }
-            return true;
-        }
-        default:
-            internal_err(BF_ICE_INVALID_IR, "Invalid IR Opcode");
-            return false;
-    }
-}
-
 static bool compile_condensed(
-    const char *restrict src_code,
+    const InstrSeq *restrict instr_seqs,
+    size_t len,
     SizedBuf *restrict obj_code,
     const ArchInter *restrict inter,
     const char *restrict in_name
 ) {
-    /* return early when there are no instructions to compile */
-    if (*src_code == '\0') return true;
     bool ret = true;
-    size_t count = 1;
-    char prev_instr = *(src_code);
-
-    while (*(++src_code)) {
-        if (*src_code == prev_instr) {
-            count++;
-        } else {
-            ret &= comp_ir_instr(prev_instr, count, obj_code, inter, in_name);
-            count = 1;
-            prev_instr = *(src_code);
+    for (size_t i = 0; i < len; ++i) {
+        switch (instr_seqs[i].tag) {
+            case ISEQ_SET_CELL:
+                inter->zero_byte(inter->reg_bf_ptr, obj_code);
+                inter->add_byte(
+                    inter->reg_bf_ptr, instr_seqs[i].count, obj_code
+                );
+                break;
+            case ISEQ_ADD:
+                inter->add_byte(
+                    inter->reg_bf_ptr, instr_seqs[i].count, obj_code
+                );
+                break;
+            case ISEQ_SUB:
+                inter->sub_byte(
+                    inter->reg_bf_ptr, instr_seqs[i].count, obj_code
+                );
+                break;
+            case ISEQ_MOVE_RIGHT: {
+                BFCError err;
+                if (!inter->add_reg(
+                        inter->reg_bf_ptr, instr_seqs[i].count, obj_code, &err
+                    )) {
+                    err.file = in_name;
+                    err.has_location = true;
+                    err.location = instr_seqs[i].source.location;
+                    display_err(err);
+                    ret = false;
+                }
+            } break;
+            case ISEQ_MOVE_LEFT: {
+                BFCError err;
+                if (!inter->sub_reg(
+                        inter->reg_bf_ptr, instr_seqs[i].count, obj_code, &err
+                    )) {
+                    err.file = in_name;
+                    err.has_location = true;
+                    err.location = instr_seqs[i].source.location;
+                    display_err(err);
+                    ret = false;
+                }
+            } break;
+            case ISEQ_LOOP_OPEN:
+                inter->pad_loop_open(obj_code);
+                break;
+            case ISEQ_LOOP_CLOSE: {
+                BFCError err;
+                if (!bf_jump_close(obj_code, inter, &err)) {
+                    err.file = in_name;
+                    err.has_location = true;
+                    err.location = instr_seqs[i].source.location;
+                    display_err(err);
+                    ret = false;
+                }
+            } break;
+            case ISEQ_WRITE:
+                bf_io(obj_code, STDOUT_FILENO, inter->sc_write, inter);
+                break;
+            case ISEQ_READ:
+                bf_io(obj_code, STDOUT_FILENO, inter->sc_read, inter);
+                break;
+            default:
+                break;
         }
     }
-    return ret & comp_ir_instr(prev_instr, count, obj_code, inter, in_name);
+    return ret;
 }
 
 /* Compile code in source file to destination file.
@@ -432,13 +427,18 @@ bool bf_compile(
 
     /* compile the actual source code to object code */
     if (optimize) {
-        if (!filter_dead(&src.sb, in_name)) {
+        union opt_result res;
+        if (!optimize_instructions(src.sb.buf, src.sb.sz, &res)) {
+            res.err.file = in_name;
+            display_err(res.err);
             free(src.sb.buf);
             free(jump_stack.locations);
             free(obj_code.buf);
             return false;
         }
-        ret &= compile_condensed(src.sb.buf, &obj_code, inter, in_name);
+        ret &= compile_condensed(
+            res.output.instrs, res.output.len, &obj_code, inter, in_name
+        );
     } else {
         SrcLoc loc = {.line = 1, .col = 0};
         for (size_t i = 0; i < src.sb.sz; i++) {
