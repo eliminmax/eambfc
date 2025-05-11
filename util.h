@@ -36,7 +36,7 @@ inline nonnull_ret void *checked_realloc(void *ptr, size_t size) {
 }
 
 /* return the number of trailing zeroes in val */
-const_fn inline u8 trailing_0s(u64 val) {
+const_fn inline u8 trailing_0s(umax val) {
     if (!val) return UINT8_MAX;
     u8 counter = 0;
     while (!(val & 1)) {
@@ -56,7 +56,7 @@ const_fn inline size_t chunk_pad(size_t nbytes) {
 }
 
 /* Return true if signed `val` fits within specified number of bits */
-const_fn inline bool bit_fits(i64 val, u8 bits) {
+const_fn inline bool bit_fits(imax val, u8 bits) {
     return val >= -(INT64_C(1) << (bits - 1)) &&
            val < (INT64_C(1) << (bits - 1));
 }
@@ -72,12 +72,18 @@ inline SizedBuf newbuf(size_t sz) {
 }
 
 /* return the least significant nbits of val sign-extended to 64 bits. */
-const_fn inline imax sign_extend(i64 val, u8 nbits) {
-    u8 shift_amount = (sizeof(i64) * 8) - nbits;
+const_fn inline imax sign_extend(imax val, u8 nbits) {
+    u8 shift_amount = (sizeof(imax) * 8) - nbits;
+
     /* shifting into the sign bit is undefined behavior, so cast it to unsigned,
      * then assign it back. */
-    i64 lshifted = ((u64)val << shift_amount);
-    return lshifted >> shift_amount;
+    union {
+        umax u;
+        imax i;
+    } caster;
+
+    caster.u = ((umax)val << shift_amount);
+    return caster.i;
 }
 
 /* Attempts to write `ct` bytes from `buf` to `fd`.
