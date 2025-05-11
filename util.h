@@ -86,6 +86,21 @@ const_fn inline imax sign_extend(imax val, u8 nbits) {
     return caster.i;
 }
 
+/* because POSIX requires 2's complement integer representations, and signed
+ * overflow is undefined while unsigned overflow is wrapping, this can be used
+ * to add signed values with wrapping semantics, then truncate down to size. */
+const_fn inline imax add_wrapping(imax a, imax b, u8 nbits) {
+    union {
+        umax u;
+        imax i;
+    } cast_a, cast_b;
+
+    cast_a.i = a;
+    cast_b.i = b;
+    cast_a.u += cast_b.u;
+    return sign_extend(cast_a.i, nbits);
+}
+
 /* Attempts to write `ct` bytes from `buf` to `fd`.
  * If all bytes are written, returns `true`, otherwise, it sets `err->id` and
  * `err->msg`, zeroing out other fields in `err`, then returns `false`. */
