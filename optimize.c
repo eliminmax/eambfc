@@ -198,11 +198,12 @@ static nonnull_args bool drain_loop(
             }
         }
     }
+    SrcLoc location = seq[start].source.location;
     free(seq);
     *err = (BFCError){
         .id = BF_ERR_UNMATCHED_OPEN,
         .msg.ref = "Could not optimize due to unmatched loop open",
-        .location = seq[start].source.location,
+        .location = location,
         .has_location = true,
     };
     return false;
