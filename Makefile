@@ -58,10 +58,10 @@ test: eambfc
 	(cd tests; make clean test)
 
 unit_test_driver: $(UNIT_TEST_DEPS)
-	$(CC) $$(llvm-config --cflags) $$(pkgconf json-c --cflags) \
+	$(CC) $$(llvm-config-19 --cflags) $$(pkgconf json-c --cflags) \
 		-DBFC_TEST=1 $(CFLAGS) $(EXTRA_CFLAGS) -o $@ \
 		$(LDFLAGS) $(ALL_SOURCES) $(LDLIBS) $$(pkgconf json-c --libs) \
-		-lcunit $$(llvm-config --ldflags --libs)
+		-lcunit $$(llvm-config-19 --ldflags --libs)
 
 # remove eambfc and the objects it's built from, and remove test artifacts
 clean:
