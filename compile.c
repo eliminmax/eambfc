@@ -360,9 +360,18 @@ static bool compile_condensed(
                     ret = false;
                 }
             } break;
-            case ISEQ_LOOP_OPEN:
-                inter->pad_loop_open(obj_code);
-                break;
+            case ISEQ_LOOP_OPEN: {
+                BFCError err;
+                if (!bf_jump_open(
+                        obj_code, inter, &err, &instr_seqs[i].source.location
+                    )) {
+                    err.file = in_name;
+                    err.has_location = true;
+                    err.location = instr_seqs[i].source.location;
+                    display_err(err);
+                    ret = false;
+                }
+            } break;
             case ISEQ_LOOP_CLOSE: {
                 BFCError err;
                 if (!bf_jump_close(obj_code, inter, &err)) {
@@ -377,7 +386,7 @@ static bool compile_condensed(
                 bf_io(obj_code, STDOUT_FILENO, inter->sc_write, inter);
                 break;
             case ISEQ_READ:
-                bf_io(obj_code, STDOUT_FILENO, inter->sc_read, inter);
+                bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
                 break;
             default:
                 break;
