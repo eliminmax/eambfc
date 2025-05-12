@@ -16,9 +16,17 @@
 
 #include "err.h"
 
+#ifdef BFC_UTIL_EXTERN
+#define INLINE_DECL(...) \
+    extern inline __VA_ARGS__; \
+    inline __VA_ARGS__
+#else /* BFC_UTIL_EXTERN */
+#define INLINE_DECL(...) inline __VA_ARGS__
+#endif /* BFC_UTIL_EXTERN */
+
 /* Try to `malloc(size)`. On success, pass the returned pointer.
  * On failure, call `alloc_err` */
-inline malloc_like nonnull_ret void *checked_malloc(size_t size) {
+INLINE_DECL(malloc_like nonnull_ret void *checked_malloc(size_t size)) {
     void *ptr = malloc(size);
     if (!ptr) alloc_err();
     return ptr;
@@ -26,7 +34,7 @@ inline malloc_like nonnull_ret void *checked_malloc(size_t size) {
 
 /* Try to `realloc(ptr, size)`. On success, pass the returned pointer.
  * On failure, call `alloc_err` */
-inline nonnull_ret void *checked_realloc(void *ptr, size_t size) {
+INLINE_DECL(nonnull_ret void *checked_realloc(void *ptr, size_t size)) {
     void *newptr = realloc(ptr, size);
     if (!newptr) {
         free(ptr);
@@ -36,7 +44,7 @@ inline nonnull_ret void *checked_realloc(void *ptr, size_t size) {
 }
 
 /* return the number of trailing zeroes in val */
-const_fn inline u8 trailing_0s(umax val) {
+INLINE_DECL(const_fn u8 trailing_0s(umax val)) {
     if (!val) return UINT8_MAX;
     u8 counter = 0;
     while (!(val & 1)) {
@@ -49,20 +57,20 @@ const_fn inline u8 trailing_0s(umax val) {
 /* return `nbytes`, padded to the next multiple of `BFC_CHUNK_SIZE`. If it is
  * already a multiple of `BFC_CHUNK_SIZE`, it is returned as-is, and if the
  * padding would exceed `SIZE_MAX`, it returns `SIZE_MAX`. */
-const_fn inline size_t chunk_pad(size_t nbytes) {
+INLINE_DECL(const_fn size_t chunk_pad(size_t nbytes)) {
     if (!(nbytes & (BFC_CHUNK_SIZE - 1))) return nbytes;
     size_t ret = (nbytes & ~(size_t)(BFC_CHUNK_SIZE - 1)) + BFC_CHUNK_SIZE;
     return (ret < nbytes) ? SIZE_MAX : ret;
 }
 
 /* Return true if signed `val` fits within specified number of bits */
-const_fn inline bool bit_fits(imax val, u8 bits) {
+INLINE_DECL(const_fn bool bit_fits(imax val, u8 bits)) {
     return val >= -(INT64_C(1) << (bits - 1)) &&
            val < (INT64_C(1) << (bits - 1));
 }
 
 /* create a new SizedBuf with the provided capacity, and an allocated buffer */
-inline SizedBuf newbuf(size_t sz) {
+INLINE_DECL(SizedBuf newbuf(size_t sz)) {
     SizedBuf newbuf = {
         .buf = checked_malloc(sz),
         .sz = 0,
@@ -72,7 +80,7 @@ inline SizedBuf newbuf(size_t sz) {
 }
 
 /* return the least significant nbits of val sign-extended to 64 bits. */
-const_fn inline imax sign_extend(imax val, u8 nbits) {
+INLINE_DECL(const_fn imax sign_extend(imax val, u8 nbits)) {
     u8 shift_amount = (sizeof(imax) * 8) - nbits;
 
     /* shifting into the sign bit is undefined behavior, so cast it to unsigned,
@@ -89,7 +97,7 @@ const_fn inline imax sign_extend(imax val, u8 nbits) {
 /* because POSIX requires 2's complement integer representations, and signed
  * overflow is undefined while unsigned overflow is wrapping, this can be used
  * to add signed values with wrapping semantics, then truncate down to size. */
-const_fn inline imax add_wrapping(imax a, imax b, u8 nbits) {
+INLINE_DECL(const_fn imax add_wrapping(imax a, imax b, u8 nbits)) {
     union {
         umax u;
         imax i;
@@ -120,7 +128,7 @@ nonnull_args void append_obj(
 
 /* append `str` to `dst` with `append_obj`, and adjust `dst->sz` to exclude the
  * null terminator */
-inline void append_str(SizedBuf *restrict dst, const char *restrict str) {
+INLINE_DECL(void append_str(SizedBuf *restrict dst, const char *restrict str)) {
     append_obj(dst, str, strlen(str) + 1);
     dst->sz--;
 }
@@ -134,5 +142,7 @@ union read_result {
  * sets `result->err` to an error with the `id` and `msg` set. Once no data is
  * left to read, it returns `true`. */
 nonnull_args bool read_to_sb(int fd, union read_result *result);
+
+#undef INLINE_DECL
 
 #endif /* BFC_UTIL_H */

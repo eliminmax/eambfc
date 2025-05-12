@@ -17,18 +17,8 @@
 #include <types.h>
 
 #include "err.h"
+#define BFC_UTIL_EXTERN
 #include "util.h"
-
-extern inline void *checked_malloc(size_t size);
-extern inline void *checked_realloc(void *ptr, size_t size);
-extern inline SizedBuf newbuf(size_t sz);
-extern inline void append_str(SizedBuf *restrict dst, const char *restrict str);
-
-extern inline const_fn u8 trailing_0s(umax val);
-extern inline const_fn size_t chunk_pad(size_t nbytes);
-extern inline const_fn bool bit_fits(imax val, u8 bits);
-extern inline const_fn imax sign_extend(imax val, u8 nbits);
-extern inline const_fn imax wrap_add(imax a, imax b, u8 nbits);
 
 nonnull_args bool write_obj(
     int fd, const void *restrict buf, size_t ct, BFCError *restrict err
