@@ -30,7 +30,7 @@
  * https://ibm.com/support/pages/sites/default/files/2021-05/SA22-7871-10.pdf
  *
  * Additional information about the ISA is available in the ELF Application
- * Binary Interface s390x Supplement, Version 1.6.1. As f 2024-10-29, IBM
+ * Binary Interface s390x Supplement, Version 1.6.1. As of 2024-10-29, IBM
  * provides it at the following URL:
  * https://github.com/IBM/s390x-abi/releases/download/v1.6.1/lzsabi_s390x.pdf
  *
