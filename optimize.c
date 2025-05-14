@@ -613,16 +613,16 @@ static void set_cell_detected(void) {
         {.source = {{1, 11}, 10, 14}, .tag = ISEQ_SET_CELL, .count = 0},
         {.source = {{1, 16}, 15, 15}, .tag = ISEQ_READ},
         {.source = {{1, 17}, 16, 20}, .tag = ISEQ_SET_CELL, .count = 0},
-        {.source = {{1, 20}, 21, 21}, .tag = ISEQ_READ},
-        {.source = {{1, 21}, 22, 22}, .tag = ISEQ_LOOP_OPEN},
-        {.source = {{1, 22}, 23, 24}, .tag = ISEQ_ADD, .count = 2},
-        {.source = {{1, 24}, 25, 25}, .tag = ISEQ_LOOP_CLOSE},
-        {.source = {{1, 25}, 26, 26}, .tag = ISEQ_READ},
-        {.source = {{1, 26}, 27, 29}, .tag = ISEQ_SET_CELL, .count = 0},
-        {.source = {{1, 29}, 30, 30}, .tag = ISEQ_READ},
+        {.source = {{1, 22}, 21, 21}, .tag = ISEQ_READ},
+        {.source = {{1, 23}, 22, 22}, .tag = ISEQ_LOOP_OPEN},
+        {.source = {{1, 24}, 23, 24}, .tag = ISEQ_ADD, .count = 2},
+        {.source = {{1, 26}, 25, 25}, .tag = ISEQ_LOOP_CLOSE},
+        {.source = {{1, 27}, 26, 26}, .tag = ISEQ_READ},
+        {.source = {{1, 28}, 27, 29}, .tag = ISEQ_SET_CELL, .count = 0},
+        {.source = {{1, 31}, 30, 30}, .tag = ISEQ_READ},
     };
     union opt_result res;
-    if (!optimize_instructions(code, strlen(code) - 1, &res)) {
+    if (!optimize_instructions(code, strlen(code), &res)) {
         CU_FAIL("Failed to generate InstrSeq from code");
         display_err(res.err);
         return;
