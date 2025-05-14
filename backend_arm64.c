@@ -227,7 +227,7 @@ static nonnull_args void add_sub(
         /* different byte values are needed than normal here */
         u8 op_byte = (op == A64_OP_ADD) ? 0x8b : 0xcb;
         /* set register x17 to the target value */
-        set_reg(TEMP_REG, (i64)imm, dst_buf, NULL);
+        set_reg(TEMP_REG, cast_i64(imm), dst_buf, NULL);
         /* either ADD x.reg, x.reg, x17 or SUB x.reg, x.reg, x17 */
         serialize32le(
             (u32)op_byte << 24 | TEMP_REG << 16 | reg | reg << 5,

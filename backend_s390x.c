@@ -209,7 +209,7 @@ static nonnull_arg(3) bool set_reg(
 
         /* try to set the upper bits no matter what, but if the lower bits
          * failed, still want to return false. */
-        set_reg(reg, (i32)imm, dst_buf, err);
+        set_reg(reg, cast_i32(imm), dst_buf, err);
         /* check if only one of the two higher quarters need to be explicitly
          * set, as that enables using shorter instructions. In the terminology
          * of the architecture, they are the high high and high low quarters of
@@ -220,7 +220,7 @@ static nonnull_arg(3) bool set_reg(
             u8 i_bytes[4] = RI_OP(0xa51, reg);
             serialize16be(upper_imm, &i_bytes[2]);
             append_obj(dst_buf, &i_bytes, 4);
-        } else if ((i16)upper_imm == default_val) {
+        } else if (cast_i16(upper_imm) == default_val) {
             /* sets bits 0-15 of the register to the immediate. */
             /* IIHH reg, upper_imm {RI-a} */
             u8 i_bytes[4] = RI_OP(0xa50, reg);
@@ -361,7 +361,7 @@ static nonnull_args void add_reg_signed(
     } else {
         /* if the lower 32 bits are non-zero, call this function recursively
          * to add to them */
-        if ((i32)imm) add_reg_signed(reg, (i32)imm, dst_buf);
+        if (cast_i32(imm)) add_reg_signed(reg, cast_i32(imm), dst_buf);
 
         /* add the higher 32 bits */
         /* AIH reg, imm {RIL-a} */
@@ -487,7 +487,7 @@ const ArchInter S390X_INTER = {
  * for this architecture often uses decimal immediates, it's sometimes necessary
  * to explain why a given immediate is expected in the disassembly, so this
  * macro can be used as an enforced way to explain the reasoning */
-#define GIVEN_THAT CU_ASSERT_FATAL
+#define GIVEN_THAT CU_ASSERT
 #define REF S390X_DIS
 
 static void test_load_store(void) {
@@ -572,7 +572,7 @@ static void test_set_reg_large_imm(void) {
     memset(dis.buf, 0, dis.sz);
 
     CU_ASSERT(set_reg(2, INT64_C(-0xdead0000beef), &sb, NULL));
-    GIVEN_THAT(-0xbeefL == -48879L && ~(i16)0xdead == 8530);
+    GIVEN_THAT(-0xbeefL == -48879L && ~cast_i16(0xdead) == 8530);
     DISASM_TEST(sb, dis, "lgfi %r2, -48879\niihl %r2, 8530\n");
     memset(dis.buf, 0, dis.sz);
 
@@ -590,7 +590,7 @@ static void test_set_reg_large_imm(void) {
 
     CU_ASSERT(set_reg(8, INT64_C(0x123456789abcdef0), &sb, NULL));
     GIVEN_THAT(0x12345678L == 305419896L);
-    GIVEN_THAT((i32)0x9abcdef0UL == -1698898192L);
+    GIVEN_THAT(cast_i32(0x9abcdef0UL) == -1698898192L);
     DISASM_TEST(sb, dis, "lgfi %r8, -1698898192\niihf %r8, 305419896\n");
     memset(dis.buf, 0, dis.sz);
 
@@ -719,14 +719,14 @@ static void test_reg_arith_large_imm(void) {
     SizedBuf dis = newbuf(40);
 
     CU_ASSERT(add_reg(8, INT64_C(9876543210), &sb, NULL));
-    GIVEN_THAT((i32)INT64_C(9876543210) == 1286608618);
+    GIVEN_THAT(cast_i32(INT64_C(9876543210) & 0xffffffff) == 1286608618);
     GIVEN_THAT(INT64_C(9876543210) >> 32 == 2);
     DISASM_TEST(sb, dis, "agfi %r8, 1286608618\naih %r8, 2\n");
     memset(dis.buf, 0, dis.sz);
 
     CU_ASSERT(sub_reg(8, INT64_C(9876543210), &sb, NULL));
-    GIVEN_THAT((i32)INT64_C(-9876543210) == -1286608618);
-    GIVEN_THAT(sign_extend((u64)INT64_C(-9876543210) >> 32, 32) == INT64_C(-3));
+    GIVEN_THAT(cast_i32(INT64_C(-9876543210) & 0xffffffff) == -1286608618);
+    GIVEN_THAT(cast_i32((u64)-9876543210 >> 32) == -3);
     DISASM_TEST(sb, dis, "agfi %r8, -1286608618\naih %r8, -3\n");
     memset(dis.buf, 0, dis.sz);
 

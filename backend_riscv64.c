@@ -63,7 +63,7 @@ static nonnull_args void encode_li(
             append_obj(code_buf, &i_bytes, 4);
         }
         if (lo12 || !hi20) {
-            if (bit_fits((i32)lo12, 6)) {
+            if (bit_fits(cast_i32(lo12), 6)) {
                 /* if n == 0: `C.LI reg, lo6`
                  * else: `ADDIW reg, reg, lo6` */
                 u16 instr = (hi20 ? 0x2001 : 0x4001) |
@@ -100,7 +100,7 @@ static nonnull_args void encode_li(
         serialize16le(instr, &i_bytes);
         append_obj(code_buf, i_bytes, 2);
     }
-    if (lo12 && bit_fits((i16)lo12, 6)) {
+    if (lo12 && bit_fits(cast_i16(lo12), 6)) {
         /* C.ADDI reg, reg, lo12 */
         u16 instr =
             0x0001 | (((lo12 & 0x20) | reg) << 7) | ((lo12 & 0x1f) << 2);
@@ -766,7 +766,7 @@ static void test_add_sub_byte(void) {
      * done, but will have the same byte value once truncated down. */
     add_byte(RISCV64_INTER.reg_arg3, 0x80, &sb);
     sub_byte(RISCV64_INTER.reg_arg3, 0x80, &sb);
-    CU_ASSERT_EQUAL((i8)(INT16_C(1) + 0x80), (i8)(INT16_C(1) - 0x80));
+    CU_ASSERT_EQUAL(cast_i8(INT16_C(1) + 0x80), cast_i8(INT16_C(1) - 0x80));
     (void)0;
     DISASM_TEST(
         sb,
