@@ -33,11 +33,6 @@
 #error "No backends are enabled"
 #endif /* BFC_NUM_BACKENDS */
 
-/* __BACKENDS__ number of backends should be incremented */
-#if defined(BFC_TEST) && (BFC_NUM_BACKENDS != 5)
-#error "unit testing is unsupported without all backends enabled"
-#endif /* defined(BFC_TEST) && ... */
-
 /* __BACKENDS__ add logic for the new backend
  *
  * Each backend block should check if the backend is enabled, and if the GCC
