@@ -6,6 +6,7 @@
  * array. */
 
 /* C99 */
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 /* internal */
@@ -130,10 +131,12 @@ static nonnull_args InstrSeq *into_sequences(
 /* drop instruction sequences from `start` (inclusive) to `end` (exclusive),
  * updating the value of `*len` accordingly */
 static nonnull_args void drop_instrs(
-    InstrSeq *seq, size_t *len, size_t start, size_t end
+    InstrSeq *seq, size_t *len, size_t start, size_t elems
 ) {
+    assert(start + elems <= *len);
+    size_t end = start + elems;
     memmove(&seq[start], &seq[end], (*len - end) * sizeof(InstrSeq));
-    *len -= end - start;
+    *len -= elems;
 }
 
 /* check if any more instruction mergers can occur after the previous removal */
@@ -160,9 +163,9 @@ static nonnull_args void recheck_mergable(
         }
         if (seq[index].count) {
             /* drop the merged instruction */
-            drop_instrs(seq, len, index, index + 1);
+            drop_instrs(seq, len, index + 1, 1);
         } else {
-            drop_instrs(seq, len, index, index + 2);
+            drop_instrs(seq, len, index, 2);
             /* keep going with the instruction that was before the newly-merged
              * ones, to see if it can be merged into the next one.
              *
@@ -188,8 +191,9 @@ static nonnull_args bool drain_loop(
         } else if (seq[i].tag == ISEQ_LOOP_CLOSE) {
             --nest_level;
             if (!nest_level) {
-                drop_instrs(seq, len, start, i + 1);
-                recheck_mergable(seq, start ? start - 1 : 0, len);
+                drop_instrs(seq, len, start, (i + 1) - start);
+                if (start) recheck_mergable(seq, start - 1, len);
+                recheck_mergable(seq, start, len);
                 return true;
             }
         }
@@ -238,7 +242,7 @@ static nonnull_args enum loop_removal_result drop_dead_loops(
                 break;
         }
 
-        can_elim = may_have_nonzero && sequence[i].tag == ISEQ_LOOP_CLOSE;
+        can_elim = may_have_nonzero || sequence[i].tag == ISEQ_LOOP_CLOSE;
     }
     return changed ? SUCCESS_CHANGED : SUCCESS_UNCHANGED;
 }
@@ -250,12 +254,14 @@ static nonnull_args void join_set_cells(InstrSeq *instructions, size_t *len) {
             instructions[i + 1].count % 2 &&
             instructions[i + 2].tag == ISEQ_LOOP_CLOSE) {
             instructions[i].source.end = instructions[i + 2].source.end;
-            drop_instrs(instructions, len, i + 1, i + 3);
+            drop_instrs(instructions, len, i + 1, 2);
             instructions[i].tag = ISEQ_SET_CELL;
             if (i + 1 < *len && instructions[i + 1].tag == ISEQ_ADD) {
                 instructions[i].count = instructions[i + 1].count;
                 instructions[i].source.end = instructions[i + 1].source.end;
-                drop_instrs(instructions, len, i + 1, i + 2);
+                drop_instrs(instructions, len, i + 1, 1);
+            } else {
+                instructions[i].count = 0;
             }
         }
     }
@@ -487,10 +493,11 @@ static void combine_logic_test(void) {
     /* value shouldn't have been overwritten by the memmove */
     CU_ASSERT(instr_eq(&merge_no_oob[1], &IS(ISEQ_ADD, 0)));
     /* value shouldn't have been overwritten by the memmove or otherwise
-     * modified. */
-    CU_ASSERT(instr_eq(&merge_no_oob[2], &IS(ISEQ_ADD, 32)));
+     * modified. If it has, then there was a read beyond the length added to
+     * the function. */
+    CU_ASSERT(instr_eq(&merge_no_oob[2], &IS(ISEQ_ADD, -32)));
     /* value is out-of-bounds and shouldn't have been touched at all */
-    CU_ASSERT(instr_eq(&merge_no_oob[3], &IS(ISEQ_MOVE_RIGHT, -3)));
+    CU_ASSERT(instr_eq(&merge_no_oob[3], &IS(ISEQ_MOVE_RIGHT, -2)));
     CU_ASSERT_EQUAL(len, 1);
 
     /* make sure that upper bytes within `count` are ignored when merging. */
@@ -551,6 +558,13 @@ static void optimize_test(void) {
         "----------------------------------------------------------------"
         "[->+<][,.]\n+++\n";
 
+    union opt_result res;
+    if (!optimize_instructions(code, strlen(code) - 1, &res)) {
+        CU_FAIL("Failed to generate InstrSeq from code");
+        display_err(res.err);
+        return;
+    }
+
     const InstrSeq expected[9] = {
         /* code[308..=316] at line 3 column 5 is ">padding>" */
         {{.location = {3, 5}, .start = 308, .end = 316}, ISEQ_MOVE_RIGHT, 2},
@@ -571,13 +585,6 @@ static void optimize_test(void) {
         /* code[582] at line 5 column 262 is "]" */
         {{.location = {5, 262}, .start = 582, .end = 582}, ISEQ_LOOP_CLOSE, 0},
     };
-
-    union opt_result res;
-    if (!optimize_instructions(code, strlen(code) - 1, &res)) {
-        CU_FAIL("Failed to generate InstrSeq from code");
-        display_err(res.err);
-        return;
-    }
 
     if (res.output.len != 9) {
         CU_FAIL("Length mismatch");
