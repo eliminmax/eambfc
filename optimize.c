@@ -297,8 +297,7 @@ nonnull_args bool optimize_instructions(
                 /* because `i64` is technically `int_least64_t`, which is
                  * possibly more than 64 bits, this check still requires sign
                  * extension */
-                i64 signed_count =
-                    sign_extend(result->output.instrs[i].count, 64);
+                i64 signed_count = cast_i64(result->output.instrs[i].count);
                 if (signed_count < 0) {
                     result->output.instrs[i].count = -signed_count;
                     result->output.instrs[i].tag = ISEQ_MOVE_LEFT;
