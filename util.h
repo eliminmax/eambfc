@@ -56,13 +56,33 @@ INLINE_DECL(const_fn u8 trailing_0s(umax val)) {
 }
 
 /* trying to convert a value into a signed type that's too large has
- * implementation-defined behavior. On StackOverflow, user743382 and Nemo have
- * a fully-portable way to cast an `int` into an `unsigned int` in C++98, and
- * this macro declares functions that adapt their approach into C99.
+ * implementation-defined behavior. On StackOverflow, user743382 implemented a
+ * fully-portable way to cast an `int` into an `unsigned int` in C++, and this
+ * macro declares functions that adapt the approach used into C99.
  *
  * https://stackoverflow.com/a/13208789
- * The first parameter is the name of the cast function to generate. The second
- * is the unsigned input type, */
+ *
+ * The first parameter is the name of the cast function to generate.
+ * The second is the unsigned input type.
+ * The third is the signed output type.
+ * The fourth is the *MIN macro for the output type
+ * The fifth is the *MAX macro for the output type
+ *
+ * Example:
+ * `DECL_CAST_N(cast_imax, umax, imax, INTMAX_MIN, INTMAX_MAX)` expands to
+ * ```
+ * inline const_fn imax cast_imax(umax val) {
+ *     if (val <= (umax)(INTMAX_MAX)) {
+ *         return val;
+ *     } else {
+ *         return (INTMAX_MIN) + (imax)(val - (INTMAX_MIN));
+ *     }
+ * }
+ * ```
+ *
+ * The default builds of both gcc and clang in Debian Bookworm optimize the
+ * resulting functions to the equivalent of `return val`, even at `-O1`, so
+ * should inline into a no-op with any modern compiler. */
 #define DECL_CAST_N(fn, utype, stype, typemin, typemax) \
     INLINE_DECL(const_fn stype fn(utype val)) { \
         if (val <= (utype)(typemax)) { \
