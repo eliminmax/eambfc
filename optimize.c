@@ -253,15 +253,15 @@ static nonnull_args void join_set_cells(InstrSeq *instructions, size_t *len) {
             instructions[i + 1].tag == ISEQ_ADD &&
             instructions[i + 1].count % 2 &&
             instructions[i + 2].tag == ISEQ_LOOP_CLOSE) {
-            instructions[i].source.end = instructions[i + 2].source.end;
-            drop_instrs(instructions, len, i + 1, 2);
             instructions[i].tag = ISEQ_SET_CELL;
-            if (i + 1 < *len && instructions[i + 1].tag == ISEQ_ADD) {
-                instructions[i].count = instructions[i + 1].count;
-                instructions[i].source.end = instructions[i + 1].source.end;
-                drop_instrs(instructions, len, i + 1, 1);
+            if (i + 3 < *len && instructions[i + 3].tag == ISEQ_ADD) {
+                instructions[i].count = instructions[i + 3].count;
+                instructions[i].source.end = instructions[i + 3].source.end;
+                drop_instrs(instructions, len, i + 1, 3);
             } else {
                 instructions[i].count = 0;
+                instructions[i].source.end = instructions[i + 2].source.end;
+                drop_instrs(instructions, len, i + 1, 2);
             }
         }
     }
