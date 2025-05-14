@@ -637,6 +637,31 @@ static void set_cell_detected(void) {
     }
 
     free(res.output.instrs);
+
+    /* now, make sure that subsequent adds are merged in. */
+    code = ",\n[-]++++++++++++++++++++++++++++++++\n.";
+
+    if (!optimize_instructions(code, strlen(code), &res)) {
+        CU_FAIL("Failed to generate InstrSeq from code");
+        display_err(res.err);
+        return;
+    }
+    if (res.output.len != 3) {
+        CU_FAIL("length mismatch");
+        free(res.output.instrs);
+        return;
+    }
+    CU_ASSERT(instr_eq(
+        &res.output.instrs[0], &(InstrSeq){{{1, 1}, 0, 0}, ISEQ_READ, 0}
+    ));
+    CU_ASSERT(instr_eq(
+        &res.output.instrs[1], &(InstrSeq){{{2, 1}, 2, 36}, ISEQ_SET_CELL, 32}
+    ));
+    CU_ASSERT(instr_eq(
+        &res.output.instrs[2], &(InstrSeq){{{3, 1}, 38, 38}, ISEQ_WRITE, 0}
+    ));
+
+    free(res.output.instrs);
 }
 
 CU_pSuite register_optimize_tests(void) {
