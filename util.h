@@ -6,6 +6,7 @@
 #ifndef BFC_UTIL_H
 #define BFC_UTIL_H 1
 /* C99 */
+#include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,6 +55,29 @@ INLINE_DECL(const_fn u8 trailing_0s(umax val)) {
     return counter;
 }
 
+/* trying to convert a value into a signed type that's too large has
+ * implementation-defined behavior. On StackOverflow, user743382 and Nemo have
+ * a fully-portable way to cast an `int` into an `unsigned int` in C++98, and
+ * this macro declares functions that adapt their approach into C99.
+ *
+ * https://stackoverflow.com/a/13208789
+ * The first parameter is the name of the cast function to generate. The second
+ * is the unsigned input type, */
+#define DECL_CAST_N(fn, utype, stype, typemin, typemax) \
+    INLINE_DECL(const_fn stype fn(utype val)) { \
+        if (val <= (utype)(typemax)) { \
+            return val; \
+        } else { \
+            return (typemin) + (stype)(val - (typemin)); \
+        } \
+    }
+
+DECL_CAST_N(cast_imax, umax, imax, INTMAX_MIN, INTMAX_MAX)
+DECL_CAST_N(cast_i64, u64, i64, INT64_MIN, INT64_MAX)
+DECL_CAST_N(cast_i32, u32, i32, INT32_MIN, INT32_MAX)
+DECL_CAST_N(cast_i16, u16, i16, INT16_MIN, INT16_MAX)
+DECL_CAST_N(cast_i8, u8, i8, INT8_MIN, INT8_MAX)
+
 /* return `nbytes`, padded to the next multiple of `BFC_CHUNK_SIZE`. If it is
  * already a multiple of `BFC_CHUNK_SIZE`, it is returned as-is, and if the
  * padding would exceed `SIZE_MAX`, it returns `SIZE_MAX`. */
@@ -65,8 +89,8 @@ INLINE_DECL(const_fn size_t chunk_pad(size_t nbytes)) {
 
 /* Return true if signed `val` fits within specified number of bits */
 INLINE_DECL(const_fn bool bit_fits(imax val, u8 bits)) {
-    return val >= -(INT64_C(1) << (bits - 1)) &&
-           val < (INT64_C(1) << (bits - 1));
+    return val >= -(INTMAX_C(1) << (bits - 1)) &&
+           val < (INTMAX_C(1) << (bits - 1));
 }
 
 /* create a new SizedBuf with the provided capacity, and an allocated buffer */
@@ -80,33 +104,16 @@ INLINE_DECL(SizedBuf newbuf(size_t sz)) {
 }
 
 /* return the least significant nbits of val sign-extended to 64 bits. */
-INLINE_DECL(const_fn imax sign_extend(imax val, u8 nbits)) {
-    u8 shift_amount = (sizeof(imax) * 8) - nbits;
-
-    /* shifting into the sign bit is undefined behavior, so cast it to unsigned,
-     * then assign it back. */
-    union {
-        umax u;
-        imax i;
-    } caster;
-
-    caster.u = ((umax)val << shift_amount);
-    return caster.i;
+INLINE_DECL(const_fn i64 sign_extend(i64 val, ufast_8 nbits)) {
+    assert(nbits < 64);
+    return cast_i64((((u64)val) << (64 - nbits))) >> (64 - nbits);
 }
 
 /* because POSIX requires 2's complement integer representations, and signed
  * overflow is undefined while unsigned overflow is wrapping, this can be used
  * to add signed values with wrapping semantics, then truncate down to size. */
-INLINE_DECL(const_fn imax add_wrapping(imax a, imax b, u8 nbits)) {
-    union {
-        umax u;
-        imax i;
-    } cast_a, cast_b;
-
-    cast_a.i = a;
-    cast_b.i = b;
-    cast_a.u += cast_b.u;
-    return sign_extend(cast_a.i, nbits);
+INLINE_DECL(const_fn imax add_wrapping(imax a, imax b)) {
+    return cast_imax((umax)a + (umax)b);
 }
 
 /* Attempts to write `ct` bytes from `buf` to `fd`.

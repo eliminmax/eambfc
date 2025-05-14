@@ -59,6 +59,7 @@ StatementMacros:
   - ARCH_DISASM
   - ARCH_INTER
   - ARCH_TEST_REGISTER
+  - DECL_CAST_N
   - OPTION
   - OPTLINE
   - PARAM_OPT
