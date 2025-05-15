@@ -96,7 +96,8 @@ DECL_CAST_N(cast_imax, umax, imax, INTMAX_MIN, INTMAX_MAX)
 DECL_CAST_N(cast_i64, u64, i64, INT64_MIN, INT64_MAX)
 DECL_CAST_N(cast_i32, u32, i32, INT32_MIN, INT32_MAX)
 DECL_CAST_N(cast_i16, u16, i16, INT16_MIN, INT16_MAX)
-DECL_CAST_N(cast_i8, u8, i8, INT8_MIN, INT8_MAX)
+
+/* not currently needed:  DECL_CAST_N(cast_i8, u8, i8, INT8_MIN, INT8_MAX) */
 
 /* return `nbytes`, padded to the next multiple of `BFC_CHUNK_SIZE`. If it is
  * already a multiple of `BFC_CHUNK_SIZE`, it is returned as-is, and if the
@@ -127,13 +128,6 @@ INLINE_DECL(SizedBuf newbuf(size_t sz)) {
 INLINE_DECL(const_fn i64 sign_extend(i64 val, ufast_8 nbits)) {
     assert(nbits < 64);
     return cast_i64((((u64)val) << (64 - nbits))) >> (64 - nbits);
-}
-
-/* because POSIX requires 2's complement integer representations, and signed
- * overflow is undefined while unsigned overflow is wrapping, this can be used
- * to add signed values with wrapping semantics, then truncate down to size. */
-INLINE_DECL(const_fn imax add_wrapping(imax a, imax b)) {
-    return cast_imax((umax)a + (umax)b);
 }
 
 /* Attempts to write `ct` bytes from `buf` to `fd`.
