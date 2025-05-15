@@ -41,12 +41,6 @@
 #define BFC_CHUNK_SIZE 0x1000
 #endif /* BFC_CHUNK_SIZE */
 
-/* The target architecture - should be the same as the ELF e_machine value for
- * that architecture for consistency's sake. */
-#ifndef BFC_DEFAULT_TARGET
-#define BFC_INFER_DEFAULT 1
-#endif /* BFC_DEFAULT_TARGET */
-
 /* runs some preprocessor validation that the above settings are sane, and
  * defines some macros based on the configured default target architecture */
 #define BFC_PREPROC_POST_CONFIG
