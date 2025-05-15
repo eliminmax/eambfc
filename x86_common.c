@@ -12,6 +12,8 @@
 #include "util.h"
 #include "x86_common.h"
 
+#if BFC_TARGET_X86_64 || BFC_TARGET_I386
+
 /* MOV rs, rd */
 nonnull_args void x86_reg_copy(u8 dst, u8 src, SizedBuf *restrict dst_buf) {
     append_obj(dst_buf, (u8[]){INSTRUCTION(0x89, 0xc0 + (src << 3) + dst)}, 2);
@@ -101,3 +103,5 @@ nonnull_args void x86_inc_byte(u8 reg, SizedBuf *restrict dst_buf) {
 nonnull_args void x86_dec_byte(u8 reg, SizedBuf *restrict dst_buf) {
     append_obj(dst_buf, (uchar[]){0xfe, reg | 8}, 2);
 }
+
+#endif /* BFC_TARGET_X86_64 || BFC_TARGET_I386 */
