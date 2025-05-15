@@ -96,7 +96,10 @@ DECL_CAST_N(cast_i64, u64, i64, INT64_MIN, INT64_MAX)
 DECL_CAST_N(cast_i32, u32, i32, INT32_MIN, INT32_MAX)
 DECL_CAST_N(cast_i16, u16, i16, INT16_MIN, INT16_MAX)
 
-/* not currently needed:  DECL_CAST_N(cast_i8, u8, i8, INT8_MIN, INT8_MAX) */
+#ifdef BFC_TEST
+/* only used in a single unit test */
+DECL_CAST_N(cast_i8, u8, i8, INT8_MIN, INT8_MAX)
+#endif /* BFC_TEST */
 
 /* return `nbytes`, padded to the next multiple of `BFC_CHUNK_SIZE`. If it is
  * already a multiple of `BFC_CHUNK_SIZE`, it is returned as-is, and if the
