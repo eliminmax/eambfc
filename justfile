@@ -5,15 +5,16 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 # __BACKENDS__: add backend here
-backends := 'arm64 riscv64 s390x x86_64'
+backends := 'arm64 i386 riscv64 s390x x86_64'
 build_name := "eambfc-" + trim(shell("git describe --tags"))
 src_tarball_name := build_name + "-src.tar"
 src_tarball_path := justfile_dir() / "releases" / src_tarball_name
 backend_sources := replace_regex(backends, '\b([^ ]+)\b', 'backend_${1}.c')
 unibuild_files := (
     'serialize.c compile.c optimize.c ' + backend_sources +
-    ' err.c util.c parse_args.c main.c'
+    ' err.c util.c setup.c main.c x86_common.c'
 )
+include_flag := '-I' + (justfile_dir() / 'include')
 
 # aligning it like this was not easy, but it sure is satisfying
 gcc_strict_flags := (
@@ -22,7 +23,7 @@ gcc_strict_flags := (
     '-Wformat-overflow=2 -Wformat-signedness -Wbad-function-cast -Winit-self ' +
     '-Wnull-dereference -Wredundant-decls -Wduplicated-cond -Warray-bounds=2 ' +
     '-Wuninitialized -Wlogical-op -Wwrite-strings -Wformat=2 -Wunused-macros ' +
-    '-Wcast-align=strict -Wtrampolines -Wvla -Werror'
+    '-Wcast-align=strict -Wtrampolines -Wvla -Werror ' + include_flag
 )
 
 gcc_ubsan_flags := gcc_strict_flags + ' ' + (
@@ -113,9 +114,9 @@ strict-gcc:
 [doc("Run the full project through the `cppcheck` static analyzer")]
 [group("tests")]
 cppcheck-full:
-    cppcheck -q --std=c99 -D__GNUC__ --error-exitcode=1 --platform=unspecified \
-        --check-level=exhaustive --enable=all --disable=missingInclude \
-        --suppress=checkersReport {{ unibuild_files }}
+    cppcheck -q --std=c99 -I./include \-D__GNUC__ --error-exitcode=1 \
+        --platform=unspecified --check-level=exhaustive --enable=all \
+        --disable=missingInclude --suppress=checkersReport {{ unibuild_files }}
 
 [doc("Run `eambfc` through LLVM's `scan-build` static analyzer")]
 [group("tests")]
@@ -169,7 +170,7 @@ reuse:
 [doc("run cppcheck with options suitable for standalone files")]
 [group("lints")]
 cppcheck-single +files:
-    cppcheck -q --std=c99 -D__GNUC__ \
+    cppcheck -q --std=c99 -D__GNUC__ -I./include \
       --platform=unspecified --enable=all \
       --disable=missingInclude,unusedFunction --error-exitcode=1 \
       --check-level=exhaustive --suppress=checkersReport {{ files }}

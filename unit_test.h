@@ -8,7 +8,7 @@
 /* C99 */
 #include <limits.h>
 #include <setjmp.h>
-#include <stdio.h>
+#include <stdio.h> /* IWYU pragma: export */
 #include <stdlib.h>
 
 /* libLLVM */
@@ -18,8 +18,9 @@
 #include <CUnit/CUnit.h> /* IWYU pragma: export */
 
 /* internal */
+#include <types.h>
+
 #include "err.h"
-#include "types.h"
 
 #ifdef UNIT_TEST_C
 #define TEST_GLOBAL(decl) decl
@@ -27,15 +28,10 @@
 #define TEST_GLOBAL(decl) extern decl
 #endif /* UNIT_TEST_C */
 
-typedef LLVMDisasmContextRef disasm_ref;
+#define ARCH_DISASM(ref, ...) TEST_GLOBAL(LLVMDisasmContextRef ref);
+#include "backends.h"
 
-/* __BACKENDS__ add a declaration of the disasm_ref here */
-TEST_GLOBAL(disasm_ref ARM64_DIS);
-TEST_GLOBAL(disasm_ref RISCV64_DIS);
-TEST_GLOBAL(disasm_ref S390X_DIS);
-TEST_GLOBAL(disasm_ref X86_64_DIS);
-
-TEST_GLOBAL(bf_err_id current_err);
+TEST_GLOBAL(BfErrorId current_err);
 
 enum test_status {
     TEST_SET = -1,
@@ -47,17 +43,17 @@ TEST_GLOBAL(enum test_status testing_err);
 
 TEST_GLOBAL(jmp_buf etest_stack);
 
-/* disassemble the contents of bytes, and return a sized_buf containing the
+/* disassemble the contents of bytes, and return a SizedBuf containing the
  * diassembly - instructions are separated by newlines, and the disassembly as a
  * whole is null-terminated. If any the provided bytes is unable to be fully
- * disassembled, it returns a sized_buf with sz and capacity set to zero, and
+ * disassembled, it returns a SizedBuf with sz and capacity set to zero, and
  * buf set to NULL.
  *
  * `bytes->sz` is set to zero by this process, but the allocation of
  * `bytes->buf` is left as-is, so it can be reused. */
-bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
+bool disassemble(LLVMDisasmContextRef ref, SizedBuf *bytes, SizedBuf *disasm);
 
-/* utility macro to test if a sized_buf contains the expected disassembly.
+/* utility macro to test if a SizedBuf contains the expected disassembly.
  * Clears both sb and dis, leaving the allocation behind for reuse if needed */
 #define DISASM_TEST(code, dis, expected) \
     if (disassemble(REF, &code, &dis)) { \
@@ -67,7 +63,7 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm);
                 stderr, \
                 "\n\n### EXPECTED ###\n%s\n\n### ACTUAL ###\n%s\n", \
                 expected, \
-                dis.buf \
+                (char *)dis.buf \
             ); \
         } \
     } else { \
@@ -95,10 +91,7 @@ CU_pSuite register_optimize_tests(void);
 CU_pSuite register_err_tests(void);
 CU_pSuite register_compile_tests(void);
 
-/* __BACKENDS__ add your test suite here */
-CU_pSuite register_arm64_tests(void);
-CU_pSuite register_riscv64_tests(void);
-CU_pSuite register_s390x_tests(void);
-CU_pSuite register_x86_64_tests(void);
+#define ARCH_TEST_REGISTER(func) CU_pSuite func(void);
+#include "backends.h"
 
 #endif /* BFC_UNIT_TEST_H */

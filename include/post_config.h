@@ -4,10 +4,17 @@
  *
  * Preprocessor directives for compile-time validation that config.h is usable,
  * and setting of some macro constants based on it if so, as well as inferring
- * the default backend to use based on the target architecture */
+ * the default backend to use based on the target architecture if the
+ * BFC_DEFAULT_TARGET macro isn't already set. */
 
 /* internal */
-#include "elf.h"
+
+/* __BACKENDS__ add a backend ID with a unique, nonzero value here */
+#define ARCH_ARM64 1
+#define ARCH_I386 2
+#define ARCH_RISCV64 3
+#define ARCH_S390X 4
+#define ARCH_X86_64 5
 
 #ifndef BFC_POST_CONFIG_H
 #define BFC_POST_CONFIG_H 1
@@ -18,17 +25,13 @@
 
 /* __BACKENDS__ each backend should be added to this macro */
 #define BFC_NUM_BACKENDS \
-    BFC_TARGET_ARM64 + BFC_TARGET_RISCV64 + BFC_TARGET_S390X + BFC_TARGET_X86_64
+    BFC_TARGET_ARM64 + BFC_TARGET_I386 + BFC_TARGET_RISCV64 + \
+        BFC_TARGET_S390X + BFC_TARGET_X86_64
 
 /* Validate that at least one target is enabled */
 #if BFC_NUM_BACKENDS == 0
 #error "No backends are enabled"
 #endif /* BFC_NUM_BACKENDS */
-
-/* __BACKENDS__ number of backends should be incremented */
-#if defined(BFC_TEST) && (BFC_NUM_BACKENDS != 4)
-#error "unit testing is unsupported without all backends enabled"
-#endif /* defined(BFC_TEST) && ... */
 
 /* __BACKENDS__ add logic for the new backend
  *
@@ -40,12 +43,14 @@
 #ifndef BFC_DEFAULT_TARGET
 #if BFC_TARGET_X86_64 && defined __x86_64__
 #define BFC_DEFAULT_TARGET ARCH_X86_64
+#elif (BFC_TARGET_I386 || BFC_TARGET_X86_64) && defined __i386__
+#define BFC_DEFAULT_TARGET ARCH_I386
 #elif BFC_TARGET_ARM64 && defined __aarch64__
 #define BFC_DEFAULT_TARGET ARCH_ARM64
 #elif BFC_TARGET_RISCV64 && defined __riscv
 #define BFC_DEFAULT_TARGET ARCH_RISCV64
 #elif BFC_TARGET_S390X && defined __s390x__
-#define BFC_DEFAULT_TARGET ARCH_RISCV64
+#define BFC_DEFAULT_TARGET ARCH_S390X
 
 /* __BACKENDS__ Add fallback case here - these are used if none of the macros
  * to determine target architecture are defined, or the system's architecture is
@@ -80,6 +85,13 @@
 #endif /* !BFC_TARGET_ARM64 */
 #define BFC_DEFAULT_INTER ARM64_INTER
 #define BFC_DEFAULT_ARCH_STR "arm64"
+
+#elif BFC_DEFAULT_TARGET == ARCH_I386
+#if !BFC_TARGET_I386
+#error "BFC_DEFAULT_TARGET is ARCH_I386, but BFC_TARGET_I386 is off."
+#endif /* !BFC_TARGET_I386 */
+#define BFC_DEFAULT_INTER I386_INTER
+#define BFC_DEFAULT_ARCH_STR "i386"
 
 #elif BFC_DEFAULT_TARGET == ARCH_RISCV64
 #if !BFC_TARGET_RISCV64

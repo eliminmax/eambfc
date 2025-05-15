@@ -21,19 +21,12 @@
 
 #define UNIT_TEST_C 1
 /* internal */
+#include <types.h>
+
 #include "err.h"
-#include "types.h"
 #include "unit_test.h"
 #include "util.h"
 
-/* LLVM uses some obnoxiously long identifiers. This helps mitigate that */
-#define INTEL_ASM LLVMDisassembler_Option_AsmPrinterVariant
-#define HEX_IMMS LLVMDisassembler_Option_PrintImmHex
-#define CREATE_DISASM(triple) LLVMCreateDisasm(triple, NULL, 0, NULL, NULL);
-#define CREATE_DISASM_FEATURES(triple, features) \
-    LLVMCreateDisasmCPUFeatures( \
-        triple, "generic", features, NULL, 0, NULL, NULL \
-    );
 #define SET_DIS_OPTIONS(ref, opt) \
     if (!LLVMSetDisasmOptions(ref, opt)) exit(EXIT_FAILURE);
 
@@ -44,24 +37,33 @@ static void llvm_init(void) {
     LLVMInitializeAllTargetInfos();
     LLVMInitializeAllTargetMCs();
     LLVMInitializeAllDisassemblers();
-    /* __BACKENDS__ set up the disasm_ref here */
-    ARM64_DIS = CREATE_DISASM("aarch64-linux-gnu");
-    SET_DIS_OPTIONS(ARM64_DIS, HEX_IMMS);
 
-    RISCV64_DIS = CREATE_DISASM_FEATURES("riscv64-linux-gnu", "+c");
-    SET_DIS_OPTIONS(RISCV64_DIS, HEX_IMMS);
+#define ARCH_DISASM(ref, triple, features) \
+    ref = LLVMCreateDisasmCPUFeatures( \
+        triple, "generic", features, NULL, 0, NULL, NULL \
+    ); \
+    if (!ref) { \
+        fputs( \
+            "Failed to initialize " #ref " with triple " #triple \
+            " and features " #features ".\n", \
+            stderr \
+        ); \
+        abort(); \
+    }
 
-    S390X_DIS = CREATE_DISASM_FEATURES("systemz-linux-gnu", "+high-word");
-    SET_DIS_OPTIONS(S390X_DIS, HEX_IMMS);
+#include "backends.h"
+    /* use Intel assembly syntax - needs to be set before hex_imms, otherwise it
+     * overwrites it */
+    SET_DIS_OPTIONS(I386_DIS, LLVMDisassembler_Option_AsmPrinterVariant);
+    SET_DIS_OPTIONS(X86_64_DIS, LLVMDisassembler_Option_AsmPrinterVariant);
 
-    X86_64_DIS = CREATE_DISASM("x86_64-linux-gnu");
-    /* needs to be set before hex_imms, otherwise it overwrites it */
-    SET_DIS_OPTIONS(X86_64_DIS, INTEL_ASM);
-    SET_DIS_OPTIONS(X86_64_DIS, HEX_IMMS);
+#define ARCH_DISASM(ref, ...) \
+    SET_DIS_OPTIONS(ref, LLVMDisassembler_Option_PrintImmHex);
+#include "backends.h"
     LLVM_IS_INIT = true;
 }
 
-bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm) {
+bool disassemble(LLVMDisasmContextRef ref, SizedBuf *bytes, SizedBuf *disasm) {
     char disasm_insn[128];
     disasm->sz = 0;
     while (bytes->sz) {
@@ -70,7 +72,7 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm) {
             ref, (u8 *)bytes->buf, bytes->sz, 0, disasm_insn, 128
         );
         if (!used_sz) return false;
-        memmove(bytes->buf, bytes->buf + used_sz, bytes->sz - used_sz);
+        memmove(bytes->buf, (char *)bytes->buf + used_sz, bytes->sz - used_sz);
         bytes->sz -= used_sz;
         ufast_8 i;
         /* start at 1 to skip leading '\t' */
@@ -94,16 +96,13 @@ bool disassemble(disasm_ref ref, sized_buf *bytes, sized_buf *disasm) {
 
 static void llvm_cleanup(void) {
     if (!LLVM_IS_INIT) return;
-    /* __BACKENDS__ clean up the disasm_ref here */
-    LLVMDisasmDispose(ARM64_DIS);
-    LLVMDisasmDispose(RISCV64_DIS);
-    LLVMDisasmDispose(S390X_DIS);
-    LLVMDisasmDispose(X86_64_DIS);
+#define ARCH_DISASM(ref, ...) LLVMDisasmDispose(ref);
+#include "backends.h"
     LLVMShutdown();
     LLVM_IS_INIT = false;
 }
 
-int main(void) {
+int run_tests(void) {
     if (atexit(llvm_cleanup)) {
         fputs("Failed to register llvm_cleanup with atexit\n", stderr);
         return EXIT_FAILURE;
@@ -118,11 +117,8 @@ int main(void) {
     BF_ERRCHECKED(register_err_tests());
     BF_ERRCHECKED(register_compile_tests());
 
-    /* __BACKENDS__ add your test suite here */
-    BF_ERRCHECKED(register_arm64_tests());
-    BF_ERRCHECKED(register_riscv64_tests());
-    BF_ERRCHECKED(register_s390x_tests());
-    BF_ERRCHECKED(register_x86_64_tests());
+#define ARCH_TEST_REGISTER(func) BF_ERRCHECKED(func());
+#include "backends.h"
 
     testing_err = NOT_TESTING;
     /* Run all tests using the console interface */

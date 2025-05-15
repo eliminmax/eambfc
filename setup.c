@@ -10,10 +10,12 @@
 /* POSIX */
 #include <unistd.h>
 /* internal */
-#include "attributes.h"
-#include "config.h"
+#include <attributes.h>
+#include <config.h>
+
+#include "arch_inter.h"
 #include "err.h"
-#include "parse_args.h"
+#include "setup.h"
 #include "version.h"
 
 #if BFC_LONGOPTS
@@ -130,51 +132,29 @@ const struct option longopts[] = {
     "Additionally, passing \"--\" as a standalone argument will stop " \
     "argument parsing, and treat remaining arguments as source file names.\n"
 
-/* returns true if strcmp matches s to any strings in its argument,
- * and false otherwise.
- * normal safety concerns around strcmp apply. */
-nonnull_args static bool any_match(const char *s, int count, ...) {
-    va_list ap;
-    va_start(ap, count);
-    bool found = false;
-    for (int i = 0; i < count; i++) {
-        if (!strcmp(s, va_arg(ap, const char *))) {
-            found = true;
-            break;
-        }
+/* checks if `arg` matches any of `values`
+ *
+ * Returns `true` if `strcmp` returns 0 when comparing `arg` t a non-null
+ * pointer in `values`, and `false` if no match was found before reaching a null
+ * pointer.
+ *
+ * normal safety concerns around `strcmp` apply, and `values` must end with a
+ * null pointer */
+nonnull_args static bool any_match(const char *arg, const char *values[]) {
+    for (int i = 0; values[i]; i++) {
+        if (strcmp(arg, values[i]) == 0) return true;
     }
-    va_end(ap);
-    return found;
+    return false;
 }
 
-nonnull_args static bool select_inter(
-    const char *arch_arg, arch_inter **inter
-) {
-    /* __BACKENDS__ add a block here */
-#if BFC_TARGET_X86_64
-    if (any_match(arch_arg, 4, "x86_64", "x64", "amd64", "x86-64")) {
-        *inter = &X86_64_INTER;
-        return true;
+nonnull_args static bool select_inter(const char *arch_arg, ArchInter **inter) {
+#define ARCH_INTER(target_inter, ...) \
+    if (any_match(arch_arg, (const char *[]){__VA_ARGS__, NULL})) { \
+        *inter = &target_inter; \
+        return true; \
     }
-#endif /* BFC_TARGET_X86_64 */
-#if BFC_TARGET_RISCV64
-    if (any_match(optarg, 2, "riscv64", "riscv")) {
-        *inter = &RISCV64_INTER;
-        return true;
-    }
-#endif /* BFC_TARGET_RISCV64 */
-#if BFC_TARGET_ARM64
-    if (any_match(arch_arg, 2, "arm64", "aarch64")) {
-        *inter = &ARM64_INTER;
-        return true;
-    }
-#endif /* BFC_TARGET_ARM64 */
-#if BFC_TARGET_S390X
-    if (any_match(arch_arg, 3, "s390x", "s390", "z/architecture")) {
-        *inter = &S390X_INTER;
-        return true;
-    }
-#endif /* BFC_TARGET_S390X */
+#include "backends.h"
+
     char unknown_msg[64];
     if (sprintf(unknown_msg, "%32s", arch_arg) == 32 && unknown_msg[31]) {
         strcat(unknown_msg, "...");
@@ -182,6 +162,7 @@ nonnull_args static bool select_inter(
     strcat(unknown_msg, " is not a recognized target");
     display_err(basic_err(BF_ERR_UNKNOWN_ARCH, unknown_msg));
     return false;
+#undef SET_IF_MATCHES
 }
 
 noreturn static nonnull_args void report_version(const char *progname) {
@@ -208,6 +189,7 @@ noreturn static nonnull_args void report_version(const char *progname) {
     exit(EXIT_SUCCESS);
 }
 
+#include <config.h>
 #if BFC_NUM_BACKENDS == 1
 #define ARCH_LIST_START \
     "This build of eambfc only supports the following architecture:\n\n"
@@ -221,22 +203,11 @@ noreturn static nonnull_args void report_version(const char *progname) {
 #endif /* BFC_NUM_BACKENDS */
 
 noreturn static nonnull_args void list_arches(void) {
-    puts(ARCH_LIST_START
-/* __BACKENDS__ add backend and any aliases in a block here*/
-#if BFC_TARGET_X86_64
-         "- x86_64 (aliases: x64, amd64, x86-64)\n"
-#endif /* BFC_TARGET_X86_64 */
-#if BFC_TARGET_ARM64
-         "- arm64 (aliases: aarch64)\n"
-#endif /* BFC_TARGET_ARM64 */
-#if BFC_TARGET_RISCV64
-         "- riscv64 (aliases: riscv)\n"
-#endif /* BFC_TARGET_RISCV64 */
-#if BFC_TARGET_S390X
-         "- s390x (aliases: s390, z/architecture)\n"
-#endif /* BFC_TARGET_S390X */
+#define ARCH_INTER(inter, name, ...) "- " name " (aliases: " #__VA_ARGS__ ")\n"
 
-         ARCH_LIST_END);
+    puts(ARCH_LIST_START
+#include "backends.h"
+             ARCH_LIST_END);
     exit(EXIT_SUCCESS);
 }
 
@@ -244,19 +215,19 @@ noreturn static nonnull_args void list_arches(void) {
 #undef ARCH_LIST_END
 
 noreturn static nonnull_args void bad_arg(
-    const char *progname, bf_err_id id, const char *msg, bool show_hint
+    const char *progname, BfErrorId id, const char *msg, bool show_hint
 ) {
     display_err(basic_err(id, msg));
     if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
     exit(EXIT_FAILURE);
 }
 
-run_cfg parse_args(int argc, char *argv[]) {
+RunCfg process_args(int argc, char *argv[]) {
     int opt;
     char missing_op_msg[35] = "-% requires an additional argument";
     char unknown_arg_msg[24] = "Unknown argument: -%";
     bool show_hint = true;
-    run_cfg rc = {
+    RunCfg rc = {
         .inter = NULL,
         .ext = NULL,
         .out_ext = NULL,
@@ -388,7 +359,7 @@ run_cfg parse_args(int argc, char *argv[]) {
                     memcpy(msg, unknown_arg_msg, 18);
                     strcpy(&msg[18], argv[badarg]);
                     /* can't just use bad_arg as msg won't be freed. */
-                    display_err((bf_comp_err){
+                    display_err((BFCError){
                         .id = BF_ERR_UNKNOWN_ARG,
                         .msg.alloc = msg,
                         .is_alloc = true,

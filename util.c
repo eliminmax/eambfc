@@ -12,25 +12,16 @@
 /* POSIX */
 #include <unistd.h>
 /* internal */
-#include "attributes.h"
-#include "config.h"
+#include <attributes.h>
+#include <config.h>
+#include <types.h>
+
 #include "err.h"
-#include "types.h"
+#define BFC_UTIL_EXTERN
 #include "util.h"
 
-extern inline void *checked_malloc(size_t size);
-extern inline void *checked_realloc(void *ptr, size_t size);
-extern inline u8 trailing_0s(u64 val);
-extern inline size_t chunk_pad(size_t nbytes);
-extern inline bool bit_fits(i64 val, u8 bits);
-extern inline sized_buf newbuf(size_t sz);
-extern inline i64 sign_extend(i64 val, u8 nbits);
-extern inline void append_str(
-    sized_buf *restrict dst, const char *restrict str
-);
-
 nonnull_args bool write_obj(
-    int fd, const void *restrict buf, size_t ct, bf_comp_err *restrict err
+    int fd, const void *restrict buf, size_t ct, BFCError *restrict err
 ) {
     while (ct > (size_t)SSIZE_MAX) {
         if (write(fd, buf, SSIZE_MAX) != SSIZE_MAX) goto fail;
@@ -47,7 +38,7 @@ fail:
 /* reserve `nbytes` bytes at the end of `dst`, and returns a pointer to the
  * beginning of them - it's assumed that the caller will populate them, so the
  * `sb->sz` will be increased by `nbytes` */
-nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
+nonnull_ret void *sb_reserve(SizedBuf *sb, size_t nbytes) {
     if (sb->buf == NULL) {
         size_t new_cap = chunk_pad(nbytes);
         sb->buf = checked_malloc(new_cap);
@@ -70,7 +61,7 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
         sb->buf = checked_realloc(sb->buf, needed_cap);
         sb->capacity = needed_cap;
     }
-    void *ret = &sb->buf[sb->sz];
+    void *ret = ((char *)sb->buf) + sb->sz;
     sb->sz += nbytes;
     return ret;
 }
@@ -79,7 +70,7 @@ nonnull_ret void *sb_reserve(sized_buf *sb, size_t nbytes) {
  * `realloc` `dst->buf`, so if it's not heap allocated, care must be taken to
  * ensure enough space is provided to fit `bytes`. */
 nonnull_args void append_obj(
-    sized_buf *restrict dst, const void *restrict bytes, size_t bytes_sz
+    SizedBuf *restrict dst, const void *restrict bytes, size_t bytes_sz
 ) {
     if (dst->buf == NULL) {
         size_t new_cap = chunk_pad(bytes_sz);
@@ -103,16 +94,16 @@ nonnull_args void append_obj(
         dst->capacity = needed_cap;
     }
     /* actually append the object now that prep work is done */
-    memcpy(dst->buf + dst->sz, bytes, bytes_sz);
+    memcpy((char *)dst->buf + dst->sz, bytes, bytes_sz);
     dst->sz += bytes_sz;
 }
 
 /* Tries to read the contents in the file associated with `fd` into a new
- * `sized_buf`, returning a tagged union with a boolean `success` indicating
+ * `SizedBuf`, returning a tagged union with a boolean `success` indicating
  * whether it succeeded or not, and union `data` with `err` on failure and `sb`
  * on success. Only use `data.err` on failure, and only use `data.sb` on
  * success. */
-bool read_to_sized_buf(int fd, union read_result *result) {
+bool read_to_sb(int fd, union read_result *result) {
     result->sb = newbuf(BFC_CHUNK_SIZE);
     char chunk[BFC_CHUNK_SIZE];
     ssize_t count;

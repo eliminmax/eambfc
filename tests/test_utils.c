@@ -15,17 +15,18 @@
 #include <unistd.h>
 
 /* internal */
-#include "../types.h"
+#include <types.h>
+
 #include "test_utils.h"
 
-extern inline bool sb_eq(const sized_buf *a, const sized_buf *b);
+extern inline bool sb_eq(const SizedBuf *a, const SizedBuf *b);
 extern inline void *checked_malloc(size_t sz);
 extern inline void *checked_realloc(void *ptr, size_t sz);
 extern inline size_t mempad(size_t sz);
 
 /* read up to `BFC_CHUNK_SIZE` from `fd` and append the bytes that were read to
  * `dst`, reallocating as needed. */
-nonnull_args size_t read_chunk(sized_buf *dst, int fd) {
+nonnull_args size_t read_chunk(SizedBuf *dst, int fd) {
     char buf[BFC_CHUNK_SIZE];
     ssize_t ct;
     CHECKED((ct = read(fd, buf, BFC_CHUNK_SIZE)) >= 0);
@@ -42,7 +43,7 @@ nonnull_args size_t read_chunk(sized_buf *dst, int fd) {
     if (needed_cap > dst->capacity) {
         dst->buf = checked_realloc(dst->buf, mempad(needed_cap));
     }
-    memcpy(dst->buf + dst->sz, buf, ct);
+    memcpy((char *)dst->buf + dst->sz, buf, ct);
     dst->sz += ct;
     return ct;
 }
@@ -72,7 +73,7 @@ noreturn static void execv_const(const char *const args[]) {
 }
 
 nonnull_arg(1) int run_capturing(
-    const char *args[], sized_buf *out, sized_buf *err
+    const char *args[], SizedBuf *out, SizedBuf *err
 ) {
     int chld_status;
     pid_t chld;

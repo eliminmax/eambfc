@@ -14,7 +14,7 @@ POSIX_CFLAG = -D _POSIX_C_SOURCE=200908L
 # overridden if CFLAGS are passed as an argument to make.
 .SUFFIXES: .c.o
 .c.o:
-	$(CC) $(CFLAGS) $(POSIX_CFLAG) -c -o $@ $<
+	$(CC) $(CFLAGS) -I../include $(POSIX_CFLAG) -c -o $@ $<
 
 test: test_driver
 	./test_driver
@@ -23,7 +23,7 @@ test_driver.o: test_driver.c colortest_output.h
 test_utils.o: test_utils.c
 
 test_driver: test_driver.o test_utils.o
-	$(CC) $(CFLAGS) $(POSIX_CFLAG) $(LDFLAGS) \
+	$(CC) $(CFLAGS) -I../include $(POSIX_CFLAG) $(LDFLAGS) \
 		-o $@ test_driver.o test_utils.o $(LDLIBS)
 
 colortest_output.h: colortest_output.awk

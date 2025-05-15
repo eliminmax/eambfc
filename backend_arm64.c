@@ -1,17 +1,17 @@
 /* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
- * This file provides the arch_inter for the ARM64 architecture.
+ * This file provides the ArchInter for the ARM64 architecture.
  *
  * Unlike the x86_64 backend, this is based on the Rust implementation, rather
  * than the other way around. */
 /* internal */
+#include <config.h>
+#include <types.h>
+
 #include "arch_inter.h"
-#include "config.h"
-#include "elf.h"
 #include "err.h"
 #include "serialize.h"
-#include "types.h"
 #include "util.h"
 #if BFC_TARGET_ARM64
 
@@ -22,11 +22,11 @@ typedef enum {
     A64_SL_SHIFT16 = 0x20,
     A64_SL_SHIFT32 = 0x40,
     A64_SL_SHIFT48 = 0x60
-} shift_lvl;
+} ShiftLvl;
 
 /* these byte values often appear within ADD and SUB instructions, and are the
  * only difference between them. */
-typedef enum { A64_OP_ADD = 0x91, A64_OP_SUB = 0xd1 } arith_op;
+typedef enum { A64_OP_ADD = 0x91, A64_OP_SUB = 0xd1 } ArithOp;
 
 /* the final byte of each of the MOVK, MOVN, and MOVZ instructions are used as
  * the corresponding enum values here */
@@ -34,7 +34,7 @@ typedef enum {
     A64_MT_KEEP = 0x3,
     A64_MT_ZERO = 0x2,
     A64_MT_INVERT = 0x0
-} mov_type;
+} MovType;
 
 /* set dst to the machine code for STRB w17, x.reg */
 static void store_to_byte(u8 src, char dst[4]) {
@@ -50,7 +50,7 @@ const u8 TEMP_REG = 17;
 
 /* set dst to the machine code for one of MOVK, MOVN, or MOVZ, depending on mt,
  * with the given operands. */
-static void mov(mov_type mt, u16 imm, shift_lvl shift, u8 reg, char *dst) {
+static void mov(MovType mt, u16 imm, ShiftLvl shift, u8 reg, char *dst) {
     /* for MOVN, the bits need to be inverted. Ask Arm, not me. */
     if (mt == A64_MT_INVERT) imm = ~imm;
     u32 instr = 0x92800000 | ((u32)mt << 29) | ((u32)shift << 16) |
@@ -60,9 +60,12 @@ static void mov(mov_type mt, u16 imm, shift_lvl shift, u8 reg, char *dst) {
 
 /* Choose a combination of MOVZ, MOVK, and MOVN that sets register x.reg to
  * the immediate imm */
-static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool set_reg(
+    u8 reg, i64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
+) {
+    (void)err;
     u16 default_val;
-    mov_type lead_mt;
+    MovType lead_mt;
 
     if (imm < 0) {
         default_val = 0xffff;
@@ -76,7 +79,7 @@ static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
      * and low. */
     const struct {
         u16 imm16;
-        shift_lvl shift;
+        ShiftLvl shift;
     } parts[4] = {
         {imm, A64_SL_NO_SHIFT},
         {(imm >> 16), A64_SL_SHIFT16},
@@ -101,22 +104,24 @@ static nonnull_args void set_reg(u8 reg, i64 imm, sized_buf *restrict dst_buf) {
         /* (MOVZ|MOVN) x.reg, default_val */
         mov(lead_mt, default_val, A64_SL_NO_SHIFT, reg, sb_reserve(dst_buf, 4));
     }
+    return true;
 }
 
 /* MOV x.dst, x.src
  * technically an alias for ORR x.dst, XZR, x.src */
-static nonnull_args void reg_copy(u8 dst, u8 src, sized_buf *restrict dst_buf) {
+static nonnull_args void reg_copy(u8 dst, u8 src, SizedBuf *restrict dst_buf) {
     append_obj(dst_buf, (u8[]){0xe0 | dst, 0x03, src, 0xaa}, 4);
 }
 
-/* SVC 0 */
-static nonnull_args void syscall(sized_buf *restrict dst_buf) {
+static nonnull_args void syscall(SizedBuf *restrict dst_buf, u32 sc_num) {
+    set_reg(8, sc_num, dst_buf, NULL);
+    /* SVC 0 */
     append_obj(dst_buf, (u8[]){0x01, 0x00, 0x00, 0xd4}, 4);
 }
 
 #define NOP 0x1f, 0x20, 0x03, 0xd5
 
-static nonnull_args void pad_loop_open(sized_buf *restrict dst_buf) {
+static nonnull_args void pad_loop_open(SizedBuf *restrict dst_buf) {
     /* BRK 1; NOP; NOP; */
     uchar instr_seq[3][4] = {{0x00}, {NOP}, {NOP}};
     serialize32le(0xd4200020, instr_seq[0]);
@@ -133,7 +138,7 @@ static bool branch_cond(
     i64 offset,
     char dst[restrict JUMP_SIZE],
     u8 cond,
-    bf_comp_err *restrict err
+    BFCError *restrict err
 ) {
     if ((offset % 4) != 0) {
         internal_err(
@@ -166,24 +171,24 @@ static bool branch_cond(
 static bool jump_open(
     u8 reg,
     i64 offset,
-    sized_buf *restrict dst_buf,
+    SizedBuf *restrict dst_buf,
     size_t index,
-    bf_comp_err *restrict err
+    BFCError *restrict err
 ) {
     /* 0 is the zero / equal condition code */
-    return branch_cond(reg, offset, &dst_buf->buf[index], 0, err);
+    return branch_cond(reg, offset, (char *)dst_buf->buf + index, 0, err);
 }
 
 /* LDRB w17, x.reg; TST w17, 0xff; B.NE offset */
 static bool jump_close(
-    u8 reg, i64 offset, sized_buf *restrict dst_buf, bf_comp_err *restrict err
+    u8 reg, i64 offset, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
     /* 1 is the not zero / not equal condition code */
     return branch_cond(reg, offset, sb_reserve(dst_buf, 12), 1, err);
 }
 
 static bool add_sub_imm(
-    u8 reg, u64 imm, bool shift, arith_op op, sized_buf *restrict dst_buf
+    u8 reg, u64 imm, bool shift, ArithOp op, SizedBuf *restrict dst_buf
 ) {
     /* The immediate can be a 12-bit immediate or a 24-bit immediate with the
      * lower 12 bits set to zero, in which case shift should be set to true. */
@@ -204,7 +209,7 @@ static bool add_sub_imm(
 }
 
 static nonnull_args void add_sub(
-    u8 reg, arith_op op, u64 imm, sized_buf *restrict dst_buf
+    u8 reg, ArithOp op, u64 imm, SizedBuf *restrict dst_buf
 ) {
     /* If the immediate fits within 12 bits, it's a far simpler process - simply
      * ADD or SUB the immediate. If it fits within 24 bits, use an ADD or SUB,
@@ -222,7 +227,7 @@ static nonnull_args void add_sub(
         /* different byte values are needed than normal here */
         u8 op_byte = (op == A64_OP_ADD) ? 0x8b : 0xcb;
         /* set register x17 to the target value */
-        set_reg(TEMP_REG, (i64)imm, dst_buf);
+        set_reg(TEMP_REG, cast_i64(imm), dst_buf, NULL);
         /* either ADD x.reg, x.reg, x17 or SUB x.reg, x.reg, x17 */
         serialize32le(
             (u32)op_byte << 24 | TEMP_REG << 16 | reg | reg << 5,
@@ -233,29 +238,37 @@ static nonnull_args void add_sub(
 
 /* add_reg, sub_reg, inc_reg, and dec_reg are all simple wrappers around
  * add_sub. */
-static nonnull_args void add_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool add_reg(
+    u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
+) {
+    (void)err;
     add_sub(reg, A64_OP_ADD, imm, dst_buf);
+    return true;
 }
 
-static nonnull_args void sub_reg(u8 reg, u64 imm, sized_buf *restrict dst_buf) {
+static nonnull_arg(3) bool sub_reg(
+    u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
+) {
+    (void)err;
     add_sub(reg, A64_OP_SUB, imm, dst_buf);
+    return true;
 }
 
-static nonnull_args void inc_reg(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void inc_reg(u8 reg, SizedBuf *restrict dst_buf) {
     add_sub(reg, A64_OP_ADD, 1, dst_buf);
 }
 
-static nonnull_args void dec_reg(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void dec_reg(u8 reg, SizedBuf *restrict dst_buf) {
     add_sub(reg, A64_OP_SUB, 1, dst_buf);
 }
 
 /* to increment or decrement a byte, first load it into TEMP_REG,
  * then call an inner function (either inc_reg or dec_reg) on TEMP_REG,
  * and finally, store the least significant byte of TEMP_REG into the byte */
-typedef void (*inc_dec_fn)(u8 reg, sized_buf *restrict dst_buf);
+typedef void (*IncDecFn)(u8 reg, SizedBuf *restrict dst_buf);
 
 static void inc_dec_byte(
-    u8 reg, sized_buf *restrict dst_buf, inc_dec_fn inner_fn
+    u8 reg, SizedBuf *restrict dst_buf, IncDecFn inner_fn
 ) {
     load_from_byte(reg, sb_reserve(dst_buf, 4));
     inner_fn(TEMP_REG, dst_buf);
@@ -264,18 +277,18 @@ static void inc_dec_byte(
 
 /* next, some thin wrappers around the inc_dec_byte function that can be used in
  * the arch_funcs struct */
-static nonnull_args void inc_byte(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void inc_byte(u8 reg, SizedBuf *restrict dst_buf) {
     inc_dec_byte(reg, dst_buf, &inc_reg);
 }
 
-static nonnull_args void dec_byte(u8 reg, sized_buf *restrict dst_buf) {
+static nonnull_args void dec_byte(u8 reg, SizedBuf *restrict dst_buf) {
     inc_dec_byte(reg, dst_buf, &dec_reg);
 }
 
 /* similar to add_sub_reg, but operating on an auxiliary register, after loading
  * from byte and before restoring to that byte, much like inc_dec_byte */
-static bool add_sub_byte(
-    u8 reg, u8 imm8, arith_op op, sized_buf *restrict dst_buf
+static void add_sub_byte(
+    u8 reg, u8 imm8, ArithOp op, SizedBuf *restrict dst_buf
 ) {
     char *i_bytes = sb_reserve(dst_buf, 12);
     /* load the byte in address stored in x.reg into x17 */
@@ -284,29 +297,29 @@ static bool add_sub_byte(
     serialize32le((op << 24) | (imm8 << 10) | 0x231, &i_bytes[4]);
     /* store the lowest byte in x17 back to the address in x.reg */
     store_to_byte(reg, &i_bytes[8]);
-    return true;
 }
 
 /* a function to zero out a memory address. */
-static nonnull_args void zero_byte(u8 reg, sized_buf *restrict dst_buf) {
-    serialize32le(0x3800041f | reg << 5, sb_reserve(dst_buf, 4));
+static nonnull_args void set_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
+    if (imm8) {
+        mov(A64_MT_ZERO, imm8, 0, TEMP_REG, sb_reserve(dst_buf, 4));
+        store_to_byte(reg, sb_reserve(dst_buf, 4));
+    } else {
+        serialize32le(0x3800041f | reg << 5, sb_reserve(dst_buf, 4));
+    }
 }
 
 /* now, the last few thin wrapper functions */
 
-static nonnull_args void add_byte(
-    u8 reg, u8 imm8, sized_buf *restrict dst_buf
-) {
+static nonnull_args void add_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
     add_sub_byte(reg, imm8, A64_OP_ADD, dst_buf);
 }
 
-static nonnull_args void sub_byte(
-    u8 reg, u8 imm8, sized_buf *restrict dst_buf
-) {
+static nonnull_args void sub_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
     add_sub_byte(reg, imm8, A64_OP_SUB, dst_buf);
 }
 
-const arch_inter ARM64_INTER = {
+const ArchInter ARM64_INTER = {
     .sc_read = 63,
     .sc_write = 64,
     .sc_exit = 93,
@@ -324,10 +337,11 @@ const arch_inter ARM64_INTER = {
     .sub_reg = sub_reg,
     .add_byte = add_byte,
     .sub_byte = sub_byte,
-    .zero_byte = zero_byte,
+    .set_byte = set_byte,
     .flags = 0 /* no flags are defined for this architecture */,
-    .elf_arch = ARCH_ARM64,
+    .elf_arch = 183 /* EM_AARCH64 */,
     .elf_data = BYTEORDER_LSB,
+    .addr_size = PTRSIZE_64,
     .reg_sc_num = 8 /* w8 */,
     .reg_arg1 = 0 /* x0 */,
     .reg_arg2 = 1 /* x1 */,
@@ -342,8 +356,8 @@ const arch_inter ARM64_INTER = {
 #define REF ARM64_DIS
 
 static void test_set_reg_simple(void) {
-    sized_buf sb = newbuf(4);
-    sized_buf dis = newbuf(24);
+    SizedBuf sb = newbuf(4);
+    SizedBuf dis = newbuf(24);
 
     struct {
         i64 imm;
@@ -357,7 +371,7 @@ static void test_set_reg_simple(void) {
     };
 
     for (ufast_8 i = 0; i < 4; i++) {
-        set_reg(test_sets[i].reg, test_sets[i].imm, &sb);
+        set_reg(test_sets[i].reg, test_sets[i].imm, &sb, NULL);
         DISASM_TEST(sb, dis, test_sets[i].disasm);
     }
 
@@ -366,10 +380,10 @@ static void test_set_reg_simple(void) {
 }
 
 static void test_reg_multiple(void) {
-    sized_buf sb = newbuf(8);
-    sized_buf dis = newbuf(32);
+    SizedBuf sb = newbuf(8);
+    SizedBuf dis = newbuf(32);
 
-    set_reg(0, 0xdeadbeef, &sb);
+    set_reg(0, 0xdeadbeef, &sb, NULL);
     DISASM_TEST(
         sb,
         dis,
@@ -382,10 +396,10 @@ static void test_reg_multiple(void) {
 }
 
 static void test_reg_split(void) {
-    sized_buf sb = newbuf(8);
-    sized_buf dis = newbuf(48);
+    SizedBuf sb = newbuf(8);
+    SizedBuf dis = newbuf(48);
 
-    set_reg(19, 0xdead0000beef, &sb);
+    set_reg(19, 0xdead0000beef, &sb, NULL);
     DISASM_TEST(
         sb,
         dis,
@@ -398,10 +412,10 @@ static void test_reg_split(void) {
 }
 
 static void test_reg_neg(void) {
-    sized_buf sb = newbuf(8);
-    sized_buf dis = newbuf(48);
+    SizedBuf sb = newbuf(8);
+    SizedBuf dis = newbuf(48);
 
-    set_reg(19, INT64_C(-0xdeadbeef), &sb);
+    set_reg(19, INT64_C(-0xdeadbeef), &sb, NULL);
     DISASM_TEST(
         sb,
         dis,
@@ -415,10 +429,10 @@ static void test_reg_neg(void) {
 }
 
 static void test_reg_neg_split(void) {
-    sized_buf sb = newbuf(12);
-    sized_buf dis = newbuf(80);
+    SizedBuf sb = newbuf(12);
+    SizedBuf dis = newbuf(80);
 
-    set_reg(19, INT64_C(-0xdead0000beef), &sb);
+    set_reg(19, INT64_C(-0xdead0000beef), &sb, NULL);
     DISASM_TEST(
         sb,
         dis,
@@ -427,7 +441,7 @@ static void test_reg_neg_split(void) {
         "movk x19, #0x2152, lsl #32\n"
     );
 
-    set_reg(8, INT64_C(-0xdeadbeef0000), &sb);
+    set_reg(8, INT64_C(-0xdeadbeef0000), &sb, NULL);
     DISASM_TEST(
         sb,
         dis,
@@ -444,8 +458,8 @@ static void test_reg_neg_split(void) {
 }
 
 static void test_inc_dec_reg(void) {
-    sized_buf sb = newbuf(4);
-    sized_buf dis = newbuf(24);
+    SizedBuf sb = newbuf(4);
+    SizedBuf dis = newbuf(24);
 
     inc_reg(0, &sb);
     DISASM_TEST(sb, dis, "add x0, x0, #0x1\n");
@@ -464,8 +478,8 @@ static void test_inc_dec_reg(void) {
 }
 
 static void test_load_store(void) {
-    sized_buf sb = newbuf(4);
-    sized_buf dis = newbuf(24);
+    SizedBuf sb = newbuf(4);
+    SizedBuf dis = newbuf(24);
 
     load_from_byte(19, sb_reserve(&sb, 4));
     DISASM_TEST(sb, dis, "ldrb w17, [x19], #0x0\n");
@@ -478,8 +492,8 @@ static void test_load_store(void) {
 }
 
 static void test_add_sub_reg(void) {
-    sized_buf sb = newbuf(24);
-    sized_buf dis = newbuf(64);
+    SizedBuf sb = newbuf(24);
+    SizedBuf dis = newbuf(64);
     add_sub(8, A64_OP_ADD, 0xabcdef, &sb);
     DISASM_TEST(sb, dis, "add x8, x8, #0xabc, lsl #12\nadd x8, x8, #0xdef\n");
 
@@ -500,8 +514,8 @@ static void test_add_sub_reg(void) {
 }
 
 static void test_add_sub_byte(void) {
-    sized_buf sb = newbuf(24);
-    sized_buf dis = newbuf(144);
+    SizedBuf sb = newbuf(24);
+    SizedBuf dis = newbuf(144);
 
     add_byte(19, 0xa5, &sb);
     sub_byte(19, 0xa5, &sb);
@@ -521,20 +535,22 @@ static void test_add_sub_byte(void) {
     free(dis.buf);
 }
 
-static void test_zero_byte(void) {
-    sized_buf sb = newbuf(4);
-    sized_buf dis = newbuf(24);
+static void test_set_byte(void) {
+    SizedBuf sb = newbuf(8);
+    SizedBuf dis = newbuf(24);
 
-    zero_byte(19, &sb);
+    set_byte(19, 0, &sb);
     DISASM_TEST(sb, dis, "strb wzr, [x19], #0x0\n");
+    set_byte(19, 0x40, &sb);
+    DISASM_TEST(sb, dis, "mov x17, #0x40\nstrb w17, [x19], #0x0\n");
 
     free(sb.buf);
     free(dis.buf);
 }
 
 static void test_inc_dec_wrapper(void) {
-    sized_buf sb = newbuf(24);
-    sized_buf dis = newbuf(136);
+    SizedBuf sb = newbuf(24);
+    SizedBuf dis = newbuf(136);
     inc_byte(1, &sb);
     dec_byte(8, &sb);
     DISASM_TEST(
@@ -553,8 +569,8 @@ static void test_inc_dec_wrapper(void) {
 }
 
 static void test_reg_copy(void) {
-    sized_buf sb = newbuf(12);
-    sized_buf dis = newbuf(48);
+    SizedBuf sb = newbuf(12);
+    SizedBuf dis = newbuf(48);
     reg_copy(1, 19, &sb);
     reg_copy(2, 0, &sb);
     reg_copy(8, 8, &sb);
@@ -571,18 +587,18 @@ static void test_reg_copy(void) {
 }
 
 static void test_syscall(void) {
-    sized_buf sb = newbuf(4);
-    sized_buf dis = newbuf(16);
-    syscall(&sb);
-    DISASM_TEST(sb, dis, "svc #0\n");
+    SizedBuf sb = newbuf(4);
+    SizedBuf dis = newbuf(16);
+    syscall(&sb, 1);
+    DISASM_TEST(sb, dis, "mov x8, #0x1\nsvc #0\n");
 
     free(sb.buf);
     free(dis.buf);
 }
 
 static void test_jmp_padding(void) {
-    sized_buf sb = newbuf(12);
-    sized_buf dis = newbuf(16);
+    SizedBuf sb = newbuf(12);
+    SizedBuf dis = newbuf(16);
     pad_loop_open(&sb);
     DISASM_TEST(sb, dis, "brk #0x1\nnop\nnop\n");
 
@@ -591,9 +607,9 @@ static void test_jmp_padding(void) {
 }
 
 static void test_successful_jumps(void) {
-    sized_buf sb = newbuf(12);
-    sized_buf dis = newbuf(104);
-    bf_comp_err e;
+    SizedBuf sb = newbuf(12);
+    SizedBuf dis = newbuf(104);
+    BFCError e;
     sb_reserve(&sb, JUMP_SIZE);
     jump_open(0, 32, &sb, 0, &e);
     jump_close(0, -32, &sb, &e);
@@ -620,19 +636,19 @@ static void test_bad_jump_offset(void) {
         testing_err = NOT_TESTING;
         return;
     }
-    bf_comp_err e;
+    BFCError e;
     char dst[JUMP_SIZE];
     jump_close(
-        0, 31, &(sized_buf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE}, &e
+        0, 31, &(SizedBuf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE}, &e
     );
     longjmp(etest_stack, (BF_NOT_ERR << 1) | 1);
 }
 
 static void test_jump_too_long(void) {
-    bf_comp_err e;
+    BFCError e;
     char dst[JUMP_SIZE];
     CU_ASSERT_FALSE(jump_close(
-        0, 1 << 23, &(sized_buf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE}, &e
+        0, 1 << 23, &(SizedBuf){.buf = dst, .sz = 0, .capacity = JUMP_SIZE}, &e
     ));
     CU_ASSERT_EQUAL(e.id, BF_ERR_JUMP_TOO_LONG);
 }
@@ -649,7 +665,7 @@ CU_pSuite register_arm64_tests(void) {
     ADD_TEST(suite, test_load_store);
     ADD_TEST(suite, test_add_sub_reg);
     ADD_TEST(suite, test_add_sub_byte);
-    ADD_TEST(suite, test_zero_byte);
+    ADD_TEST(suite, test_set_byte);
     ADD_TEST(suite, test_inc_dec_wrapper);
     ADD_TEST(suite, test_reg_copy);
     ADD_TEST(suite, test_syscall);

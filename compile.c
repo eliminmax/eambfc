@@ -11,12 +11,13 @@
 /* POSIX */
 #include <unistd.h>
 /* internal */
+#include <types.h>
+
 #include "arch_inter.h"
-#include "elf.h"
+#include "compile.h"
 #include "err.h"
 #include "optimize.h"
 #include "serialize.h"
-#include "types.h"
 #include "util.h"
 
 /* virtual memory address of the tape - cannot overlap with the machine code.
@@ -43,16 +44,16 @@
 nonnull_args static bool write_headers(
     int fd,
     u64 tape_blocks,
-    const arch_inter *restrict inter,
+    const ArchInter *restrict inter,
     size_t code_sz,
     const char *restrict out_name
 ) {
-    ehdr_info ehdr = {
+    ElfInfo ehdr = {
         .e_ident =
             {/* The ELF identifying magic bytes */
              MAGIC_BYTES,
-             /* 64-bit ELF file */
-             2,
+             /* address size marker */
+             inter->addr_size,
              /* endianness marker */
              inter->elf_data,
              /* current ELF version (only valid value) */
@@ -67,32 +68,34 @@ nonnull_args static bool write_headers(
         .e_machine = inter->elf_arch,
         .e_phnum = 2,
     };
-    phdr_info phdr_table[2];
+    SegmentInfo phdr_table[2];
+    phdr_table[0].addr_size = phdr_table[1].addr_size = inter->addr_size;
 
-    phdr_table[0].p_flags = 6 /* R + W */;
-    phdr_table[0].p_vaddr = TAPE_ADDRESS;
-    phdr_table[0].p_filesz = 0;
-    phdr_table[0].p_memsz = TAPE_SIZE(tape_blocks);
+    phdr_table[0].p_flags = SEG_R | SEG_W;
     phdr_table[0].p_align = 0x1000;
+    phdr_table[0].file_backed = false;
+    phdr_table[0].size = TAPE_SIZE(tape_blocks);
+    phdr_table[0].virtaddr = TAPE_ADDRESS;
 
-    phdr_table[1].p_flags = 5 /* R + X */;
+    phdr_table[1].p_flags = SEG_R | SEG_X;
     phdr_table[1].p_align = 1;
-    phdr_table[1].p_vaddr = LOAD_VADDR(tape_blocks);
-    phdr_table[1].p_filesz = phdr_table[1].p_memsz = START_PADDR + code_sz;
+    phdr_table[1].file_backed = true;
+    phdr_table[1].size = START_PADDR + code_sz;
+    phdr_table[1].virtaddr = LOAD_VADDR(tape_blocks);
 
     char header_bytes[256];
     size_t i = 0;
     if (inter->elf_data == BYTEORDER_LSB) {
-        i += serialize_ehdr64_le(&ehdr, header_bytes);
-        i += serialize_phdr64_le(&phdr_table[0], &header_bytes[i]);
-        i += serialize_phdr64_le(&phdr_table[1], &header_bytes[i]);
+        i += serialize_ehdr_le(&ehdr, header_bytes);
+        i += serialize_phdr_le(&phdr_table[0], &header_bytes[i]);
+        i += serialize_phdr_le(&phdr_table[1], &header_bytes[i]);
     } else {
-        i += serialize_ehdr64_be(&ehdr, header_bytes);
-        i += serialize_phdr64_be(&phdr_table[0], &header_bytes[i]);
-        i += serialize_phdr64_be(&phdr_table[1], &header_bytes[i]);
+        i += serialize_ehdr_be(&ehdr, header_bytes);
+        i += serialize_phdr_be(&phdr_table[0], &header_bytes[i]);
+        i += serialize_phdr_be(&phdr_table[1], &header_bytes[i]);
     }
     memset(&header_bytes[i], 0, 256 - i);
-    bf_comp_err e;
+    BFCError e;
     if (write_obj(fd, header_bytes, 256, &e)) return true;
     e.file = out_name;
     display_err(e);
@@ -108,36 +111,37 @@ nonnull_args static bool write_headers(
  *
  * Due to their similarity, ',' and '.' are both implemented with bf_io. */
 static void bf_io(
-    sized_buf *obj_code, int bf_fd, int sc, const arch_inter *inter
+    SizedBuf *obj_code, int bf_fd, int sc, const ArchInter *inter
 ) {
     /* bf_fd is the brainfuck File Descriptor, not to be confused with fd,
      * the file descriptor of the output file.
-     * sc is the system call number for the system call to use */
-    /* load the number for the write system call into sc_num */
-    inter->set_reg(inter->reg_sc_num, sc, obj_code);
+     * sc is the system call number for the system call to use
+     *
+     * Both uses of `set_reg` are always going to succeed, as `bf_fd` always
+     * fits within 32 bits */
     /* load the number for the stdout file descriptor into arg1 */
-    inter->set_reg(inter->reg_arg1, bf_fd, obj_code);
+    inter->set_reg(inter->reg_arg1, bf_fd, obj_code, NULL);
     /* copy the address in bf_ptr to arg2 */
     inter->reg_copy(inter->reg_arg2, inter->reg_bf_ptr, obj_code);
     /* load # of bytes to read/write (1, specifically) into arg3 */
-    inter->set_reg(inter->reg_arg3, 1, obj_code);
+    inter->set_reg(inter->reg_arg3, 1, obj_code, NULL);
     /* finally, call the syscall instruction */
-    inter->syscall(obj_code);
+    inter->syscall(obj_code, sc);
 }
 
 /* number of indexes in the jump stack to allocate for at a time */
 #define JUMP_CHUNK_SZ 64
 
-typedef struct jump_loc {
-    src_loc location;
+typedef struct {
+    SrcLoc location;
     off_t dst_loc;
     bool has_loc: 1;
-} jump_loc;
+} JumpLoc;
 
-static struct jump_stack {
+static struct {
     size_t next;
     size_t loc_sz;
-    jump_loc *locations;
+    JumpLoc *locations;
 } jump_stack;
 
 /* prepare to compile the brainfuck `[` instruction to file descriptor fd.
@@ -145,10 +149,10 @@ static struct jump_stack {
  *
  * If too many nested loops are encountered, it exteds the jump stack. */
 static bool bf_jump_open(
-    sized_buf *restrict obj_code,
-    const arch_inter *restrict inter,
-    bf_comp_err *restrict err,
-    const src_loc *loc
+    SizedBuf *restrict obj_code,
+    const ArchInter *restrict inter,
+    BFCError *restrict err,
+    const SrcLoc *loc
 ) {
     size_t start_loc = obj_code->sz;
     /* insert an architecture-specific illegal/trap instruction, then pad to
@@ -160,7 +164,7 @@ static bool bf_jump_open(
         if (jump_stack.loc_sz < SIZE_MAX - JUMP_CHUNK_SZ) {
             jump_stack.loc_sz += JUMP_CHUNK_SZ;
         } else {
-            *err = (bf_comp_err){
+            *err = (BFCError){
                 .id = BF_ERR_NESTED_TOO_DEEP,
                 .msg.ref =
                     "Extending jump stack any more would cause an overflow",
@@ -172,7 +176,7 @@ static bool bf_jump_open(
 
         jump_stack.locations = checked_realloc(
             jump_stack.locations,
-            (jump_stack.next + 1 + JUMP_CHUNK_SZ) * sizeof(jump_loc)
+            (jump_stack.next + 1 + JUMP_CHUNK_SZ) * sizeof(JumpLoc)
         );
     }
     /* push the current address onto the stack */
@@ -181,7 +185,7 @@ static bool bf_jump_open(
         jump_stack.locations[jump_stack.next].location = *loc;
         jump_stack.locations[jump_stack.next].has_loc = true;
     } else {
-        jump_stack.locations[jump_stack.next].location = (src_loc){0};
+        jump_stack.locations[jump_stack.next].location = (SrcLoc){0};
         jump_stack.locations[jump_stack.next].has_loc = false;
     }
     jump_stack.next++;
@@ -191,13 +195,13 @@ static bool bf_jump_open(
 /* compile matching `[` and `]` instructions
  * called when `]` is the instruction to be compiled */
 static bool bf_jump_close(
-    sized_buf *restrict obj_code,
-    const arch_inter *restrict inter,
-    bf_comp_err *restrict e
+    SizedBuf *restrict obj_code,
+    const ArchInter *restrict inter,
+    BFCError *restrict e
 ) {
     /* ensure that the current index is in bounds */
     if (jump_stack.next == 0) {
-        *e = (bf_comp_err){
+        *e = (BFCError){
             .id = BF_ERR_UNMATCHED_CLOSE,
             .msg.ref = "Found ']' without matching '['.",
             .instr = ']',
@@ -235,10 +239,10 @@ static bool bf_jump_close(
  * particular instruction */
 static bool comp_instr(
     char c,
-    sized_buf *obj_code,
-    const arch_inter *inter,
+    SizedBuf *obj_code,
+    const ArchInter *inter,
     const char *in_name,
-    src_loc *restrict location
+    SrcLoc *restrict location
 ) {
     if (location) {
         /* if it's not a UTF-8 continuation byte, increment the column */
@@ -272,7 +276,7 @@ static bool comp_instr(
             return true;
         /* `[` and `]` could error out. */
         case '[': {
-            bf_comp_err err;
+            BFCError err;
             if (bf_jump_open(obj_code, inter, &err, location)) return true;
             err.file = in_name;
             if (location) {
@@ -283,7 +287,7 @@ static bool comp_instr(
             return false;
         }
         case ']': {
-            bf_comp_err err;
+            BFCError err;
             if (bf_jump_close(obj_code, inter, &err)) return true;
             err.file = in_name;
             if (location) {
@@ -306,82 +310,93 @@ static bool comp_instr(
     }
 }
 
-/* similar to the above COMPILE_WITH, but with an extra parameter passed to the
- * function, so that can't be reused. */
-#define IR_COMPILE_WITH(f) f(inter->reg_bf_ptr, count, obj_code)
-
-/* Compile an ir instruction */
-static bool comp_ir_instr(
-    char instr,
-    size_t count,
-    sized_buf *obj_code,
-    const arch_inter *inter,
-    const char *in_name
-) {
-    /* if there's only one (non-'@') instruction, compile it normally */
-    if (count == 1 && instr != '@')
-        return comp_instr(instr, obj_code, inter, in_name, NULL);
-    switch (instr) {
-        /* if it's an unmodified brainfuck instruction, pass it to comp_instr */
-        case '.':
-        case ',':
-        case '[':
-        case ']':
-            for (size_t i = 0; i < count; i++) {
-                if (!comp_instr(instr, obj_code, inter, in_name, NULL)) {
-                    return false;
-                }
-            }
-            return true;
-        /* if it's @, then zero the byte pointed to by bf_ptr */
-        case '@':
-            inter->zero_byte(inter->reg_bf_ptr, obj_code);
-            return true;
-        case '+':
-            IR_COMPILE_WITH(inter->add_byte);
-            return true;
-        case '-':
-            IR_COMPILE_WITH(inter->sub_byte);
-            return true;
-        case '>':
-            IR_COMPILE_WITH(inter->add_reg);
-            return true;
-        case '<':
-            IR_COMPILE_WITH(inter->sub_reg);
-            return true;
-        default:
-            internal_err(BF_ICE_INVALID_IR, "Invalid IR Opcode");
-            return false;
-    }
-}
-
 static bool compile_condensed(
-    const char *restrict src_code,
-    sized_buf *restrict obj_code,
-    const arch_inter *restrict inter,
+    const InstrSeq *restrict instr_seqs,
+    size_t len,
+    SizedBuf *restrict obj_code,
+    const ArchInter *restrict inter,
     const char *restrict in_name
 ) {
-    /* return early when there are no instructions to compile */
-    if (*src_code == '\0') return true;
     bool ret = true;
-    size_t count = 1;
-    char prev_instr = *(src_code);
-
-    while (*(++src_code)) {
-        if (*src_code == prev_instr) {
-            count++;
-        } else {
-            ret &= comp_ir_instr(prev_instr, count, obj_code, inter, in_name);
-            count = 1;
-            prev_instr = *(src_code);
+    for (size_t i = 0; i < len; ++i) {
+        switch (instr_seqs[i].tag) {
+            case ISEQ_SET_CELL:
+                inter->set_byte(
+                    inter->reg_bf_ptr, instr_seqs[i].count, obj_code
+                );
+                break;
+            case ISEQ_ADD:
+                inter->add_byte(
+                    inter->reg_bf_ptr, instr_seqs[i].count, obj_code
+                );
+                break;
+            case ISEQ_SUB:
+                inter->sub_byte(
+                    inter->reg_bf_ptr, instr_seqs[i].count, obj_code
+                );
+                break;
+            case ISEQ_MOVE_RIGHT: {
+                BFCError err;
+                if (!inter->add_reg(
+                        inter->reg_bf_ptr, instr_seqs[i].count, obj_code, &err
+                    )) {
+                    err.file = in_name;
+                    err.has_location = true;
+                    err.location = instr_seqs[i].source.location;
+                    display_err(err);
+                    ret = false;
+                }
+            } break;
+            case ISEQ_MOVE_LEFT: {
+                BFCError err;
+                if (!inter->sub_reg(
+                        inter->reg_bf_ptr, instr_seqs[i].count, obj_code, &err
+                    )) {
+                    err.file = in_name;
+                    err.has_location = true;
+                    err.location = instr_seqs[i].source.location;
+                    display_err(err);
+                    ret = false;
+                }
+            } break;
+            case ISEQ_LOOP_OPEN: {
+                BFCError err;
+                if (!bf_jump_open(
+                        obj_code, inter, &err, &instr_seqs[i].source.location
+                    )) {
+                    err.file = in_name;
+                    err.has_location = true;
+                    err.location = instr_seqs[i].source.location;
+                    display_err(err);
+                    ret = false;
+                }
+            } break;
+            case ISEQ_LOOP_CLOSE: {
+                BFCError err;
+                if (!bf_jump_close(obj_code, inter, &err)) {
+                    err.file = in_name;
+                    err.has_location = true;
+                    err.location = instr_seqs[i].source.location;
+                    display_err(err);
+                    ret = false;
+                }
+            } break;
+            case ISEQ_WRITE:
+                bf_io(obj_code, STDOUT_FILENO, inter->sc_write, inter);
+                break;
+            case ISEQ_READ:
+                bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
+                break;
+            default:
+                break;
         }
     }
-    return ret & comp_ir_instr(prev_instr, count, obj_code, inter, in_name);
+    return ret;
 }
 
 /* Compile code in source file to destination file.
  * Parameters:
- * - inter is a pointer to the arch_inter backend used to provide the functions
+ * - inter is a pointer to the ArchInter backend used to provide the functions
  *   that compile brainfuck and EAMBFC-IR into machine code.
  * - in_fd is a brainfuck source file, open for reading.
  * - out_fd is the destination file, open for writing.
@@ -390,7 +405,7 @@ static bool compile_condensed(
  *
  * Returns true if compilation was successful, and false otherwise. */
 bool bf_compile(
-    const arch_inter *inter,
+    const ArchInter *inter,
     const char *in_name,
     const char *out_name,
     int in_fd,
@@ -399,48 +414,57 @@ bool bf_compile(
     u64 tape_blocks
 ) {
     union read_result src;
-    if (!read_to_sized_buf(in_fd, &src)) {
+    if (!read_to_sb(in_fd, &src)) {
         src.err.file = in_name;
         display_err(src.err);
         return false;
     }
-    sized_buf obj_code = newbuf(BFC_CHUNK_SIZE);
+    SizedBuf obj_code = newbuf(BFC_CHUNK_SIZE);
 
     bool ret = true;
 
     /* reset the jump stack for the new file */
     jump_stack.next = 0;
-    jump_stack.locations = checked_malloc(JUMP_CHUNK_SZ * sizeof(jump_loc));
+    jump_stack.locations = checked_malloc(JUMP_CHUNK_SZ * sizeof(JumpLoc));
     jump_stack.loc_sz = JUMP_CHUNK_SZ;
 
-    /* set the bf_ptr register to the address of the start of the tape */
-    inter->set_reg(inter->reg_bf_ptr, TAPE_ADDRESS, &obj_code);
+    /* set the bf_ptr register to the address of the start of the tape
+     * start address is a constant that fits within 32-bit address space, so
+     * this will always succeed. */
+    inter->set_reg(inter->reg_bf_ptr, TAPE_ADDRESS, &obj_code, NULL);
 
     /* compile the actual source code to object code */
     if (optimize) {
-        if (!filter_dead(&src.sb, in_name)) {
+        union opt_result res;
+        if (!optimize_instructions(src.sb.buf, src.sb.sz, &res)) {
+            res.err.file = in_name;
+            display_err(res.err);
             free(src.sb.buf);
             free(jump_stack.locations);
             free(obj_code.buf);
             return false;
         }
-        ret &= compile_condensed(src.sb.buf, &obj_code, inter, in_name);
+        ret &= compile_condensed(
+            res.output.instrs, res.output.len, &obj_code, inter, in_name
+        );
+        free(res.output.instrs);
     } else {
-        src_loc loc = {.line = 1, .col = 0};
+        SrcLoc loc = {.line = 1, .col = 0};
         for (size_t i = 0; i < src.sb.sz; i++) {
-            ret &= comp_instr(src.sb.buf[i], &obj_code, inter, in_name, &loc);
+            ret &= comp_instr(
+                ((char *)src.sb.buf)[i], &obj_code, inter, in_name, &loc
+            );
         }
     }
 
     /* write code to perform the exit(0) syscall */
-    /* set system call register to exit system call number */
-    inter->set_reg(inter->reg_sc_num, inter->sc_exit, &obj_code);
-    /* set system call register to the desired exit code (0) */
-    inter->set_reg(inter->reg_arg1, 0, &obj_code);
+    /* set system call register to the desired exit code (0)
+     * As 0 fits within 32-bit address space, this always succeeds. */
+    inter->set_reg(inter->reg_arg1, 0, &obj_code, NULL);
     /* perform a system call */
-    inter->syscall(&obj_code);
+    inter->syscall(&obj_code, inter->sc_exit);
 
-    bf_comp_err e;
+    BFCError e;
 
     /* now, obj_code size is known, so we can write the headers and padding */
     ret &= write_headers(out_fd, tape_blocks, inter, obj_code.sz, out_name);
@@ -453,7 +477,7 @@ bool bf_compile(
 
     /* check if any unmatched loop openings were left over. */
     for (size_t i = 0; i < jump_stack.next; i++) {
-        display_err((bf_comp_err){
+        display_err((BFCError){
             .id = BF_ERR_UNMATCHED_OPEN,
             .file = in_name,
             .msg.ref = "Reached the end of the file with an unmatched '['.",
@@ -480,7 +504,7 @@ bool bf_compile(
 #include "unit_test.h"
 
 /* spawn a child process, and pipe `src` in from a child process into
- * `bf_compile`. If an error occurs, it returns the bf_err_id left-shifted by 1,
+ * `bf_compile`. If an error occurs, it returns the BfErrorId left-shifted by 1,
  * with the lowest bit set to 1. Otherwise, it returns 0. */
 static int test_compile(const char *src, bool optimize) {
     testing_err = TEST_SET;
