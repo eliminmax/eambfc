@@ -69,13 +69,13 @@ INLINE_DECL(const_fn u8 trailing_0s(umax val)) {
  * The fifth is the *MAX macro for the output type
  *
  * Example:
- * `DECL_CAST_N(cast_imax, umax, imax, INTMAX_MIN, INTMAX_MAX)` expands to
+ * `DECL_CAST_N(cast_i64, u64, i64, INT64_MIN, INT64_MAX)` expands to
  * ```
- * inline const_fn imax cast_imax(umax val) {
- *     if (val <= (umax)(INTMAX_MAX)) {
+ * inline const_fn i64 cast_i64(u64 val) {
+ *     if (val <= (u64)(INT64_MAX)) {
  *         return val;
  *     } else {
- *         return (INTMAX_MIN) + (imax)(val - (INTMAX_MIN));
+ *         return (INT64_MIN) + (i64)(val - (INT64_MIN));
  *     }
  * }
  * ```
@@ -92,7 +92,6 @@ INLINE_DECL(const_fn u8 trailing_0s(umax val)) {
         } \
     }
 
-DECL_CAST_N(cast_imax, umax, imax, INTMAX_MIN, INTMAX_MAX)
 DECL_CAST_N(cast_i64, u64, i64, INT64_MIN, INT64_MAX)
 DECL_CAST_N(cast_i32, u32, i32, INT32_MIN, INT32_MAX)
 DECL_CAST_N(cast_i16, u16, i16, INT16_MIN, INT16_MAX)
