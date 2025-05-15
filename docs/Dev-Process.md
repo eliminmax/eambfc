@@ -9,8 +9,7 @@ SPDX-License-Identifier: GPL-3.0-only
 There's a dev branch and a main branch. When changes are more-or-less complete,
 and all of the tests pass, the dev branch may be merged into the main branch.
 The main branch is guaranteed to have run
-`make CFLAGS='-Wall -Werror -Wextra' clean test` successfully on the following
-platforms:
+`make clean test` successfully on the following platforms:
 
 * Debian 12 amd64 with `qemu-binfmt/bookworm-backports` to run foreign binaries
 * Debian 12 arm64
