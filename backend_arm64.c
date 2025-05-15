@@ -287,7 +287,7 @@ static nonnull_args void dec_byte(u8 reg, SizedBuf *restrict dst_buf) {
 
 /* similar to add_sub_reg, but operating on an auxiliary register, after loading
  * from byte and before restoring to that byte, much like inc_dec_byte */
-static bool add_sub_byte(
+static void add_sub_byte(
     u8 reg, u8 imm8, ArithOp op, SizedBuf *restrict dst_buf
 ) {
     char *i_bytes = sb_reserve(dst_buf, 12);
@@ -297,12 +297,16 @@ static bool add_sub_byte(
     serialize32le((op << 24) | (imm8 << 10) | 0x231, &i_bytes[4]);
     /* store the lowest byte in x17 back to the address in x.reg */
     store_to_byte(reg, &i_bytes[8]);
-    return true;
 }
 
 /* a function to zero out a memory address. */
-static nonnull_args void zero_byte(u8 reg, SizedBuf *restrict dst_buf) {
-    serialize32le(0x3800041f | reg << 5, sb_reserve(dst_buf, 4));
+static nonnull_args void set_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
+    if (imm8) {
+        mov(A64_MT_ZERO, imm8, 0, TEMP_REG, sb_reserve(dst_buf, 4));
+        store_to_byte(reg, sb_reserve(dst_buf, 4));
+    } else {
+        serialize32le(0x3800041f | reg << 5, sb_reserve(dst_buf, 4));
+    }
 }
 
 /* now, the last few thin wrapper functions */
@@ -333,7 +337,7 @@ const ArchInter ARM64_INTER = {
     .sub_reg = sub_reg,
     .add_byte = add_byte,
     .sub_byte = sub_byte,
-    .zero_byte = zero_byte,
+    .set_byte = set_byte,
     .flags = 0 /* no flags are defined for this architecture */,
     .elf_arch = 183 /* EM_AARCH64 */,
     .elf_data = BYTEORDER_LSB,
@@ -531,12 +535,14 @@ static void test_add_sub_byte(void) {
     free(dis.buf);
 }
 
-static void test_zero_byte(void) {
-    SizedBuf sb = newbuf(4);
+static void test_set_byte(void) {
+    SizedBuf sb = newbuf(8);
     SizedBuf dis = newbuf(24);
 
-    zero_byte(19, &sb);
+    set_byte(19, 0, &sb);
     DISASM_TEST(sb, dis, "strb wzr, [x19], #0x0\n");
+    set_byte(19, 0x40, &sb);
+    DISASM_TEST(sb, dis, "mov x17, #0x40\nstrb w17, [x19], #0x0\n");
 
     free(sb.buf);
     free(dis.buf);
@@ -659,7 +665,7 @@ CU_pSuite register_arm64_tests(void) {
     ADD_TEST(suite, test_load_store);
     ADD_TEST(suite, test_add_sub_reg);
     ADD_TEST(suite, test_add_sub_byte);
-    ADD_TEST(suite, test_zero_byte);
+    ADD_TEST(suite, test_set_byte);
     ADD_TEST(suite, test_inc_dec_wrapper);
     ADD_TEST(suite, test_reg_copy);
     ADD_TEST(suite, test_syscall);

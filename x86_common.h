@@ -66,8 +66,8 @@ nonnull_args bool x86_jump_close(
 /* reserve space for the `[` bf instruction */
 nonnull_args void x86_pad_loop_open(SizedBuf *restrict dst_buf);
 
-/* zero out a byte */
-nonnull_args void x86_zero_byte(u8 reg, SizedBuf *restrict dst_buf);
+/* set a byte to an 8-bit immediate value */
+nonnull_args void x86_set_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf);
 
 /* increment a byte */
 nonnull_args void x86_inc_byte(u8 reg, SizedBuf *restrict dst_buf);

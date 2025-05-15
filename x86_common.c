@@ -87,9 +87,9 @@ nonnull_args void x86_sub_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
     append_obj(dst_buf, (u8[]){INSTRUCTION(0x80, 0x28 + reg, imm8)}, 3);
 }
 
-nonnull_args void x86_zero_byte(u8 reg, SizedBuf *restrict dst_buf) {
-    /* MOV byte [reg], 0 */
-    append_obj(dst_buf, (u8[]){INSTRUCTION(0xc6, reg, 0x00)}, 3);
+nonnull_args void x86_set_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
+    /* MOV byte [reg], imm8 */
+    append_obj(dst_buf, (u8[]){INSTRUCTION(0xc6, reg, imm8)}, 3);
 }
 
 /* INC byte [reg] */

@@ -138,7 +138,7 @@ typedef const struct {
      *
      * Used to implement sequences of consecutive `>` brainfuck instructions. */
     nonnull_arg(3) bool (*const add_reg)(
-        u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *err
+        u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
     );
 
     /* Write instruction/s to dst_buf to subtract imm from register reg.
@@ -156,7 +156,7 @@ typedef const struct {
      *
      * Used to implement sequences of consecutive `<` brainfuck instructions. */
     nonnull_arg(3) bool (*const sub_reg)(
-        u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *err
+        u8 reg, u64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
     );
 
     /* Write instruction/s to dst_buf to add imm8 to byte stored at address in
@@ -175,11 +175,15 @@ typedef const struct {
         u8 reg, u8 imm8, SizedBuf *restrict dst_buf
     );
 
-    /* Write instruction/s to dst_buf to set the value of byte stored at address
-     * in register reg to 0.
+    /* Write instruction/s to dst_buf to subtract imm8 from byte stored at
+     * address in register reg.
      *
-     * Used to implement the `[-]` and `[+]` brainfuck instruction sequences. */
-    nonnull_args void (*const zero_byte)(u8 reg, SizedBuf *restrict dst_buf);
+     * Used to compile loops that always set cell to 0 without side effects
+     * (i.e. any loop with a body that's equivalent to an odd number of `-` or
+     * `+` instructions), followed by any number of `+` or `-` instructions. */
+    nonnull_args void (*const set_byte)(
+        u8 reg, u8 imm8, SizedBuf *restrict dst_buf
+    );
 
     /* CPU flags that should be set for executables for this architecture. */
     u32 flags;

@@ -350,11 +350,13 @@ static nonnull_args void sub_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
     append_obj(dst_buf, i_bytes, sz);
 }
 
-static nonnull_args void zero_byte(u8 reg, SizedBuf *restrict dst_buf) {
-    u32 instr = 0x23 | (((u32)reg) << 15);
-    u8 i_bytes[4];
-    serialize32le(instr, i_bytes);
-    append_obj(dst_buf, i_bytes, 4);
+static nonnull_args void set_byte(u8 reg, u8 val, SizedBuf *restrict dst_buf) {
+    if (val) {
+        encode_li(dst_buf, RISCV_T1, val);
+        serialize32le(store_to_byte(reg), sb_reserve(dst_buf, 4));
+    } else {
+        serialize32le(0x23 | (((u32)reg) << 15), sb_reserve(dst_buf, 4));
+    }
 }
 
 const ArchInter RISCV64_INTER = {
@@ -375,7 +377,7 @@ const ArchInter RISCV64_INTER = {
     .sub_reg = sub_reg,
     .add_byte = add_byte,
     .sub_byte = sub_byte,
-    .zero_byte = zero_byte,
+    .set_byte = set_byte,
     /* EF_RISCV_RVC | EF_RISCV_FLOAT_ABI_DOUBLE (chosen to match Debian) */
     .flags = 5,
     .elf_arch = 243 /* EM_RISCV */,
@@ -588,12 +590,17 @@ static void test_load_and_store(void) {
     free(sb.buf);
 }
 
-static void test_zero_byte(void) {
-    SizedBuf sb = newbuf(4);
+static void test_set_byte(void) {
+    SizedBuf sb = newbuf(6);
     SizedBuf dis = newbuf(24);
 
-    zero_byte(RISCV_A2, &sb);
+    set_byte(RISCV_A2, 0, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 4);
     DISASM_TEST(sb, dis, "sb zero, 0x0(a2)\n");
+
+    set_byte(RISCV_A7, 7, &sb);
+    CU_ASSERT_EQUAL(sb.sz, 6);
+    DISASM_TEST(sb, dis, "li t1, 0x7\nsb t1, 0x0(a7)\n");
 
     free(dis.buf);
     free(sb.buf);
@@ -816,7 +823,7 @@ CU_pSuite register_riscv64_tests(void) {
     ADD_TEST(suite, test_syscall);
     ADD_TEST(suite, test_reg_copies);
     ADD_TEST(suite, test_load_and_store);
-    ADD_TEST(suite, test_zero_byte);
+    ADD_TEST(suite, test_set_byte);
     ADD_TEST(suite, test_jump_pad);
     ADD_TEST(suite, test_successful_jumps);
     ADD_TEST(suite, test_inc_dec);

@@ -154,11 +154,9 @@
 /* a call-clobbered register to use as a temporary scratch register */
 static const u8 TMP_REG = UINT8_C(5);
 
-static nonnull_args void store_to_byte(
-    u8 reg, u8 aux, SizedBuf *restrict dst_buf
-) {
+static nonnull_args void store_to_byte(u8 reg, SizedBuf *restrict dst_buf) {
     /* STC aux, 0(reg) {RX-a} */
-    u8 i_bytes[4] = {0x42, (aux << 4) | reg, 0x00, 0x00};
+    u8 i_bytes[4] = {0x42, (TMP_REG << 4) | reg, 0x00, 0x00};
     append_obj(dst_buf, &i_bytes, 4);
 }
 
@@ -423,13 +421,13 @@ static nonnull_args void dec_reg(u8 reg, SizedBuf *restrict dst_buf) {
 static nonnull_args void add_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
     load_from_byte(reg, sb_reserve(dst_buf, 6));
     add_reg_signed(TMP_REG, imm8, dst_buf);
-    store_to_byte(reg, TMP_REG, dst_buf);
+    store_to_byte(reg, dst_buf);
 }
 
 static nonnull_args void sub_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
     load_from_byte(reg, sb_reserve(dst_buf, 6));
     add_reg_signed(TMP_REG, -imm8, dst_buf);
-    store_to_byte(reg, TMP_REG, dst_buf);
+    store_to_byte(reg, dst_buf);
 }
 
 static nonnull_args void inc_byte(u8 reg, SizedBuf *restrict dst_buf) {
@@ -440,9 +438,20 @@ static nonnull_args void dec_byte(u8 reg, SizedBuf *restrict dst_buf) {
     sub_byte(reg, 1, dst_buf);
 }
 
-static nonnull_args void zero_byte(u8 reg, SizedBuf *restrict dst_buf) {
-    /* STC 0, 0(reg) {RX-a} */
-    store_to_byte(reg, 0, dst_buf);
+static nonnull_args void set_byte(u8 reg, u8 imm8, SizedBuf *restrict dst_buf) {
+    if (imm8) {
+        /* LGHI r.TMP_REG, imm8 {RI-a} */
+        serialize32be(UINT32_C(0xa7590000) | (u32)imm8, sb_reserve(dst_buf, 4));
+        /* STC r.TMP_REG, 0(r.reg) {RX-a} */
+        serialize32be(
+            UINT32_C(0x42500000) | ((u32)reg << 16), sb_reserve(dst_buf, 4)
+        );
+    } else {
+        /* STC 0, 0(reg) {RX-a} */
+        serialize32be(
+            UINT32_C(0x42000000) | ((u32)reg << 16), sb_reserve(dst_buf, 4)
+        );
+    }
 }
 
 const ArchInter S390X_INTER = {
@@ -463,7 +472,7 @@ const ArchInter S390X_INTER = {
     .sub_reg = sub_reg,
     .add_byte = add_byte,
     .sub_byte = sub_byte,
-    .zero_byte = zero_byte,
+    .set_byte = set_byte,
     .flags = 0 /* no flags are defined for this architecture */,
     .elf_arch = 22 /* EM_S390 */,
     .elf_data = BYTEORDER_MSB,
@@ -498,12 +507,8 @@ static void test_load_store(void) {
     DISASM_TEST(sb, dis, "llgc %r5, 0(%r8,0)\n");
     memset(dis.buf, 0, dis.capacity);
 
-    store_to_byte(8, 5, &sb);
+    store_to_byte(8, &sb);
     DISASM_TEST(sb, dis, "stc %r5, 0(%r8,0)\n");
-    memset(dis.buf, 0, dis.capacity);
-
-    store_to_byte(5, 8, &sb);
-    DISASM_TEST(sb, dis, "stc %r8, 0(%r5,0)\n");
 
     free(sb.buf);
     free(dis.buf);
@@ -650,12 +655,15 @@ static void test_syscall(void) {
     free(dis.buf);
 }
 
-static void test_zero_byte(void) {
-    SizedBuf sb = newbuf(4);
+static void test_set_byte(void) {
+    SizedBuf sb = newbuf(8);
     SizedBuf dis = newbuf(24);
 
-    zero_byte(S390X_INTER.reg_bf_ptr, &sb);
+    set_byte(S390X_INTER.reg_bf_ptr, 0, &sb);
     DISASM_TEST(sb, dis, "stc %r0, 0(%r8,0)\n");
+
+    set_byte(S390X_INTER.reg_bf_ptr, 64, &sb);
+    DISASM_TEST(sb, dis, "lghi %r5, 64\nstc %r5, 0(%r8,0)\n");
 
     free(sb.buf);
     free(dis.buf);
@@ -761,7 +769,7 @@ static void test_byte_arith(void) {
 
     load_from_byte(8, sb_reserve(&expected, 6));
     inc_reg(TMP_REG, &expected);
-    store_to_byte(8, TMP_REG, &expected);
+    store_to_byte(8, &expected);
     inc_byte(8, &a);
     add_byte(8, 1, &b);
     CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
@@ -781,7 +789,7 @@ static void test_byte_arith(void) {
 
     load_from_byte(8, sb_reserve(&expected, 6));
     dec_reg(TMP_REG, &expected);
-    store_to_byte(8, TMP_REG, &expected);
+    store_to_byte(8, &expected);
     dec_byte(8, &a);
     sub_byte(8, 1, &b);
     CU_ASSERT_EQUAL_FATAL(a.sz, b.sz);
@@ -853,7 +861,7 @@ CU_pSuite register_s390x_tests(void) {
     ADD_TEST(suite, test_set_reg_large_imm);
     ADD_TEST(suite, test_successful_jumps);
     ADD_TEST(suite, test_syscall);
-    ADD_TEST(suite, test_zero_byte);
+    ADD_TEST(suite, test_set_byte);
     ADD_TEST(suite, test_reg_arith_small_imm);
     ADD_TEST(suite, test_reg_arith_medium_imm);
     ADD_TEST(suite, test_reg_arith_large_imm);

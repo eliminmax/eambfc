@@ -321,8 +321,7 @@ static bool compile_condensed(
     for (size_t i = 0; i < len; ++i) {
         switch (instr_seqs[i].tag) {
             case ISEQ_SET_CELL:
-                inter->zero_byte(inter->reg_bf_ptr, obj_code);
-                inter->add_byte(
+                inter->set_byte(
                     inter->reg_bf_ptr, instr_seqs[i].count, obj_code
                 );
                 break;

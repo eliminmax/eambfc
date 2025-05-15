@@ -122,7 +122,7 @@ const ArchInter I386_INTER = {
     .sub_reg = sub_reg,
     .add_byte = x86_add_byte,
     .sub_byte = x86_sub_byte,
-    .zero_byte = x86_zero_byte,
+    .set_byte = x86_set_byte,
     .flags = 0 /* no flags are defined for this architecture */,
     .elf_arch = 3 /* EM_386 */,
     .elf_data = BYTEORDER_LSB,
@@ -266,12 +266,14 @@ static void test_add_sub_byte(void) {
     free(dis.buf);
 }
 
-static void test_zero_byte(void) {
+static void test_set_cell(void) {
     SizedBuf sb = newbuf(3);
     SizedBuf dis = newbuf(32);
 
-    x86_zero_byte(X86_EDX, &sb);
+    x86_set_byte(X86_EDX, 0, &sb);
     DISASM_TEST(sb, dis, "mov byte ptr [edx], 0x0\n");
+    x86_set_byte(X86_EDX, 0x40, &sb);
+    DISASM_TEST(sb, dis, "mov byte ptr [edx], 0x40\n");
 
     free(sb.buf);
     free(dis.buf);
@@ -319,7 +321,7 @@ CU_pSuite register_i386_tests(void) {
     ADD_TEST(suite, test_add_sub_medium_imm);
     ADD_TEST(suite, test_add_sub_large_imm);
     ADD_TEST(suite, test_add_sub_byte);
-    ADD_TEST(suite, test_zero_byte);
+    ADD_TEST(suite, test_set_cell);
     ADD_TEST(suite, test_jump_too_long);
     ADD_TEST(suite, test_inc_dec_is_32_bit);
     return (suite);
