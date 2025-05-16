@@ -192,8 +192,9 @@ static nonnull_args bool drain_loop(
             --nest_level;
             if (!nest_level) {
                 drop_instrs(seq, len, start, (i + 1) - start);
+                /* if there is an instruction before the removed loop, check if
+                 * it can now be merged. */
                 if (start) recheck_mergable(seq, start - 1, len);
-                recheck_mergable(seq, start, len);
                 return true;
             }
         }
