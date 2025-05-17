@@ -436,7 +436,7 @@ bool bf_compile(
     /* compile the actual source code to object code */
     if (optimize) {
         union opt_result res;
-        if (!optimize_instructions(src.sb.buf, src.sb.sz, &res)) {
+        if (!static_optimize(src.sb.buf, src.sb.sz, &res)) {
             res.err.file = in_name;
             display_err(res.err);
             free(src.sb.buf);

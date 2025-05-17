@@ -268,7 +268,7 @@ static nonnull_args void join_set_cells(InstrSeq *instructions, size_t *len) {
     }
 }
 
-nonnull_args bool optimize_instructions(
+nonnull_args bool static_optimize(
     const char *restrict code, size_t size, union opt_result *restrict result
 ) {
     result->output.instrs = into_sequences(code, size, &result->output.len);
@@ -560,7 +560,7 @@ static void optimize_test(void) {
         "[->+<][,.]\n+++\n";
 
     union opt_result res;
-    if (!optimize_instructions(code, strlen(code) - 1, &res)) {
+    if (!static_optimize(code, strlen(code) - 1, &res)) {
         CU_FAIL("Failed to generate InstrSeq from code");
         display_err(res.err);
         return;
@@ -623,7 +623,7 @@ static void set_cell_detected(void) {
         {.source = {{1, 31}, 30, 30}, .tag = ISEQ_READ},
     };
     union opt_result res;
-    if (!optimize_instructions(code, strlen(code), &res)) {
+    if (!static_optimize(code, strlen(code), &res)) {
         CU_FAIL("Failed to generate InstrSeq from code");
         display_err(res.err);
         return;
@@ -642,7 +642,7 @@ static void set_cell_detected(void) {
     /* now, make sure that subsequent adds are merged in. */
     code = ",\n[-]++++++++++++++++++++++++++++++++\n.";
 
-    if (!optimize_instructions(code, strlen(code), &res)) {
+    if (!static_optimize(code, strlen(code), &res)) {
         CU_FAIL("Failed to generate InstrSeq from code");
         display_err(res.err);
         return;

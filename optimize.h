@@ -71,8 +71,8 @@ union opt_result {
 /* Read `code` (a string of brainfuck code `size` bytes in size into a
  * heap-allocated `InstrSeq` array, available at `result->output.instrs`, with
  * its length stored in `result->output.len`. If an error occurs, it frees the
- * sequence and sets `result->err`, and returns `false`. */
-nonnull_args bool optimize_instructions(
+ * sequence and sets `result->err`, then returns `false`. */
+nonnull_args bool static_optimize(
     const char *restrict code, size_t size, union opt_result *restrict result
 );
 #endif /* BFC_OPTIMIZE_H */
