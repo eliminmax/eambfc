@@ -388,7 +388,7 @@ static bool compile_condensed(
                 bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
                 break;
             default:
-                break;
+                internal_err(BF_ICE_INVALID_IR, "Invalid IR");
         }
     }
     return ret;
