@@ -1,6 +1,6 @@
 #!/usr/bin/env -S just -f
 
-# SPDX-FileCopyrightText: 2025 Eli Array Minkoff
+# SPDX-FileCopyrightText: 2025 - 2026 Eli Array Minkoff
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
@@ -42,7 +42,7 @@ export BFC_DONT_SKIP_TESTS := '1'
 eambfc:
     make eambfc
 
-[doc("test a release tarball of `eambfc`, and build a ")]
+[doc("test a release tarball of `eambfc`, and create an optimized build")]
 [group("general")]
 release-build: scan-build cppcheck-full tarball pdpmake valgrind_test \
     (valgrind_test '-D_GNU_SOURCE -DBFC_LONGOPTS=1 -O2 -g3')
