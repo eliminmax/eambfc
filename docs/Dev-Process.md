@@ -135,13 +135,13 @@ apt install awk binutils clang-19 clang-22 clang-format-22 clang-tools-22 \
 
 ### Non-Debian Dependencies
 
-* [The Zig compiler](https://ziglang.org)
-  * used for its built-in C compiler
 * [Ron Yorston's Public Domain POSIX make](https://frippery.org/make)
   * used to check for non-portable make functionality
 * [reuse helper tool >= 5.0.0](https://git.fsfe.org/reuse/tool)
   * newer than Debian-packaged version, used to validate license data
 * [just](https://github.com/casey/just)
   * command runner used to drive testing and release automation
+  * I believe that Debian's version will work, but I have it installed with
+    cargo anyway
 
 [^llvm]: subject to be replaced with newer versions of LLVM as they're released
