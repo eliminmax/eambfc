@@ -74,7 +74,7 @@ ARGS_ERR(SET_BOTH_OUT_MODES, "attempted to set both quiet and json output", 0)
 ARGS_ERR(
     SINGLE_DASH_ARG,
     "`-` as a standalone arg is not supported. "
-    "Use `--` as a terminal argument instead.",
+    "Use `--` as a terminal argument instead",
     0
 )
 ARGS_ERR(
