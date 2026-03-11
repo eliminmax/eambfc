@@ -130,6 +130,7 @@ int main(int argc, char *argv[]) {
                     show_help(argv[0] ? argv[0] : "eambfc", stdout);
                     return EXIT_SUCCESS;
                 case LIST_TARGETS:
+                    list_targets();
                     return EXIT_SUCCESS;
             }
             fprintf(
