@@ -67,7 +67,11 @@ nonnull_args static const char *any_match(
     return NULL;
 }
 
-nonnull_args void report_version(const char *progname) {
+nonnull_args void show_help(const char *progname, FILE *stream) {
+    fprintf(stream, HELP_TEMPLATE, progname);
+}
+
+nonnull_args void show_version(const char *progname) {
     /* strip leading path from progname */
     const char *filename;
     while ((filename = strchr(progname, '/'))) progname = filename + 1;

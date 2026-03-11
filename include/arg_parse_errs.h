@@ -9,6 +9,8 @@
 #elif defined DEFINE_ARGS_ERR
 #define ARGS_ERR(name, fmt, ...) ARGS_ERR_##name,
 #elif defined PRINT_ARGS_ERR
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-extra-args"
 #define ARGS_ERR(name, fmt, ...) \
     case ARGS_ERR_##name: \
         fprintf(stderr, "Error: " fmt ".\n", __VA_ARGS__); \
@@ -67,12 +69,13 @@ ARGS_ERR(
     (umax)parsed_args.err.tape_sizes[0],
     (umax)parsed_args.err.tape_sizes[1]
 )
-ARGS_ERR(NO_SOURCE_FILES, "no source files provided", )
-ARGS_ERR(SET_BOTH_OUT_MODES, "attempted to set both quiet and json output", )
+ARGS_ERR(NO_SOURCE_FILES, "no source files provided", 0)
+ARGS_ERR(SET_BOTH_OUT_MODES, "attempted to set both quiet and json output", 0)
 ARGS_ERR(
     SINGLE_DASH_ARG,
     "`-` as a standalone arg is not supported. "
     "Use `--` as a terminal argument instead.",
+    0
 )
 ARGS_ERR(
     TAPE_SIZE_NOT_NUMERIC,
@@ -84,7 +87,7 @@ ARGS_ERR(
     "overflow parsing %s as a 64-bit unsigned int",
     parsed_args.err.str
 )
-ARGS_ERR(TAPE_SIZE_ZERO, "tape size cannot be zero pages", )
+ARGS_ERR(TAPE_SIZE_ZERO, "tape size cannot be zero pages", 0)
 ARGS_ERR(
     TAPE_TOO_LARGE,
     "%ju 4KiB blocks can't fit in %d-bit address space",
@@ -105,4 +108,11 @@ ARGS_ERR(
     escape_char(parsed_args.err.unknown_short_opt)
 )
 
+#ifdef DEFINE_ARGS_ERR
+#undef DEFINE_ARGS_ERR
+#endif /* DEFINE_ARGS_ERR */
+#ifdef PRINT_ARGS_ERR
+#pragma GCC diagnostic pop
+#undef PRINT_ARGS_ERR
+#endif /* PRINT_ARGS_ERR */
 #undef ARGS_ERR
