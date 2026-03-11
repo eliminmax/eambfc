@@ -94,7 +94,7 @@ static bool compile_file(const char *filename, const RunConfig *rc) {
     return result;
 }
 
-static int standard_run(const RunConfig *rc) {
+static int standard_run(RunConfig *rc) {
     int ret = EXIT_SUCCESS;
 
     for (size_t i = 0; i < rc->nfiles; ++i) {
@@ -103,6 +103,7 @@ static int standard_run(const RunConfig *rc) {
             if (!rc->continue_on_error) break;
         }
     }
+    free(rc->files);
     return ret;
 }
 
