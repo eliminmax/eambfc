@@ -50,7 +50,7 @@ release-build: scan-build cppcheck-full tarball pdpmake valgrind_test \
     set -eux
     for o_lvl in 0 1 2 3 s g z; do
         # compile with a bunch of different compilers/setups
-        printf 'gcc\nmusl-gcc\nclang-19\nzig cc\n' |\
+        printf 'gcc\nmusl-gcc\nclang-19\nclang-22\nzig cc\n' |\
             parallel -I_cc just --no-deps test_build \
                 '"_cc"' "-O$o_lvl" -Wall -Werror -Wextra -pedantic -std=c99
         # build for specific architectures now - these were chosen to catch bugs
@@ -121,10 +121,10 @@ cppcheck-full:
 [doc("Run `eambfc` through LLVM's `scan-build` static analyzer")]
 [group("tests")]
 scan-build:
-    scan-build-19 --status-bugs make CFLAGS=-O3 clean eambfc
-    scan-build-19 --status-bugs make \
+    scan-build-22 --status-bugs make CFLAGS=-O3 clean eambfc
+    scan-build-22 --status-bugs make \
         CFLAGS={{quote('-O3 ' + gcc_longopts_flags) }} clean eambfc
-    scan-build-19 --status-bugs make CFLAGS=-O3 unit_test_driver
+    scan-build-22 --status-bugs make CFLAGS=-O3 unit_test_driver
     make clean
 
 [doc("Build `eambfc` with **UBsan**, and run through the test suite")]
@@ -200,10 +200,10 @@ copyright_check +files:
     done
     exit "$exit_code"
 
-[doc("Validate C formatting with `clang-format-19`")]
+[doc("Validate C formatting with `clang-format-22`")]
 [group("lints")]
 clang-fmt-check +files:
-    clang-format-19 -n -Werror {{ files }}
+    clang-format-22 -n -Werror {{ files }}
 
 
 
