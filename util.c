@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -119,6 +119,33 @@ bool read_to_sb(int fd, union read_result *result) {
         }
     }
     return true;
+}
+
+/* Return a pointer to printable ASCII representation of `c`.
+ *
+ * The pointer will remain valid until the next call to `escape_char` */
+nonnull_ret char *escape_char(char c) {
+    static char TEXT[5];
+    memset(TEXT, 0, sizeof(TEXT));
+#define SIMPLE_ESCAPE(c, s) \
+    case c: \
+        strcpy(TEXT, s); \
+        break
+    switch (c) {
+        SIMPLE_ESCAPE('\n', "\n");
+        SIMPLE_ESCAPE('\r', "\r");
+        SIMPLE_ESCAPE('\t', "\t");
+        SIMPLE_ESCAPE('\'', "\'");
+        SIMPLE_ESCAPE('\"', "\"");
+        default:
+            if (c >= 0x20 && c < 0x7f) {
+                TEXT[0] = c;
+                TEXT[1] = '\0';
+            } else {
+                sprintf(TEXT, "\\x%02hhx", (uchar)c);
+            }
+    }
+    return TEXT;
 }
 
 #ifdef BFC_TEST

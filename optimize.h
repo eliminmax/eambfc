@@ -24,7 +24,7 @@ typedef struct instr_seq {
         size_t end;
     } source;
 
-    /* tag uesed to indicate effect of this sequence. */
+    /* tag used to indicate effect of this sequence. */
     enum instr_seq_tag {
         /* set a cell to `data.byte.value` */
         ISEQ_SET_CELL,

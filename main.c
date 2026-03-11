@@ -36,11 +36,11 @@ static bool rm_ext(char *str, const char *ext) {
 }
 
 /* compile a file */
-static bool compile_file(const char *filename, const RunCfg *rc) {
+static bool compile_file(const char *filename, const RunConfig *rc) {
     char *outname = checked_malloc(strlen(filename) + 1);
     strcpy(outname, filename);
 
-    if (!rm_ext(outname, rc->ext)) {
+    if (!rm_ext(outname, rc->source_extension)) {
         display_err((BFCError){
             .file = filename,
             .msg.ref = "File does not end with proper extension",
@@ -49,11 +49,12 @@ static bool compile_file(const char *filename, const RunCfg *rc) {
         free(outname);
         return false;
     }
-    if (rc->out_ext != NULL) {
+    if (rc->output_extension != NULL) {
         size_t outname_sz = strlen(outname);
-        outname =
-            checked_realloc(outname, outname_sz + strlen(rc->out_ext) + 1);
-        strcat(outname, rc->out_ext);
+        outname = checked_realloc(
+            outname, outname_sz + strlen(rc->output_extension) + 1
+        );
+        strcat(outname, rc->output_extension);
     }
 
     int src_fd = open(filename, O_RDONLY);
@@ -78,7 +79,7 @@ static bool compile_file(const char *filename, const RunCfg *rc) {
         return false;
     }
     bool result = bf_compile(
-        rc->inter,
+        rc->backend,
         filename,
         outname,
         src_fd,
@@ -93,15 +94,37 @@ static bool compile_file(const char *filename, const RunCfg *rc) {
     return result;
 }
 
-int main(int argc, char *argv[]) {
+static int standard_run(const RunConfig *rc) {
     int ret = EXIT_SUCCESS;
-    RunCfg rc = process_args(argc, argv);
-    for (int i = optind; i < argc; i++) {
-        if (compile_file(argv[i], &rc)) continue;
-        ret = EXIT_FAILURE;
-        if (!rc.cont_on_fail) break;
+
+    for (size_t i = 0; i < rc->nfiles; ++i) {
+        if (!compile_file(rc->files[i], rc)) {
+            ret = EXIT_FAILURE;
+            if (!rc->continue_on_error) break;
+        }
     }
     return ret;
+}
+
+int main(int argc, char *argv[]) {
+    ArgParseOut parsed_args;
+    switch (parse_args(argc, argv, &parsed_args)) {
+        case ARGS_OK:
+            switch (parsed_args.ok.run_type) {
+                case STANDARD_RUN:
+                    return standard_run(&parsed_args.ok);
+                case SHOW_VERSION:
+                    show_version(argv[0] ? argv[0] : "eambfc");
+                    return EXIT_SUCCESS;
+                case SHOW_HELP:
+                    show_help(argv[0] ? argv[0] : "eambfc", stdout);
+                    return EXIT_SUCCESS;
+                case LIST_TARGETS:
+                    return EXIT_SUCCESS;
+            }
+#define PRINT_ARGS_ERR
+#include "arg_parse_errs.h"
+    }
 }
 
 #else /* BFC_TEST */

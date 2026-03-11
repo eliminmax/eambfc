@@ -1,8 +1,11 @@
-/* SPDX-FileCopyrightText: 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2025 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only */
 
 /* C99 */
+#include <ctype.h>
+#include <errno.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,162 +13,61 @@
 /* POSIX */
 #include <unistd.h>
 /* internal */
-#include <attributes.h>
-#include <config.h>
-
 #include "arch_inter.h"
+#include "attributes.h"
+#include "config.h"
 #include "err.h"
 #include "setup.h"
-#include "version.h"
-
-#if BFC_LONGOPTS
+#include "types.h"
 #include "util.h"
-/* GNU C */
-#include <getopt.h>
-const struct option longopts[] = {
-    {"help", no_argument, 0, 'h'},
-    {"version", no_argument, 0, 'V'},
-    {"quiet", no_argument, 0, 'q'},
-    {"json", no_argument, 0, 'j'},
-    {"optimize", no_argument, 0, 'O'},
-    {"keep-failed", no_argument, 0, 'k'},
-    {"continue", no_argument, 0, 'c'},
-    {"list-targets", no_argument, 0, 'A'},
-    {"target-arch", required_argument, 0, 'a'},
-    {"tape-size", required_argument, 0, 't'},
-    {"source-suffix", required_argument, 0, 'e'},
-    {"output-suffix", required_argument, 0, 's'},
-    {0, 0, 0, 0},
-};
-
-/* use this macro in place of normal getopt */
-#define GETOPT_FN(c, v, opts) getopt_long(c, v, opts, longopts, NULL)
-#define OPTION(l, s, pad, msg) " --" l ", " pad "-" s ":   " msg
-#define PARAM_OPT(l, s, a, spad, lpad, msg) \
-    " --" l "=" a ", " lpad " -" s " " a ":    " spad msg
-#else
-#define OPTION(l, s, pad, msg) " -" s ":   " msg
-#define PARAM_OPT(l, s, a, spad, lpad, msg) " -" s " " spad a ":   " msg
-#define GETOPT_FN(c, v, opts) getopt(c, v, opts)
-#endif
-
-/* this macro hell defines the help template. If using GNU longopts, pads with
- * the provided padding string to keep descriptions even, and for the parameter
- * options, uses the second padding string to pad out the parameter argument. */
-#define OPTION_HELP \
-    OPTION("help", "h", "        ", "display this help text and exit")
-#define OPTION_VERSION \
-    OPTION("version", "V", "     ", "print version information and exit")
-#define OPTION_JSON \
-    OPTION("json", "j", "        ", "print errors in JSON format*")
-#define OPTION_QUIET OPTION("quiet", "q", "       ", "don't print any errors*")
-#define OPTION_OPTIMIZE OPTION("optimize", "O", "    ", "enable optimization**")
-#define OPTION_MOVEAHEAD \
-    OPTION("continue", "c", "    ", "continue to the next file on failure")
-#define OPTION_LIST_TARGETS \
-    OPTION("list-targets", "A", "", "list supported targets and exit")
-#define OPTION_KEEP_FAILED \
-    OPTION("keep-failed", "k", " ", "keep files that failed to compile")
-#define OPTIONS \
-    OPTION_HELP "\n" OPTION_VERSION "\n" OPTION_JSON "\n" OPTION_QUIET \
-                "\n" OPTION_OPTIMIZE "\n" OPTION_MOVEAHEAD \
-                "\n" OPTION_LIST_TARGETS "\n" OPTION_KEEP_FAILED "\n"
-
-#define PARAM_OPT_TAPE_SIZE \
-    PARAM_OPT( \
-        "tape-size", \
-        "t", \
-        "count", \
-        "", \
-        "     ", \
-        "use <count> 4-KiB blocks for the tape" \
-    )
-#define PARAM_OPT_SRC_EXT \
-    PARAM_OPT( \
-        "source-extension", \
-        "e", \
-        "ext", \
-        "  ", \
-        "", \
-        "use 'ext' as the source extension" \
-    )
-#define PARAM_OPT_TARGET_ARCH \
-    PARAM_OPT( \
-        "target-arch", \
-        "a", \
-        "arch", \
-        " ", \
-        "    ", \
-        "compile for the specified architecture" \
-    )
-#define PARAM_OPT_OUT_SUFFIX \
-    PARAM_OPT( \
-        "output-suffix", \
-        "s", \
-        "suf", \
-        "  ", \
-        "   ", \
-        "append 'suf' to output file names" \
-    )
-#define PARAM_OPTS \
-    PARAM_OPT_TAPE_SIZE "\n" PARAM_OPT_SRC_EXT "\n" PARAM_OPT_TARGET_ARCH \
-                        "\n" PARAM_OPT_OUT_SUFFIX "\n"
+#include "version.h"
 
 #define HELP_TEMPLATE \
     "Usage: %s [options] <program.bf> [<program2.bf> ...]\n" \
     "\n" \
-    "" OPTIONS \
-    "\n* -q and -j will not affect arguments passed before they were.\n" \
-    "\n" \
-    "** Optimization can make error reporting less precise.\n" \
+    " --help,         -h:   display this help text and exit\n" \
+    " --version,      -V:   print version information and exit\n" \
+    " --json,         -j:   print errors in JSON format " \
+    "(conflicts with --quiet)\n" \
+    " --quiet,        -q:   don't print any errors (conflicts with --json)\n" \
+    " --optimize,     -O:   enable optimization " \
+    "(can make error reporting less precise)\n" \
+    " --continue,     -c:   continue to the next file on failure\n" \
+    " --list-targets, -A:   list supported targets and exit\n" \
+    " --keep-failed,  -k:   keep files that failed to compile\n" \
+    "                 --:   stop argument parsing, treating " \
+    "remaining arguments as filenames\n" \
     "\n" \
     "PARAMETER OPTIONS (provide at most once each):\n" \
-    "" PARAM_OPTS \
-    "\n" \
-    "If not provided, it falls back to 8 as the tape-size count, \".bf\" " \
-    "as the source extension, " BFC_DEFAULT_ARCH_STR \
-    " as the target-arch, and an empty output-suffix.\n" \
-    "\n" \
-    "Remaining options are treated as source file names. If they don't " \
-    "end with the right extension, the program will raise an error.\n" \
-    "\n" \
-    "Additionally, passing \"--\" as a standalone argument will stop " \
-    "argument parsing, and treat remaining arguments as source file names.\n"
+    " --tape-size=count,      -t count:   " \
+    "use <count> 4-KiB blocks for the tape (defaults to 8)\n" \
+    " --source-extension=ext, -e ext:     " \
+    "use 'ext' as the source extension (defaults to \"bf\")\n" \
+    " --target-arch=arch,     -a arch:    " \
+    "compile for the specified architecture (defaults " \
+    "to " BFC_DEFAULT_ARCH_STR \
+    ")\n" \
+    " --output-extension=ext, -s ext:     " \
+    "use 'ext' as the output extension (no extension if unset)\n"
 
-/* checks if `arg` matches any of `values`
+/* Checks if `arg` matches any of `values`
  *
- * Returns `true` if `strcmp` returns 0 when comparing `arg` t a non-null
- * pointer in `values`, and `false` if no match was found before reaching a null
+ * Returns `values[0]` if `strcmp` returns 0 when comparing `arg` t a non-null
+ * pointer in `values`, and `NULL` if no match was found before reaching a null
  * pointer.
  *
- * normal safety concerns around `strcmp` apply, and `values` must end with a
- * null pointer */
-nonnull_args static bool any_match(const char *arg, const char *values[]) {
+ * Normal safety concerns around `strcmp` apply, and `values` must end with a
+ * null pointer. */
+nonnull_args static const char *any_match(
+    const char *arg, const char *values[]
+) {
     for (int i = 0; values[i]; i++) {
-        if (strcmp(arg, values[i]) == 0) return true;
+        if (strcmp(arg, values[i]) == 0) return values[0];
     }
-    return false;
+    return NULL;
 }
 
-nonnull_args static bool select_inter(const char *arch_arg, ArchInter **inter) {
-#define ARCH_INTER(target_inter, ...) \
-    if (any_match(arch_arg, (const char *[]){__VA_ARGS__, NULL})) { \
-        *inter = &target_inter; \
-        return true; \
-    }
-#include "backends.h"
-
-    char unknown_msg[64];
-    if (sprintf(unknown_msg, "%32s", arch_arg) == 32 && unknown_msg[31]) {
-        strcat(unknown_msg, "...");
-    }
-    strcat(unknown_msg, " is not a recognized target");
-    display_err(basic_err(BF_ERR_UNKNOWN_ARCH, unknown_msg));
-    return false;
-#undef SET_IF_MATCHES
-}
-
-noreturn static nonnull_args void report_version(const char *progname) {
+nonnull_args void report_version(const char *progname) {
     /* strip leading path from progname */
     const char *filename;
     while ((filename = strchr(progname, '/'))) progname = filename + 1;
@@ -186,10 +88,8 @@ noreturn static nonnull_args void report_version(const char *progname) {
          * if it's anything else, it'll add ": eambfc" after the progname */
         strcmp(progname, "eambfc") ? ": eambfc" : ""
     );
-    exit(EXIT_SUCCESS);
 }
 
-#include <config.h>
 #if BFC_NUM_BACKENDS == 1
 #define ARCH_LIST_START \
     "This build of eambfc only supports the following architecture:\n\n"
@@ -202,207 +102,315 @@ noreturn static nonnull_args void report_version(const char *progname) {
     "."
 #endif /* BFC_NUM_BACKENDS */
 
-noreturn static nonnull_args void list_arches(void) {
+void list_targets(void) {
 #define ARCH_INTER(inter, name, ...) "- " name " (aliases: " #__VA_ARGS__ ")\n"
 
-    puts(ARCH_LIST_START
+    puts(
+        ARCH_LIST_START
 #include "backends.h"
-             ARCH_LIST_END);
-    exit(EXIT_SUCCESS);
+            ARCH_LIST_END
+    );
 }
 
 #undef ARCH_LIST_START
 #undef ARCH_LIST_END
 
-noreturn static nonnull_args void bad_arg(
-    const char *progname, BfErrorId id, const char *msg, bool show_hint
-) {
-    display_err(basic_err(id, msg));
-    if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
-    exit(EXIT_FAILURE);
+typedef union {
+    int raw;
+
+    enum ok_outcome {
+        OO_ADVANCE = -3,
+        OO_COLLECT_REMAINING = -2,
+        OO_SHORT_CIRCUIT = -1,
+        OO_CONTINUE = 0,
+    } ok;
+
+    ArgParseOutcome err;
+} OptionOutcome;
+
+static nonnull_args OptionOutcome
+set_tape_size(const char *operand, ArgParseOut *out) {
+    if (!isdigit(*operand)) {
+        free(out->ok.files);
+        return (OptionOutcome){.err = ARGS_ERR_TAPE_SIZE_NOT_NUMERIC};
+    }
+    char *endptr;
+    errno = 0;
+    umax val = strtoumax(operand, &endptr, 10);
+    if (errno == ERANGE || val > UINT64_MAX) {
+        free(out->ok.files);
+        out->err.str = operand;
+        return (OptionOutcome){.err = ARGS_ERR_TAPE_SIZE_OVERFLOW};
+    }
+    if (!val) { return (OptionOutcome){.err = ARGS_ERR_TAPE_SIZE_ZERO}; }
+    if (*endptr != '\0') {
+        free(out->ok.files);
+        out->err.str = operand;
+        return (OptionOutcome){.err = ARGS_ERR_TAPE_SIZE_NOT_NUMERIC};
+    }
+    u64 old_val = out->ok.tape_blocks;
+    if (old_val) {
+        free(out->ok.files);
+        out->err.tape_sizes[0] = old_val;
+        out->err.tape_sizes[1] = val;
+        return (OptionOutcome){.err = ARGS_ERR_MULTIPLE_TAPE_SIZES};
+    }
+    out->ok.tape_blocks = val;
+    return (OptionOutcome){.ok = OO_CONTINUE};
 }
 
-RunCfg process_args(int argc, char *argv[]) {
-    int opt;
-    char missing_op_msg[35] = "-% requires an additional argument";
-    char unknown_arg_msg[24] = "Unknown argument: -%";
-    bool show_hint = true;
-    RunCfg rc = {
-        .inter = NULL,
-        .ext = NULL,
-        .out_ext = NULL,
-        .tape_blocks = 0,
-        .optimize = false,
-        .keep = false,
-        .cont_on_fail = false,
-    };
+static nonnull_args OptionOutcome
+set_source_extension(const char *operand, ArgParseOut *out) {
+    const char *old_ext = out->ok.source_extension;
+    if (old_ext) {
+        free(out->ok.files);
+        out->err.str2[0] = old_ext;
+        out->err.str2[1] = operand;
+        return (OptionOutcome){.err = ARGS_ERR_MULTIPLE_SOURCE_EXTENSIONS};
+    }
+    return (OptionOutcome){.ok = OO_CONTINUE};
+}
 
-    const char *progname = (argc && argv[0] != NULL) ? argv[0] : "eambfc";
+static nonnull_args OptionOutcome
+set_output_extension(const char *operand, ArgParseOut *out) {
+    const char *old_ext = out->ok.output_extension;
+    if (old_ext) {
+        free(out->ok.files);
+        out->err.str2[0] = old_ext;
+        out->err.str2[1] = operand;
+        return (OptionOutcome){.err = ARGS_ERR_MULTIPLE_OUTPUT_EXTENSIONS};
+    }
+    return (OptionOutcome){.ok = OO_CONTINUE};
+}
 
-    while ((opt = GETOPT_FN(argc, argv, ":hVqjOkcAa:e:t:s:")) != -1) {
-        switch (opt) {
+static nonnull_args OptionOutcome
+set_backend(const char *operand, ArgParseOut *out) {
+#define ARCH_INTER(target_inter, ...) \
+    if (any_match(operand, (const char *[]){__VA_ARGS__, NULL})) { \
+        out->ok.backend = &target_inter; \
+        return (OptionOutcome){.ok = OO_CONTINUE}; \
+    }
+#define ARCH_INTER_DISABLED(name, /* aliases: */...) \
+    if (any_match(operand, (const char *[]){name, __VA_ARGS__, NULL})) { \
+        free(out->ok.files); \
+        out->err.str = name; \
+        return (OptionOutcome){.err = ARGS_ERR_DISABLED_BACKEND}; \
+    }
+#include "backends.h"
+
+    free(out->ok.files);
+    out->err.str = operand;
+    return (OptionOutcome){.err = ARGS_ERR_UNKNOWN_BACKEND};
+}
+
+// return -2 for standalone --
+// return -1 for --help, --version, or --list-targets
+// set up out->err and return the error value if an error occurs
+// return 0 if arg parsing should continue
+static nonnull_args OptionOutcome longopt(char **args, ArgParseOut *out) {
+    char *arg = &args[0][2];
+    if (!arg[0]) return (OptionOutcome){.ok = OO_COLLECT_REMAINING};
+    char *operand = NULL;
+    char *eq;
+    if ((eq = strchr(arg, '='))) {
+        *eq = '\0';
+        operand = eq + 1;
+    }
+
+#define REQUIRE_NO_OPERAND() \
+    if (operand) { \
+        free(out->ok.files); \
+        out->err.str2[0] = arg; \
+        out->err.str2[1] = operand; \
+        return (OptionOutcome){.err = ARGS_ERR_UNEXPECTED_OPERAND}; \
+    }
+
+#define SHORT_CIRCUIT(OPT, RET) \
+    if (strcmp(arg, OPT) == 0) { \
+        REQUIRE_NO_OPERAND(); \
+        out->ok.run_type = RET; \
+        return (OptionOutcome){.ok = OO_SHORT_CIRCUIT}; \
+    }
+#define FLAG_OPTION(FLAG, FIELD_SET) \
+    if (strcmp(arg, FLAG) == 0) { \
+        REQUIRE_NO_OPERAND(); \
+        out->ok.FIELD_SET; \
+        return (OptionOutcome){.ok = OO_CONTINUE}; \
+    }
+#define PARAM_OPTION(OPT, FUNC) \
+    if (strcmp(arg, OPT) == 0) { \
+        if (!operand && !(operand = args[1])) { \
+            free(out->ok.files); \
+            out->err.str = arg; \
+            return (OptionOutcome){.err = ARGS_ERR_MISSING_OPERAND}; \
+        } \
+        OptionOutcome outcome = FUNC(operand, out); \
+        if (outcome.raw) return outcome; \
+        return (OptionOutcome){.ok = eq ? OO_CONTINUE : OO_ADVANCE}; \
+    }
+
+    SHORT_CIRCUIT("help", SHOW_HELP);
+    SHORT_CIRCUIT("version", SHOW_VERSION);
+    SHORT_CIRCUIT("list-targets", LIST_TARGETS);
+    FLAG_OPTION("json", out_mode |= OUTMODE_JSON);
+    FLAG_OPTION("quiet", out_mode |= OUTMODE_QUIET);
+    FLAG_OPTION("optimize", optimize = true);
+    FLAG_OPTION("keep", keep = true);
+    FLAG_OPTION("keep-failed", keep = true);
+    FLAG_OPTION("continue", continue_on_error = true);
+    PARAM_OPTION("tape_size", set_tape_size);
+    PARAM_OPTION("source-extension", set_source_extension);
+    PARAM_OPTION("target-arch", set_backend);
+    PARAM_OPTION("output-extension", set_output_extension);
+#undef FLAG_OPTION
+#undef SHORT_CIRCUIT
+#undef PARAM_OPTION
+    free(out->ok.files);
+    out->err.str = arg;
+    return (OptionOutcome){.err = ARGS_ERR_UNKNOWN_LONG_OPT};
+}
+
+static nonnull_args OptionOutcome
+shortopts(char *const *args, ArgParseOut *out) {
+    static char MISSING_ERR[3] = "-";
+    const char *arg = &args[0][1];
+    if (!*arg) {
+        free(out->ok.files);
+        return (OptionOutcome){.err = ARGS_ERR_SINGLE_DASH_ARG};
+    }
+
+    const char *operand;
+
+    OptionOutcome (*set_fn)(const char *, ArgParseOut *);
+
+    while (arg) {
+        switch (*arg) {
             case 'h':
-                printf(HELP_TEMPLATE, progname);
-                exit(EXIT_SUCCESS);
+                out->ok.run_type = SHOW_HELP;
+                return (OptionOutcome){.ok = OO_SHORT_CIRCUIT};
             case 'V':
-                report_version(progname);
+                out->ok.run_type = SHOW_VERSION;
+                return (OptionOutcome){.ok = OO_SHORT_CIRCUIT};
             case 'A':
-                list_arches();
-            case 'q':
-                show_hint = false;
-                quiet_mode();
-                break;
+                out->ok.run_type = LIST_TARGETS;
+                return (OptionOutcome){.ok = OO_SHORT_CIRCUIT};
             case 'j':
-                show_hint = false;
-                json_mode();
+                out->ok.out_mode |= OUTMODE_JSON;
+                break;
+            case 'q':
+                out->ok.out_mode |= OUTMODE_QUIET;
                 break;
             case 'O':
-                rc.optimize = true;
+                out->ok.optimize = true;
                 break;
             case 'k':
-                rc.keep = true;
+                out->ok.keep = true;
                 break;
             case 'c':
-                rc.cont_on_fail = true;
-                break;
-            case 'e':
-                /* Print an error if ext was already set. */
-                if (rc.ext != NULL) {
-                    bad_arg(
-                        progname,
-                        BF_ERR_MULTIPLE_EXTENSIONS,
-                        "passed -e multiple times.",
-                        show_hint
-                    );
-                }
-                rc.ext = optarg;
-                break;
-            case 's':
-                /* Print an error if out_ext was already set. */
-                if (rc.out_ext != NULL) {
-                    bad_arg(
-                        progname,
-                        BF_ERR_MULTIPLE_OUTPUT_EXTENSIONS,
-                        "passed -s multiple times.",
-                        show_hint
-                    );
-                }
-                rc.out_ext = optarg;
+                out->ok.continue_on_error = true;
                 break;
             case 't':
-                /* Print an error if tape_blocks has already been set */
-                if (rc.tape_blocks != 0) {
-                    bad_arg(
-                        progname,
-                        BF_ERR_MULTIPLE_TAPE_BLOCK_COUNTS,
-                        "passed -t multiple times.",
-                        show_hint
-                    );
-                }
-                char *endptr;
-                /* casting unsigned long long instead of using scanf as scanf
-                 * can lead to undefined behavior if input isn't well-crafted,
-                 * and unsigned long long is guaranteed to be at least 64 bits.
-                 */
-                unsigned long long int holder = strtoull(optarg, &endptr, 10);
-                /* if the full opt_arg wasn't consumed, it's not a numeric
-                 * value. */
-                if (*endptr != '\0') {
-                    bad_arg(
-                        progname,
-                        BF_ERR_TAPE_SIZE_NOT_NUMERIC,
-                        "tape size could not be parsed as a numeric value",
-                        show_hint
-                    );
-                }
-                if (holder == 0) {
-                    bad_arg(
-                        progname,
-                        BF_ERR_TAPE_SIZE_ZERO,
-                        "Tape value for -t must be at least 1",
-                        show_hint
-                    );
-                }
-                /* if it's any larger than this, the tape size would exceed the
-                 * 64-bit integer limit. */
-                if (holder >= (UINT64_MAX >> 12)) {
-                    bad_arg(
-                        progname,
-                        BF_ERR_TAPE_TOO_LARGE,
-                        "tape size too large to avoid overflow",
-                        show_hint
-                    );
-                }
-                rc.tape_blocks = (u64)holder;
-                break;
+                set_fn = set_tape_size;
+                goto operand_fn;
+            case 'e':
+                set_fn = set_source_extension;
+                goto operand_fn;
+            case 's':
+                set_fn = set_output_extension;
+                goto operand_fn;
             case 'a':
-                if (rc.inter != NULL) {
-                    bad_arg(
-                        progname,
-                        BF_ERR_MULTIPLE_ARCHES,
-                        "passed -a multiple times.",
-                        show_hint
-                    );
-                }
-                if (!select_inter(optarg, &rc.inter)) { exit(EXIT_FAILURE); }
-                break;
-            case ':': /* one of -a, -e, or -t is missing an argument */
-                missing_op_msg[1] = optopt;
-                bad_arg(
-                    progname, BF_ERR_MISSING_OPERAND, missing_op_msg, show_hint
-                );
-            case '?': /* unknown argument */
-#if BFC_LONGOPTS
-                if (!optopt) {
-                    int badarg = optind - 1;
-                    char *msg = checked_malloc(strlen(argv[badarg]) + 19);
-                    memcpy(msg, unknown_arg_msg, 18);
-                    strcpy(&msg[18], argv[badarg]);
-                    /* can't just use bad_arg as msg won't be freed. */
-                    display_err((BFCError){
-                        .id = BF_ERR_UNKNOWN_ARG,
-                        .msg.alloc = msg,
-                        .is_alloc = true,
-                    });
-                    if (show_hint) fprintf(stderr, HELP_TEMPLATE, progname);
-                    exit(EXIT_FAILURE);
-                }
-#endif /* BFC_LONGOPTS */
-                if (optopt >= 040 && optopt < 0x80) {
-                    unknown_arg_msg[19] = optopt;
-                } else {
-                    sprintf(&unknown_arg_msg[19], "\\x%02hhx", (uchar)optopt);
-                }
-                bad_arg(
-                    progname, BF_ERR_UNKNOWN_ARG, unknown_arg_msg, show_hint
-                );
+                set_fn = set_backend;
+                goto operand_fn;
+            default:
+                free(out->ok.files);
+                out->err.unknown_short_opt = *arg;
+                return (OptionOutcome){.err = ARGS_ERR_UNKNOWN_SHORT_OPT};
+        }
+        ++arg;
+    }
+    return (OptionOutcome){.ok = OO_CONTINUE};
+
+operand_fn:
+    operand = arg[1] ? arg + 1 : args[1];
+    if (!operand) {
+        MISSING_ERR[1] = *arg;
+        free(out->ok.files);
+        out->err.str = MISSING_ERR;
+        return (OptionOutcome){.err = ARGS_ERR_MISSING_OPERAND};
+    }
+    OptionOutcome outcome = set_fn(operand, out);
+    if (outcome.raw) return outcome;
+    // if arg[1] is 0, then the next parameter will have been used up
+    return (OptionOutcome){.ok = arg[1] ? OO_CONTINUE : OO_ADVANCE};
+}
+
+nonnull_args ArgParseOutcome
+parse_args(int argc, char *argv[], ArgParseOut *out) {
+    char **files = checked_malloc(argc + 1);
+    for (int i = 1; i <= argc; ++i) files[i] = NULL;
+
+    // set all fields to default values
+    out->ok = (RunConfig){0};
+
+    for (int i = 0; i < argc; ++i) {
+        if (argv[i][0] == '-') {
+            OptionOutcome res = (argv[i][1] == '-') ? longopt(&argv[i], out) :
+                                                      shortopts(&argv[i], out);
+            switch (res.raw) {
+                case OO_COLLECT_REMAINING:
+                    for (++i; i < argc; ++i) {
+                        out->ok.files[out->ok.nfiles++] = argv[i];
+                    }
+                    break;
+                case OO_SHORT_CIRCUIT:
+                    free(out->ok.files);
+                    return ARGS_OK;
+                case OO_ADVANCE:
+                    ++i;
+                case OO_CONTINUE:
+                    break;
+                default:
+                    return res.err;
+            }
+        } else {
+            out->ok.files[out->ok.nfiles++] = argv[i];
         }
     }
-
-    /* if no extension was provided, use .bf */
-    if (rc.ext == NULL) rc.ext = ".bf";
-
-    if (rc.out_ext != NULL && strcmp(rc.out_ext, rc.ext) == 0) {
-        display_err(basic_err(
-            BF_ERR_INPUT_IS_OUTPUT,
-            "Extension can't be the same as output suffix"
-        ));
-        exit(EXIT_FAILURE);
+    if (out->ok.out_mode == (OUTMODE_JSON | OUTMODE_QUIET)) {
+        free(out->ok.files);
+        return ARGS_ERR_SET_BOTH_OUT_MODES;
     }
 
-    if (optind == argc) {
-        bad_arg(
-            progname,
-            BF_ERR_NO_SOURCE_FILES,
-            "No source files provided.",
-            show_hint
-        );
+    if (!out->ok.source_extension) out->ok.source_extension = "bf";
+
+    const char *o;
+
+    if ((o = out->ok.output_extension) && o == out->ok.source_extension) {
+        free(out->ok.files);
+        out->err.str = o;
+        return ARGS_ERR_INPUT_IS_OUTPUT;
     }
 
-    /* if no tape size was specified, default to 8. */
-    if (rc.tape_blocks == 0) rc.tape_blocks = 8;
+    if (!out->ok.nfiles) {
+        free(out->ok.files);
+        return ARGS_ERR_NO_SOURCE_FILES;
+    }
 
-    /* if no architecture was specified, default to default value set above */
-    if (rc.inter == NULL) rc.inter = &BFC_DEFAULT_INTER;
-    return rc;
+    if (!out->ok.backend) { out->ok.backend = &BFC_DEFAULT_INTER; }
+
+    u64 max_tape_blocks;
+    if (out->ok.backend->addr_class == PTRSIZE_32) {
+        max_tape_blocks = UINT32_MAX / 0x1000;
+    } else {
+        max_tape_blocks = UINT64_MAX / 0x1000;
+    }
+    if (out->ok.tape_blocks > max_tape_blocks) {
+        free(out->ok.files);
+        u64 tape_blocks = out->ok.tape_blocks;
+        int bits = 32 * (out->ok.backend->addr_class);
+
+        out->err.tape_too_large = (struct tape_too_large){tape_blocks, bits};
+        return ARGS_ERR_TAPE_TOO_LARGE;
+    }
+    return ARGS_OK;
 }
