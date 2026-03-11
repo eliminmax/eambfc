@@ -350,11 +350,11 @@ operand_fn:
 
 nonnull_args ArgParseOutcome
 parse_args(int argc, char *argv[], ArgParseOut *out) {
-    char **files = checked_malloc(argc + 1);
-    for (int i = 1; i <= argc; ++i) files[i] = NULL;
-
     // set all fields to default values
     out->ok = (RunConfig){0};
+    // allocate space for files
+    out->ok.files = checked_malloc(sizeof(char *) * (argc + 1));
+    for (int i = 1; i <= argc; ++i) out->ok.files[i] = NULL;
 
     for (int i = 0; i < argc; ++i) {
         if (argv[i][0] == '-') {
