@@ -2,10 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
- * A Brainfuck to 64-bit Linux ELF compiler. */
+ * A Brainfuck to Linux ELF compiler. */
 
 #ifndef BFC_TEST
 /* C99 */
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,41 +21,49 @@
 #include "setup.h"
 #include "util.h"
 
-/* remove ext from end of str. If str doesn't end with ext, return false. */
-static bool rm_ext(char *str, const char *ext) {
-    size_t strsz = strlen(str);
-    size_t extsz = strlen(ext);
-    /* strsz must be at least 1 character longer than extsz to continue. */
-    if (strsz <= extsz) return false;
-    /* because of the above check, distance is known to be a positive value. */
-    size_t distance = strsz - extsz;
-    /* return 0 if str does not end in ext */
-    if (strncmp(str + distance, ext, extsz) != 0) return false;
-    /* set the beginning of the match to the null byte, to end str early */
-    str[distance] = false;
-    return true;
+/* return the output name for a source file with the provided filename
+ *
+ * If the filename does not end with '.' followed by the source extension
+ * returns NULL.
+ *
+ * If an output extension is set, it appends it to the output name. */
+
+static char *gen_outname(const char *filename, const RunConfig *rc) {
+    size_t alloc_sz = strlen(filename) + 1;
+    if (rc->output_extension) {
+        size_t outname_alloc_sz = alloc_sz - strlen(rc->source_extension) +
+                                  strlen(rc->output_extension);
+        if (outname_alloc_sz > alloc_sz) alloc_sz = outname_alloc_sz;
+    }
+    //* start with the original filename */
+    char *outname = strcpy(checked_malloc(alloc_sz), filename);
+
+    assert(rc->source_extension[0]);
+
+    char *dot = strrchr(outname, '.');
+    if ((!dot) || (strcmp(dot + 1, rc->source_extension) != 0)) {
+        free(outname);
+        return NULL;
+    }
+
+    if (rc->output_extension) {
+        strcpy(&dot[1], rc->output_extension);
+    } else {
+        *dot = '\0';
+    }
+    return outname;
 }
 
 /* compile a file */
 static bool compile_file(const char *filename, const RunConfig *rc) {
-    char *outname = checked_malloc(strlen(filename) + 1);
-    strcpy(outname, filename);
-
-    if (!rm_ext(outname, rc->source_extension)) {
+    char *outname = gen_outname(filename, rc);
+    if (!outname) {
         display_err((BFCError){
             .file = filename,
             .msg.ref = "File does not end with proper extension",
             .id = BF_ERR_BAD_EXTENSION,
         });
-        free(outname);
         return false;
-    }
-    if (rc->output_extension != NULL) {
-        size_t outname_sz = strlen(outname);
-        outname = checked_realloc(
-            outname, outname_sz + strlen(rc->output_extension) + 1
-        );
-        strcat(outname, rc->output_extension);
     }
 
     int src_fd = open(filename, O_RDONLY);
@@ -132,6 +141,7 @@ int main(int argc, char *argv[]) {
 #define PRINT_ARGS_ERR
 #include "arg_parse_errs.h"
     }
+    return EXIT_FAILURE;
 }
 
 #else /* BFC_TEST */

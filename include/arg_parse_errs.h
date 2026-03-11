@@ -40,10 +40,7 @@ ARGS_ERR(
     parsed_args.err.str
 )
 ARGS_ERR(
-    MISSING_OPERAND,
-    "argument %s%s requires an operand",
-    parsed_args.err.str2[0],
-    parsed_args.err.str2[1]
+    MISSING_OPERAND, "argument %s requires an operand", parsed_args.err.str
 )
 ARGS_ERR(
     MULTIPLE_ARCHITECTURES,
@@ -64,8 +61,13 @@ ARGS_ERR(
     parsed_args.err.str2[1]
 )
 ARGS_ERR(
+    DUPLICATE_TAPE_SIZE,
+    "tape size %ju provided multiple times",
+    (umax)parsed_args.err.tape_sizes[0]
+)
+ARGS_ERR(
     MULTIPLE_TAPE_SIZES,
-    "provided multiple output file extensions: %ju and %ju",
+    "both %ju and %ju provided as tape size",
     (umax)parsed_args.err.tape_sizes[0],
     (umax)parsed_args.err.tape_sizes[1]
 )

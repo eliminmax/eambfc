@@ -51,7 +51,7 @@ nonnull_args size_t read_chunk(SizedBuf *dst, int fd) {
 /* try to execv(args[0], args), and print an error then abort on failure,
  * and casting args from a `const char *const []` to a `char *const *`, which
  * */
-noreturn static void execv_const(const char *const args[]) {
+noreturn nonnull_args static void execv_const(const char *const args[]) {
     /* This cast is risky, but the POSIX standard explicitly requires that args
      * aren't modified, and clarifies that the use of `char *const[]` instead of
      * `const char *const[]` is for compatibility with existing code calling the
@@ -73,7 +73,7 @@ noreturn static void execv_const(const char *const args[]) {
 }
 
 nonnull_arg(1) int run_capturing(
-    const char *args[], SizedBuf *out, SizedBuf *err
+    const char *const args[], SizedBuf *out, SizedBuf *err
 ) {
     int chld_status;
     pid_t chld;
@@ -83,6 +83,12 @@ nonnull_arg(1) int run_capturing(
     if (err) CHECKED(pipe(err_pipe) == 0);
     CHECKED((chld = fork()) != -1);
 
+    /* needed due to GCC -Wanalyzer-fd-leak false positive on dup2
+     * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=109839 */
+#pragma GCC diagnostic push
+#ifndef __clang__
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
+#endif
     if (chld == 0) {
         if (out != NULL) {
             POST_FORK_CHECKED(dup2(out_pipe[1], STDOUT_FILENO) >= 0);
@@ -96,6 +102,7 @@ nonnull_arg(1) int run_capturing(
         }
         execv_const(args);
     }
+#pragma GCC diagnostic pop
 
     if (out != NULL) CHECKED(close(out_pipe[1]) == 0);
     if (err != NULL) CHECKED(close(err_pipe[1]) == 0);

@@ -98,7 +98,7 @@ nonnull_args int subprocess(const char *args[]);
  * If not needed, one or both of `out` and `err` can be set to NULL, in which
  * case their respective streams are not redirected. */
 nonnull_arg(1) int run_capturing(
-    const char *args[], SizedBuf *out, SizedBuf *err
+    const char *const args[], SizedBuf *out, SizedBuf *err
 );
 
 /* convenience macro to fprintf to stderr */

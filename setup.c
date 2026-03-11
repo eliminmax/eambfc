@@ -136,6 +136,7 @@ static nonnull_args OptionOutcome
 set_tape_size(const char *operand, ArgParseOut *out) {
     if (!isdigit(*operand)) {
         free(out->ok.files);
+        out->err.str = operand;
         return (OptionOutcome){.err = ARGS_ERR_TAPE_SIZE_NOT_NUMERIC};
     }
     char *endptr;
@@ -157,7 +158,11 @@ set_tape_size(const char *operand, ArgParseOut *out) {
         free(out->ok.files);
         out->err.tape_sizes[0] = old_val;
         out->err.tape_sizes[1] = val;
-        return (OptionOutcome){.err = ARGS_ERR_MULTIPLE_TAPE_SIZES};
+        if (old_val == val) {
+            return (OptionOutcome){.err = ARGS_ERR_DUPLICATE_TAPE_SIZE};
+        } else {
+            return (OptionOutcome){.err = ARGS_ERR_MULTIPLE_TAPE_SIZES};
+        }
     }
     out->ok.tape_blocks = val;
     return (OptionOutcome){.ok = OO_CONTINUE};
@@ -172,6 +177,7 @@ set_source_extension(const char *operand, ArgParseOut *out) {
         out->err.str2[1] = operand;
         return (OptionOutcome){.err = ARGS_ERR_MULTIPLE_SOURCE_EXTENSIONS};
     }
+    out->ok.source_extension = operand;
     return (OptionOutcome){.ok = OO_CONTINUE};
 }
 
@@ -184,6 +190,7 @@ set_output_extension(const char *operand, ArgParseOut *out) {
         out->err.str2[1] = operand;
         return (OptionOutcome){.err = ARGS_ERR_MULTIPLE_OUTPUT_EXTENSIONS};
     }
+    out->ok.output_extension = operand;
     return (OptionOutcome){.ok = OO_CONTINUE};
 }
 
@@ -222,9 +229,9 @@ static nonnull_args OptionOutcome longopt(char **args, ArgParseOut *out) {
     }
 
 #define REQUIRE_NO_OPERAND() \
-    if (operand) { \
+    if (eq) { \
         free(out->ok.files); \
-        out->err.str2[0] = arg; \
+        out->err.str2[0] = arg - 2; \
         out->err.str2[1] = operand; \
         return (OptionOutcome){.err = ARGS_ERR_UNEXPECTED_OPERAND}; \
     }
@@ -243,9 +250,9 @@ static nonnull_args OptionOutcome longopt(char **args, ArgParseOut *out) {
     }
 #define PARAM_OPTION(OPT, FUNC) \
     if (strcmp(arg, OPT) == 0) { \
-        if (!operand && !(operand = args[1])) { \
+        if ((!operand && !(operand = args[1])) || !*operand) { \
             free(out->ok.files); \
-            out->err.str = arg; \
+            out->err.str = arg - 2; \
             return (OptionOutcome){.err = ARGS_ERR_MISSING_OPERAND}; \
         } \
         OptionOutcome outcome = FUNC(operand, out); \
@@ -262,7 +269,7 @@ static nonnull_args OptionOutcome longopt(char **args, ArgParseOut *out) {
     FLAG_OPTION("keep", keep = true);
     FLAG_OPTION("keep-failed", keep = true);
     FLAG_OPTION("continue", continue_on_error = true);
-    PARAM_OPTION("tape_size", set_tape_size);
+    PARAM_OPTION("tape-size", set_tape_size);
     PARAM_OPTION("source-extension", set_source_extension);
     PARAM_OPTION("target-arch", set_backend);
     PARAM_OPTION("output-extension", set_output_extension);
@@ -287,7 +294,7 @@ shortopts(char *const *args, ArgParseOut *out) {
 
     OptionOutcome (*set_fn)(const char *, ArgParseOut *);
 
-    while (arg) {
+    while (*arg) {
         switch (*arg) {
             case 'h':
                 out->ok.run_type = SHOW_HELP;
@@ -336,7 +343,7 @@ shortopts(char *const *args, ArgParseOut *out) {
 
 operand_fn:
     operand = arg[1] ? arg + 1 : args[1];
-    if (!operand) {
+    if (!operand || !*operand) {
         MISSING_ERR[1] = *arg;
         free(out->ok.files);
         out->err.str = MISSING_ERR;
@@ -354,9 +361,9 @@ parse_args(int argc, char *argv[], ArgParseOut *out) {
     out->ok = (RunConfig){0};
     // allocate space for files
     out->ok.files = checked_malloc(sizeof(char *) * (argc + 1));
-    for (int i = 1; i <= argc; ++i) out->ok.files[i] = NULL;
+    for (int i = 0; i <= argc; ++i) out->ok.files[i] = NULL;
 
-    for (int i = 0; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
             OptionOutcome res = (argv[i][1] == '-') ? longopt(&argv[i], out) :
                                                       shortopts(&argv[i], out);
@@ -380,19 +387,44 @@ parse_args(int argc, char *argv[], ArgParseOut *out) {
             out->ok.files[out->ok.nfiles++] = argv[i];
         }
     }
+    /* finalize */
     if (out->ok.out_mode == (OUTMODE_JSON | OUTMODE_QUIET)) {
         free(out->ok.files);
         return ARGS_ERR_SET_BOTH_OUT_MODES;
     }
 
+    switch (out->ok.out_mode) {
+        case OUTMODE_QUIET:
+            quiet_mode();
+            break;
+        case OUTMODE_JSON:
+            json_mode();
+            break;
+        case OUTMODE_NORMAL:
+            break;
+    }
     if (!out->ok.source_extension) out->ok.source_extension = "bf";
 
-    const char *o;
-
-    if ((o = out->ok.output_extension) && o == out->ok.source_extension) {
+    if ((out->ok.output_extension) &&
+        (strcmp(out->ok.source_extension, out->ok.output_extension) == 0)) {
         free(out->ok.files);
-        out->err.str = o;
+        const char *ext = out->ok.source_extension;
+        out->err.str = ext;
         return ARGS_ERR_INPUT_IS_OUTPUT;
+    }
+
+    if (strchr(out->ok.source_extension, '.')) {
+        free(out->ok.files);
+        const char *ext = out->ok.source_extension;
+        out->err.str = ext;
+        return ARGS_ERR_DOT_IN_SOURCE_EXTENSION;
+    }
+
+    if (out->ok.output_extension && strchr(out->ok.output_extension, '.')) {
+        free(out->ok.files);
+        const char *ext = out->ok.output_extension;
+        out->err.str = ext;
+        return ARGS_ERR_DOT_IN_OUTPUT_EXTENSION;
     }
 
     if (!out->ok.nfiles) {
@@ -400,7 +432,8 @@ parse_args(int argc, char *argv[], ArgParseOut *out) {
         return ARGS_ERR_NO_SOURCE_FILES;
     }
 
-    if (!out->ok.backend) { out->ok.backend = &BFC_DEFAULT_INTER; }
+    if (!out->ok.backend) out->ok.backend = &BFC_DEFAULT_INTER;
+    if (!out->ok.tape_blocks) out->ok.tape_blocks = 8;
 
     u64 max_tape_blocks;
     if (out->ok.backend->addr_class == PTRSIZE_32) {
@@ -410,6 +443,8 @@ parse_args(int argc, char *argv[], ArgParseOut *out) {
     }
     if (out->ok.tape_blocks > max_tape_blocks) {
         free(out->ok.files);
+        // copy out to ensure that they're not overwritten if the union fields
+        // overlap */
         u64 tape_blocks = out->ok.tape_blocks;
         int bits = 32 * (out->ok.backend->addr_class);
 
