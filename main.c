@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -122,6 +122,12 @@ int main(int argc, char *argv[]) {
                 case LIST_TARGETS:
                     return EXIT_SUCCESS;
             }
+            fprintf(
+                stderr,
+                "INTERNAL ERROR: invalid run type: %d\n",
+                (int)parsed_args.ok.run_type
+            );
+            abort();
 #define PRINT_ARGS_ERR
 #include "arg_parse_errs.h"
     }
