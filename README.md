@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
 
 SPDX-License-Identifier: GPL-3.0-only
 -->
@@ -114,10 +114,6 @@ implementation-defined.
 
 ### Non-portable functionality
 
-If the `BFC_LONGOPTS` macro is defined to have a nonzero value at compile time,
-the GNU C library's `getopts_long` function is used instead of the
-POSIX-standard `getopts`, to support GNU-style `--long-options`.
-
 In the C Source code, GCC attributes and pragmas are used, but preprocessor
 directives are used to ensure that they are only exposed if the `__GNUC__` macro
 is defined.
@@ -147,8 +143,8 @@ is a macro to select the default backend.
 # Build eambfc
 make
 
-# clean previous build, build with glibc's getopt_long instead of POSIX getopt
-make clean; make CFLAGS='-D _GNU_SOURCE -D BFC_LONGOPTS=1' eambfc
+# clean previous build
+make clean
 
 # Run the test suite
 make test

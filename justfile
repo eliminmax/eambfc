@@ -46,8 +46,7 @@ eambfc:
 
 [doc("test a release tarball of `eambfc`, and create an optimized build")]
 [group("general")]
-release-build: scan-build cppcheck-full tarball pdpmake valgrind_test \
-    (valgrind_test '-D_GNU_SOURCE -DBFC_LONGOPTS=1 -O2 -g3')
+release-build: scan-build cppcheck-full tarball pdpmake valgrind_test
     #!/bin/sh
     set -eux
     for o_lvl in 0 1 2 3 s g z; do

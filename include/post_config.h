@@ -114,13 +114,6 @@
 #error "BFC_DEFAULT_TARGET is not set to a recognized value."
 #endif /* BFC_DEFAULT_TARGET */
 
-#if BFC_LONGOPTS && !defined _GNU_SOURCE
-#error "BFC_LONGOPTS requires _GNU_SOURCE"
-#endif /* BFC_LONGOPTS && !defined _GNU_SOURCE */
-#if BFC_LONGOPTS && defined BFC_NOEXTENSIONS
-#error "BFC_LONGOPTS cannot coexist with BFC_NOEXTENSIONS"
-#endif
-
 #define BFC_CHUNK_MASK (BFC_CHUNK_SIZE - 1)
 
 #endif /* BFC_POST_CONFIG_H */
