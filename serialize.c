@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -121,7 +121,7 @@ serialize_ehdr_be(const ElfInfo *restrict ehdr, void *restrict dest) {
 /* serialize a 64-bit Phdr into a byte sequence, in LSB order */
 nonnull_args size_t
 serialize_phdr_le(const SegmentInfo *restrict phdr, void *restrict dest) {
-    if (phdr->addr_size == PTRSIZE_32) {
+    if (phdr->addr_class == PTRSIZE_32) {
         IMPL_PHDR32(serialize32le);
     } else {
         IMPL_PHDR64(serialize32le, serialize64le);
@@ -131,7 +131,7 @@ serialize_phdr_le(const SegmentInfo *restrict phdr, void *restrict dest) {
 /* serialize a 64-bit Phdr into a byte sequence, in MSB order */
 nonnull_args size_t
 serialize_phdr_be(const SegmentInfo *restrict phdr, void *restrict dest) {
-    if (phdr->addr_size == PTRSIZE_32) {
+    if (phdr->addr_class == PTRSIZE_32) {
         IMPL_PHDR32(serialize32be);
     } else {
         IMPL_PHDR64(serialize32be, serialize64be);

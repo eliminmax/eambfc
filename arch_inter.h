@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -193,7 +193,7 @@ typedef const struct {
      * `BYTEORDER_MSB`, depending on byte ordering of the backend. */
     unsigned char elf_data;
     /* ELF EHDR value for address size - either `PTRSIZE_32` or `PTRSIZE_64` */
-    unsigned char addr_size;
+    unsigned char addr_class;
 
     /* register Linux uses for system call number */
     u8 reg_sc_num;

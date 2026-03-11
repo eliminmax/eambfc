@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -126,7 +126,7 @@ const ArchInter I386_INTER = {
     .flags = 0 /* no flags are defined for this architecture */,
     .elf_arch = 3 /* EM_386 */,
     .elf_data = BYTEORDER_LSB,
-    .addr_size = PTRSIZE_32,
+    .addr_class = PTRSIZE_32,
     .reg_sc_num = X86_EAX,
     .reg_arg1 = X86_EBX,
     .reg_arg2 = X86_ECX,

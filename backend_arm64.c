@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  * This file provides the ArchInter for the ARM64 architecture.
@@ -341,7 +341,7 @@ const ArchInter ARM64_INTER = {
     .flags = 0 /* no flags are defined for this architecture */,
     .elf_arch = 183 /* EM_AARCH64 */,
     .elf_data = BYTEORDER_LSB,
-    .addr_size = PTRSIZE_64,
+    .addr_class = PTRSIZE_64,
     .reg_sc_num = 8 /* w8 */,
     .reg_arg1 = 0 /* x0 */,
     .reg_arg2 = 1 /* x1 */,
