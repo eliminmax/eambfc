@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2025 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -92,9 +92,9 @@ static enum arch_support_status support_status(const char *arch) {
 }
 
 typedef struct {
-    u8 skipped;
-    u8 failed;
-    u8 succeeded;
+    u16 skipped;
+    u16 failed;
+    u16 succeeded;
 } ResultTracker;
 
 /* Information about binary tests. */
@@ -134,7 +134,8 @@ typedef enum {
             MSG("SKIPPED", "can't run target binaries"); \
             return TEST_SKIPPED; \
         case UNKNOWN_ARCH: \
-            PRINTERR("Unknown or uninitialized architecture support status\n" \
+            PRINTERR( \
+                "Unknown or uninitialized architecture support status\n" \
             ); \
             abort(); \
         default: \
@@ -171,7 +172,9 @@ static TestOutcome bin_test(ifast_8 bt, const char *restrict arch, bool opt) {
         .buf = checked_malloc(nbytes), .sz = 0, .capacity = nbytes
     };
     run_capturing(
-        (const char *[]){BINTESTS[bt].test_bin, ARG_END}, &chld_output, NULL
+        (const char *const[]){BINTESTS[bt].test_bin, ARG_END},
+        &chld_output,
+        NULL
     );
 
     if (nbytes) {
@@ -496,27 +499,122 @@ static nonnull_args TestOutcome err_test(
     return TEST_SUCCEEDED;
 }
 
+static nonnull_args TestOutcome bad_arg_test(
+    const char *test_id, const char *expected_err, const char *const *args
+) {
+    size_t argc;
+    for (argc = 1; args[argc - 1]; argc++);
+    const char *fail_fmt;
+    SizedBuf errmsg = {.buf = checked_malloc(4096), .sz = 0, .capacity = 4096};
+    ((char *)errmsg.buf)[0] = '\0';
+    if (run_capturing(args, NULL, &errmsg) != EXIT_FAILURE) {
+        fail_fmt = "FAILURE: %s: eambfc exited successfully with bad args\n";
+        goto fail;
+    }
+    char *nl;
+    if (!(nl = strchr(errmsg.buf, '\n'))) {
+        fail_fmt = "FAILURE: %s: error message missing newline\n";
+        goto fail;
+    }
+
+    *nl = 0;
+
+    if (nl[-1] != '.') {
+        fail_fmt = "FAILURE: %s: error message missing trailing period\n";
+        goto fail;
+    }
+    if (nl[-2] == '.') {
+        fail_fmt = "FAILURE: %s: error message has extra trailing period\n";
+        goto fail;
+    }
+
+    nl[-1] = 0;
+
+    if (memcmp(errmsg.buf, "Error: ", 7) != 0) {
+        fail_fmt = "FAILURE: %s: error message doesn't start with \"Error: \"";
+        goto fail;
+    }
+
+    if (strcmp(&((char *)errmsg.buf)[7], expected_err) != 0) {
+        fail_fmt =
+            "FAILURE: %s: error message doesn't match expected message\n";
+        goto fail;
+    }
+
+    free(errmsg.buf);
+
+    return TEST_SUCCEEDED;
+
+fail:
+    if (errmsg.sz == errmsg.capacity) {
+        if (errmsg.capacity == SIZE_MAX) abort();
+        errmsg.buf = checked_realloc(errmsg.buf, errmsg.capacity + 1);
+        ((char *)errmsg.buf)[errmsg.sz++] = 0;
+    }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+    PRINTERR(fail_fmt, test_id);
+#pragma GCC diagnostic pop
+    PRINTERR("ERROR TEXT:\n---\n%s\n---\n", (char *)errmsg.buf);
+    free(errmsg.buf);
+    return TEST_FAILED;
+}
+
 static nonnull_args void run_bad_arg_tests(ResultTracker *results) {
     const struct arg_test {
         const char *id;
         const char *expected;
         const char **args;
-    } tests[10] = {
-        {NULL, "MultipleExtensions", ARGS("-e.brf", "-e.bf", "hello.bf")},
-        {NULL, "MultipleTapeBlockCounts", ARGS("-t1", "-t32")},
-        {"MissingOperand (-e)", "MissingOperand", ARGS("-e")},
-        {"MissingOperand (-t)", "MissingOperand", ARGS("-t")},
-        {NULL, "UnknownArg", ARGS("-T")},
-        {NULL, "NoSourceFiles", (const char *[2]){EAMBFC, ARG_END}},
-        {NULL, "BadSourceExtension", ARGS("test_driver.c")},
-        {NULL, "TapeSizeZero", ARGS("-t0")},
-        {NULL, "TapeTooLarge", ARGS("-t9223372036854775807")},
-        {NULL, "MultipleOutputExtensions", ARGS("-s", ".elf", "-s", ".out")},
+    } tests[] = {
+        {"MultipleSourceExtensions",
+         "provided multiple source file extensions: brf and bf",
+         ARGS("-ebrf", "-ebf", "hello.bf")},
+        {"MultipleTapeSizes",
+         "both 1 and 32 provided as tape size",
+         ARGS("-t1", "-t32")},
+        {"MissingOperand (-e)", "argument -e requires an operand", ARGS("-e")},
+        {"MissingOperand (--tape-size)",
+         "argument --tape-size requires an operand",
+         ARGS("--tape-size")},
+        {"UnknownShortOpt", "unknown option: -T", ARGS("-T")},
+        {"UnknownLongOpt", "unknown option: --foo", ARGS("--foo=bar")},
+        {"NoSourceFiles", "no source files provided", ARGS("--")},
+        {"TapeSizeZero", "tape size cannot be zero pages", ARGS("-t0")},
+        {"TapeSizeNotNumeric",
+         "non-numeric tape size foo provided",
+         ARGS("-tfoo")},
+        {"TapeSizeOverflow",
+         "overflow parsing 99999999999999999999 as a 64-bit unsigned int",
+         ARGS("-t", "99999999999999999999")},
+        {"DuplicateTapeSize",
+         "tape size 3 provided multiple times",
+         ARGS("-t3", "-t", "3")},
+        {"UnexpectedOperand",
+         "option --help was provided unexpected operand me",
+         ARGS("--help=me")},
+#if BFC_TARGET_X86_64
+        {"TapeTooLarge",
+         "9000000000000000000 4KiB blocks can't fit in 64-bit address space",
+         ARGS("-ax86_64", "-t9000000000000000000", "foo.bf")},
+#endif
+#if BFC_TARGET_I386
+        {"TapeTooLarge",
+         "9223372036854775807 4KiB blocks can't fit in 32-bit address space",
+         ARGS("-a", "i386", "-t9223372036854775807", "foo.bf")},
+#endif
+        {"MultipleOutputExtensions",
+         "provided multiple output file extensions: elf and out",
+         ARGS("-s", "elf", "-s", "out")},
+        {"SetBothOutModes",
+         "attempted to set both quiet and json output",
+         ARGS("-qj", "foo.bf")},
     };
 
-    for (int i = 0; i < 10; i++) {
+    for (size_t i = 0; i < (sizeof(tests) / sizeof(tests[0])); i++) {
         const char *id = tests[i].id ? tests[i].id : tests[i].expected;
-        count_result(results, err_test(id, tests[i].expected, tests[i].args));
+        count_result(
+            results, bad_arg_test(id, tests[i].expected, tests[i].args)
+        );
     }
 }
 
@@ -529,23 +627,25 @@ static nonnull_args void run_perm_err_tests(ResultTracker *results) {
     );
     chmod("hello.bf", hello_perms.st_mode);
     int fd;
-    CHECKED((fd = creat("hello.b", 0500)) >= 0);
+    CHECKED((fd = creat("hello.unwritable", 0500)) >= 0);
     CHECKED(close(fd) == 0);
     count_result(
         results,
         err_test(
-            "OpenWriteFailed", "OpenWriteFailed", ARGS("-e", "f", "hello.bf")
+            "OpenWriteFailed",
+            "OpenWriteFailed",
+            ARGS("-s", "unwritable", "hello.bf")
         )
     );
-    CHECKED(unlink("hello.b") == 0);
+    CHECKED(unlink("hello.unwritable") == 0);
 }
 
 typedef nonnull_args TestOutcome (*HelloTestFn)(const SizedBuf *const);
 
 #define MSG(outcome, reason) PRINTERR(outcome ": %s: " reason "\n", __func__);
 
-static nonnull_args TestOutcome test_unseekable(const SizedBuf *const hello_code
-) {
+static
+    nonnull_args TestOutcome test_unseekable(const SizedBuf *const hello_code) {
     CHECKED(mkfifo("unseekable", 0755) == 0);
     CHECKED(symlink("hello.bf", "unseekable.bf") == 0);
     pid_t chld;
@@ -598,7 +698,7 @@ static nonnull_args TestOutcome test_unseekable(const SizedBuf *const hello_code
 static nonnull_args TestOutcome
 alternate_extension(const SizedBuf *const hello_code) {
     CHECKED(symlink("hello.bf", "alternate_extension.brnfck") == 0);
-    const char **args = ARGS("-e", ".brnfck", "alternate_extension.brnfck");
+    const char **args = ARGS("-e", "brnfck", "alternate_extension.brnfck");
     if (subprocess(args) != EXIT_SUCCESS) {
         MSG("FAILURE", "eambfc returned nonzero exit code");
         CHECKED(unlink("alternate_extension.brnfck") == 0);
@@ -627,7 +727,7 @@ alternate_extension(const SizedBuf *const hello_code) {
 }
 
 static nonnull_args TestOutcome out_suffix(const SizedBuf *const hello_code) {
-    const char **args = ARGS("-s", ".elf", "hello.bf");
+    const char **args = ARGS("-s", "elf", "hello.bf");
     if (subprocess(args) != EXIT_SUCCESS) {
         MSG("FAILURE", "eambfc returned nonzero exit code");
         return TEST_FAILED;
@@ -786,6 +886,7 @@ static TestOutcome error_position(void) {
     const char **args = ARGS("-j", "non_ascii_positions.bf");
     if (run_capturing(args, &errors, NULL) != EXIT_FAILURE) {
         MSG("FAILURE", "compiled broken code without proper error");
+        free(errors.buf);
         return TEST_FAILED;
     }
     if (errors.sz == errors.capacity) {

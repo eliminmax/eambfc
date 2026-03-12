@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -165,6 +165,11 @@ union read_result {
  * sets `result->err` to an error with the `id` and `msg` set. Once no data is
  * left to read, it returns `true`. */
 nonnull_args bool read_to_sb(int fd, union read_result *result);
+
+/* Return a pointer to printable ASCII representation of `c`.
+ *
+ * The pointer will remain valid until the next call to `escape_char` */
+nonnull_ret char *escape_char(char c);
 
 #undef INLINE_DECL
 

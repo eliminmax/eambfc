@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -53,7 +53,7 @@ nonnull_args static bool write_headers(
             {/* The ELF identifying magic bytes */
              MAGIC_BYTES,
              /* address size marker */
-             inter->addr_size,
+             inter->addr_class,
              /* endianness marker */
              inter->elf_data,
              /* current ELF version (only valid value) */
@@ -69,7 +69,7 @@ nonnull_args static bool write_headers(
         .e_phnum = 2,
     };
     SegmentInfo phdr_table[2];
-    phdr_table[0].addr_size = phdr_table[1].addr_size = inter->addr_size;
+    phdr_table[0].addr_class = phdr_table[1].addr_class = inter->addr_class;
 
     phdr_table[0].p_flags = SEG_R | SEG_W;
     phdr_table[0].p_align = 0x1000;
@@ -388,7 +388,7 @@ static bool compile_condensed(
                 bf_io(obj_code, STDIN_FILENO, inter->sc_read, inter);
                 break;
             default:
-                break;
+                internal_err(BF_ICE_INVALID_IR, "Invalid IR");
         }
     }
     return ret;
@@ -436,7 +436,7 @@ bool bf_compile(
     /* compile the actual source code to object code */
     if (optimize) {
         union opt_result res;
-        if (!optimize_instructions(src.sb.buf, src.sb.sz, &res)) {
+        if (!static_optimize(src.sb.buf, src.sb.sz, &res)) {
             res.err.file = in_name;
             display_err(res.err);
             free(src.sb.buf);

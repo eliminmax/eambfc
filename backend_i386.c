@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -50,27 +50,31 @@ static nonnull_arg(4) bool reg_arith(
 
 /* now, the functions exposed through I386_INTER */
 /* use the most efficient way to set a register to imm */
+
 static nonnull_arg(3) bool set_reg(
     u8 reg, i64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
-    if (imm == 0) {
+    i32 imm32 = sign_extend(imm, 32);
+    if (imm32 == 0) {
         /* XOR reg, reg */
         append_obj(
             dst_buf, (u8[]){INSTRUCTION(0x31, 0xc0 | (reg << 3) | reg)}, 2
         );
-    } else if (imm >= INT32_MIN && imm <= UINT32_MAX) {
+    } else {
         /* MOV reg, imm32 */
         u8 instr_bytes[5] = {INSTRUCTION(0xb8 | reg, IMM32_PADDING)};
-        serialize32le(imm, &(instr_bytes[1]));
+        serialize32le(imm32, &(instr_bytes[1]));
         append_obj(dst_buf, &instr_bytes, 5);
-    } else {
-        set_reg(reg, (u32)imm, dst_buf, NULL);
+    }
+
+    if ((!bit_fits(imm, 32)) && (imm < INT32_MAX || imm > UINT32_MAX)) {
         if (err) {
             *err = (BFCError){
                 .msg.ref = VAL_TRUNCATED_WARNING,
                 .id = BF_ERR_CODE_TOO_LARGE,
             };
         }
+
         return false;
     }
     return true;
@@ -126,7 +130,7 @@ const ArchInter I386_INTER = {
     .flags = 0 /* no flags are defined for this architecture */,
     .elf_arch = 3 /* EM_386 */,
     .elf_data = BYTEORDER_LSB,
-    .addr_size = PTRSIZE_32,
+    .addr_class = PTRSIZE_32,
     .reg_sc_num = X86_EAX,
     .reg_arg1 = X86_EBX,
     .reg_arg2 = X86_ECX,

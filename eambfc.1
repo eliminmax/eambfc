@@ -1,4 +1,4 @@
-.\" SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+.\" SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
 .\"
 .\" SPDX-License-Identifier: GPL-3.0-only
 .\"
@@ -34,9 +34,6 @@ by default) removed.
 
 .SH OPTIONS
 .PP
-.B Note:
-long option variants require compilation with longopts enabled, which is
-not the default because it requires a non-standard GNU extension to libc.
 
 .TP
 .BR -h ,\  --help
@@ -51,33 +48,32 @@ show version, build configuration, and copyright information
 Don't write further error messages to the standard error stream.
 Instead, write them to the standard output stream, formatted as JSON.
 Any byte within filenames that is not valid UTF-8 will be replaced by the
-Unicode
+Unicode. Conflicts with
+.BR --quiet .
 
 .TP
 .BR -q ,\  --quiet
-Don't write further error messaages to the standard error stream. Does
-not prevent JSON-formatted messages from being printed if
-.B -j
-was passed as well.
+Don't write error messaages to the standard error stream. Conflicts with
+.BR --json .
 
 .TP
-.BI -O ,\  --optimize
+.BR -O ,\  --optimize
 enable optimizations - see
 .B OPTIMIZATIONS
 section below for more details.
 
 .TP
-.BI -k ,\  --keep
+.BR -k ,\  --keep
 keep output executables even if they are malformed due to failed
 compilation, for debugging or analysis.
 
 .TP
-.BI -c ,\  --continue
+.BR -c ,\  --continue
 If passed multiple source files, and one fails to compile, don't abort
 immediately, and still try to compile the remaining files.
 
 .TP
-.BI -A ,\  --list-targets
+.BR -A ,\  --list-targets
 List available architectures that this build of
 .B eambfc
 includes. Standard builds include all architectures that have been fully
@@ -90,7 +86,7 @@ implemented and passed the full test suite, which as of version 4.0.0, are
 .BR x86_64 .
 
 .TP
-.BI -t\ count ,\  --tape-size=count
+.BR -t\ count ,\  --tape-size=count
 Allocate
 .I count
 4-KiB (i.e. 4096-byte) blocks of memory for the tape. If passed more than
@@ -99,7 +95,7 @@ once,
 will abort without compiling anything.
 
 .TP
-.BI -e\ ext ,\  --source-extension=ext
+.BR -e\ ext ,\  --source-extension=ext
 Use
 .I ext
 instead of
@@ -110,7 +106,7 @@ once,
 will abort without compiling anything.
 
 .TP
-.BI -s\ ext ,\  --output-suffix=ext
+.BR -s\ ext ,\  --output-suffix=ext
 Use
 .I ext
 as the extension for compiled output files. If not passed, they'll have no
@@ -119,7 +115,7 @@ extension. If passed more than once,
 will abort without compiling anything.
 
 .TP
-.BI -a\ arch ,\  --target-arch=arch
+.BR -a\ arch ,\  --target-arch=arch
 Compile for
 .I arch
 instead of the default. If passed more than once,

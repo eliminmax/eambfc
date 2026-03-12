@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -175,26 +175,30 @@ static nonnull_args void reg_copy(u8 dst, u8 src, SizedBuf *restrict dst_buf) {
 static nonnull_arg(3) bool set_reg(
     u8 reg, i64 imm, SizedBuf *restrict dst_buf, BFCError *restrict err
 ) {
+    (void)err;
     /* There are numerous ways to store immediates in registers for this
      * architecture. This function tries to find a way to load a given immediate
      * in as few machine instructions as possible, using shorter instructions
      * when available. No promise it actually is particularly efficient. */
-    if (imm == 0) {
+    i32 imm32 = sign_extend(imm, 32);
+    if (imm32 == 0) {
         /* copy from the zero register to reg */
         reg_copy(reg, 0, dst_buf);
-    } else if (imm <= INT16_MAX && imm >= INT16_MIN) {
+    } else if (imm32 <= INT16_MAX && imm32 >= INT16_MIN) {
         /* if it fits in a halfword, use Load Halfword Immediate (64 <- 16) */
         /* LGHI r.reg, imm {RI-a} */
         u8 i_bytes[4] = RI_OP(0xa79, reg);
-        serialize16be(imm, &i_bytes[2]);
+        serialize16be(imm32, &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 4);
-    } else if (imm <= INT32_MAX && imm >= INT32_MIN) {
+    } else {
         /* if it fits within a word, use Load Immediate (64 <- 32). */
         /* LGFI r.reg, imm {RIL-a} */
         u8 i_bytes[6] = RI_OP(0xc01, reg);
-        serialize32be(imm, &i_bytes[2]);
+        serialize32be(imm32, &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 6);
-    } else {
+    }
+
+    if (!bit_fits(imm, 32)) {
         /* if it does not fit within 32 bits, then the lower 32 bits need to be
          * set as normal, then the higher 32 bits need to be set. Cast imm to
          * a 32-bit value and call this function recursively to handle the lower
@@ -205,9 +209,6 @@ static nonnull_arg(3) bool set_reg(
         /* casting to avoid portability issues */
         i32 upper_imm = (u64)imm >> 32;
 
-        /* try to set the upper bits no matter what, but if the lower bits
-         * failed, still want to return false. */
-        set_reg(reg, cast_i32(imm), dst_buf, err);
         /* check if only one of the two higher quarters need to be explicitly
          * set, as that enables using shorter instructions. In the terminology
          * of the architecture, they are the high high and high low quarters of
@@ -344,24 +345,25 @@ static nonnull_args void pad_loop_open(SizedBuf *restrict dst_buf) {
 static nonnull_args void add_reg_signed(
     u8 reg, i64 imm, SizedBuf *restrict dst_buf
 ) {
-    if (imm >= INT16_MIN && imm <= INT16_MAX) {
+    i32 imm32 = sign_extend(imm, 32);
+    if (!imm32) goto upper_bits;
+    if (imm32 >= INT16_MIN && imm32 <= INT16_MAX) {
         /* if imm fits within a halfword, a shorter instruction can be used. */
         /* AGHI reg, imm {RI-a} */
         u8 i_bytes[4] = RI_OP(0xa7b, reg);
-        serialize16be(imm, &i_bytes[2]);
+        serialize16be(imm32, &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 4);
-    } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
+    } else {
         /* If imm fits within a word, then use a normal add immediate */
         /* AFGI reg, imm {RIL-a} */
         u8 i_bytes[6] = RI_OP(0xc28, reg);
-        serialize32be(imm, &i_bytes[2]);
+        serialize32be(imm32, &i_bytes[2]);
         append_obj(dst_buf, &i_bytes, 6);
-    } else {
-        /* if the lower 32 bits are non-zero, call this function recursively
-         * to add to them */
-        if (cast_i32(imm)) add_reg_signed(reg, cast_i32(imm), dst_buf);
+    }
 
-        /* add the higher 32 bits */
+upper_bits:
+    /* add the higher 32 bits */
+    if (!bit_fits(imm, 32)) {
         /* AIH reg, imm {RIL-a} */
         u8 i_bytes[6] = RI_OP(0xcc8, reg);
         /* cast to u64 to avoid portability issues */
@@ -476,7 +478,7 @@ const ArchInter S390X_INTER = {
     .flags = 0 /* no flags are defined for this architecture */,
     .elf_arch = 22 /* EM_S390 */,
     .elf_data = BYTEORDER_MSB,
-    .addr_size = PTRSIZE_64,
+    .addr_class = PTRSIZE_64,
     .reg_sc_num = 1,
     .reg_arg1 = 2,
     .reg_arg2 = 3,

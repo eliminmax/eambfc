@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -23,13 +23,16 @@
 #error "post_config.h should only be #included by config.h"
 #endif /* BFC_PREPROC_POST_CONFIG */
 
-/* __BACKENDS__ each backend should be added to this macro */
+/* __BACKENDS__ each backend should be added to this macro, and the check for
+ * BFC_HAVE_ALL_BACKENDS should be updated to use the new number of backends */
 #define BFC_NUM_BACKENDS \
     BFC_TARGET_ARM64 + BFC_TARGET_I386 + BFC_TARGET_RISCV64 + \
         BFC_TARGET_S390X + BFC_TARGET_X86_64
 
+#if BFC_NUM_BACKENDS == 5
+#define BFC_HAVE_ALL_BACKENDS 1
 /* Validate that at least one target is enabled */
-#if BFC_NUM_BACKENDS == 0
+#elif BFC_NUM_BACKENDS == 0
 #error "No backends are enabled"
 #endif /* BFC_NUM_BACKENDS */
 
@@ -110,13 +113,6 @@
 #else
 #error "BFC_DEFAULT_TARGET is not set to a recognized value."
 #endif /* BFC_DEFAULT_TARGET */
-
-#if BFC_LONGOPTS && !defined _GNU_SOURCE
-#error "BFC_LONGOPTS requires _GNU_SOURCE"
-#endif /* BFC_LONGOPTS && !defined _GNU_SOURCE */
-#if BFC_LONGOPTS && defined BFC_NOEXTENSIONS
-#error "BFC_LONGOPTS cannot coexist with BFC_NOEXTENSIONS"
-#endif
 
 #define BFC_CHUNK_MASK (BFC_CHUNK_SIZE - 1)
 

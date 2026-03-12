@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Eli Array Minkoff
+# SPDX-FileCopyrightText: 2025 - 2026 Eli Array Minkoff
 #
 # SPDX-License-Identifier: 0BSD
 
@@ -16,6 +16,8 @@ CompileFlags:
     # Warn on reserved identifiers
     - "-Wreserved-identifier"
     - "-Wreserved-macro-identifier"
+    # don't warn on unterminated char*s lacking the nonstring attribute
+    - "-Wno-unterminated-string-initialization"
     # include the repo-level include dir
     - "-I./include"
   Compiler: clang

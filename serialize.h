@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -65,7 +65,7 @@ typedef struct {
     u64 size;
     u16 p_align; /* alignment of segment */
     /* PTRSIZE_* value */
-    u8 addr_size;
+    u8 addr_class;
     /* flags for the segment - of interest are the segment permissions, which
      * are similar to UNIX R+W+X file permissions - 04 is read, 02 is write,
      * and 01 is execute */

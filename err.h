@@ -43,8 +43,8 @@ typedef enum {
 } BfErrorId;
 
 typedef enum {
-    OUTMODE_QUIET = 0,
-    OUTMODE_NORMAL = 1,
+    OUTMODE_NORMAL = 0,
+    OUTMODE_QUIET = 1,
     OUTMODE_JSON = 2,
 } OutMode;
 

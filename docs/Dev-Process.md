@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
 
 SPDX-License-Identifier: GPL-3.0-only
 -->
@@ -8,12 +8,12 @@ SPDX-License-Identifier: GPL-3.0-only
 
 There's a dev branch and a main branch. When changes are more-or-less complete,
 and all of the tests pass, the dev branch may be merged into the main branch.
-The main branch is guaranteed to have run
-`make clean test` successfully on the following platforms:
+Commits merged into the main branch will have been able to successfully run
+`make clean test` successfully on recent releases of the following platforms:
 
-* Debian 12 amd64 with `qemu-binfmt/bookworm-backports` to run foreign binaries
-* Debian 12 arm64
-* FreeBSD 14.2 amd64 with Linuxulator for Linux syscall support
+* Debian amd64 with `qemu-user-binfmt` to run foreign binaries
+* Debian arm64
+* FreeBSD amd64 with Linuxulator for Linux syscall support
 
 Features that are both documented in the `eambfc -h` output and/or the
 `eambfc.1` man page in the main branch are tested and working, though code
@@ -50,21 +50,24 @@ before anything is merged into the main branch.
 
 ## Dependencies
 
-Developtment is done on Debian Bookworm with Backports enabled, and some
-development tooling is not portalbe to other environments. Most development and
-testing utilities are installed from the Debian repository, though some are
-installed using other means.
+Developtment is done on Debian Trixie with Backports enabled, and the
+[LLVM upstream repo](https://apt.llvm.org/) configured for versions of LLVM
+newer than LLVM 19. Some development tooling is not portalbe to other
+environments. Most development and testing utilities are installed from the
+Debian repository, though some are installed using other means.
 
 ### Debian dependencies
 
 The following packages are used in testing or release automation:
 
 * `binutils`
-* `clang-19`
-* `clang-format-19`
-* `clang-tools-19`
+* `clang-19` (from Debian repos)
+* `clang-22`[^llvm]
+* `clang-format-22`[^llvm]
+* `clang-tools-22`[^llvm]
 * `codespell`
 * `coreutils`
+* `cppcheck`
 * `devscripts`
 * `findutils`
 * `gawk`
@@ -77,15 +80,13 @@ The following packages are used in testing or release automation:
 * `gzip`
 * `libasan6`
 * `libcunit1-dev`
-* `libcjson-c-dev`
+* `libjson-dev`
 * `libubsan1`
 * `llvm-19-dev`
 * `make`
 * `musl-tools`
 * `parallel`
 * `qemu-user-binfmt`
-  * I use the backports version, as the stable version segfaults seemingly at
-    random with `s390x` binaries
 * `sed`
 * `shellcheck`
 * `tar`
@@ -104,14 +105,14 @@ Standards-Version: 3.9.2
 Package: eambfc-dev-deps
 Version: 4.0.0
 Maintainer: Eli Array Minkoff <eli@planetminkoff.com>
-Depends: awk, binutils, clang-19, clang-format-19,
- clang-tools-19, codespell, coreutils, devscripts, findutils
+Depends: awk, binutils, clang-19, clang-22, clang-format-22, clang-tools-22
+ cppcheck, codespell, coreutils, devscripts, findutils
  gcc, gcc-aarch64-linux-gnu, gcc-i686-linux-gnu, gcc-mips-linux-gnu,
  gcc-s390x-linux-gnu, git, gzip, libasan6, libcunit1-dev, libubsan1,
- libcjson-dev, llvm-19-dev, make, musl-tools, parallel,
+ libcjson-dev, llvm-22-dev, make, musl-tools, parallel,
  pkg-config, qemu-user-binfmt (>= 1:9.0.0), sed, shellcheck, tar, valgrind,
  xz-utils
-Suggests: clangd-19
+Suggests: clangd-22
 Description: Dependencies of eambfc's development workflow
  While eambfc is written with portability to POSIX systems
  as an explicit goal, the test suite makes heavy use of 3rd-party
@@ -125,24 +126,22 @@ Description: Dependencies of eambfc's development workflow
 Alternatively, run the following as root:
 
 ```sh
-apt install awk binutils clang-19 clang-format-19 clang-tools-19 codespell \
-    coreutils devscripts findutils gcc gcc-aarch64-linux-gnu \
+apt install awk binutils clang-19 clang-22 clang-format-22 clang-tools-22 \
+    codespell coreutils devscripts findutils gcc gcc-aarch64-linux-gnu \
     gcc-i686-linux-gnu gcc-mips-linux-gnu gcc-s390x-linux-gnu git gzip \
     libasan6 libcunit1-dev libubsan1 libjson-c-dev llvm-19-dev make musl-tools \
-    parallel pkg-config qemu-user-binfmt/bookworm-backports sed shellcheck tar \
-    valgrind xz-utils
+    parallel pkg-config qemu-user-binfmt sed shellcheck tar valgrind xz-utils
 ```
 
 ### Non-Debian Dependencies
 
-* [The Zig compiler](https://ziglang.org)
-  * used for its built-in C compiler
 * [Ron Yorston's Public Domain POSIX make](https://frippery.org/make)
   * used to check for non-portable make functionality
 * [reuse helper tool >= 5.0.0](https://git.fsfe.org/reuse/tool)
   * newer than Debian-packaged version, used to validate license data
-* [cppcheck](https://github.com/danmar/cppcheck)
-  * newer than Debian-packaged version, and supports more checks
 * [just](https://github.com/casey/just)
   * command runner used to drive testing and release automation
+  * I believe that Debian's version will work, but I have it installed with
+    cargo anyway
 
+[^llvm]: subject to be replaced with newer versions of LLVM as they're released
