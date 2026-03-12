@@ -203,7 +203,7 @@ clang-fmt-check +files:
 timeless-lints +files: runmatch reuse
     tools/runmatch '*.[ch]' just --no-deps clang-fmt-check '{-}' {{ files }}
     tools/runmatch '*.c' just --no-deps cppcheck-single '{-}' {{ files }}
-    tools/runmatch '*.sh' checkbashims -f '{-}' {{ files }}
+    tools/runmatch '*.sh' checkbashisms -f '{-}' {{ files }}
     tools/runmatch '*.sh' shellcheck '{-}' {{ files }}
     codespell {{ files }}
 
