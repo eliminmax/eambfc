@@ -16,8 +16,6 @@ CompileFlags:
     # Warn on reserved identifiers
     - "-Wreserved-identifier"
     - "-Wreserved-macro-identifier"
-    # don't warn on unterminated char*s lacking the nonstring attribute
-    - "-Wno-unterminated-string-initialization"
     # include the repo-level include dir
     - "-I./include"
   Compiler: clang

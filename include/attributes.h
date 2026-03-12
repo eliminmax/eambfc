@@ -13,6 +13,7 @@
 #define nonnull_ret
 #define const_fn
 #define malloc_like
+#define nonstring
 #define must_use
 
 #define HAS_GCC_ATTR(attr) 0
@@ -63,6 +64,14 @@
 #undef must_use
 #define must_use __attribute__((__warn_unused_result__))
 #endif /* HAS_GCC_ATTR(__warn_unused_result__) */
+
+/* GCC 14 complains if nonstring is applied to a char[2][16], which is the first
+ * thing that needed the attribute. It's also the last version that doesn't
+ * complain about the truncated NULL, so leave nonstring empty on GCC 14 */
+#if HAS_GCC_ATTR(__nonstring__) && (defined __clang__ || __GNUC__ >= 15)
+#undef nonstring
+#define nonstring __attribute__((__nonstring__))
+#endif /* HAS_GCC_ATTR(__nonstring__) */
 
 #endif /* BFC_NOEXTENSIONS */
 

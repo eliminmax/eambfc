@@ -24,6 +24,7 @@ AttributeMacros:
   - nonnull_arg
   - nonnull_args
   - nonnull_ret
+  - nonstring
   - noreturn
 BinPackArguments: false
 BinPackParameters: false
