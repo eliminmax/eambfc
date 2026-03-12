@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -277,8 +277,7 @@ nonnull_args bool static_optimize(
     while (
         (res = drop_dead_loops(
              result->output.instrs, &result->output.len, &result->err
-         ))
-    ) {
+         ))) {
         if (res == FAIL_UNMATCHED_OPEN) return false;
     }
     join_set_cells(result->output.instrs, &result->output.len);
