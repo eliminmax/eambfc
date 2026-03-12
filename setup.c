@@ -79,7 +79,7 @@ nonnull_args void show_version(const char *progname) {
     printf(
         "%s%s version " BFC_VERSION
         "\n\n"
-        "Copyright (c) 2024 - 2025 Eli Array Minkoff.\n"
+        "Copyright (c) 2024 - 2026 Eli Array Minkoff.\n"
         "License: GNU GPL version 3 "
         "<https://gnu.org/licenses/gpl.html>.\n"
         "This is free software: "
