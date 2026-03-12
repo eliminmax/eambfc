@@ -400,8 +400,8 @@ static TestOutcome tm_test(const char *arch, bool opt) {
     }
     TestOutcome ret = TEST_FAILED;
 
-    char outbuf[2][16] = {{0}, {0}};
-    const char expected[2][16] = {"0", "1111111111111111"};
+    char outbuf[2][16] nonstring = {{0}, {0}};
+    const char expected[2][16] nonstring = {"0", "1111111111111111"};
     if (!tm_test_run(outbuf)) {
         MSG("FAILURE", "abnormal run");
         goto cleanup;

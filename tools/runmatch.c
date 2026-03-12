@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2025 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: 0BSD
  *
@@ -91,5 +91,5 @@ int main(int argc, char *argv[]) {
 
     execvp(chld_args[0], chld_args);
     fputs("Failed to exec child\n", stderr);
-    return EXIT_SUCCESS;
+    return EXIT_FAILURE;
 }
