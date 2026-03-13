@@ -12,3 +12,5 @@ if git status --porcelain | grep -q .; then
 fi
 
 make clean test
+make unit_test_driver
+./unit_test_driver
