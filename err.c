@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 - 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2024 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -26,12 +26,13 @@
 /* bit shift e.id and or 1 into the lowest bit, to differentiate between
  * the original setjmp return value of 0, and the final one of the error id,
  * which also could be 0. */
-#define TEST_ERR_LJ(e_id) \
+#define TEST_ERR_LJ(e) \
     switch (testing_err) { \
         case TEST_INTERCEPT: \
-            longjmp(etest_stack, ((e_id) << 1) | 1); \
+            if ((e).is_alloc) free((e).msg.alloc); \
+            longjmp(etest_stack, (((e).id) << 1) | 1); \
         case TEST_SET: \
-            current_err = e_id; \
+            current_err = (e).id; \
             break; \
         default: \
             break; \
@@ -95,7 +96,7 @@ void json_mode(void) {
  * causing a loop of failures to generate json error messages properly.
  * If puts or fputs call malloc internally, then there's nothing to be done. */
 noreturn void alloc_err(void) {
-    TEST_ERR_LJ(BF_FATAL_ALLOC_FAILURE);
+    TEST_ERR_LJ(((BFCError){.msg.ref = "", .id = BF_FATAL_ALLOC_FAILURE}));
     switch (err_mode) {
         case OUTMODE_JSON:
             puts(
@@ -317,7 +318,7 @@ static nonnull_args nonnull_ret char *err_to_string(const BFCError *err) {
 }
 
 void display_err(BFCError e) {
-    TEST_ERR_LJ(e.id);
+    TEST_ERR_LJ(e);
     if (!e.msg.ref) abort();
     char *errmsg;
     switch (err_mode) {
@@ -345,7 +346,6 @@ void display_err(BFCError e) {
 }
 
 noreturn nonnull_args void internal_err(BfErrorId err_id, const char *msg) {
-    TEST_ERR_LJ(err_id);
     display_err(basic_err(err_id, msg));
     fflush(stdout);
     abort();
