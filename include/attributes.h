@@ -13,8 +13,10 @@
 #define nonnull_ret
 #define const_fn
 #define malloc_like
-#define nonstring
 #define must_use
+#define hot
+#define cold
+#define nonstring
 
 #define HAS_GCC_ATTR(attr) 0
 
@@ -64,6 +66,16 @@
 #undef must_use
 #define must_use __attribute__((__warn_unused_result__))
 #endif /* HAS_GCC_ATTR(__warn_unused_result__) */
+
+#if HAS_GCC_ATTR(__hot__)
+#undef hot
+#define hot __attribute__((__hot__))
+#endif /* HAS_GCC_ATTR(__hot__) */
+
+#if HAS_GCC_ATTR(__cold__)
+#undef cold
+#define cold __attribute__((__cold__))
+#endif /* HAS_GCC_ATTR(__cold__) */
 
 /* GCC 14 complains if nonstring is applied to a char[2][16], which is the first
  * thing that needed the attribute. It's also the last version that doesn't

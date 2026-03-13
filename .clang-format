@@ -26,6 +26,8 @@ AttributeMacros:
   - nonnull_ret
   - nonstring
   - noreturn
+  - cold
+  - hot
 BinPackArguments: false
 BinPackParameters: false
 BitFieldColonSpacing: After
