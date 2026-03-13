@@ -12,7 +12,6 @@
 typedef enum {
     BF_NOT_ERR,
     BF_ERR_BAD_EXTENSION,
-    BF_ERR_BUF_TOO_LARGE,
     BF_ERR_CODE_TOO_LARGE,
     BF_ERR_FAILED_READ,
     BF_ERR_FAILED_WRITE,
@@ -27,6 +26,7 @@ typedef enum {
     BF_ICE_INVALID_IR,
     BF_ICE_INVALID_JUMP_ADDRESS,
     /* AllocFailure divider */
+    BF_FATAL_ALLOC_SIZE_OVERFLOW,
     BF_FATAL_ALLOC_FAILURE,
 } BfErrorId;
 

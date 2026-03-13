@@ -51,7 +51,6 @@ extern inline BFCError basic_err(BfErrorId id, const char *msg);
 const char *const ERR_IDS[] = {
     "InvalidErrorId",
     "BadSourceExtension",
-    "BufferTooLarge",
     "CodeTooLarge",
     "FailedRead",
     "FailedWrite",
@@ -66,6 +65,7 @@ const char *const ERR_IDS[] = {
     "ICE:InvalidIr",
     "ICE:InvalidJump",
     /* AllocFailure divider */
+    "Fatal:AllocWouldOverflow",
     "Fatal:AllocFailure",
 };
 

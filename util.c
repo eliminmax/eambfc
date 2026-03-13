@@ -20,6 +20,26 @@
 #define BFC_UTIL_EXTERN
 #include "util.h"
 
+cold nonnull_args noreturn static void sb_realloc_fail(
+    SizedBuf *sb, const char *restrict func
+) {
+    free(sb->buf);
+#define MSG_TEMPLATE \
+    "reallocating buffer in " __FILE__ \
+    ":%s would cause buffer size to " \
+    "overflow"
+    char *msgbuf = checked_malloc(snprintf(NULL, 0, MSG_TEMPLATE, func) + 1);
+    sprintf(msgbuf, MSG_TEMPLATE, func);
+    BFCError err = (BFCError){
+        .id = BF_FATAL_ALLOC_SIZE_OVERFLOW,
+        .msg.alloc = msgbuf,
+        .is_alloc = true
+    };
+    display_err(err);
+    fflush(NULL);
+    abort();
+}
+
 nonnull_args bool write_obj(
     int fd, const void *restrict buf, size_t ct, BFCError *restrict err
 ) {
@@ -44,16 +64,9 @@ nonnull_ret void *sb_reserve(SizedBuf *sb, size_t nbytes) {
         sb->buf = checked_malloc(new_cap);
         sb->capacity = new_cap;
     }
-
     /* if more space is needed, ensure no overflow occurs when calculating new
      * space requirements, then allocate it. */
-    if (sb->sz + nbytes < sb->sz) {
-        display_err(basic_err(
-            BF_ERR_BUF_TOO_LARGE, "appending bytes would cause overflow"
-        ));
-        fflush(stdout);
-        abort();
-    }
+    if (sb->sz + nbytes < sb->sz) sb_realloc_fail(sb, __func__);
     if (sb->sz + nbytes > sb->capacity) {
         /* will reallocate with 0x1000 to 0x2000 bytes of extra space */
         size_t needed_cap = chunk_pad(sb->sz + nbytes);
@@ -80,13 +93,7 @@ nonnull_args void append_obj(
     }
     /* how much capacity is needed */
     size_t needed_cap = bytes_sz + dst->sz;
-    if (needed_cap < dst->sz) {
-        display_err(basic_err(
-            BF_ERR_BUF_TOO_LARGE, "appending bytes would cause overflow"
-        ));
-        fflush(stdout);
-        abort();
-    }
+    if (needed_cap < dst->sz) sb_realloc_fail(dst, __func__);
 
     if (needed_cap > dst->capacity) {
         /* reallocate to new capacity */
@@ -182,12 +189,42 @@ static void trailing_0s_test(void) {
     }
 }
 
+static void sb_reserve_fail_test(void) {
+    testing_err = TEST_INTERCEPT;
+    int returned_err;
+    if ((returned_err = setjmp(etest_stack))) {
+        CU_ASSERT_EQUAL(BF_FATAL_ALLOC_SIZE_OVERFLOW, returned_err >> 1);
+        testing_err = NOT_TESTING;
+        return;
+    }
+    SizedBuf sb = newbuf(1);
+    sb.sz = SIZE_MAX - 4;
+    sb_reserve(&sb, 32);
+    longjmp(etest_stack, (BF_NOT_ERR << 1) | 1);
+}
+
+static void append_obj_overflow_fail(void) {
+    testing_err = TEST_INTERCEPT;
+    int returned_err;
+    if ((returned_err = setjmp(etest_stack))) {
+        CU_ASSERT_EQUAL(BF_FATAL_ALLOC_SIZE_OVERFLOW, returned_err >> 1);
+        testing_err = NOT_TESTING;
+        return;
+    }
+    SizedBuf sb = newbuf(1);
+    sb.sz = SIZE_MAX - 4;
+    append_obj(&sb, "Hello, world!\n", 14);
+    longjmp(etest_stack, (BF_NOT_ERR << 1) | 1);
+}
+
 CU_pSuite register_util_tests(void) {
     CU_pSuite suite;
     INIT_SUITE(suite);
     ADD_TEST(suite, bit_fits_test);
     ADD_TEST(suite, trailing_0s_test);
     ADD_TEST(suite, test_sign_extend);
+    ADD_TEST(suite, sb_reserve_fail_test);
+    ADD_TEST(suite, append_obj_overflow_fail);
     return suite;
 }
 #endif /* BFC_TEST */
