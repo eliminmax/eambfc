@@ -7,9 +7,10 @@
 /* C99 */
 #include <stdio.h>
 /* internal */
+#include <types.h>
+
 #include "arch_inter.h"
 #include "err.h"
-#include "types.h"
 
 typedef struct {
     enum { STANDARD_RUN, SHOW_VERSION, SHOW_HELP, LIST_TARGETS } run_type;

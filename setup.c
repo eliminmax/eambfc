@@ -13,12 +13,13 @@
 /* POSIX */
 #include <unistd.h>
 /* internal */
+#include <attributes.h>
+#include <config.h>
+#include <types.h>
+
 #include "arch_inter.h"
-#include "attributes.h"
-#include "config.h"
 #include "err.h"
 #include "setup.h"
-#include "types.h"
 #include "util.h"
 #include "version.h"
 

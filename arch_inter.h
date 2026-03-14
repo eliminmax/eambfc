@@ -9,7 +9,6 @@
 #define BFC_ARCH_INTER_H 1
 /* internal */
 #include <attributes.h>
-#include <config.h>
 #include <types.h>
 
 #define BYTEORDER_LSB 1
