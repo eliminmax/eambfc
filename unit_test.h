@@ -33,6 +33,17 @@
 
 TEST_GLOBAL(BfErrorId current_err);
 
+/* Get the current LLVM major release
+ *
+ * Some disassembly is different depending on the LLVM version, and this allows
+ * disassembly tests to select variants based on the supported versions. */
+enum LLVM_MAJOR_RELEASE {
+    LLVM19 = 19,
+    LLVM20 = 20,
+    LLVM21 = 21,
+    LLVM22 = 22,
+} libllvm_version(void);
+
 enum test_status {
     TEST_SET = -1,
     NOT_TESTING = 0,

@@ -616,30 +616,66 @@ static void test_successful_jumps(void) {
     jump_open(3, 18, &sb, 0, &e);
     jump_close(3, -36, &sb, &e);
     pad_loop_open(&sb);
-    /* For some reason, LLVM treats jump offset operand as an unsigned immediate
-     * after sign extending it to the full 64 bits, so -36 becomes
-     * 0xffffffffffffffdc */
     GIVEN_THAT((u64)INT64_C(-36) == UINT64_C(0xffffffffffffffdc));
-    DISASM_TEST(
 
-        sb,
-        dis,
+    /* NOTES:
+     *
+     * LLVM uses "jge" instead of the IBM-documented "jle" extended mnemonic
+     * for `brcl 8,addr` because "jl" is also "jump if less".
+     *
+     * LLVM has changed the disassembly a few times over the course of the 4
+     * supported releases.
+     *
+     * LLVM 19 adds zero parameters to the nop and nopr instructions for some
+     * reason.
+     *
+     * LLVM 19 and 20 take the signed 32-bit encoded jump offset, sign extend it
+     * to 64 bits, then treat it as unsigned, but LLVM 21 and 22 more reasonably
+     * print it as a signed hex value.
+     *
+     * The expected disassembly in LLVM 19 is 126 bytes long, and it will be
+     * shorter on newer supported versions, so a 127-byte character array should
+     * fit the full disassembly (including null terminator). */
+    enum LLVM_MAJOR_RELEASE llvm_version = libllvm_version();
+
+    char expected[128] =
         "llgc %r5, 0(%r3,0)\n"
         "cfi %r5, 0\n"
         /* LLVM uses "jge" instead of the IBM-documented "jle" extended mnemonic
          * for `brcl 8,addr` because "jl" is also "jump if less". */
         "jge 0x12\n"
         "llgc %r5, 0(%r3,0)\n"
-        "cfi %r5, 0\n"
+        "cfi %r5, 0\n";
+    char *cursor = &expected[strlen(expected)];
+
+    if (llvm_version <= LLVM20) {
         /* lh for low | high (i.e. not equal). */
-        "jglh 0xffffffffffffffdc\n"
-        /* instruction used for __builtin_trap() */
-        "j 0x2\n"
-        "nop 0\n"
-        "nop 0\n"
-        "nop 0\n"
-        "nopr %r0\n"
-    );
+        cursor = stpcpy(cursor, "jglh 0xffffffffffffffdc\n");
+    } else {
+        cursor = stpcpy(cursor, "jglh -0x24\n");
+    }
+    /* instruction used for __builtin_trap() */
+    cursor = stpcpy(cursor, "j 0x2\n");
+
+    if (llvm_version == LLVM19) {
+        strcpy(
+            cursor,
+            "nop 0\n"
+            "nop 0\n"
+            "nop 0\n"
+            "nopr %r0\n"
+        );
+    } else {
+        strcpy(
+            cursor,
+            "nop\n"
+            "nop\n"
+            "nop\n"
+            "nopr\n"
+        );
+    }
+
+    DISASM_TEST(sb, dis, expected);
 
     free(sb.buf);
     free(dis.buf);

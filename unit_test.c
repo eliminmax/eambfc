@@ -63,6 +63,39 @@ static void llvm_init(void) {
     LLVM_IS_INIT = true;
 }
 
+enum LLVM_MAJOR_RELEASE libllvm_version(void) {
+    static enum LLVM_MAJOR_RELEASE release;
+    static bool set = false;
+
+    if (set) return release;
+
+    unsigned major, minor, patch;
+
+    LLVMGetVersion(&major, &minor, &patch);
+
+    if (major < 19 || major > 22) {
+        unsigned fallback = (major < 19) ? 19 : 22;
+        fprintf(
+            stderr,
+            "WARNING: unit_test_driver compiled against unsupported LLVM "
+            "version %u.%u.%u. Due to differences in disassembly between LLVM "
+            "releases, some tests may fail incorrectly. Falling back to "
+            "disassembly for version %u.\n",
+            major,
+            minor,
+            patch,
+            fallback
+        );
+        release = fallback;
+        set = true;
+        return release;
+    } else {
+        release = major;
+        set = true;
+        return release;
+    }
+}
+
 bool disassemble(LLVMDisasmContextRef ref, SizedBuf *bytes, SizedBuf *disasm) {
     char disasm_insn[128];
     disasm->sz = 0;
