@@ -11,9 +11,6 @@
 #include <stdio.h> /* IWYU pragma: export */
 #include <stdlib.h>
 
-/* libLLVM */
-#include <llvm-c/Disassembler.h> /* IWYU pragma: export */
-
 /* CUNIT */
 #include <CUnit/CUnit.h> /* IWYU pragma: export */
 
@@ -28,7 +25,7 @@
 #define TEST_GLOBAL(decl) extern decl
 #endif /* UNIT_TEST_C */
 
-#define ARCH_DISASM(ref, ...) TEST_GLOBAL(LLVMDisasmContextRef ref);
+#define ARCH_DISASM(ref, ...) TEST_GLOBAL(void *ref);
 #include "backends.h"
 
 TEST_GLOBAL(BfErrorId current_err);
@@ -38,6 +35,7 @@ TEST_GLOBAL(BfErrorId current_err);
  * Some disassembly is different depending on the LLVM version, and this allows
  * disassembly tests to select variants based on the supported versions. */
 enum LLVM_MAJOR_RELEASE {
+    INVALID_VERSION = -1,
     LLVM19 = 19,
     LLVM20 = 20,
     LLVM21 = 21,
@@ -62,7 +60,12 @@ TEST_GLOBAL(jmp_buf etest_stack);
  *
  * `bytes->sz` is set to zero by this process, but the allocation of
  * `bytes->buf` is left as-is, so it can be reused. */
-bool disassemble(LLVMDisasmContextRef ref, SizedBuf *bytes, SizedBuf *disasm);
+bool disassemble(void *ref, SizedBuf *bytes, SizedBuf *disasm);
+
+bool llvm_ok(void);
+
+#define REQUIRE_LLVM() \
+    if (!llvm_ok()) return
 
 /* utility macro to test if a SizedBuf contains the expected disassembly.
  * Clears both sb and dis, leaving the allocation behind for reuse if needed */
@@ -95,6 +98,9 @@ bool disassemble(LLVMDisasmContextRef ref, SizedBuf *bytes, SizedBuf *disasm);
 
 /* simple self-explanatory BF_ERRCHECKED wrapper around CU_ADD_TEST */
 #define ADD_TEST(suite, test) BF_ERRCHECKED(CU_ADD_TEST(suite, test))
+
+#define ADD_DISASM_TEST(suite, test) \
+    BF_ERRCHECKED(CU_set_test_active(CU_ADD_TEST(suite, test), llvm_ok()))
 
 CU_pSuite register_util_tests(void);
 CU_pSuite register_serialize_tests(void);
