@@ -319,15 +319,15 @@ static void test_inc_dec_is_32_bit(void) {
 CU_pSuite register_i386_tests(void) {
     CU_pSuite suite;
     INIT_SUITE(suite);
-    ADD_TEST(suite, test_set_reg);
-    ADD_TEST(suite, test_jump_instructions);
-    ADD_TEST(suite, test_add_sub_small_imm);
-    ADD_TEST(suite, test_add_sub_medium_imm);
-    ADD_TEST(suite, test_add_sub_large_imm);
-    ADD_TEST(suite, test_add_sub_byte);
-    ADD_TEST(suite, test_set_cell);
+    ADD_DISASM_TEST(suite, test_set_reg);
+    ADD_DISASM_TEST(suite, test_jump_instructions);
+    ADD_DISASM_TEST(suite, test_add_sub_small_imm);
+    ADD_DISASM_TEST(suite, test_add_sub_medium_imm);
+    ADD_DISASM_TEST(suite, test_add_sub_large_imm);
+    ADD_DISASM_TEST(suite, test_add_sub_byte);
+    ADD_DISASM_TEST(suite, test_set_cell);
     ADD_TEST(suite, test_jump_too_long);
-    ADD_TEST(suite, test_inc_dec_is_32_bit);
+    ADD_DISASM_TEST(suite, test_inc_dec_is_32_bit);
     return (suite);
 }
 
