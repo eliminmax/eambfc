@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2025 Eli Array Minkoff
+/* SPDX-FileCopyrightText: 2025 - 2026 Eli Array Minkoff
  *
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -58,10 +58,7 @@ noreturn nonnull_args static void execv_const(const char *const args[]) {
      * execv* variants of `exec`
      *
      * As long as the POSIX requirement is followed, this is fine. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-qual"
     execv(args[0], (char *const *)args);
-#pragma GCC diagnostic pop
     /* Between fork and exec, only async-signal-safe functions are to be called
      * see the fork(3p) and signal-safety(7) man pages for details.
      *
