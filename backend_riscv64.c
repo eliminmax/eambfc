@@ -817,20 +817,20 @@ static void test_jump_too_long(void) {
 CU_pSuite register_riscv64_tests(void) {
     CU_pSuite suite;
     INIT_SUITE(suite);
-    ADD_TEST(suite, test_set_reg_32);
-    ADD_TEST(suite, test_set_reg_64);
-    ADD_TEST(suite, test_compressed_set_reg_64);
-    ADD_TEST(suite, test_syscall);
-    ADD_TEST(suite, test_reg_copies);
-    ADD_TEST(suite, test_load_and_store);
-    ADD_TEST(suite, test_set_byte);
-    ADD_TEST(suite, test_jump_pad);
-    ADD_TEST(suite, test_successful_jumps);
-    ADD_TEST(suite, test_inc_dec);
+    ADD_DISASM_TEST(suite, test_set_reg_32);
+    ADD_DISASM_TEST(suite, test_set_reg_64);
+    ADD_DISASM_TEST(suite, test_compressed_set_reg_64);
+    ADD_DISASM_TEST(suite, test_syscall);
+    ADD_DISASM_TEST(suite, test_reg_copies);
+    ADD_DISASM_TEST(suite, test_load_and_store);
+    ADD_DISASM_TEST(suite, test_set_byte);
+    ADD_DISASM_TEST(suite, test_jump_pad);
+    ADD_DISASM_TEST(suite, test_successful_jumps);
+    ADD_DISASM_TEST(suite, test_inc_dec);
     ADD_TEST(suite, sub_reg_is_neg_add_reg);
-    ADD_TEST(suite, test_add_reg);
-    ADD_TEST(suite, test_add_sub_byte);
-    ADD_TEST(suite, test_bad_jump_offset);
+    ADD_DISASM_TEST(suite, test_add_reg);
+    ADD_DISASM_TEST(suite, test_add_sub_byte);
+    ADD_DISASM_TEST(suite, test_bad_jump_offset);
     ADD_TEST(suite, test_jump_too_long);
     return suite;
 }

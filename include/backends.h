@@ -40,11 +40,23 @@
 #define ARCH_INTER_DISABLED(name, /* aliases */...)
 #endif
 
+/* symbol used in functions needed to initialize the target's LLVM disassembler
+ * If more than one backend use the same disassembler (as with I386 & X86_64),
+ * it must only be defined once.
+ *
+ * For instance, if the functions are LLVMInitializeFooTargetInfo,
+ * LLVMInitializeFooTargetMC, and LLVMInitializeFooDisassembler, it would be
+ * ARCH_DISASM_INIT_SYM(Foo) */
+#ifndef ARCH_DISASM_INIT_SYM
+#define ARCH_DISASM_INIT_SYM(SYM)
+#endif /* ARCH_DISASM_INIT_SYM */
+
 /* __BACKENDS__ Add a block for the backend, maintaining alphabetical order */
 
 ARCH_ID(BFC_TARGET_ARM64, arm64)
 #if BFC_TARGET_ARM64
 ARCH_INTER(ARM64_INTER, "arm64", "aarch64")
+ARCH_DISASM_INIT_SYM(AArch64)
 ARCH_DISASM(ARM64_DIS, "aarch64-linux-gnu", "")
 ARCH_TEST_REGISTER(register_arm64_tests)
 #else
@@ -54,6 +66,7 @@ ARCH_INTER_DISABLED("arm64", "aarch64")
 ARCH_ID(BFC_TARGET_I386, i386)
 #if BFC_TARGET_I386
 ARCH_INTER(I386_INTER, "i386", "i486", "i586", "i686")
+ARCH_DISASM_INIT_SYM(X86)
 ARCH_DISASM(I386_DIS, "i686-linux-gnu", "")
 ARCH_TEST_REGISTER(register_i386_tests)
 #else
@@ -63,6 +76,7 @@ ARCH_INTER_DISABLED("i386", "i486", "i586", "i686")
 ARCH_ID(BFC_TARGET_RISCV64, riscv64)
 #if BFC_TARGET_RISCV64
 ARCH_INTER(RISCV64_INTER, "riscv64", "riscv")
+ARCH_DISASM_INIT_SYM(RISCV)
 ARCH_DISASM(RISCV64_DIS, "riscv64-linux-gnu", "+c")
 ARCH_TEST_REGISTER(register_riscv64_tests)
 #else
@@ -72,6 +86,7 @@ ARCH_INTER_DISABLED("riscv64", "riscv")
 ARCH_ID(BFC_TARGET_S390X, s390x)
 #if BFC_TARGET_S390X
 ARCH_INTER(S390X_INTER, "s390x", "s390", "z/architecture")
+ARCH_DISASM_INIT_SYM(SystemZ)
 ARCH_DISASM(S390X_DIS, "systemz-linux-gnu", "+high-word")
 ARCH_TEST_REGISTER(register_s390x_tests)
 #else
@@ -81,6 +96,9 @@ ARCH_INTER_DISABLED("s390x", "s390", "z/architecture")
 ARCH_ID(BFC_TARGET_X86_64, x86_64)
 #if BFC_TARGET_X86_64
 ARCH_INTER(X86_64_INTER, "x86_64", "x64", "amd64", "x86-64")
+#if !BFC_TARGET_I386
+ARCH_DISASM_INIT_SYM(X86)
+#endif
 ARCH_DISASM(X86_64_DIS, "x86_64-linux-gnu", "")
 ARCH_TEST_REGISTER(register_x86_64_tests)
 #else
@@ -92,3 +110,4 @@ ARCH_INTER_DISABLED("x86_64", "x64", "amd64", "x86-64")
 #undef ARCH_DISASM
 #undef ARCH_TEST_REGISTER
 #undef ARCH_INTER_DISABLED
+#undef ARCH_DISASM_INIT_SYM
