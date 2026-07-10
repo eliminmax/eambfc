@@ -792,11 +792,14 @@ static void test_add_sub_byte(void) {
 
 static void test_bad_jump_offset(void) {
     testing_err = TEST_INTERCEPT;
-    int returned_err;
-    if ((returned_err = setjmp(etest_stack))) {
-        CU_ASSERT_EQUAL(BF_ICE_INVALID_JUMP_ADDRESS, returned_err >> 1);
-        testing_err = NOT_TESTING;
-        return;
+    switch (setjmp(etest_stack)) {
+        case (BF_ICE_INVALID_JUMP_ADDRESS << 1) | 1:
+            testing_err = NOT_TESTING;
+            return;
+        case 0:
+            break;
+        default:
+            CU_FAIL("Incorrect error code.");
     }
     BFCError e;
     char dst[JUMP_SIZE];

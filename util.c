@@ -191,11 +191,14 @@ static void trailing_0s_test(void) {
 
 static void sb_reserve_fail_test(void) {
     testing_err = TEST_INTERCEPT;
-    int returned_err;
-    if ((returned_err = setjmp(etest_stack))) {
-        CU_ASSERT_EQUAL(BF_FATAL_ALLOC_SIZE_OVERFLOW, returned_err >> 1);
-        testing_err = NOT_TESTING;
-        return;
+    switch (setjmp(etest_stack)) {
+        case (BF_FATAL_ALLOC_SIZE_OVERFLOW << 1) | 1:
+            testing_err = NOT_TESTING;
+            return;
+        case 0:
+            break;
+        default:
+            CU_FAIL("Incorrect error code.");
     }
     SizedBuf sb = newbuf(1);
     sb.sz = SIZE_MAX - 4;
@@ -205,11 +208,14 @@ static void sb_reserve_fail_test(void) {
 
 static void append_obj_overflow_fail(void) {
     testing_err = TEST_INTERCEPT;
-    int returned_err;
-    if ((returned_err = setjmp(etest_stack))) {
-        CU_ASSERT_EQUAL(BF_FATAL_ALLOC_SIZE_OVERFLOW, returned_err >> 1);
-        testing_err = NOT_TESTING;
-        return;
+    switch (setjmp(etest_stack)) {
+        case (BF_FATAL_ALLOC_SIZE_OVERFLOW << 1) | 1:
+            testing_err = NOT_TESTING;
+            return;
+        case 0:
+            break;
+        default:
+            CU_FAIL("Incorrect error code.");
     }
     SizedBuf sb = newbuf(1);
     sb.sz = SIZE_MAX - 4;
